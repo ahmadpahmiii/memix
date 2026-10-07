@@ -11,3 +11,4 @@ Design-system and token changes made in the repo. Items marked **sync to design 
 | 2026-10-07 | New component spec: Toggle. | Off thumb 4.7:1 on its track; on thumb 7.9:1 on primary. | Sync to design canvas |
 | 2026-10-07 | TemplateCard drops the use count (no real usage data exists; antislop R-17). Create sheet drops "Memix asks for gallery access…" (the Android photo picker needs no permission). Home's region becomes a label until P3-11, and the trending rows wait for the catalog. | | Sync to design canvas |
 | 2026-10-07 | New token `danger-pressed` `#E04E43` (the danger fill had no pressed state). | on-primary text 4.80:1 | Sync to design canvas |
+| 2026-10-07 | Home (P0 only): hero and entry cards centered vertically, entry cards at the 4:5 canvas ratio until the trending rows exist. | | Sync to design canvas |
