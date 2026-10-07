@@ -51,7 +51,7 @@ The Claude Docs / design artifacts linked at the top of each doc are the source 
 ## Hard "don'ts"
 
 - No FFmpeg / FFmpegKit or any GPL/LGPL library inside the app (desktop content scripts may use ffmpeg).
-- No secrets in the repo: Supabase **service** key, R2 write keys, signing keys live in CI secrets / local `.env` only. The app ships only the Supabase anon key (RLS: read active rows, insert `reports`).
+- No secrets or account config in the repo. Every credential, where it lives and how CI gets it: `docs/CREDENTIALS.md`. Secrets live in `.env` (template `.env.example`), `local.properties` and CI secrets. The app ships only the Supabase publishable key (RLS: read active rows, insert `reports`). Turn on the secret check once per clone: `git config core.hooksPath .githooks`.
 - No catalog content without a recorded license (`source_url`, `license_type`, `license_proof`, `credit`). No YouTube rips.
 - No ads inside the editors or during export; interstitial max 1 per 3 exports and never on the first; rewarded ad removes the watermark for one export; no banners.
 - No accounts, no uploads of user media, no cloud rendering in v1.
