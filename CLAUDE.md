@@ -89,14 +89,19 @@ Five role agents in `.claude/agents/`. The main session orchestrates them with t
   - docs updated
 - Verify current library APIs against official docs when a ticket starts (Media3, ML Kit, MediaPipe and Compose MP move fast). Don't trust memory for class names or versions.
 
-## Commands (fill in exact task names after P0-01 creates the project)
+## Commands
+
+Run from the repo root with JDK 17. `local.properties` (not committed) holds `sdk.dir`.
 
 ```bash
-./gradlew :composeApp:assembleDebug                       # Android debug build
-./gradlew lint                                            # Android lint (plus ktlint/detekt if added in P0-02)
+./gradlew :androidApp:assembleDebug                       # Android debug build
+./gradlew lint                                            # Android lint; covers the KMP library modules through checkDependencies
 ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 # iOS framework compiles (needs macOS)
-./gradlew :composeApp:installDebug                        # install on the running emulator/phone for hand checks
+./gradlew :androidApp:installDebug                        # install on the running emulator/phone for hand checks
+xcodebuild -project iosApp/iosApp.xcodeproj -target iosApp -sdk iphonesimulator -arch arm64 SYMROOT="$PWD/iosApp/build" build  # iOS app for the simulator
 ```
+
+Since AGP 9, the Android app is its own module (`:androidApp`); `:composeApp` is the shared KMP module that builds the `ComposeApp` framework for `iosApp/`. Shared Gradle setup lives in `build-logic/` (`memix.kmp.library`, `memix.kmp.compose`).
 
 ## Current phase
 

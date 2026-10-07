@@ -47,7 +47,8 @@ The code is one Gradle multi-module Kotlin Multiplatform project using clean arc
 
 | Module | Layer | Holds | Depends on |
 | --- | --- | --- | --- |
-| `:composeApp` | App | Android `Application`, iOS entry point, Koin graph, navigation host | All feature modules |
+| `:androidApp` | App | Android `Application`, `MainActivity`, manifest (AGP 9 keeps the Android app out of KMP modules) | `:composeApp` |
+| `:composeApp` | App | Shared root: `App()`, navigation host, Koin graph, iOS entry point (`MainViewController`); builds the `ComposeApp` framework that `iosApp/` (Xcode) embeds | All feature modules |
 | `:core:model` | Domain | Project, Track, Clip, Layer, Effect, Sound and Template entities; serialization | Nothing |
 | `:core:domain` | Domain | Use cases; repository interfaces; engine interfaces (`VideoEngine`, `PhotoRenderer`, `Segmenter`, `MediaPicker`, `Sharer`, `Ads`, `Analytics`) | `:core:model` |
 | `:core:data` | Data | Repositories; remote source (supabase-kt on Ktor); local source (SQLDelight); file cache; settings | `:core:domain` |
@@ -277,7 +278,7 @@ Every version is pinned in `gradle/libs.versions.toml` and set to the latest sta
 | Need | Choice |
 | --- | --- |
 | Language and build | Kotlin (latest stable), Gradle with version catalogs |
-| Shared UI | Compose Multiplatform (1.11 is current per [JetBrains' compatibility page](https://kotlinlang.org/docs/multiplatform/compose-compatibility-and-versioning.html)), Material 3 components under a custom Memix theme |
+| Shared UI | Compose Multiplatform 1.12.1 ([JetBrains' compatibility page](https://kotlinlang.org/docs/multiplatform/compose-compatibility-and-versioning.html)); Memix components built on `foundation` under a custom Memix theme |
 | Dependency injection | Koin |
 | Navigation and ViewModels | Multiplatform Navigation Compose, multiplatform lifecycle ViewModel |
 | Async and data | kotlinx.coroutines and Flow, kotlinx.serialization |
@@ -316,6 +317,17 @@ Memix keeps no user data on its servers: projects, imports and favorites stay on
 - The Supabase service key, R2 write keys and app signing keys never enter the repo. They live in CI secrets and on the admin machine.
 - The advertising ID is used only after consent where consent is required. Analytics events carry no personal data.
 - The Play Data safety form lists: advertising ID, crash logs and app interaction analytics.
+
+## Decisions
+
+Engineering decisions made during the build, newest first. Each says what, why and the alternative.
+
+| Date | Decision | Why | Alternative |
+| --- | --- | --- | --- |
+| 2026-10-07 | Module split for AGP 9: `:androidApp` (Android application) + `:composeApp` (shared KMP library) + `iosApp/` (Xcode). | AGP 9 makes `com.android.application` incompatible with the KMP plugin in one module ([kotlinlang.org](https://kotlinlang.org/docs/multiplatform/multiplatform-project-agp-9-migration.html)). | Stay on AGP 8 (removed path; AGP 10 drops the legacy API). |
+| 2026-10-07 | Every KMP module uses `com.android.kotlin.multiplatform.library` via the `memix.kmp.library` convention plugin; targets android, iosArm64, iosSimulatorArm64. No iosX64. | One place for target setup across 18 modules; Apple-silicon Macs and CI runners only. | Per-module copies of the target block. |
+| 2026-10-07 | Versions pinned on creation day: Kotlin 2.4.20, AGP 9.4.1, Gradle 9.8.0, Compose MP 1.12.1, lifecycle 2.11.0, navigation-compose 2.9.2, coroutines 1.11.0, serialization 1.11.0, Koin 4.2.2, Ktor 3.6.0, supabase-kt 3.8.0, SQLDelight 2.4.1, Coil 3.6.3, Media3 1.11.1, Firebase BOM 34.19.0. compileSdk 37, targetSdk 36, minSdk 29. | Latest stable on 7 Oct 2026, checked on GitHub releases, Maven Central, Google Maven, kotlinlang.org and developer.android.com. targetSdk 36 meets Play's rule; move to 37 before Play's 2027 deadline. | Pre-releases (navigation 2.10 RC, serialization 1.12 RC). |
+| 2026-10-07 | Material3 is pinned (1.9.0, the newest stable multiplatform release) but not used by default; Memix components build on `foundation`. | Multiplatform Material3 stable lags three versions behind Compose 1.12, and the design system is custom. | Material3 1.12.0-alpha03, which Compose 1.12.1 pairs with. |
 
 ## Sources
 

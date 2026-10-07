@@ -11,7 +11,8 @@ Full detail: `docs/TECHNICAL_DESIGN.md`. This is the working summary.
 
 | Module | Layer | Holds | May depend on |
 | --- | --- | --- | --- |
-| `:composeApp` | App | Android `Application`, iOS entry, Koin graph, NavHost | everything |
+| `:androidApp` | App | Android `Application`, `MainActivity`, manifest (AGP 9: not a KMP module) | `:composeApp` |
+| `:composeApp` | App | `App()`, NavHost, Koin graph, iOS entry; builds the `ComposeApp` framework for `iosApp/` | everything |
 | `:core:model` | Domain | `Project`, `Track`, `TimelineItem`, `PhotoScene`, `Layer`, effect/filter/transition specs, catalog entities | nothing |
 | `:core:domain` | Domain | use cases; repository + engine interfaces (`VideoEngine`, `PreviewSession`, `PhotoRenderer`, `Segmenter`, `MediaPicker`, `Sharer`, `Ads`, `Analytics`) | `:core:model` |
 | `:core:data` | Data | repositories, supabase-kt remote, SQLDelight local, file cache, settings | `:core:domain` |
