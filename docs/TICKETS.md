@@ -18,6 +18,8 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 
 ## Phase 0 · Foundation (week 1, from 12 Oct)
 
+> 8 Oct 2026 (owner): P0-07 moved out of Phase 0 while another media-hosting approach is found; P0-06's seed sounds and templates move with it. Every later ticket that needs hosted media (P3-01, P3-04, P3-12, P4-05, P4-15) waits for that decision, due before P3 starts.
+
 | ID | Ticket | Done when | Size | Needs |
 | --- | --- | --- | --- | --- |
 | P0-01 | Create the KMP project: Android and iOS targets, Compose Multiplatform, version catalog, module skeleton from the technical design | The app launches on an Android emulator and an iOS simulator with a placeholder screen | M | — |
