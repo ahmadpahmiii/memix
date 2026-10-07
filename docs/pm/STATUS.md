@@ -8,10 +8,10 @@ Owned by the product manager. Keep it one screen long. Statuses: Not started · 
 
 | ID | Ticket | Status | Spec first | Owner | Links |
 | --- | --- | --- | --- | --- | --- |
-| P1-01 | Project model, serialization, SQLDelight storage, migrations | **Ready** (7 Oct) | — | principal-mobile-engineer | |
-| P1-07 | Undo and redo (100), auto-save 500 ms | Not started | — | principal-mobile-engineer | |
-| P1-02 | Gallery picker with cached copies | Not started | yes | principal-mobile-engineer | |
-| P1-03 | `VideoEngine` interface, Android composition builder | Not started | — | principal-mobile-engineer | |
+| P1-01 | Project model, serialization, SQLDelight storage, migrations | **Building (hand check pending)**: CI green, provisionally accepted; open until the owner's adb round trip prints "verify: identical" | — | principal-mobile-engineer | a453967, [CI](https://github.com/ahmadpahmiii/memix/actions/runs/37704695529), acceptance-log |
+| P1-07 | Undo and redo (100), auto-save 500 ms | **Ready** (7 Oct): history, auto-save and debug hook now; buttons once P1-04's chrome exists | in P1-04/05/06 spec | principal-mobile-engineer | acceptance-log |
+| P1-02 | Gallery picker with cached copies | **Ready** (7 Oct): spec questions answered | done | principal-mobile-engineer | spec ca3ce51, acceptance-log |
+| P1-03 | `VideoEngine` interface, Android composition builder | **Ready** (7 Oct): Media3 compiles in CI only; visual preview checked in P1-04's session | — | principal-mobile-engineer | acceptance-log |
 | P1-04 | Preview: player, play, pause, seek, timecode | Not started | yes | principal-mobile-engineer | |
 | P1-05 | Timeline UI | Not started | yes | principal-mobile-engineer | |
 | P1-06 | Clip edits: split, trim, delete, duplicate, reorder | Not started | yes | principal-mobile-engineer | |
@@ -25,8 +25,8 @@ Owned by the product manager. Keep it one screen long. Statuses: Not started · 
 | P1-15 | Release plumbing: signing, CI upload to internal testing | Not started; blocked on credentials | — | principal-mobile-engineer | |
 
 **Top risks**
-1. **No emulator in this session** (dl.google.com blocked: no Android SDK, Google Maven or emulator). Engineers write code and CI builds it; every hand check, and every perf number on the reference phone (P1-04, P1-05, P1-12), falls to the owner or a later session before a ticket counts as Built.
+1. **No emulator in this session** (dl.google.com blocked: no Android SDK, Google Maven or emulator). Engineers write code and CI builds it; Media3 code (P1-03 onward) can't even compile here, so each fix is a CI round trip; every hand check, and every perf number on the reference phone (P1-04, P1-05, P1-12), falls to the owner or a later session before a ticket counts as Built.
 2. **Phase 0 had no QA pass.** The P1 test plan also covers P0-01…P0-09, incl. unverified focus rings and the S4 nav-bar flicker on pop.
 3. **Media hosting undecided** (P0-07 moved). Decide before P3 (7 Dec); P3-01, P3-04, P3-12, P4-05, P4-15 wait on it.
 
-**Owner decisions open:** (a) GitHub merge gate: Pro, public repo, or convention · (b) Devanagari display face for Hindi · (c) media hosting, before 7 Dec · (d) Firebase: confirm the test crash, add `media_base_url`. **P1 inputs:** licensed starter sounds for P1-08 · watermark position for P1-13 · upload keystore and Play service account for P1-15 (`docs/CREDENTIALS.md`).
+**Owner decisions open:** (a) GitHub merge gate: Pro, public repo, or convention · (b) Devanagari display face for Hindi · (c) media hosting, before 7 Dec · (d) Firebase: confirm the test crash, add `media_base_url` · (e) CLAUDE.md rule 3: allow the composition root (`:androidApp`, `:composeApp`) to create the SQLDelight driver (P1-01 decision 1) · (f) `proposals/2026-10-07-p1-02-followups.md`: A, new S ticket P1-16 for "Add media" and "Replace a clip" (PRD scope with no ticket); B, add `gallery` to `project_create.source`. **P1 inputs:** licensed starter sounds for P1-08 · watermark position for P1-13 · upload keystore and Play service account for P1-15 (`docs/CREDENTIALS.md`).
