@@ -130,6 +130,7 @@ Map each token to the Memix theme objects, kebab-case to camelCase: `track-meme-
 | `track-effect` | `MemixColors.trackEffect` | `#AA84EB` | Effect and filter clips. Labels on it are on-track (6.5:1). |
 | `on-track` | `MemixColors.onTrack` | `#111111` | Labels and icons on every colored track fill. |
 | `danger` | `MemixColors.danger` | `#F6574C` | Delete, discard and recording states, always with a word or icon. Text on it is on-primary (5.7:1). |
+| `danger-pressed` | `MemixColors.dangerPressed` | `#E04E43` | Pressed state of danger fills. Text on it is on-primary (4.8:1). |
 | `success` | `MemixColors.success` | `#3BCE7B` | Export finished and saved states, always with a word or icon. Text on it is on-primary (9.3:1). |
 | `focus-ring` | `MemixColors.focusRing` | `#FFFFFF` | Keyboard and switch-access focus: a solid 2px ring, 2px outside the control. |
 | `scrim` | `MemixColors.scrim` | `#000000B3` | Behind bottom sheets and dialogs. |
