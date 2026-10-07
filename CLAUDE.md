@@ -108,7 +108,7 @@ The first iOS link after adding a library takes up to 15 minutes while Kotlin/Na
 
 ## Current phase
 
-P0 · Foundation is closing (built 7–8 Oct 2026, P0-07 moved; phase PR open). Next: P1 · Core and video editor on `phase-1`, branched from `main` after the Phase 0 PR merges. Keep this line updated as phases advance.
+P1 · Core and video editor (started 7 Oct 2026). Phase 0 merged to `main` (PR #7; P0-07 moved). The Phase 1 branch is `claude/phase-1-kickoff-cenfgz`, branched from `main`, because cloud sessions can't push to `phase-1`. Keep this line updated as phases advance.
 
 ## Open items that affect code
 

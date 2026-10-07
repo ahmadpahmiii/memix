@@ -1,24 +1,32 @@
 # Status board
 
-Owned by the product manager. Keep it one screen long. Statuses: Not started · Ready · Building · Built · QA · Accepted · Needs work · Rejected · Moved.
+Owned by the product manager. Keep it one screen long. Statuses: Not started · Ready · Building · Built · QA · Accepted · Needs work · Rejected · Moved. Code that is CI-green but not yet run on an emulator or phone stays **Building (hand check pending)**.
 
-**Current phase:** P0 · Foundation (planned 12–18 Oct 2026; started 7 Oct, 5 days early) · Android launch target ≈ 7 Mar 2027 · iOS ≈ 2 May 2027
+**Current phase:** P1 · Core and video editor (planned 19 Oct–15 Nov 2026; kicked off 7 Oct, 12 days early) · Android launch ≈ 7 Mar 2027 · iOS ≈ 2 May 2027. Phase 0 merged to `main` as b9582b5 ([PR #7](https://github.com/ahmadpahmiii/memix/pull/7)); report `phase-reports/P0.md`, retro `retros/P0.md` (proposals 1–7 applied, 8 not approved).
 
-**Branch:** `phase-0`. One PR for the phase, opened after the QA pass and the phase gate. P0-01 to P0-04 and P0-09 were merged as single-ticket PRs before this rule.
+**Branch:** `claude/phase-1-kickoff-cenfgz` (from `main` at b9582b5) serves as the Phase 1 branch: this cloud session can push only there, not to `phase-1` (session constraint, not an owner decision). CI runs on it via the `claude/phase-*` push filter (3bb047e). One PR for the phase, after QA and the phase gate.
 
-| ID | Ticket | Status | Owner | Links |
-| --- | --- | --- | --- | --- |
-| P0-01 | Create the KMP project: Android and iOS targets, Compose Multiplatform, version catalog, module skeleton from the technical design | Built (7 Oct) | principal-mobile-engineer | [PR #1](https://github.com/ahmadpahmiii/memix/pull/1) |
-| P0-02 | CI on GitHub Actions | Built (7 Oct); merge gate needs owner decision | principal-mobile-engineer | [PR #2](https://github.com/ahmadpahmiii/memix/pull/2) |
-| P0-03 | Architecture base: Koin, navigation host, base ViewModel (UiState and Intent), result and error types, logging | Built (7 Oct) | principal-mobile-engineer | [PR #3](https://github.com/ahmadpahmiii/memix/pull/3) |
-| P0-04 | Design system in Compose: tokens, bundled fonts, core components (buttons, chips, sound chip, cards, sheets, tabs, sliders, toggles) | Built (7 Oct), merged; design review: approved with polish | principal-mobile-engineer | [PR #5](https://github.com/ahmadpahmiii/memix/pull/5) |
-| P0-05 | Bottom navigation and empty screens: Home, Templates, Create sheet, Sounds, Drafts | Built (7 Oct); design review: approved with polish | principal-mobile-engineer | on `phase-0` |
-| P0-06 | Supabase project: schema SQL, access rules, seed data (10 sounds, 3 templates) | Built (8 Oct); seed sounds and templates moved with P0-07 (they need media hosting) | backend-engineer | |
-| P0-07 | Cloudflare R2 bucket, custom media domain, upload script | Moved (8 Oct, owner): out of Phase 0 while another media-hosting approach is found; decide before P3 (7 Dec) | backend-engineer | |
-| P0-08 | Firebase on Android: Crashlytics, Analytics, Remote Config | Built (8 Oct); owner confirms the test crash in the Crashlytics console and adds `media_base_url` in Remote Config | principal-mobile-engineer | |
-| P0-09 | String resources for English, Indonesian, Spanish, Portuguese, Hindi | Built (7 Oct) | principal-mobile-engineer | [PR #4](https://github.com/ahmadpahmiii/memix/pull/4) |
+| ID | Ticket | Status | Spec first | Owner | Links |
+| --- | --- | --- | --- | --- | --- |
+| P1-01 | Project model, serialization, SQLDelight storage, migrations | **Ready** (7 Oct) | — | principal-mobile-engineer | |
+| P1-07 | Undo and redo (100), auto-save 500 ms | Not started | — | principal-mobile-engineer | |
+| P1-02 | Gallery picker with cached copies | Not started | yes | principal-mobile-engineer | |
+| P1-03 | `VideoEngine` interface, Android composition builder | Not started | — | principal-mobile-engineer | |
+| P1-04 | Preview: player, play, pause, seek, timecode | Not started | yes | principal-mobile-engineer | |
+| P1-05 | Timeline UI | Not started | yes | principal-mobile-engineer | |
+| P1-06 | Clip edits: split, trim, delete, duplicate, reorder | Not started | yes | principal-mobile-engineer | |
+| P1-08 | Meme sounds from the bundled starter pack | Not started; needs licensed starter sounds | in P1-05/06 spec | principal-mobile-engineer | |
+| P1-09 | Original audio: volume, mute, detach | Not started | in P1-05/06 spec | principal-mobile-engineer | |
+| P1-10 | Text, basic | Not started | yes | principal-mobile-engineer | |
+| P1-11 | Canvas: ratios, fit/fill, background | Not started | yes | principal-mobile-engineer | |
+| P1-12 | Export | Not started | yes | principal-mobile-engineer | |
+| P1-13 | Watermark | Not started; position unconfirmed (PRD open item) | — | principal-mobile-engineer | |
+| P1-14 | Drafts screen | Not started | yes | principal-mobile-engineer | |
+| P1-15 | Release plumbing: signing, CI upload to internal testing | Not started; blocked on credentials | — | principal-mobile-engineer | |
 
 **Top risks**
-1. Full v1 scope for one developer: watch the cut list (speed curves, blend modes, transition count).
-2. Sound licensing: no row without license fields. P0-06 seed sounds must be real licensed items, not dummies.
-3. Media hosting is open (P0-07 moved). Nothing before P3 needs it (P1-08 uses the bundled starter pack); P3-01, P3-04, P3-12, P4-05 and P4-15 do.
+1. **No emulator in this session** (dl.google.com blocked: no Android SDK, Google Maven or emulator). Engineers write code and CI builds it; every hand check, and every perf number on the reference phone (P1-04, P1-05, P1-12), falls to the owner or a later session before a ticket counts as Built.
+2. **Phase 0 had no QA pass.** The P1 test plan also covers P0-01…P0-09, incl. unverified focus rings and the S4 nav-bar flicker on pop.
+3. **Media hosting undecided** (P0-07 moved). Decide before P3 (7 Dec); P3-01, P3-04, P3-12, P4-05, P4-15 wait on it.
+
+**Owner decisions open:** (a) GitHub merge gate: Pro, public repo, or convention · (b) Devanagari display face for Hindi · (c) media hosting, before 7 Dec · (d) Firebase: confirm the test crash, add `media_base_url`. **P1 inputs:** licensed starter sounds for P1-08 · watermark position for P1-13 · upload keystore and Play service account for P1-15 (`docs/CREDENTIALS.md`).
