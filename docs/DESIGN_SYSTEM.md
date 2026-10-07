@@ -80,11 +80,24 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 - The "bonk": a sound or sticker landing on the timeline scales 1 → 1.12 → 1 over 240 ms with a slight overshoot. Use it only for placing content.
 - Respect the system's reduce-motion setting: replace movement with a 120 ms fade.
 
+**Dials.** ENERGY 2 / RHYTHM 2 / MOTION 2.
+- ENERGY 2: the chrome recedes, and Anton carries the loud moments (Home hero, entry cards, empty-state headlines, sheet heroes) so the app still says hello like a meme tool.
+- RHYTHM 2: browse screens share one frame (title, controls, content) so tabs feel predictable; Home breaks it with the oversized hero and two unequal entry cards.
+- MOTION 2: everything that moves is a state change (press, toggle, tab, sheet, screen) or content landing (the bonk). Nothing loops or moves on its own.
+
 **Imagery.** The user's content is the imagery. Template thumbnails are 9:16 in `radius-lg` frames. No stock illustrations or mascots.
 
 ## Iconography
 
-One outline icon family at 24px with 1.75px strokes and round joins, colored `text-secondary` (inactive), `text` (current nav item) or `primary` (active tool). Proposed set: Lucide (ISC license), imported into Compose as vector drawables. The previews here use simple hand-drawn stand-ins. There is no Memix logo yet: until one exists, write the name "Memix" in Anton.
+Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set was dropped because its thin, round-capped look is the default of AI-generated interfaces). Icons are drawn only when a ticket needs them, and each new one follows this grammar so the set reads as one family:
+
+- **Grid:** 24px canvas, 2px padding, so shapes live in the central 20px.
+- **Stroke:** 2px with flat (butt) caps and mitred joins; rectangles get a 1px corner radius. The flat ends echo Anton's blunt terminals and keep small shapes crisp on dark gray.
+- **One solid core:** where the metaphor has a natural mass, that one part is filled: the door of Home, the cone of Sounds, the lens of Video, the hill of Photo, the tab of Drafts. Play and pause are all core. This is the set's signature, the same move as the solid blue Create block.
+- **Color:** a single color per icon, applied as a tint: `text-secondary` (inactive), `text` (current nav item), `primary` (active tool), `on-primary` on blue fills. No two-tone icons.
+- **Meaning first:** every icon names a real action or place and always comes with a visible label or a screen-reader label. No sparkle, magic or robot glyphs.
+
+Source files are Android vector drawables in `:core:designsystem` `composeResources/drawable/` (`ic_<name>.xml`), path-only so Compose Multiplatform renders them the same on Android and iOS. There is no Memix logo yet: until one exists, write the name "Memix" in Anton; the launcher icon is a plain placeholder built from that wordmark, not a logo.
 
 ## In Compose
 
@@ -196,6 +209,15 @@ Fixed sizes used across screens (dp on Android).
 | `track-height` | `MemixSize.trackHeight` | `28px` | Every other track's clips. |
 | `playhead-width` | `MemixSize.playheadWidth` | `2px` | Timeline playhead line, in selection white. |
 
+### Motion
+
+| Token | Compose name | Value | Use |
+| --- | --- | --- | --- |
+| `duration-press` | `MemixMotion.durationPress` | `120ms` | Presses, toggles, nav item color changes, and the reduce-motion fade that replaces every movement. |
+| `duration-sheet` | `MemixMotion.durationSheet` | `200ms` | Bottom sheets sliding in and out, tab content changes. |
+| `duration-screen` | `MemixMotion.durationScreen` | `320ms` | Screen pushes and pops. |
+| `duration-bonk` | `MemixMotion.durationBonk` | `240ms` | The bonk: content landing on the timeline scales 1 → 1.12 → 1 with a slight overshoot. Only for placing content. |
+
 ## Compose implementation notes
 
 - px in the tokens = dp in Compose; font px = sp. Alpha hex (`#2BB3F329`, `#000000B3`) is RRGGBBAA → `Color(0x292BB3F3)` in Compose (ARGB).
@@ -206,7 +228,7 @@ Fixed sizes used across screens (dp on Android).
 - `meme-caption` is Anton, white fill with a 3 dp black stroke: draw the text twice (stroke pass with `TextStyle(drawStyle = Stroke(width))`, then fill). This is user content styling, not chrome.
 - Timeline: clips are positioned by time (µs → px via the zoom scale), never by index. Track heights from `trackHeightVideo` / `trackHeight`; playhead `playheadWidth` in `selection` with a 12 dp circular head.
 - Pressed states: `primary` → `primary-pressed`; neutral controls go one value step lighter (`surface-raised` → `hairline`). No translate/scale on press; the 240 ms "bonk" scale is only for content landing on the timeline.
-- Icons: Lucide (ISC) as vector drawables in `composeResources/drawable/`, 24 dp, 1.75 stroke.
+- Icons: Memix-drawn vector drawables in `composeResources/drawable/` (see Iconography), 24 dp, 2 dp flat-cap stroke, tinted per state.
 - Build a component catalog screen (debug builds only) showing every component in every state; the UX designer reviews it from screenshots. No automated screenshot tests in this project.
 
 ## Screens in the design canvas
