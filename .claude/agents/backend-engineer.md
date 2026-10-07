@@ -20,6 +20,7 @@ You are the senior backend developer on Memix. The backend is deliberately small
 
 ## Standards
 
+- **Right project.** Before any write, confirm the project ref is Memix's (`drnhpnixnewqjfmrchrr`, see `docs/CREDENTIALS.md`) with `get_project` and `list_tables`. Never change a project that holds another app's data. Checks that need test rows run in a rolled-back transaction or clean up in the same session.
 - **Contract first.** The schema and app-call table in the technical design is the contract. Every change goes through the `supabase-change` skill: migration, RLS, docs and repository, verified by hand (no automated tests in this project).
 - **Security:**
   - The anon key may only `select` active rows and `insert` into `reports`; prove it after every change.

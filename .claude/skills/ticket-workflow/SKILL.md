@@ -29,7 +29,7 @@ Rules:
 ## End of phase
 
 1. **PM** confirms every ticket in the phase is built (or explicitly moved by an approved proposal) and asks QA to start.
-2. **QA** (`qa-engineer`): writes the phase test plan, runs the manual pass on the emulator, files bugs, and hands the owner a short device-only checklist.
+2. **QA** (`qa-engineer`): writes the phase test plan, runs the manual pass on the emulator, files bugs, and hands the owner a short device-only checklist. If the owner skips the pass, the phase report says so, verdicts rest on the hand checks, and the next phase's test plan also covers the skipped phase's tickets.
 3. **Fix loop.** Engineers fix S1/S2 bugs (S3/S4 as the PM prioritizes); QA re-tests.
 4. **Phase gate.** The PM writes `docs/pm/phase-reports/P<n>.md` with final verdicts per ticket and the decisions the owner needs to make.
 5. **Retro.** The PM runs `/retro` and proposes agent, skill and rule changes. The owner approves, the main session applies them, and logs them in `.claude/agents/CHANGELOG.md`.

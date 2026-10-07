@@ -15,7 +15,7 @@ Memix ("Memix: Meme Video & Photo" on the stores) is a meme maker with **two sep
 | Screen spec for a UI ticket | `docs/ux/specs/` |
 | Bugs and QA results | `docs/qa/` |
 
-The Claude Docs / design artifacts linked at the top of each doc are the source of truth; these files are exports. If code and docs disagree, stop and ask — don't silently pick one. When behavior changes, update the doc in the same ticket commit.
+The Claude Docs / design artifacts linked at the top of each doc are the source of truth; these files are exports. If code and docs disagree, stop and ask — don't silently pick one. When behavior, a module or a command changes, update the docs in the same ticket commit, including any skill or agent file that names it (grep `.claude/` for the old name).
 
 ## Stack (pin latest stable in `gradle/libs.versions.toml` on project creation)
 
@@ -104,9 +104,11 @@ xcodebuild -project iosApp/iosApp.xcodeproj -target iosApp -sdk iphonesimulator 
 
 Since AGP 9, the Android app is its own module (`:androidApp`); `:composeApp` is the shared KMP module that builds the `ComposeApp` framework for `iosApp/`. Shared Gradle setup lives in `build-logic/` (`memix.kmp.library`, `memix.kmp.compose`).
 
+The first iOS link after adding a library takes up to 15 minutes while Kotlin/Native builds its caches; later links take under a minute. After the JDK changes, or on a "spawn helper" error, run `./gradlew --stop`.
+
 ## Current phase
 
-P0 · Foundation (week of 12 Oct 2026): P0-01 … P0-09 in `docs/TICKETS.md`. Keep this line updated as phases advance.
+P0 · Foundation is closing (built 7–8 Oct 2026, P0-07 moved; phase PR open). Next: P1 · Core and video editor on `phase-1`, branched from `main` after the Phase 0 PR merges. Keep this line updated as phases advance.
 
 ## Open items that affect code
 
