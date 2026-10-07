@@ -1,18 +1,27 @@
 package app.memix
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import app.memix.feature.home.HomeScreen
+import app.memix.feature.home.HomeViewModel
+import kotlinx.serialization.Serializable
+import org.koin.compose.viewmodel.koinViewModel
 
-// Placeholder root; MemixTheme (P0-04) and the navigation host (P0-03) replace it.
+@Serializable
+data object HomeRoute
+
 @Composable
 fun App() {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        BasicText("Memix", style = TextStyle(color = Color.White)) // TODO(P0-04): theme token
+    val navController = rememberNavController()
+    NavHost(navController, startDestination = HomeRoute) {
+        composable<HomeRoute> {
+            val viewModel = koinViewModel<HomeViewModel>()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+            HomeScreen(state, viewModel::onIntent)
+        }
     }
 }
