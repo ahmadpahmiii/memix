@@ -306,7 +306,7 @@ Memix has no automated tests (no unit, UI, screenshot or golden-frame tests): qu
 | Performance | Cold start, frame timing and export time against the PRD targets (profiler, `dumpsys gfxinfo`) | End of every phase |
 
 - **Device matrix:** one flagship, one upper-mid, and one Android 10 phone, plus Firebase Test Lab when needed.
-- **CI:** GitHub Actions. The CI workflow runs the Android build, lint, and the iOS framework compile (on a macOS runner) for pushes to `main` and `phase-*` branches and for pull requests. The release workflow builds a signed app bundle and uploads it to the Play internal testing track.
+- **CI:** GitHub Actions. The CI workflow runs the Android build, lint, and the iOS framework compile (on a macOS runner) for pushes to `main`, `phase-*` and `claude/phase-*` branches (phase branches from Claude Code cloud sessions) and for pull requests. The release workflow builds a signed app bundle and uploads it to the Play internal testing track.
 - **Definition of done** for every ticket is in the Build tickets tab.
 
 ## Security and privacy

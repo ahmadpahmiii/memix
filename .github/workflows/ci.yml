@@ -3,7 +3,8 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, 'phase-*']
+    # claude/phase-*: phase branches created by Claude Code cloud sessions, which can't push to phase-<n>.
+    branches: [main, 'phase-*', 'claude/phase-*']
 
 concurrency:
   group: ci-${{ github.ref }}
