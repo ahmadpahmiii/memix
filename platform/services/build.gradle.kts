@@ -8,4 +8,7 @@ kotlin {
         implementation(project.dependencies.platform(libs.koin.bom))
         implementation(libs.koin.core)
     }
+    sourceSets.androidMain.dependencies {
+        implementation(libs.koin.android)
+    }
 }

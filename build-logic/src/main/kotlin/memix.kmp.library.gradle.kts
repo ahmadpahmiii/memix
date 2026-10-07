@@ -19,8 +19,3 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
 }
-
-kotlin.compilerOptions {
-    // expect/actual classes are Beta; Memix uses them only for small platform adapters.
-    freeCompilerArgs.add("-Xexpect-actual-classes")
-}

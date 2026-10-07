@@ -26,4 +26,6 @@ android {
 dependencies {
     implementation(projects.composeApp)
     implementation(libs.androidx.activity.compose)
+    implementation(project.dependencies.platform(libs.koin.bom))
+    implementation(libs.koin.android)
 }
