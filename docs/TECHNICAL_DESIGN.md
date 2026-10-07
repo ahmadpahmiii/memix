@@ -175,7 +175,7 @@ interface Segmenter {
 
 ## Backend
 
-Supabase serves small JSON catalog lists and Cloudflare R2 serves every audio, image and video file. There is no custom server code: the app reads tables through Supabase's auto-generated API with supabase-kt ([supabase-kt](https://github.com/supabase-community/supabase-kt)).
+Supabase serves small JSON catalog lists and Cloudflare R2 serves every audio, image and video file. The live schema is the migrations in `supabase/migrations/` (project `memix`, ref `drnhpnixnewqjfmrchrr`, Singapore); the sketch below is the summary. There is no custom server code: the app reads tables through Supabase's auto-generated API with supabase-kt ([supabase-kt](https://github.com/supabase-community/supabase-kt)).
 
 ```sql
 create extension if not exists pg_trgm;
@@ -236,7 +236,7 @@ create index sounds_tags on sounds using gin (tags);
 -- search_sounds(q text, region text, lim int, off int): trigram match on title and tags, active rows only
 ```
 
-- **Access rules (RLS):** the app's public key can read rows where `is_active = true` and can insert into `reports`. Nothing else. All other writes happen in the Supabase dashboard; the service key never ships in the app.
+- **Access rules (RLS):** the app's publishable key can read rows where `is_active = true` (stickers follow their pack; trending ranks are readable) and can insert into `reports` with `status = 'open'` and a reason of at most 500 characters. No reads of reports, no updates or deletes. A CC-BY item can't be saved without its credit (check constraint). All other writes happen in the Supabase dashboard; the service key never ships in the app.
 - **Files:** one public R2 bucket behind a custom domain (`media.<domain>`). Keys are immutable: a changed file gets a new key, so files can be cached forever. The app joins `media_base_url` from Remote Config with each row's `file_path`.
 - **On the phone:** SQLDelight caches catalog rows; downloaded files live in the cache directory with a 500 MB least-recently-used limit.
 

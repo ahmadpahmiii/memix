@@ -1,6 +1,6 @@
 # Credentials and local config
 
-Every key, password, token and private config file Memix uses from P0 to the iOS launch (P7), where it lives, and how CI gets it. **None of these values are committed to git**, including the ones that are public by design (they ship inside the app). The one identifier in the repo is the Supabase project ref `lzxikotwhhezxgbfbtrh` (in `.mcp.json` and this file): it names the project but grants no access without a key or a sign-in.
+Every key, password, token and private config file Memix uses from P0 to the iOS launch (P7), where it lives, and how CI gets it. **None of these values are committed to git**, including the ones that are public by design (they ship inside the app). The one identifier in the repo is the Supabase project ref `drnhpnixnewqjfmrchrr` (in `.mcp.json` and this file): it names the project but grants no access without a key or a sign-in.
 
 Guards:
 - `.gitignore` covers every file below.
