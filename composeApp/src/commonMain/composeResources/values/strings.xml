@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_home">Home</string>
+    <string name="nav_templates">Templates</string>
+    <string name="nav_create">Create</string>
+    <string name="nav_sounds">Sounds</string>
+    <string name="nav_drafts">Drafts</string>
+    <string name="create_title">Create</string>
+    <string name="create_video_title">Video meme</string>
+    <string name="create_video_body">Pick clips from your gallery</string>
+    <string name="create_photo_title">Photo meme</string>
+    <string name="create_photo_body">Pick a photo from your gallery</string>
+    <string name="create_template">Start from a template</string>
+</resources>

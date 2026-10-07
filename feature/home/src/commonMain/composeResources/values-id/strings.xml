@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="home_hero">Bikin meme</string>
+    <string name="entry_video_title">Meme video</string>
+    <string name="entry_video_body">Klip, suara, efek</string>
+    <string name="entry_photo_title">Meme foto</string>
+    <string name="entry_photo_body">Teks, panel, potongan</string>
     <string name="region_global">Global</string>
 </resources>

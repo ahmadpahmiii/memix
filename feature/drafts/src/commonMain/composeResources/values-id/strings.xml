@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drafts_title">Draf kamu</string>
+    <string name="drafts_empty_title">Belum ada draf</string>
+    <string name="drafts_empty_body">Ayo bikin sesuatu yang absurd.</string>
+    <string name="drafts_empty_action">Bikin meme</string>
+</resources>

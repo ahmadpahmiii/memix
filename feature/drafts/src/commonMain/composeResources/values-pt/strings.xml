@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drafts_title">Seus rascunhos</string>
+    <string name="drafts_empty_title">Nenhum rascunho ainda</string>
+    <string name="drafts_empty_body">Vai lá criar algo bem doido.</string>
+    <string name="drafts_empty_action">Faça um meme</string>
+</resources>

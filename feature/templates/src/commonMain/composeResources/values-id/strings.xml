@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="templates_title">Template</string>
+    <string name="templates_empty_title">Belum ada template</string>
+    <string name="templates_empty_body">Koleksi template hadir di build berikutnya.</string>
+</resources>

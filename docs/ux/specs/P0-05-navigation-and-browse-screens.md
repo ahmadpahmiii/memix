@@ -50,7 +50,7 @@ Home, Templates, Create, Sounds, Drafts. Current item `text`; others `text-secon
 
 Loading and error states don't apply in P0: no screen fetches data yet. They are specced with the tickets that bring data (P1-14 Drafts, P3-02 Sounds, P4-05 Templates).
 
-Empty-state headlines use `display` (Anton, uppercase via the style, not typed in caps), body in `body` `text-secondary`. Each empty state sits in the visual center of the space between the title and the nav; it's the screen's focal point.
+Empty-state headlines use `display-xl` (Anton, uppercase via the style, not typed in caps; the token table assigns `display-xl` to empty-state headlines), body in `body` `text-secondary`. Each empty state sits in the visual center of the space between the title and the nav; it's the screen's focal point.
 
 ## Interactions
 - Tabs, Create block, entry cards, sheet rows and the close buttons respond on press with the token pressed colors (no movement).

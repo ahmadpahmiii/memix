@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sounds_title">Suara meme</string>
+    <string name="sounds_empty_title">Belum ada suara</string>
+    <string name="sounds_empty_body">Koleksi suara meme hadir di build berikutnya.</string>
+</resources>

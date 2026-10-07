@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="home_hero">मीम बनाएं</string>
+    <string name="entry_video_title">वीडियो मीम</string>
+    <string name="entry_video_body">क्लिप, साउंड, इफ़ेक्ट</string>
+    <string name="entry_photo_title">फ़ोटो मीम</string>
+    <string name="entry_photo_body">कैप्शन, पैनल, कट-आउट</string>
     <string name="region_global">वैश्विक</string>
 </resources>

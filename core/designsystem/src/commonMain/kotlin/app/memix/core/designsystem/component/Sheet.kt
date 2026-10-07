@@ -173,6 +173,11 @@ private fun SheetSurface(
     }
 }
 
+/** Close button labelled "Close" in the user's language. */
+@Composable
+fun CloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) =
+    CloseButton(stringResource(Res.string.close), onClick, modifier)
+
 @Composable
 fun CloseButton(contentDescription: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val interactionSource = remember { MutableInteractionSource() }

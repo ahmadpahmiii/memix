@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drafts_title">Tus borradores</string>
+    <string name="drafts_empty_title">Aún no hay borradores</string>
+    <string name="drafts_empty_body">Ve a crear algo bien loco.</string>
+    <string name="drafts_empty_action">Haz un meme</string>
+</resources>
