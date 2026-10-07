@@ -92,7 +92,7 @@ Five role agents in `.claude/agents/`. The main session orchestrates them with t
 
 ## Commands
 
-Run from the repo root with JDK 17. `local.properties` (not committed) holds `sdk.dir`.
+Run from the repo root. The Gradle daemon runs on JDK 21 (`gradle/gradle-daemon-jvm.properties`; Gradle finds or downloads it, and CI sets up Temurin 21); app bytecode still targets JVM 17. `local.properties` (not committed) holds `sdk.dir`.
 
 ```bash
 ./gradlew :androidApp:assembleDebug                       # Android debug build

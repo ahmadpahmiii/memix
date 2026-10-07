@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
       - uses: gradle/actions/setup-gradle@v6
       - run: ./gradlew :androidApp:assembleDebug lint --console=plain
 
@@ -32,7 +32,7 @@ jobs:
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
       - uses: gradle/actions/setup-gradle@v6
       - uses: actions/cache@v6
         with:
