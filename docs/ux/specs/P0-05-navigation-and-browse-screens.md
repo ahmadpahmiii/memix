@@ -20,6 +20,7 @@ The one blue action: the Create block in the bottom navigation on every browse s
 - **Differences from the board:**
   - The region is a **label, not a pill button**: `globe` icon + region name in `label`, `text-secondary`, no fill. Changing region comes with P3-11; until then a pill that looks tappable would be a dead control.
   - **Trending templates and Trending sounds are left out** until the catalog is live (P3-01, P4-05). Showing the board's sample items would present invented content as real.
+  - **Composition while Home has one job.** With the trending rows out, picking an editor is all Home does, so the hero and the two cards sit in the vertical center of the space under the top row, and the cards take the 4:5 meme canvas ratio (one of the export ratios in the PRD) instead of the board's 132 dp minimum. The two doors become the screen, and the space above and below them is balanced on purpose instead of left over under the cards. When the trending rows arrive, the block moves back to the top and the cards return to the board's size.
 
 ### Templates · board `design/screens/Templates.dc.html`
 - Title "Templates" (`title-l`), then the empty state. The Video/Photo switch and category chips arrive with the template library (P4-05); with no templates to filter they would be controls that change nothing.
@@ -50,7 +51,7 @@ Home, Templates, Create, Sounds, Drafts. Current item `text`; others `text-secon
 
 Loading and error states don't apply in P0: no screen fetches data yet. They are specced with the tickets that bring data (P1-14 Drafts, P3-02 Sounds, P4-05 Templates).
 
-Empty-state headlines use `display` (Anton, uppercase via the style, not typed in caps), body in `body` `text-secondary`. Each empty state sits in the visual center of the space between the title and the nav; it's the screen's focal point.
+Empty-state headlines use `display-xl` (Anton, uppercase via the style, not typed in caps; the token table assigns `display-xl` to empty-state headlines), body in `body` `text-secondary`. Each empty state sits in the visual center of the space between the title and the nav; it's the screen's focal point.
 
 ## Interactions
 - Tabs, Create block, entry cards, sheet rows and the close buttons respond on press with the token pressed colors (no movement).

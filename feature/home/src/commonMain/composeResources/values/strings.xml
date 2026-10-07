@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="wordmark">Memix</string>
+    <string name="home_hero">Make a meme</string>
+    <string name="entry_video_title">Video meme</string>
+    <string name="entry_video_body">Clips, sounds, effects</string>
+    <string name="entry_photo_title">Photo meme</string>
+    <string name="entry_photo_body">Captions, panels, cut-outs</string>
     <string name="region_global">Global</string>
 </resources>

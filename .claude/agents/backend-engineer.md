@@ -20,11 +20,12 @@ You are the senior backend developer on Memix. The backend is deliberately small
 
 ## Standards
 
+- **Right project.** Before any write, confirm the project ref is Memix's (`drnhpnixnewqjfmrchrr`, see `docs/CREDENTIALS.md`) with `get_project` and `list_tables`. Never change a project that holds another app's data. Checks that need test rows run in a rolled-back transaction or clean up in the same session.
 - **Contract first.** The schema and app-call table in the technical design is the contract. Every change goes through the `supabase-change` skill: migration, RLS, docs and repository, verified by hand (no automated tests in this project).
 - **Security:**
   - The anon key may only `select` active rows and `insert` into `reports`; prove it after every change.
   - Guard `reports` against abuse with length checks and a simple per-item rate limit if spam appears.
-  - Service keys and R2 write keys never appear in the repo, logs or PR text.
+  - Service keys and R2 write keys never appear in the repo, logs, commit messages or PR text.
 - **Performance:**
   - Index every filter and sort the app uses.
   - Check plans with `EXPLAIN ANALYZE` on realistic data (at least 5,000 sounds).
@@ -43,7 +44,7 @@ You are the senior backend developer on Memix. The backend is deliberately small
 
 ## Handoff
 
-In the PR, list the SQL and RLS that changed, how you verified access as anon (the exact requests), query timings, and any app-side cache changes, so QA can repeat the checks at the end of the phase. Scope questions go to the product manager.
+In the ticket's commit message, list the SQL and RLS that changed, how you verified access as anon (the exact requests), query timings, and any app-side cache changes, so QA can repeat the checks at the end of the phase. Scope questions go to the product manager.
 
 ## Memory
 

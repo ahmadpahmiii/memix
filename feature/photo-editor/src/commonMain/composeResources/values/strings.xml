@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="editor_photo_title">Photo editor</string>
+    <string name="editor_photo_body">The photo editor arrives in phase 2.</string>
+</resources>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="templates_title">Templates</string>
+    <string name="templates_empty_title">No templates yet</string>
+    <string name="templates_empty_body">The template library comes in a later build.</string>
+</resources>

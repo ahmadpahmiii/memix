@@ -13,7 +13,7 @@ description: The Memix QA engineer's manual testing method for the end of each p
 
 ```bash
 emulator -list-avds                                   # pick a recent Pixel image (API 34+)
-adb install -r composeApp/build/outputs/apk/debug/composeApp-debug.apk
+./gradlew :androidApp:installDebug   # or: adb install -r androidApp/build/outputs/apk/debug/androidApp-debug.apk
 adb push qa-media/. /sdcard/DCIM/MemixQA/             # sample media (see below)
 adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/DCIM/MemixQA
 ```
@@ -29,10 +29,11 @@ adb exec-out screencap -p > docs/qa/phase-<n>/screens/<ID>-<state>.png
 adb logcat -d -v time | grep -iE 'memix|AndroidRuntime|FATAL' | tail -100
 ```
 Screenshot only the states you check; look at each one before moving on.
+uiautomator lags the screen: after a tap or launch, wait about 1.5 s and dump twice before judging. Selected and checked states sit on the clickable parent node, not the text node. When a dump and the screen disagree, the screenshot wins.
 
 ## 4. Design check (every UI ticket)
 
-Against the spec, the board and the tokens: layout and spacing; v2 colors only (`grep -rniE 'FFE14D|FF4FA3' --include='*.kt' .` must be empty); type styles; every listed state; copy in all five languages (`adb shell cmd locale set-app-locales <pkg> --locales id` and es, pt, hi; watch truncation); accessibility: targets ≥ 48 dp (from `uiautomator` bounds), content descriptions present, font scale 200% (`adb shell settings put system font_scale 2.0`), TalkBack order where feasible.
+Against the spec, the board and the tokens: layout and spacing; v2 colors only (`grep -rniE 'FFE14D|FF4FA3' --include='*.kt' .` must be empty); type styles; every listed state; copy in all five languages (`adb shell cmd locale set-app-locales <pkg> --locales id` and es, pt, hi; watch truncation); accessibility: targets ≥ 48 dp (from `uiautomator` bounds), content descriptions present, font scale 200% (`adb shell settings put system font_scale 2.0`), TalkBack order where feasible; keyboard: `adb shell input keyevent KEYCODE_TAB` through each new screen (screenshot the focus ring), `KEYCODE_ENTER` activates, `KEYCODE_ESCAPE` and `KEYCODE_BACK` close sheets and dialogs.
 
 ## 5. Result check
 

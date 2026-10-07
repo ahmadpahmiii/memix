@@ -63,7 +63,7 @@ The code is one Gradle multi-module Kotlin Multiplatform project using clean arc
 - **Domain stays pure:** `:core:model` and `:core:domain` live in `commonMain` with no Android or iOS imports.
 - **Features call use cases only:** never repositories or engines directly.
 - **Platform code** lives only in the `androidMain` and `iosMain` source sets of engine and platform modules.
-- **iOS compiles from day one:** CI builds the iOS framework on every pull request, even before iOS work starts, so Android-only APIs never leak into shared code.
+- **iOS compiles from day one:** CI builds the iOS framework on every push to a phase branch and every pull request, even before iOS work starts, so Android-only APIs never leak into shared code.
 - **State:** each ViewModel exposes one `StateFlow<UiState>` and takes `Intent` events (MVVM with one-way data flow). Editors keep an undo stack of immutable project snapshots.
 
 ## Project data model
@@ -175,7 +175,7 @@ interface Segmenter {
 
 ## Backend
 
-Supabase serves small JSON catalog lists and Cloudflare R2 serves every audio, image and video file. There is no custom server code: the app reads tables through Supabase's auto-generated API with supabase-kt ([supabase-kt](https://github.com/supabase-community/supabase-kt)).
+Supabase serves small JSON catalog lists and Cloudflare R2 serves every audio, image and video file. The live schema is the migrations in `supabase/migrations/` (project `memix`, ref `drnhpnixnewqjfmrchrr`, Singapore); the sketch below is the summary. There is no custom server code: the app reads tables through Supabase's auto-generated API with supabase-kt ([supabase-kt](https://github.com/supabase-community/supabase-kt)).
 
 ```sql
 create extension if not exists pg_trgm;
@@ -236,7 +236,7 @@ create index sounds_tags on sounds using gin (tags);
 -- search_sounds(q text, region text, lim int, off int): trigram match on title and tags, active rows only
 ```
 
-- **Access rules (RLS):** the app's public key can read rows where `is_active = true` and can insert into `reports`. Nothing else. All other writes happen in the Supabase dashboard; the service key never ships in the app.
+- **Access rules (RLS):** the app's publishable key can read rows where `is_active = true` (stickers follow their pack; trending ranks are readable) and can insert into `reports` with `status = 'open'` and a reason of at most 500 characters. No reads of reports, no updates or deletes. A CC-BY item can't be saved without its credit (check constraint). All other writes happen in the Supabase dashboard; the service key never ships in the app.
 - **Files:** one public R2 bucket behind a custom domain (`media.<domain>`). Keys are immutable: a changed file gets a new key, so files can be cached forever. The app joins `media_base_url` from Remote Config with each row's `file_path`.
 - **On the phone:** SQLDelight caches catalog rows; downloaded files live in the cache directory with a 500 MB least-recently-used limit.
 
@@ -294,19 +294,19 @@ Every version is pinned in `gradle/libs.versions.toml` and set to the latest sta
 
 ## Testing, CI and release builds
 
-Memix has no automated tests (no unit, UI, screenshot or golden-frame tests): quality comes from builds in CI, code and design review on every ticket, and a manual QA pass at the end of every phase. Every pull request must build Android and compile the iOS framework before it merges.
+Memix has no automated tests (no unit, UI, screenshot or golden-frame tests): quality comes from builds in CI, code and design review on every ticket, and a manual QA pass at the end of every phase. Each phase is one branch and one pull request; every push and every pull request must build Android and compile the iOS framework, and the phase PR merges only when green.
 
 | Check | What | When |
 | --- | --- | --- |
-| Build | Android debug build, lint, iOS framework compile | Every pull request (CI) |
-| Engineer self-check | Run the change on an emulator or phone; list what was checked in the PR | Every ticket |
+| Build | Android debug build, lint, iOS framework compile | Every push to a phase branch and every pull request (CI) |
+| Engineer self-check | Run the change on an emulator or phone; list what was checked in the ticket's commit message | Every ticket |
 | Code review | Principal mobile engineer's review checklist | Every ticket |
 | Design review | UX designer compares the built screens with the spec | Every UI ticket |
 | Manual QA | QA runs the phase test plan on an emulator and hands device-only checks to the owner | End of every phase |
 | Performance | Cold start, frame timing and export time against the PRD targets (profiler, `dumpsys gfxinfo`) | End of every phase |
 
 - **Device matrix:** one flagship, one upper-mid, and one Android 10 phone, plus Firebase Test Lab when needed.
-- **CI:** GitHub Actions. The PR workflow runs the Android build, lint, and the iOS framework compile on a macOS runner. The release workflow builds a signed app bundle and uploads it to the Play internal testing track.
+- **CI:** GitHub Actions. The CI workflow runs the Android build, lint, and the iOS framework compile (on a macOS runner) for pushes to `main` and `phase-*` branches and for pull requests. The release workflow builds a signed app bundle and uploads it to the Play internal testing track.
 - **Definition of done** for every ticket is in the Build tickets tab.
 
 ## Security and privacy
@@ -314,7 +314,7 @@ Memix has no automated tests (no unit, UI, screenshot or golden-frame tests): qu
 Memix keeps no user data on its servers: projects, imports and favorites stay on the phone.
 
 - The app ships only the Supabase public (anon) key. Access rules limit it to reading active catalog rows and inserting reports.
-- The Supabase service key, R2 write keys and app signing keys never enter the repo. They live in CI secrets and on the admin machine.
+- The Supabase secret key, R2 write keys and app signing keys never enter the repo. They live in CI secrets and on the admin machine. Full list: `docs/CREDENTIALS.md`; `scripts/check-secrets.sh` blocks credential-looking commits locally (pre-commit hook) and in CI.
 - The advertising ID is used only after consent where consent is required. Analytics events carry no personal data.
 - The Play Data safety form lists: advertising ID, crash logs and app interaction analytics.
 
@@ -324,6 +324,7 @@ Engineering decisions made during the build, newest first. Each says what, why a
 
 | Date | Decision | Why | Alternative |
 | --- | --- | --- | --- |
+| 2026-10-07 | Gradle daemon on JDK 21 via `gradle/gradle-daemon-jvm.properties` (from Android Studio's sync); CI uses Temurin 21. Kotlin and Java still target JVM 17. | One JDK for Studio, the command line and CI. | Keep JDK 17 everywhere. |
 | 2026-10-07 | Module split for AGP 9: `:androidApp` (Android application) + `:composeApp` (shared KMP library) + `iosApp/` (Xcode). | AGP 9 makes `com.android.application` incompatible with the KMP plugin in one module ([kotlinlang.org](https://kotlinlang.org/docs/multiplatform/multiplatform-project-agp-9-migration.html)). | Stay on AGP 8 (removed path; AGP 10 drops the legacy API). |
 | 2026-10-07 | Every KMP module uses `com.android.kotlin.multiplatform.library` via the `memix.kmp.library` convention plugin; targets android, iosArm64, iosSimulatorArm64. No iosX64. | One place for target setup across 18 modules; Apple-silicon Macs and CI runners only. | Per-module copies of the target block. |
 | 2026-10-07 | Versions pinned on creation day: Kotlin 2.4.20, AGP 9.4.1, Gradle 9.8.0, Compose MP 1.12.1, lifecycle 2.11.0, navigation-compose 2.9.2, coroutines 1.11.0, serialization 1.11.0, Koin 4.2.2, Ktor 3.6.0, supabase-kt 3.8.0, SQLDelight 2.4.1, Coil 3.6.3, Media3 1.11.1, Firebase BOM 34.19.0. compileSdk 37, targetSdk 36, minSdk 29. | Latest stable on 7 Oct 2026, checked on GitHub releases, Maven Central, Google Maven, kotlinlang.org and developer.android.com. targetSdk 36 meets Play's rule; move to 37 before Play's 2027 deadline. | Pre-releases (navigation 2.10 RC, serialization 1.12 RC). |

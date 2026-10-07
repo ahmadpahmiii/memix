@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="templates_title">टेम्पलेट</string>
+    <string name="templates_empty_title">अभी कोई टेम्पलेट नहीं</string>
+    <string name="templates_empty_body">टेम्पलेट लाइब्रेरी अगले बिल्ड में आएगी।</string>
+</resources>

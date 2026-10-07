@@ -15,7 +15,7 @@ Memix ("Memix: Meme Video & Photo" on the stores) is a meme maker with **two sep
 | Screen spec for a UI ticket | `docs/ux/specs/` |
 | Bugs and QA results | `docs/qa/` |
 
-The Claude Docs / design artifacts linked at the top of each doc are the source of truth; these files are exports. If code and docs disagree, stop and ask — don't silently pick one. When behavior changes, update the doc in the same PR.
+The Claude Docs / design artifacts linked at the top of each doc are the source of truth; these files are exports. If code and docs disagree, stop and ask — don't silently pick one. When behavior, a module or a command changes, update the docs in the same ticket commit, including any skill or agent file that names it (grep `.claude/` for the old name).
 
 ## Stack (pin latest stable in `gradle/libs.versions.toml` on project creation)
 
@@ -34,7 +34,7 @@ The Claude Docs / design artifacts linked at the top of each doc are the source 
 4. Time is **microseconds (`Long`)** everywhere in the project model. Clips are positioned by time, never by index.
 5. Effects, filters and transitions are **declarative specs** (id + params) in `:core:model`; each engine renders the same spec. Every new spec gets a reference render in `docs/qa/references/`.
 6. `Project` is immutable; every edit returns a new `Project` (undo keeps 100). Autosave 500 ms after the last change. Bump `schemaVersion` + add a migration for any persisted shape change, and check by opening an old draft.
-7. The iOS framework must compile on every PR, even before iOS work starts (keeps Android-only APIs out of shared code).
+7. The iOS framework must compile on every push to a phase branch and every PR, even before iOS work starts (keeps Android-only APIs out of shared code).
 
 ## Design rules (v2 — "neutral chrome, one blue")
 
@@ -51,7 +51,7 @@ The Claude Docs / design artifacts linked at the top of each doc are the source 
 ## Hard "don'ts"
 
 - No FFmpeg / FFmpegKit or any GPL/LGPL library inside the app (desktop content scripts may use ffmpeg).
-- No secrets in the repo: Supabase **service** key, R2 write keys, signing keys live in CI secrets / local `.env` only. The app ships only the Supabase anon key (RLS: read active rows, insert `reports`).
+- No secrets or account config in the repo. Every credential, where it lives and how CI gets it: `docs/CREDENTIALS.md`. Secrets live in `.env` (template `.env.example`), `local.properties` and CI secrets. The app ships only the Supabase publishable key (RLS: read active rows, insert `reports`). Turn on the secret check once per clone: `git config core.hooksPath .githooks`.
 - No catalog content without a recorded license (`source_url`, `license_type`, `license_proof`, `credit`). No YouTube rips.
 - No ads inside the editors or during export; interstitial max 1 per 3 exports and never on the first; rewarded ad removes the watermark for one export; no banners.
 - No accounts, no uploads of user media, no cloud rendering in v1.
@@ -69,15 +69,16 @@ Five role agents in `.claude/agents/`. The main session orchestrates them with t
 | `qa-engineer` | Manual QA at the end of every phase: design + result, bugs, phase verdict | `docs/qa/` (hook-enforced) |
 
 - **Authority:** the PM proposes scope, priority and date changes; **the owner decides**. Nobody changes scope silently.
-- **Per ticket:** PM ready check → designer spec (UI tickets) → engineer builds and checks by hand → principal code review → designer review (UI) → PM ticket check → PR. The owner merges.
-- **End of phase:** QA manual pass (emulator via adb + a short device checklist for the owner) → fixes → QA re-test → PM phase gate → `/retro` → internal-testing build.
+- **Branches and PRs:** one branch per phase (`phase-<n>`), one PR per phase, opened only when the phase is done. Tickets are commits on the phase branch.
+- **Per ticket:** PM ready check → designer spec (UI tickets) → engineer builds and checks by hand → principal code review → designer review (UI) → PM ticket check → commit on the phase branch (`<ID>: <ticket name>`, handoff in the commit message) and push.
+- **End of phase:** QA manual pass (emulator via adb + a short device checklist for the owner) → fixes → QA re-test → PM phase gate → `/retro` → internal-testing build → one PR from `phase-<n>` to `main`. The owner merges.
 - **Improving the team:** at every phase gate the PM runs `/retro` and proposes exact edits to agents, skills or rules. The owner approves; applied changes are logged in `.claude/agents/CHANGELOG.md`. Each agent keeps lessons in `.claude/agent-memory/<agent>/MEMORY.md`.
 
 ## Quality without automated tests
 
 - The project has **no automated tests**: no unit, UI, screenshot or golden-frame tests. Don't write them or ask for them.
-- Every PR builds Android, runs lint and compiles the iOS framework in CI.
-- Every ticket is run by hand on an emulator or phone. The PR lists what was checked, with screenshots of UI states and measured numbers for hot paths.
+- Every push to a phase branch and every PR builds Android, runs lint and compiles the iOS framework in CI.
+- Every ticket is run by hand on an emulator or phone. The ticket's commit message lists what was checked and measured; screenshots of UI states go in `docs/ux/reviews/<ID>/`.
 - New effects get a reference render in `docs/qa/references/` for visual comparison and iOS parity.
 - **Definition of done:**
   - CI green
@@ -91,7 +92,7 @@ Five role agents in `.claude/agents/`. The main session orchestrates them with t
 
 ## Commands
 
-Run from the repo root with JDK 17. `local.properties` (not committed) holds `sdk.dir`.
+Run from the repo root. The Gradle daemon runs on JDK 21 (`gradle/gradle-daemon-jvm.properties`; Gradle finds or downloads it, and CI sets up Temurin 21); app bytecode still targets JVM 17. `local.properties` (not committed) holds `sdk.dir`.
 
 ```bash
 ./gradlew :androidApp:assembleDebug                       # Android debug build
@@ -103,9 +104,11 @@ xcodebuild -project iosApp/iosApp.xcodeproj -target iosApp -sdk iphonesimulator 
 
 Since AGP 9, the Android app is its own module (`:androidApp`); `:composeApp` is the shared KMP module that builds the `ComposeApp` framework for `iosApp/`. Shared Gradle setup lives in `build-logic/` (`memix.kmp.library`, `memix.kmp.compose`).
 
+The first iOS link after adding a library takes up to 15 minutes while Kotlin/Native builds its caches; later links take under a minute. After the JDK changes, or on a "spawn helper" error, run `./gradlew --stop`.
+
 ## Current phase
 
-P0 · Foundation (week of 12 Oct 2026): P0-01 … P0-09 in `docs/TICKETS.md`. Keep this line updated as phases advance.
+P0 · Foundation is closing (built 7–8 Oct 2026, P0-07 moved; phase PR open). Next: P1 · Core and video editor on `phase-1`, branched from `main` after the Phase 0 PR merges. Keep this line updated as phases advance.
 
 ## Open items that affect code
 

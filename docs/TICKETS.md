@@ -4,13 +4,13 @@ Source of truth: the "Memix — Product Requirements" Claude Doc (https://claude
 
 ## How to work the tickets
 
-Work top to bottom within each phase. One ticket is one branch and one pull request, and every phase ends with a build in Play internal testing and a manual QA pass of the whole phase.
+Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.g. `phase-1`) and one pull request, opened when the phase is done (after the QA pass and the phase gate). Each ticket is one or more commits on that branch, titled `<ID>: <ticket name>`. Every phase ends with a build in Play internal testing.
 
 - **IDs:** `P<phase>-<number>`, for example `P1-04`. The Needs column lists tickets that must merge first.
 - **Sizes** (one developer working with Claude): S is up to 1 day, M is 2 to 3 days, L is 4 to 5 days.
 - **Definition of done** for every ticket:
   - The Android app builds, the iOS framework compiles, and CI is green.
-  - The engineer ran the change on an emulator or phone and listed what was checked in the PR. The project has no automated tests; QA tests manually at the end of each phase.
+  - The engineer ran the change on an emulator or phone and listed what was checked in the ticket's commit message. The project has no automated tests; QA tests manually at the end of each phase.
   - UI uses design-system tokens only (no raw colors or sizes).
   - Every user-facing string is a resource, with all five languages present (machine-drafted is fine until phase 5).
   - Analytics events named in the PRD fire.
@@ -18,10 +18,12 @@ Work top to bottom within each phase. One ticket is one branch and one pull requ
 
 ## Phase 0 · Foundation (week 1, from 12 Oct)
 
+> 8 Oct 2026 (owner): P0-07 moved out of Phase 0 while another media-hosting approach is found; P0-06's seed sounds and templates move with it. Every later ticket that needs hosted media (P3-01, P3-04, P3-12, P4-05, P4-15) waits for that decision, due before P3 starts.
+
 | ID | Ticket | Done when | Size | Needs |
 | --- | --- | --- | --- | --- |
 | P0-01 | Create the KMP project: Android and iOS targets, Compose Multiplatform, version catalog, module skeleton from the technical design | The app launches on an Android emulator and an iOS simulator with a placeholder screen | M | — |
-| P0-02 | CI on GitHub Actions | Each PR runs the Android build, lint and the iOS framework compile; merging requires green | M | P0-01 |
+| P0-02 | CI on GitHub Actions | Each push to a phase branch and each PR runs the Android build, lint and the iOS framework compile; merging requires green | M | P0-01 |
 | P0-03 | Architecture base: Koin, navigation host, base ViewModel (UiState and Intent), result and error types, logging | A sample screen shows state from a use case | M | P0-01 |
 | P0-04 | Design system in Compose: tokens, bundled fonts, core components (buttons, chips, sound chip, cards, sheets, tabs, sliders, toggles) | A catalog screen shows every component and the designer approves it against the design system | L | P0-01 |
 | P0-05 | Bottom navigation and empty screens: Home, Templates, Create sheet, Sounds, Drafts | Navigation and back behavior work in the dark theme | S | P0-03, P0-04 |

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sounds_title">Sonidos de memes</string>
+    <string name="sounds_empty_title">Aún no hay sonidos</string>
+    <string name="sounds_empty_body">La biblioteca de sonidos llega en una versión posterior.</string>
+</resources>

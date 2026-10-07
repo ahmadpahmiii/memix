@@ -6,6 +6,7 @@ import app.memix.core.ui.MemixViewModel
 
 data class HomeUiState(val region: Region)
 
+/** Home has no user actions of its own yet; navigation callbacks live in the screen. Trending rows add intents later. */
 sealed interface HomeIntent
 
 class HomeViewModel(getPhoneRegion: GetPhoneRegionUseCase) :

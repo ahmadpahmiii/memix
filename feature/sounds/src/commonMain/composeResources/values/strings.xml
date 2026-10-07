@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sounds_title">Meme sounds</string>
+    <string name="sounds_empty_title">No sounds yet</string>
+    <string name="sounds_empty_body">The meme sound library comes in a later build.</string>
+</resources>

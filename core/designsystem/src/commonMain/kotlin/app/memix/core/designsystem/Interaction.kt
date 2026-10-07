@@ -41,7 +41,7 @@ fun Modifier.focusRing(interactionSource: InteractionSource, shape: Shape): Modi
 
 /** Pressed fills switch color in 120 ms; nothing moves (DESIGN_SYSTEM → States). */
 @Composable
-internal fun pressedColor(interactionSource: InteractionSource, normal: Color, pressed: Color): State<Color> {
+fun pressedColor(interactionSource: InteractionSource, normal: Color, pressed: Color): State<Color> {
     val isPressed by interactionSource.collectIsPressedAsState()
     return animateColorAsState(if (isPressed) pressed else normal, tween(MemixMotion.durationPress), label = "pressed")
 }

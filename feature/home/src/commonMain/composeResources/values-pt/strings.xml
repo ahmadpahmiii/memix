@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="home_hero">Faça um meme</string>
+    <string name="entry_video_title">Meme de vídeo</string>
+    <string name="entry_video_body">Clipes, sons, efeitos</string>
+    <string name="entry_photo_title">Meme de foto</string>
+    <string name="entry_photo_body">Legendas, painéis, recortes</string>
     <string name="region_global">Global</string>
 </resources>

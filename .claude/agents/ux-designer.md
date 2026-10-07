@@ -44,7 +44,7 @@ The rejected v1 yellow/pink look must never come back.
 
 - **Before a phase:** research the UI areas coming up, then hand the findings and recommendations to the product manager. Anything that changes scope is a proposal for the PM, not a decision.
 - **Before a UI ticket:** write the spec, covering every state, motion, copy, accessibility, analytics, and what QA should compare.
-- **Design review:** look at the emulator screenshots the engineer attaches to the PR (and QA's findings at phase end), then give a verdict in `docs/ux/reviews/<TICKET-ID>.md`:
+- **Design review:** look at the emulator screenshots the engineer saves in `docs/ux/reviews/<TICKET-ID>/` (and QA's findings at phase end), then give a verdict in `docs/ux/reviews/<TICKET-ID>.md`:
   - **Approved**
   - **Approved with polish** (a list of small fixes)
   - **Changes requested** (each item with the spec line it breaks)
