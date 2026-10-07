@@ -73,6 +73,7 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 - Selected chip: `selection` fill with `on-primary` text. Selected tab: `text` label with a 2px `selection` underline. Selected segment: `surface-raised` pill with `text`.
 - Active tool: `primary` icon and label on `primary-subtle`.
 - Disabled: `text-muted` label. Prefer keeping controls enabled and explaining on tap.
+- Progress: determinate only, a `primary` fill on a `rail-height` rail in `hairline`, always next to a count or percent in text. No looping indeterminate bars (MOTION 2); when the total is unknown, count items or show the amount done.
 - Focus: `stroke-focus` ring in `focus-ring`, 2px outside the control.
 
 **Motion.**
@@ -209,6 +210,7 @@ Fixed sizes used across screens (dp on Android).
 | `track-height-video` | `MemixSize.trackHeightVideo` | `40px` | Main video track clips. |
 | `track-height` | `MemixSize.trackHeight` | `28px` | Every other track's clips. |
 | `playhead-width` | `MemixSize.playheadWidth` | `2px` | Timeline playhead line, in selection white. |
+| `rail-height` | `MemixSize.railHeight` | `4px` | The thin rail under a fill: progress bar and slider. Rail in `hairline`, fill in `primary` (7.3:1 on surface, 4.9:1 against the rail). "Rail", not "track", because a track is a timeline lane in Memix. |
 
 ### Motion
 
