@@ -14,4 +14,4 @@ description: Scaffold a new Memix feature or screen end-to-end — feature modul
 6. **Wire.** Koin (`viewModelOf(::ThingViewModel)`, `factoryOf(::DoThingUseCase)`), typed navigation route, back behavior.
 7. **Strings.** Every string in en, id, es, pt, hi resources (English from the spec; machine drafts OK until P5).
 8. **Analytics.** Fire the PRD events this flow owns through the `Analytics` interface.
-9. **Check by hand.** Run it on the emulator through every spec state; attach screenshots to the PR for the designer. No automated tests.
+9. **Check by hand.** Run it on the emulator through every spec state; save screenshots in `docs/ux/reviews/<ID>/` for the designer. No automated tests.

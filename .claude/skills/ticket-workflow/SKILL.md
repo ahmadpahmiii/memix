@@ -14,12 +14,12 @@ The main session orchestrates. Each step names the agent to delegate to. Memix h
 | 1 | **Pick.** The ticket the user named, or the next one in the current phase whose `Needs` are merged (`docs/TICKETS.md`, `docs/pm/STATUS.md`). | main | one line: which ticket and why |
 | 2 | **Ready check.** Testable "Done when", dependencies met, size ≤ L, spec needed? | `product-manager` | Ready / Not ready in `docs/pm/STATUS.md` |
 | 3 | **Spec** (UI tickets only). All states, copy, motion, accessibility. | `ux-designer` | `docs/ux/specs/<ID>-<screen>.md` |
-| 4 | **Build** on branch `<id>-<slug>` (e.g. `p1-04-preview`). App code → `principal-mobile-engineer`; Supabase/R2/scripts/remote data → `backend-engineer`. | engineer | code + PR handoff (what changed, what was checked by hand, emulator screenshots, numbers) |
+| 4 | **Build** on the phase branch `phase-<n>` (create it from `main` at the phase's first ticket). App code → `principal-mobile-engineer`; Supabase/R2/scripts/remote data → `backend-engineer`. | engineer | code + handoff (what changed, what was checked by hand, numbers) for the commit message; screenshots in `docs/ux/reviews/<ID>/` |
 | 5 | **Build checks:** Android debug build, lint, iOS framework compile. | engineer | green CI |
-| 6 | **Code review** with the `code-standards` checklist. The principal reviews all Kotlin, including the backend engineer's. | `principal-mobile-engineer` | review notes in the PR; fixes applied |
-| 7 | **Design review** (UI tickets) from the PR screenshots. | `ux-designer` | `docs/ux/reviews/<ID>.md` |
+| 6 | **Code review** with the `code-standards` checklist. The principal reviews all Kotlin, including the backend engineer's. | `principal-mobile-engineer` | review notes in the commit message; fixes applied |
+| 7 | **Design review** (UI tickets) from the screenshots in `docs/ux/reviews/<ID>/`. | `ux-designer` | `docs/ux/reviews/<ID>.md` |
 | 8 | **Ticket check.** "Done when" items vs the handoff evidence; provisional verdict. | `product-manager` | `docs/pm/acceptance-log.md` |
-| 9 | **PR.** Title `<ID>: <ticket name>`; body = handoff + review + design verdict. The owner merges. | main | PR link |
+| 9 | **Commit and push** to `phase-<n>`: title `<ID>: <ticket name>`; body = handoff + code review + design verdict. CI runs on the push. No per-ticket PR. | main | commit on the phase branch |
 
 Rules:
 - Don't start step 4 on a Not-ready ticket or a UI ticket without a spec.
@@ -34,3 +34,4 @@ Rules:
 4. **Phase gate.** The PM writes `docs/pm/phase-reports/P<n>.md` with final verdicts per ticket and the decisions the owner needs to make.
 5. **Retro.** The PM runs `/retro` and proposes agent, skill and rule changes. The owner approves, the main session applies them, and logs them in `.claude/agents/CHANGELOG.md`.
 6. Upload the phase build to Play internal testing (`/play-release`, internal track). Update `CLAUDE.md` → Current phase.
+7. **Open the phase PR** from `phase-<n>` to `main`: title `Phase <n>: <name>`; body = the ticket list with verdicts, links to the QA report and phase report, and the owner's decisions. The owner merges; the next phase branches from the updated `main`.

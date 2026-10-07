@@ -15,7 +15,7 @@ Memix ("Memix: Meme Video & Photo" on the stores) is a meme maker with **two sep
 | Screen spec for a UI ticket | `docs/ux/specs/` |
 | Bugs and QA results | `docs/qa/` |
 
-The Claude Docs / design artifacts linked at the top of each doc are the source of truth; these files are exports. If code and docs disagree, stop and ask — don't silently pick one. When behavior changes, update the doc in the same PR.
+The Claude Docs / design artifacts linked at the top of each doc are the source of truth; these files are exports. If code and docs disagree, stop and ask — don't silently pick one. When behavior changes, update the doc in the same ticket commit.
 
 ## Stack (pin latest stable in `gradle/libs.versions.toml` on project creation)
 
@@ -34,7 +34,7 @@ The Claude Docs / design artifacts linked at the top of each doc are the source 
 4. Time is **microseconds (`Long`)** everywhere in the project model. Clips are positioned by time, never by index.
 5. Effects, filters and transitions are **declarative specs** (id + params) in `:core:model`; each engine renders the same spec. Every new spec gets a reference render in `docs/qa/references/`.
 6. `Project` is immutable; every edit returns a new `Project` (undo keeps 100). Autosave 500 ms after the last change. Bump `schemaVersion` + add a migration for any persisted shape change, and check by opening an old draft.
-7. The iOS framework must compile on every PR, even before iOS work starts (keeps Android-only APIs out of shared code).
+7. The iOS framework must compile on every push to a phase branch and every PR, even before iOS work starts (keeps Android-only APIs out of shared code).
 
 ## Design rules (v2 — "neutral chrome, one blue")
 
@@ -69,15 +69,16 @@ Five role agents in `.claude/agents/`. The main session orchestrates them with t
 | `qa-engineer` | Manual QA at the end of every phase: design + result, bugs, phase verdict | `docs/qa/` (hook-enforced) |
 
 - **Authority:** the PM proposes scope, priority and date changes; **the owner decides**. Nobody changes scope silently.
-- **Per ticket:** PM ready check → designer spec (UI tickets) → engineer builds and checks by hand → principal code review → designer review (UI) → PM ticket check → PR. The owner merges.
-- **End of phase:** QA manual pass (emulator via adb + a short device checklist for the owner) → fixes → QA re-test → PM phase gate → `/retro` → internal-testing build.
+- **Branches and PRs:** one branch per phase (`phase-<n>`), one PR per phase, opened only when the phase is done. Tickets are commits on the phase branch.
+- **Per ticket:** PM ready check → designer spec (UI tickets) → engineer builds and checks by hand → principal code review → designer review (UI) → PM ticket check → commit on the phase branch (`<ID>: <ticket name>`, handoff in the commit message) and push.
+- **End of phase:** QA manual pass (emulator via adb + a short device checklist for the owner) → fixes → QA re-test → PM phase gate → `/retro` → internal-testing build → one PR from `phase-<n>` to `main`. The owner merges.
 - **Improving the team:** at every phase gate the PM runs `/retro` and proposes exact edits to agents, skills or rules. The owner approves; applied changes are logged in `.claude/agents/CHANGELOG.md`. Each agent keeps lessons in `.claude/agent-memory/<agent>/MEMORY.md`.
 
 ## Quality without automated tests
 
 - The project has **no automated tests**: no unit, UI, screenshot or golden-frame tests. Don't write them or ask for them.
-- Every PR builds Android, runs lint and compiles the iOS framework in CI.
-- Every ticket is run by hand on an emulator or phone. The PR lists what was checked, with screenshots of UI states and measured numbers for hot paths.
+- Every push to a phase branch and every PR builds Android, runs lint and compiles the iOS framework in CI.
+- Every ticket is run by hand on an emulator or phone. The ticket's commit message lists what was checked and measured; screenshots of UI states go in `docs/ux/reviews/<ID>/`.
 - New effects get a reference render in `docs/qa/references/` for visual comparison and iOS parity.
 - **Definition of done:**
   - CI green

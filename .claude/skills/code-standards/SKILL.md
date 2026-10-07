@@ -1,6 +1,6 @@
 ---
 name: code-standards
-description: Memix Kotlin and Compose code standards — readable naming, small functions, error handling, coroutines and Flow rules, Compose structure — plus the review checklist every PR passes. Use when writing or reviewing any Kotlin in Memix.
+description: Memix Kotlin and Compose code standards — readable naming, small functions, error handling, coroutines and Flow rules, Compose structure — plus the review checklist every ticket passes. Use when writing or reviewing any Kotlin in Memix.
 ---
 
 # Code standards
@@ -39,7 +39,7 @@ Goal: code a new developer understands on first read, with no surprises in produ
 - Previews for every component state the spec lists (they double as the designer's review material).
 - Tokens only (`design-tokens` skill).
 
-## Review checklist (every PR)
+## Review checklist (every ticket)
 
 1. **Does it do the ticket?** Each "Done when" item, plus obvious edge cases: empty, huge, offline, denied permission, process death.
 2. **Readable?** Names, function size, nesting, comments explain why.
@@ -47,6 +47,6 @@ Goal: code a new developer understands on first read, with no surprises in produ
 4. **Smooth?** Main thread clean, no heavy work in composition, stable state, fast-changing reads deferred to layout/draw, resources released (`mobile-performance`).
 5. **Safe?** No secrets, no GPL/FFmpeg, no unlicensed content, ad rules respected, permissions requested in context.
 6. **Strings and tokens?** Five languages, no hardcoded UI values, no v1 colors (`#FFE14D`, `#FF4FA3`).
-7. **Checked by hand?** The PR says what was run on the emulator/phone, with screenshots for UI changes.
+7. **Checked by hand?** The commit message says what was run on the emulator/phone; screenshots for UI changes are in `docs/ux/reviews/<ID>/`.
 
 Write findings as: file:line, problem, why it matters, fix. Approve only when items 1–7 hold.

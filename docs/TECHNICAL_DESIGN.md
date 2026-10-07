@@ -63,7 +63,7 @@ The code is one Gradle multi-module Kotlin Multiplatform project using clean arc
 - **Domain stays pure:** `:core:model` and `:core:domain` live in `commonMain` with no Android or iOS imports.
 - **Features call use cases only:** never repositories or engines directly.
 - **Platform code** lives only in the `androidMain` and `iosMain` source sets of engine and platform modules.
-- **iOS compiles from day one:** CI builds the iOS framework on every pull request, even before iOS work starts, so Android-only APIs never leak into shared code.
+- **iOS compiles from day one:** CI builds the iOS framework on every push to a phase branch and every pull request, even before iOS work starts, so Android-only APIs never leak into shared code.
 - **State:** each ViewModel exposes one `StateFlow<UiState>` and takes `Intent` events (MVVM with one-way data flow). Editors keep an undo stack of immutable project snapshots.
 
 ## Project data model
@@ -294,19 +294,19 @@ Every version is pinned in `gradle/libs.versions.toml` and set to the latest sta
 
 ## Testing, CI and release builds
 
-Memix has no automated tests (no unit, UI, screenshot or golden-frame tests): quality comes from builds in CI, code and design review on every ticket, and a manual QA pass at the end of every phase. Every pull request must build Android and compile the iOS framework before it merges.
+Memix has no automated tests (no unit, UI, screenshot or golden-frame tests): quality comes from builds in CI, code and design review on every ticket, and a manual QA pass at the end of every phase. Each phase is one branch and one pull request; every push and every pull request must build Android and compile the iOS framework, and the phase PR merges only when green.
 
 | Check | What | When |
 | --- | --- | --- |
-| Build | Android debug build, lint, iOS framework compile | Every pull request (CI) |
-| Engineer self-check | Run the change on an emulator or phone; list what was checked in the PR | Every ticket |
+| Build | Android debug build, lint, iOS framework compile | Every push to a phase branch and every pull request (CI) |
+| Engineer self-check | Run the change on an emulator or phone; list what was checked in the ticket's commit message | Every ticket |
 | Code review | Principal mobile engineer's review checklist | Every ticket |
 | Design review | UX designer compares the built screens with the spec | Every UI ticket |
 | Manual QA | QA runs the phase test plan on an emulator and hands device-only checks to the owner | End of every phase |
 | Performance | Cold start, frame timing and export time against the PRD targets (profiler, `dumpsys gfxinfo`) | End of every phase |
 
 - **Device matrix:** one flagship, one upper-mid, and one Android 10 phone, plus Firebase Test Lab when needed.
-- **CI:** GitHub Actions. The PR workflow runs the Android build, lint, and the iOS framework compile on a macOS runner. The release workflow builds a signed app bundle and uploads it to the Play internal testing track.
+- **CI:** GitHub Actions. The CI workflow runs the Android build, lint, and the iOS framework compile (on a macOS runner) for pushes to `main` and `phase-*` branches and for pull requests. The release workflow builds a signed app bundle and uploads it to the Play internal testing track.
 - **Definition of done** for every ticket is in the Build tickets tab.
 
 ## Security and privacy
