@@ -11,7 +11,7 @@ description: Make a change to Memix's Supabase backend safely — SQL migration,
 4. **Indexes.** One for every filter/sort the app uses; check `EXPLAIN ANALYZE` on realistic data (≥ 5,000 sounds) and put the timing in the PR.
 5. **RPC.** Search via `search_sounds(q, region, lim, off)` (pg_trgm on title + tags, active only). New RPCs: `security invoker`, active rows only.
 6. **Manual access check** with the anon key (curl or the Supabase client), pasted in the PR: active rows readable, inactive hidden, writes refused except a `reports` insert. QA repeats it at phase end.
-7. **App.** DTOs (`@Serializable`), repository mapping to `:core:model`, SQLDelight cache tables and refresh windows (categories 24 h, sounds/trending/templates 6 h, search never cached).
+7. **App.** DTOs (`@Serializable`), repository mapping to `:core:model`, SQLDelight cache tables (in `:core:data`'s `MemixDatabase`; a new or changed table adds a `migrations/<n>.sqm`, checked by `:core:data:verifySqlDelightMigration`) and refresh windows (categories 24 h, sounds/trending/templates 6 h, search never cached).
 8. **Seed.** Update seed data if needed (license fields filled).
 9. **Docs.** `docs/TECHNICAL_DESIGN.md` → Backend (SQL sketch, app-call table).
 10. **Secrets.** Service key and DB password only in `.env` / CI secrets. Never in code, logs or PR text.

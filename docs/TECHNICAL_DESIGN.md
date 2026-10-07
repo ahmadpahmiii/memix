@@ -68,50 +68,58 @@ The code is one Gradle multi-module Kotlin Multiplatform project using clean arc
 
 ## Project data model
 
-One serializable `Project` describes both editors, so drafts, templates, undo and export all work from the same data. The sketch below sets the shape; field names can change during implementation.
+One serializable `Project` describes both editors, so drafts, templates, undo and export all work from the same data. The code lives in `:core:model` (`app.memix.core.model.project`); this is its shape as built in P1-01. Fields for later features (speed, keyframes, filters, masks, transitions, audio effects, layer lock/opacity, meme formats) are added by the ticket that needs them, with a schema bump.
 
 ```kotlin
 @Serializable
 data class Project(
     val id: String,
-    val type: ProjectType,            // VIDEO or PHOTO
+    val type: ProjectType,                 // VIDEO or PHOTO
     val name: String,
-    val canvas: Canvas,               // ratio, width, height, background
-    val video: VideoTimeline? = null, // set when type == VIDEO
-    val photo: PhotoScene? = null,    // set when type == PHOTO
-    val createdAt: Long,
-    val updatedAt: Long,
-    val schemaVersion: Int = 1,
+    val canvas: Canvas,                    // ratio chip, widthPx, heightPx, background (Solid color or Blur)
+    val video: VideoTimeline? = null,      // set when type == VIDEO
+    val photo: PhotoScene? = null,         // set when type == PHOTO
+    val createdAtEpochUs: Long,            // wall clock, µs since 1970 UTC
+    val updatedAtEpochUs: Long,            // set on every save; the drafts list sorts by it
+    val schemaVersion: Int = CURRENT_SCHEMA_VERSION,
 )
 
-data class VideoTimeline(val tracks: List<Track>)
+data class VideoTimeline(val tracks: List<Track>)   // always exactly one MAIN_VIDEO track
 
 data class Track(
     val id: String,
     val kind: TrackKind,              // MAIN_VIDEO, OVERLAY, TEXT, STICKER, MEME_SOUND, AUDIO, EFFECT
-    val items: List<TimelineItem>,
+    val items: List<TimelineItem>,    // placed by startUs, never by list index
     val muted: Boolean = false,
     val locked: Boolean = false,
 )
 
 sealed interface TimelineItem { val id: String; val startUs: Long; val durationUs: Long }
+// MediaClip(source: MediaRef, trimInUs, trimOutUs, volume, audioDetached, fit: FIT|FILL)   MAIN_VIDEO, OVERLAY
+// AudioClip(source: MediaRef, trimInUs, trimOutUs, volume)                                  MEME_SOUND, AUDIO
+// TextItem(durationUs, text, style: CaptionStyle(fontId, color, outlineColor?), transform)  TEXT
+// StickerItem(durationUs, source: MediaRef, transform)                                      STICKER
+// EffectItem(durationUs, effect: EffectSpec(id, params: Map<String, Float>))                EFFECT
+// MediaClip and AudioClip derive durationUs from trimOutUs - trimInUs; it isn't saved.
 
-// MediaClip: source, trimInUs, trimOutUs, speed (constant or curve), transform, volume,
-//            filters, mask, chromaKey, removeBackground, keyframes, transitionOut
-// AudioClip: source, trim, volume, fadeInUs, fadeOutUs, pitch, speed, audioEffects
-// TextItem, StickerItem: content, style, transform, animation, keyframes
-// EffectItem: effect spec applied to the whole canvas over its time range
+data class MediaRef(val origin: MediaOrigin, val kind: MediaKind, val cachedCopyPath: String? = null)
+// MediaOrigin: GalleryUri(uri) on Android, PhotoAsset(localIdentifier) on iOS, CatalogItem(itemId) for meme sounds and stickers
 
-data class PhotoScene(val format: PhotoFormat, val layers: List<Layer>)
-// Layers: ImageLayer, PanelImage, TextLayer, StickerLayer, DrawingLayer, CensorLayer, CutoutLayer
+data class PhotoScene(val layers: List<Layer>)   // bottom to top
+// Layer(id, transform): ImageLayer(source), TextLayer(text, style), StickerLayer(source)
+// Transform: centerX/centerY as fractions of the canvas, scale, rotationDegrees (clockwise)
 ```
 
-- **Time** is in microseconds (`Long`), matching Media3 and AVFoundation.
-- **Media references** hold the gallery URI (or PHAsset id on iOS) plus a cached copy path, so a draft survives the original file moving.
+- **Time** is in microseconds (`Long`), matching Media3 and AVFoundation. Wall-clock timestamps are microseconds too, with an `EpochUs` suffix.
+- **Media references** hold where the file came from (gallery URI, PHAsset id or catalog id) plus the app's own copy, so a draft survives the original file moving. `cachedCopyPath` and the thumbnail path are relative to the app's files directory, because iOS moves the app container on every update.
 - **Effects, filters and transitions** are declarative specs (an id plus parameters). Each engine renders the same spec, which keeps Android and iOS output alike.
-- **Storage:** projects are JSON rows in a SQLDelight `project` table with a thumbnail file. Auto-save runs 500 ms after the last change.
-- **Migrations:** `schemaVersion` plus a migration function per version.
+- **JSON:** kotlinx.serialization with a stable `@SerialName` on every polymorphic subtype and enum entry (never rename one). Every field is written (`encodeDefaults`), and unknown keys fail the load instead of being dropped.
+- **Storage:** `:core:data` keeps one row per project in the SQLDelight `project` table (`Project.sq`): `project_json` is the whole project and the source of truth; `name`, `type`, `schema_version`, `created_at_epoch_us` and `updated_at_epoch_us` are copied out of it on every save so the drafts list can sort and show rows without decoding projects; `thumbnail_path` is nullable. A save is one `INSERT OR REPLACE` that keeps the thumbnail. Auto-save runs 500 ms after the last change (P1-07).
+- **Project JSON migrations:** each load parses the JSON, runs it through `ProjectJsonMigrator` (one `ProjectMigration` step per version, listed in `ProjectMigrations.kt`), then decodes it. A shape change bumps `Project.CURRENT_SCHEMA_VERSION` and adds the step that turns version N into N + 1; then open a draft saved before the change. JSON saved by a newer app, or damaged, loads as `AppError.ProjectUnreadable` and stays untouched in the database.
+- **Database migrations:** the table itself evolves through SQLDelight: edit `Project.sq` and add `migrations/<version>.sqm` (the first is `1.sqm`). `databases/1.db` is the version-1 schema; `./gradlew :core:data:verifySqlDelightMigration` (run in CI) fails if `1.db` plus the `.sqm` files doesn't equal the `.sq` files. Regenerate a schema file with `./gradlew :core:data:generateCommonMainMemixDatabaseSchema`, in its own Gradle run.
+- **Drivers:** the composition root opens the database (`:composeApp` `databaseDriverModule`: `AndroidSqliteDriver` in androidMain, `NativeSqliteDriver` in iosMain, file `memix.db`); `:core:data` stays commonMain only. The iOS framework is static, so `iosApp` links `-lsqlite3`.
 - **Undo:** each edit produces a new immutable `Project`; the editor keeps the last 100.
+- **Debug hand check:** in debug builds, `adb shell am start -S -n app.memix/.android.MainActivity --es memix.projectCheck save`, then `adb shell am force-stop app.memix`, then the same start command with `verify`, logs `identical` or the first difference under the logcat tag `MemixProjectCheck` (`ProjectRoundTripCheck`).
 
 ## Video engine
 
@@ -298,7 +306,7 @@ Memix has no automated tests (no unit, UI, screenshot or golden-frame tests): qu
 
 | Check | What | When |
 | --- | --- | --- |
-| Build | Android debug build, lint, iOS framework compile | Every push to a phase branch and every pull request (CI) |
+| Build | Android debug build, lint, SQLDelight migration check, iOS framework compile | Every push to a phase branch and every pull request (CI) |
 | Engineer self-check | Run the change on an emulator or phone; list what was checked in the ticket's commit message | Every ticket |
 | Code review | Principal mobile engineer's review checklist | Every ticket |
 | Design review | UX designer compares the built screens with the spec | Every UI ticket |
@@ -306,7 +314,7 @@ Memix has no automated tests (no unit, UI, screenshot or golden-frame tests): qu
 | Performance | Cold start, frame timing and export time against the PRD targets (profiler, `dumpsys gfxinfo`) | End of every phase |
 
 - **Device matrix:** one flagship, one upper-mid, and one Android 10 phone, plus Firebase Test Lab when needed.
-- **CI:** GitHub Actions. The CI workflow runs the Android build, lint, and the iOS framework compile (on a macOS runner) for pushes to `main`, `phase-*` and `claude/phase-*` branches (phase branches from Claude Code cloud sessions) and for pull requests. The release workflow builds a signed app bundle and uploads it to the Play internal testing track.
+- **CI:** GitHub Actions. The CI workflow runs the Android build, lint, the SQLDelight migration check (`:core:data:verifySqlDelightMigration`), and the iOS framework compile (on a macOS runner) for pushes to `main`, `phase-*` and `claude/phase-*` branches (phase branches from Claude Code cloud sessions) and for pull requests. The release workflow builds a signed app bundle and uploads it to the Play internal testing track.
 - **Definition of done** for every ticket is in the Build tickets tab.
 
 ## Security and privacy
@@ -324,6 +332,11 @@ Engineering decisions made during the build, newest first. Each says what, why a
 
 | Date | Decision | Why | Alternative |
 | --- | --- | --- | --- |
+| 2026-10-08 | P1-01: the SQLDelight `SqlDriver` is created in the composition root (`:composeApp` `databaseDriverModule`, expect/actual in androidMain and iosMain) and handed to `:core:data` through Koin. `:core:data` stays commonMain only. | CLAUDE.md rule 3 allows platform code only in `:engine:*` and `:platform:services`. A driver is a data-layer detail, not a domain interface, so neither of those fits; the composition root already holds the platform entry code (`MainViewController`, Koin start-up). Suggest the owner names the composition root in rule 3. | Driver factory in `:core:data` androidMain/iosMain (the usual KMP setup, against rule 3's wording); a `SqlDriver` factory interface in `:core:domain` (leaks SQLDelight into the domain). |
+| 2026-10-08 | P1-01: projects are JSON rows. kotlinx.serialization with `encodeDefaults = true` and unknown keys rejected; each load runs a per-version migration chain on the JSON before decoding; JSON from a newer app or damaged JSON loads as `ProjectUnreadable` and stays in the database. | Writing every field means a changed default never changes an old draft. Rejecting unknown keys keeps a missing migration step from silently deleting data on the next save. | `ignoreUnknownKeys` (lenient, but loses data on re-save); a column per field (every shape change becomes a SQL migration). |
+| 2026-10-08 | P1-01: a save is one `INSERT OR REPLACE` that carries `thumbnail_path` over with a subquery. No explicit transaction, no UPSERT, default SQLite 3.18 dialect. `name`, `type`, `schema_version` and the times are copied out of the JSON into columns. | On a full disk SQLite rolls the transaction back itself, SQLDelight's own ROLLBACK then fails, and that error hides `SQLITE_FULL` (seen in the P1-01 harness); one statement is atomic on its own. UPSERT needs SQLite 3.24; Android 10 (minSdk 29) ships 3.22. Copied columns let the drafts list sort and show rows without decoding projects. | Update-then-insert in a transaction (loses the disk-full error); `ON CONFLICT DO UPDATE` (crashes on Android 10). |
+| 2026-10-08 | P1-01: wall-clock timestamps are microseconds (`createdAtEpochUs`); media paths and the thumbnail path are relative to the app's files directory; `MediaClip`/`AudioClip.durationUs` is derived from the trim points and not saved. | Rule 4 says every time in the project model is µs. iOS moves the app container on every update, which breaks absolute paths. A derived duration can't disagree with the trims. | Epoch milliseconds; absolute paths; a saved duration. |
+| 2026-10-08 | P1-01: CI also runs `:core:data:verifySqlDelightMigration`. | It fails the build when `Project.sq` changes without a matching `.sqm`, which would otherwise surface only as a crash on phones with an older database. It is a schema check from the SQLDelight plugin, not a test suite. | Only run it by hand. |
 | 2026-10-07 | Gradle daemon on JDK 21 via `gradle/gradle-daemon-jvm.properties` (from Android Studio's sync); CI uses Temurin 21. Kotlin and Java still target JVM 17. | One JDK for Studio, the command line and CI. | Keep JDK 17 everywhere. |
 | 2026-10-07 | Module split for AGP 9: `:androidApp` (Android application) + `:composeApp` (shared KMP library) + `iosApp/` (Xcode). | AGP 9 makes `com.android.application` incompatible with the KMP plugin in one module ([kotlinlang.org](https://kotlinlang.org/docs/multiplatform/multiplatform-project-agp-9-migration.html)). | Stay on AGP 8 (removed path; AGP 10 drops the legacy API). |
 | 2026-10-07 | Every KMP module uses `com.android.kotlin.multiplatform.library` via the `memix.kmp.library` convention plugin; targets android, iosArm64, iosSimulatorArm64. No iosX64. | One place for target setup across 18 modules; Apple-silicon Macs and CI runners only. | Per-module copies of the target block. |

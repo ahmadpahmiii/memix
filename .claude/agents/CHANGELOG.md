@@ -16,3 +16,4 @@ Changes to the agents, skills, hooks and CLAUDE.md rules. Retro proposals are ap
 | 2026-10-08 | `backend-engineer`: confirm the Memix project before any write; test rows in rolled-back transactions. | The first project offered held another app's data (retro P0 #5). | Retro P0 |
 | 2026-10-08 | `ticket-workflow`: rule for a skipped QA pass (next phase's plan covers it). | Phase 0 closed without a QA pass (retro P0 #6). | Retro P0 |
 | 2026-10-08 | Seeded the five agent memories with Phase 0 lessons. | Memories were empty; agents ran inline at kickoff (retro P0 #7). | Retro P0 |
+| 2026-10-08 | `memix-architecture` project model names (`createdAtEpochUs`, `MediaRef(origin, …)`, migration steps, driver in the composition root); `new-feature` and `supabase-change`: a new or changed SQLDelight table adds a `.sqm`, checked by `:core:data:verifySqlDelightMigration`. | Keep skills in step with the P1-01 model and storage. | P1-01 |

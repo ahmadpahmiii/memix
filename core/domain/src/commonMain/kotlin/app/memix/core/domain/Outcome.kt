@@ -11,5 +11,9 @@ sealed interface AppError {
     data object Offline : AppError
     data object NotFound : AppError
     data object StorageFull : AppError
+
+    /** A saved project that can't be read back: damaged, or saved by a newer version of the app. */
+    data object ProjectUnreadable : AppError
+
     data class Unexpected(val cause: Throwable) : AppError
 }

@@ -1,0 +1,40 @@
+-- One row per draft. project_json is the whole Project and the source of truth. name, type,
+-- schema_version and the times are copied out of it on every save, so the drafts list can sort
+-- and show rows without decoding every project.
+-- Changing a table: edit it here and add migrations/<current database version>.sqm (the first is 1.sqm);
+-- verifySqlDelightMigration checks the result against databases/1.db. Changes to the Project JSON
+-- itself are migrated in code instead (ProjectMigrations.kt).
+CREATE TABLE project (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    schema_version INTEGER NOT NULL,
+    created_at_epoch_us INTEGER NOT NULL,
+    updated_at_epoch_us INTEGER NOT NULL,
+    -- Relative to the app's files directory; written by the ticket that renders thumbnails.
+    thumbnail_path TEXT,
+    project_json TEXT NOT NULL
+);
+
+selectJsonById:
+SELECT project_json FROM project WHERE id = :id;
+
+selectSummariesByLastEdited:
+SELECT id, name, type, updated_at_epoch_us, thumbnail_path
+FROM project
+ORDER BY updated_at_epoch_us DESC;
+
+-- One statement, so it is atomic without a transaction (a full disk then reports SQLITE_FULL instead
+-- of a failed ROLLBACK). REPLACE rewrites the whole row, so the thumbnail is carried over.
+insertOrReplace:
+INSERT OR REPLACE INTO project(
+    id, name, type, schema_version, created_at_epoch_us, updated_at_epoch_us, thumbnail_path, project_json
+)
+VALUES (
+    :id, :name, :type, :schemaVersion, :createdAtEpochUs, :updatedAtEpochUs,
+    (SELECT thumbnail_path FROM project WHERE id = :id),
+    :projectJson
+);
+
+deleteById:
+DELETE FROM project WHERE id = :id;

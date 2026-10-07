@@ -34,12 +34,12 @@ Full detail: `docs/TECHNICAL_DESIGN.md`. This is the working summary.
 
 ## Project model essentials
 
-- `Project(id, type: VIDEO|PHOTO, name, canvas, video: VideoTimeline?, photo: PhotoScene?, createdAt, updatedAt, schemaVersion)`.
-- `Track(kind: MAIN_VIDEO|OVERLAY|TEXT|STICKER|MEME_SOUND|AUDIO|EFFECT, items, muted, locked)`; `TimelineItem(id, startUs, durationUs)` sealed: MediaClip, AudioClip, TextItem, StickerItem, EffectItem.
-- Time = microseconds (`Long`). Immutable; each edit → new Project; undo stack 100; autosave 500 ms debounce; stored as JSON in the SQLDelight `project` table + a thumbnail file.
-- Media refs = gallery URI / PHAsset id + cached copy path.
+- `Project(id, type: VIDEO|PHOTO, name, canvas, video: VideoTimeline?, photo: PhotoScene?, createdAtEpochUs, updatedAtEpochUs, schemaVersion)` in `app.memix.core.model.project`.
+- `Track(kind: MAIN_VIDEO|OVERLAY|TEXT|STICKER|MEME_SOUND|AUDIO|EFFECT, items, muted, locked)`; `TimelineItem(id, startUs, durationUs)` sealed: MediaClip, AudioClip, TextItem, StickerItem, EffectItem. Clip `durationUs` is derived from `trimOutUs - trimInUs`.
+- Time = microseconds (`Long`), wall-clock timestamps included. Immutable; each edit → new Project; undo stack 100; autosave 500 ms debounce; stored as JSON in the SQLDelight `project` table (`:core:data`) + a thumbnail file. The composition root (`:composeApp` `databaseDriverModule`) creates the `SqlDriver`; `:core:data` stays commonMain.
+- Media refs = `MediaRef(origin: GalleryUri | PhotoAsset | CatalogItem, kind, cachedCopyPath)`; paths are relative to the app's files directory.
 - Effects/filters/transitions = `id + params` specs rendered identically by both engines; each has a reference render in `docs/qa/references/`.
-- Persisted shape change → bump `schemaVersion` and add a migration; check by opening an old draft after upgrading.
+- Persisted shape change → bump `Project.CURRENT_SCHEMA_VERSION` and add a `ProjectMigration` step in `:core:data` (`ProjectMigrations.kt`); check by opening an old draft after upgrading. A table change adds `migrations/<n>.sqm`; CI runs `:core:data:verifySqlDelightMigration`.
 
 ## Engine interfaces (shape)
 

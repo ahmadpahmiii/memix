@@ -32,7 +32,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       # CI only builds, so a placeholder Firebase config is enough; the real one never leaves the owner's machine.
       - run: cp androidApp/google-services.ci.json androidApp/google-services.json
-      - run: ./gradlew :androidApp:assembleDebug lint --console=plain
+      # verifySqlDelightMigration: the database schema from 1.db plus every .sqm must equal the .sq files.
+      - run: ./gradlew :androidApp:assembleDebug lint :core:data:verifySqlDelightMigration --console=plain
 
   ios:
     name: iOS framework compile

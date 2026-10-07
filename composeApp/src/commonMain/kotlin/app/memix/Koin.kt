@@ -1,9 +1,16 @@
 package app.memix
 
+import app.memix.core.data.dataModule
 import app.memix.core.domain.GetPhoneRegionUseCase
 import app.memix.core.domain.RefreshAppConfigUseCase
+import app.memix.core.domain.project.CreateVideoProjectUseCase
+import app.memix.core.domain.project.DeleteProjectUseCase
+import app.memix.core.domain.project.GetProjectUseCase
+import app.memix.core.domain.project.ObserveProjectSummariesUseCase
+import app.memix.core.domain.project.SaveProjectUseCase
 import app.memix.feature.home.HomeViewModel
 import app.memix.platform.services.platformServicesModule
+import kotlin.time.Clock
 import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.viewModelOf
@@ -11,8 +18,14 @@ import org.koin.dsl.KoinAppDeclaration
 import org.koin.dsl.module
 
 private val appModule = module {
+    single<Clock> { Clock.System }
     factoryOf(::GetPhoneRegionUseCase)
     factoryOf(::RefreshAppConfigUseCase)
+    factoryOf(::CreateVideoProjectUseCase)
+    factoryOf(::SaveProjectUseCase)
+    factoryOf(::GetProjectUseCase)
+    factoryOf(::DeleteProjectUseCase)
+    factoryOf(::ObserveProjectSummariesUseCase)
     viewModelOf(::HomeViewModel)
 }
 
@@ -20,6 +33,6 @@ private val appModule = module {
 fun initKoin(platformSetup: KoinAppDeclaration = {}) {
     startKoin {
         platformSetup()
-        modules(platformServicesModule, appModule)
+        modules(platformServicesModule, databaseDriverModule, dataModule, appModule)
     }
 }

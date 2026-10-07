@@ -36,4 +36,12 @@ kotlin {
         implementation(libs.koin.core)
         implementation(libs.koin.compose.viewmodel)
     }
+    // The composition root opens :core:data's database with each platform's driver (DatabaseDriverModule).
+    sourceSets.androidMain.dependencies {
+        implementation(libs.koin.android)
+        implementation(libs.sqldelight.android.driver)
+    }
+    sourceSets.iosMain.dependencies {
+        implementation(libs.sqldelight.native.driver)
+    }
 }

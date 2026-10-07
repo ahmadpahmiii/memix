@@ -7,7 +7,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.lifecycleScope
 import app.memix.App
+import app.memix.debug.ProjectRoundTripCheck
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -17,6 +20,9 @@ class MainActivity : ComponentActivity() {
         val isDebugBuild = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         // Debug-only Crashlytics check (P0-08): adb shell am start -n app.memix/.android.MainActivity --ez memix.testCrash true
         if (isDebugBuild && intent.getBooleanExtra("memix.testCrash", false)) throw RuntimeException("Memix test crash")
+        // Debug-only project round trip (P1-01): --es memix.projectCheck save, force-stop, then verify. Logcat tag MemixProjectCheck.
+        val projectCheckStep = intent.getStringExtra("memix.projectCheck")
+        if (isDebugBuild && projectCheckStep != null) lifecycleScope.launch { ProjectRoundTripCheck().run(projectCheckStep) }
         setContent { App(isDebugBuild) }
     }
 }
