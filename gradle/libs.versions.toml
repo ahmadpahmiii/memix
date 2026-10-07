@@ -10,6 +10,7 @@ compose-material3 = "1.9.0"
 androidx-activity-compose = "1.13.0"
 jetbrains-lifecycle = "2.11.0"
 jetbrains-navigation = "2.9.2"
+jetbrains-navigationevent = "1.1.0"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 kotlinx-collections-immutable = "0.5.2"
@@ -35,6 +36,7 @@ compose-compiler-gradlePlugin = { module = "org.jetbrains.kotlin:compose-compile
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-multiplatform" }
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-multiplatform" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-multiplatform" }
+jetbrains-navigationevent-compose = { module = "org.jetbrains.androidx.navigationevent:navigationevent-compose", version.ref = "jetbrains-navigationevent" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose-multiplatform" }
 compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "compose-multiplatform" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }

@@ -78,7 +78,7 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 
 ## Iconography
 
-One outline icon family at 24px with 1.75px strokes and round joins, colored `text-secondary` (inactive), `text` (current nav item) or `primary` (active tool). Proposed set: Lucide (ISC license), imported into Compose as vector drawables. The previews here use simple hand-drawn stand-ins. There is no Memix logo yet: until one exists, write the name "Memix" in Anton.
+Memix draws its own icons on a 24px grid: 2px flat-cap strokes, mitred joins, and one solid core where the metaphor has mass (the door of Home, the cone of Sounds). Colored `text-secondary` (inactive), `text` (current nav item) or `primary` (active tool). The rule set is in `docs/DESIGN_SYSTEM.md` → Iconography; the previews here still use the earlier stand-ins. There is no Memix logo yet: until one exists, write the name "Memix" in Anton.
 
 ## In Compose
 
