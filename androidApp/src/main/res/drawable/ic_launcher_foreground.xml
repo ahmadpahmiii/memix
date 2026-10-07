@@ -1,0 +1,10 @@
+<!-- Placeholder until a Memix logo exists: the "M" of the Anton wordmark (antislop R-23). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M38.41,74.00 L38.41,34.00 L50.59,34.00 L53.95,58.39 L57.30,34.00 L69.59,34.00 L69.59,74.00 L62.27,74.00 L62.27,45.18 L57.68,74.00 L50.50,74.00 L45.64,45.18 L45.64,74.00 Z"
+        android:fillColor="#FFF2F2F2" />
+</vector>

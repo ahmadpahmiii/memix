@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="close">बंद करें</string>
+    <string name="sound_play">%1$s चलाएं</string>
+    <string name="sound_pause">%1$s रोकें</string>
+    <string name="sound_favorite">%1$s को पसंदीदा बनाएं</string>
+    <string name="sound_add">%1$s को वीडियो में जोड़ें</string>
+</resources>
