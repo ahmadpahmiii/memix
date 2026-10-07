@@ -1,0 +1,22 @@
+# Build output
+build/
+.gradle/
+.kotlin/
+*.iml
+.idea/
+.DS_Store
+xcuserdata/
+DerivedData/
+
+# Local config and secrets — never commit
+local.properties
+.env
+.env.*
+*.jks
+*.keystore
+keystore.properties
+supabase/.temp/
+
+# Manual QA scratch (sample media and pulled exports)
+qa-media/
+qa-out/

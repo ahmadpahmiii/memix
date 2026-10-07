@@ -1,0 +1,27 @@
+<!-- @dsCard group="Browse" height=232 subtitle="playing · idle · favorite" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>SoundRow — preview</title></head>
+<body>
+<div class="mx-phone" id="list"></div>
+<script>
+  var sounds = [
+    { name: 'Boom hit', sub: '0:02 · Impacts', playing: true, fav: true, peaks: [3,6,18,20,16,12,9,7,5,4,3,3,2,2,2,1] },
+    { name: 'Bruh (recreated)', sub: '0:01 · Reactions', playing: false, fav: false, peaks: [2,5,9,14,16,15,12,8,6,4,3,2,2,1,1,1] },
+    { name: 'Sad trombone', sub: '0:03 · Fails', playing: false, fav: false, peaks: [4,8,10,9,11,10,8,9,10,8,7,6,5,4,3,2] }
+  ];
+  var play = '<svg class="mx-ico" viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg>';
+  var pause = '<svg class="mx-ico" viewBox="0 0 24 24"><path d="M8 5h3v14H8zM13 5h3v14h-3z"/></svg>';
+  var heart = function (on) { return '<svg class="mx-ico" viewBox="0 0 24 24" style="' + (on ? 'stroke:var(--primary);fill:var(--primary)' : '') + '"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg>'; };
+  var plus = '<svg class="mx-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+  document.getElementById('list').innerHTML = sounds.map(function (s) {
+    var wave = s.peaks.map(function (p) { return '<i style="height:' + p + 'px"></i>'; }).join('');
+    return '<div class="mx-sound"' + (s.playing ? ' aria-current="true"' : '') + '>' +
+      '<span class="mx-play" aria-label="' + (s.playing ? 'Pause' : 'Play') + '">' + (s.playing ? pause : play) + '</span>' +
+      '<div class="info"><div class="name">' + s.name + '</div><div class="sub">' + s.sub + '</div><div class="mx-wave">' + wave + '</div></div>' +
+      '<button class="mx-iconbtn" aria-label="Favorite">' + heart(s.fav) + '</button>' +
+      '<button class="mx-add" aria-label="Add to timeline">' + plus + '</button></div>';
+  }).join('');
+</script>
+</body>
+</html>

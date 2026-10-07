@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Memix — Video editor</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Anton&amp;family=Space+Grotesk:wght@400;500;700&amp;family=Space+Mono&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+:root{--canvas:#111111;--stage:#000000;--surface:#1B1B1B;--surface-raised:#2C2C2C;--hairline:#393939;--text:#F2F2F2;--text-secondary:#A6A6A6;--text-muted:#949494;--primary:#2BB3F3;--primary-pressed:#189BD8;--primary-subtle:#2BB3F329;--on-primary:#111111;--selection:#FFFFFF;--track-video:#3D3D3D;--track-text:#E78E40;--track-sticker:#D8AE31;--track-meme-sound:#2BB3F3;--track-audio:#3DAE79;--track-effect:#AA84EB;--on-track:#111111;--danger:#F6574C;--success:#3BCE7B;--scrim:#000000B3}
+a{color:#2BB3F3}a:hover{color:#189BD8}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: var(--canvas); color: var(--text); font-family: 'Space Grotesk', system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+<header style="height: 56px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 4px">
+<a href="Main.dc.html" aria-label="Close editor" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; color: var(--text)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></a>
+<div style="flex-grow: 1; display: flex; justify-content: center; gap: 8px">
+<button aria-label="Aspect ratio 9:16" style="height: 32px; padding: 0 10px; border-radius: 9999px; border: 0; background: var(--surface-raised); color: var(--text); font: 12px/16px 'Space Mono', monospace; cursor: pointer">9:16</button>
+<button aria-label="Export quality 1080p" style="height: 32px; padding: 0 10px; border-radius: 9999px; border: 0; background: var(--surface-raised); color: var(--text); font: 12px/16px 'Space Mono', monospace; cursor: pointer">1080p</button>
+</div>
+<a href="Export.dc.html" style="height: 40px; padding: 0 16px; box-sizing: border-box; border-radius: 10px; background: var(--primary); color: var(--on-primary); display: flex; align-items: center; font: 700 15px/22px 'Space Grotesk', sans-serif; text-decoration: none">Export</a>
+</header>
+<section aria-label="Preview" style="flex-grow: 1; min-height: 0; background: var(--stage); display: flex; align-items: center; justify-content: center; padding: 8px 0">
+<div style="height: 100%; aspect-ratio: 9 / 16; max-height: 340px; background: var(--surface-raised); position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center">
+<div style="position: absolute; left: 50%; top: 58%; width: 120px; height: 150px; transform: translate(-50%, -50%) scale(1.12); border-radius: 60px 60px 16px 16px; background: var(--track-video)"></div>
+<p style="position: relative; margin: 16px 10px 0; font-family: 'Anton', Impact, sans-serif; font-size: 20px; line-height: 22px; text-align: center; text-transform: uppercase; color: #FFFFFF; -webkit-text-stroke: 1.5px #000000; paint-order: stroke fill">When the build passes first try</p>
+<span style="position: absolute; right: 14px; bottom: 56px; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; transform: rotate(-8deg)"><svg width="52" height="52" viewBox="0 0 24 24" fill="#FFFFFF" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20z"></path><path d="M8 20v2h8v-2"></path><circle cx="9" cy="12" r="1.5" fill="#000000"></circle><circle cx="15" cy="12" r="1.5" fill="#000000"></circle></svg></span>
+</div>
+</section>
+<div style="height: 44px; flex: none; display: flex; align-items: center; padding: 0 8px 0 16px; gap: 8px">
+<span style="font: 12px/16px 'Space Mono', monospace; color: var(--text); width: 140px">00:03.20 <span style="color: var(--text-muted)">/ 00:08.00</span></span>
+<div style="flex-grow: 1; display: flex; justify-content: center"><button aria-label="Play" style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="26" height="26" viewBox="0 0 24 24" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="1.75" stroke-linejoin="round"><path d="M8 5l11 7-11 7z"></path></svg></button></div>
+<div style="width: 140px; display: flex; justify-content: flex-end">
+<button aria-label="Undo" style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; color: var(--text); cursor: pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"></path><path d="M4 9h11a5 5 0 0 1 0 10h-3"></path></svg></button>
+<button aria-label="Redo" disabled style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: default"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"></path><path d="M20 9H9a5 5 0 0 0 0 10h3"></path></svg></button>
+</div>
+</div>
+<section aria-label="Timeline" style="flex: none; position: relative; background: var(--canvas); padding: 4px 0 8px; overflow: hidden; border-top: 1px solid var(--hairline)">
+<div style="display: flex; padding-left: 72px; font: 12px/16px 'Space Mono', monospace; color: var(--text-muted); margin-bottom: 4px"><span style="width: 80px; flex: none">00:00</span><span style="width: 80px; flex: none">00:02</span><span style="width: 80px; flex: none">00:04</span><span style="width: 80px; flex: none">00:06</span></div>
+<div style="position: relative; height: 46px; display: flex; align-items: center"><span style="position: absolute; left: 12px; width: 56px; font-size: 11px; line-height: 14px; font-weight: 500; color: var(--text-secondary)">Video</span>
+<span style="position: absolute; left: 72px; width: 170px; height: 40px; box-sizing: border-box; border-radius: 6px; background: var(--track-video); color: var(--text); font-size: 11px; line-height: 40px; font-weight: 500; padding: 0 8px; white-space: nowrap; overflow: hidden">clip_01.mp4</span>
+<span style="position: absolute; left: 246px; width: 160px; height: 40px; box-sizing: border-box; border-radius: 6px; background: var(--track-video); color: var(--text); font-size: 11px; line-height: 40px; font-weight: 500; padding: 0 8px; white-space: nowrap; overflow: hidden">clip_02.mp4</span></div>
+<div style="position: relative; height: 32px; display: flex; align-items: center"><span style="position: absolute; left: 12px; width: 56px; font-size: 11px; line-height: 14px; font-weight: 500; color: var(--text-secondary)">Text</span>
+<span style="position: absolute; left: 92px; width: 120px; height: 28px; box-sizing: border-box; border-radius: 6px; background: var(--track-text); color: var(--on-track); font-size: 11px; line-height: 28px; font-weight: 500; padding: 0 8px; white-space: nowrap; overflow: hidden">When the build…</span></div>
+<div style="position: relative; height: 32px; display: flex; align-items: center"><span style="position: absolute; left: 12px; width: 56px; font-size: 11px; line-height: 14px; font-weight: 500; color: var(--text-secondary)">Sticker</span>
+<span style="position: absolute; left: 150px; width: 72px; height: 28px; box-sizing: border-box; border-radius: 6px; background: var(--track-sticker); color: var(--on-track); font-size: 11px; line-height: 28px; font-weight: 500; padding: 0 8px; white-space: nowrap; overflow: hidden">Skull</span></div>
+<div style="position: relative; height: 32px; display: flex; align-items: center"><span style="position: absolute; left: 12px; width: 56px; font-size: 11px; line-height: 14px; font-weight: 500; color: var(--text-secondary)">Meme sound</span>
+<span role="button" aria-label="Boom, selected" aria-pressed="true" style="position: absolute; left: 196px; width: 56px; height: 28px; box-sizing: border-box; border-radius: 6px; background: var(--track-meme-sound); outline: 2px solid var(--selection); outline-offset: 1px; color: var(--on-track); font-size: 11px; line-height: 28px; font-weight: 500; padding: 0 8px; white-space: nowrap">Boom<span style="position: absolute; left: -11px; top: -3px; width: 8px; height: 34px; border-radius: 6px 0 0 6px; background: var(--selection)"></span><span style="position: absolute; right: -11px; top: -3px; width: 8px; height: 34px; border-radius: 0 6px 6px 0; background: var(--selection)"></span></span>
+<span style="position: absolute; left: 300px; width: 44px; height: 28px; box-sizing: border-box; border-radius: 6px; background: var(--track-meme-sound); color: var(--on-track); font-size: 11px; line-height: 28px; font-weight: 500; padding: 0 8px; white-space: nowrap; overflow: hidden">Bruh</span></div>
+<div style="position: relative; height: 32px; display: flex; align-items: center"><span style="position: absolute; left: 12px; width: 56px; font-size: 11px; line-height: 14px; font-weight: 500; color: var(--text-secondary)">Audio</span>
+<span style="position: absolute; left: 72px; width: 330px; height: 28px; box-sizing: border-box; border-radius: 6px; background: var(--track-audio); color: var(--on-track); font-size: 11px; line-height: 28px; font-weight: 500; padding: 0 8px; white-space: nowrap; overflow: hidden">Original audio</span></div>
+<div style="position: relative; height: 32px; display: flex; align-items: center"><span style="position: absolute; left: 12px; width: 56px; font-size: 11px; line-height: 14px; font-weight: 500; color: var(--text-secondary)">Effect</span>
+<span style="position: absolute; left: 196px; width: 92px; height: 28px; box-sizing: border-box; border-radius: 6px; background: var(--track-effect); color: var(--on-track); font-size: 11px; line-height: 28px; font-weight: 500; padding: 0 8px; white-space: nowrap; overflow: hidden">Zoom punch</span></div>
+<span aria-hidden="true" style="position: absolute; top: 4px; bottom: 0; left: 200px; width: 2px; background: var(--selection)"><span style="position: absolute; top: 0; left: -5px; width: 12px; height: 12px; border-radius: 9999px; background: var(--selection)"></span></span>
+</section>
+<div aria-label="Selected meme sound" style="height: 52px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--surface-raised); border-top: 1px solid var(--hairline)">
+<span style="display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 16px; font-weight: 700; flex: none"><span style="width: 10px; height: 10px; border-radius: 9999px; background: var(--track-meme-sound); "></span>Boom</span>
+<button style="height: 36px; flex: none; padding: 0 10px; border-radius: 9999px; border: 0; background: var(--surface); color: var(--text); font: 500 13px/16px 'Space Grotesk', sans-serif; cursor: pointer">Volume 120%</button>
+<button style="height: 36px; flex: none; padding: 0 10px; border-radius: 9999px; border: 0; background: var(--surface); color: var(--text); font: 500 13px/16px 'Space Grotesk', sans-serif; cursor: pointer">Duck audio</button>
+<a href="Sounds.dc.html" style="height: 36px; box-sizing: border-box; flex: none; padding: 0 10px; border-radius: 9999px; border: 0; background: var(--surface); color: var(--text); font: 500 13px/34px 'Space Grotesk', sans-serif; text-decoration: none">Replace</a>
+<button aria-label="Delete Boom" style="width: 36px; height: 36px; flex: none; margin-left: auto; padding: 0; border-radius: 9999px; border: 0; background: var(--surface); color: var(--danger); display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg></button>
+</div>
+<nav aria-label="Editor tools" style="height: 72px; flex: none; box-sizing: border-box; display: flex; gap: 4px; padding: 8px; overflow: hidden; background: var(--surface); border-top: 1px solid var(--hairline)">
+<button style="width: 64px; min-height: 48px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 0; border-radius: 10px; background: none; color: var(--text-secondary); font: 500 11px/14px 'Space Grotesk', sans-serif; cursor: pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"></path></svg>Edit</button>
+<a href="Sounds.dc.html" aria-current="true" style="background: var(--primary-subtle); width: 64px; min-height: 48px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 10px; color: var(--primary); font: 500 11px/14px 'Space Grotesk', sans-serif; text-decoration: none; text-align: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>Meme sounds</a>
+<button style="width: 64px; min-height: 48px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 0; border-radius: 10px; background: none; color: var(--text-secondary); font: 500 11px/14px 'Space Grotesk', sans-serif; cursor: pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h16v2M9 19h6M12 5v14"></path></svg>Text</button>
+<button style="width: 64px; min-height: 48px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 0; border-radius: 10px; background: none; color: var(--text-secondary); font: 500 11px/14px 'Space Grotesk', sans-serif; cursor: pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h7l8-8V6a3 3 0 0 0-3-3z"></path><path d="M13 21v-5a3 3 0 0 1 3-3h5"></path></svg>Stickers</button>
+<button style="width: 64px; min-height: 48px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 0; border-radius: 10px; background: none; color: var(--text-secondary); font: 500 11px/14px 'Space Grotesk', sans-serif; cursor: pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8-5-3.6-5 3.6 1.9-5.8L4 8.8h6.1z"></path></svg>Effects</button>
+<button style="width: 64px; min-height: 48px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 0; border-radius: 10px; background: none; color: var(--text-secondary); font: 500 11px/14px 'Space Grotesk', sans-serif; cursor: pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path><path d="M3 3l18 18"></path></svg>Remove BG</button>
+<button style="width: 64px; min-height: 48px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 0; border-radius: 10px; background: none; color: var(--text-secondary); font: 500 11px/14px 'Space Grotesk', sans-serif; cursor: pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Speed</button>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+<!-- @dsCard group="Editor" height=120 subtitle="volume · pitch" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Slider — preview</title></head>
+<body>
+<div class="mx-phone" style="background:var(--surface)">
+  <div class="mx-slider"><label for="vol">Volume</label><input id="vol" class="mx-range" type="range" min="0" max="200" value="80" step="1" style="--fill:40%"><output id="volOut">80%</output></div>
+  <div class="mx-slider"><label for="pitch">Pitch</label><input id="pitch" class="mx-range" type="range" min="-12" max="12" value="3" step="1" style="--fill:62.5%"><output id="pitchOut">+3</output></div>
+</div>
+<script>
+  var v = document.getElementById('vol'), vo = document.getElementById('volOut');
+  var p = document.getElementById('pitch'), po = document.getElementById('pitchOut');
+  function fill(el) { el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%'); }
+  v.addEventListener('input', function () { vo.textContent = Math.round(v.value) + '%'; fill(v); });
+  p.addEventListener('input', function () { var n = Math.round(p.value); po.textContent = (n > 0 ? '+' : '') + n; fill(p); });
+</script>
+</body>
+</html>
