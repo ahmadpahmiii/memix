@@ -4,6 +4,7 @@
     <application
         android:name=".MemixApplication"
         android:label="Memix"
+        android:localeConfig="@xml/locales_config"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar">
         <activity

@@ -1,14 +1,6 @@
 package app.memix.platform.services
 
-import app.memix.core.domain.DeviceRegion
-import app.memix.core.domain.Logger
-import org.koin.dsl.module
+import org.koin.core.module.Module
 
-val platformServicesModule = module {
-    single<DeviceRegion> { PlatformDeviceRegion() }
-    single<Logger> { PlatformLogger() }
-}
-
-internal expect class PlatformDeviceRegion() : DeviceRegion
-
-internal expect class PlatformLogger() : Logger
+/** Binds the domain's platform interfaces (DeviceRegion, Logger) to this platform's implementations. */
+expect val platformServicesModule: Module
