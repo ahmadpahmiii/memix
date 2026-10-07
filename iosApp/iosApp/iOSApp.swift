@@ -3,6 +3,10 @@ import ComposeApp
 
 @main
 struct iOSApp: App {
+    init() {
+        MainViewControllerKt.startKoinOnIos()
+    }
+
     var body: some Scene {
         WindowGroup {
             ComposeView().ignoresSafeArea()

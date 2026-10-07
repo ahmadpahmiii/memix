@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 plugins {
     id("memix.kmp.compose")
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 kotlin {
@@ -13,6 +14,7 @@ kotlin {
         }
     }
     sourceSets.commonMain.dependencies {
+        implementation(projects.core.domain)
         implementation(projects.core.designsystem)
         implementation(projects.core.ui)
         implementation(projects.core.data)
@@ -28,5 +30,10 @@ kotlin {
         implementation(projects.feature.videoEditor)
         implementation(projects.feature.photoEditor)
         implementation(projects.feature.export)
+        implementation(libs.jetbrains.navigation.compose)
+        implementation(libs.jetbrains.lifecycle.runtime.compose)
+        implementation(project.dependencies.platform(libs.koin.bom))
+        implementation(libs.koin.core)
+        implementation(libs.koin.compose.viewmodel)
     }
 }
