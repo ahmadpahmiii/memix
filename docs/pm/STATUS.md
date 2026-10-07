@@ -15,7 +15,7 @@ Owned by the product manager. Keep it one screen long. Statuses: Not started · 
 | P0-05 | Bottom navigation and empty screens: Home, Templates, Create sheet, Sounds, Drafts | Built (7 Oct); design review: approved with polish | principal-mobile-engineer | on `phase-0` |
 | P0-06 | Supabase project: schema SQL, access rules, seed data (10 sounds, 3 templates) | Built (8 Oct), seed sounds and templates pending: they need licensed files on R2 (after P0-07) | backend-engineer | |
 | P0-07 | Cloudflare R2 bucket, custom media domain, upload script | Not ready: owner account exists (7 Oct); needs R2 enabled (checkout), a bucket API token in local `.env`, and the domain for `media.<domain>` (r2.dev works for development meanwhile) | backend-engineer | |
-| P0-08 | Firebase on Android: Crashlytics, Analytics, Remote Config | Not ready: owner account exists (7 Oct); needs a Firebase project with the Android app `app.memix` and its `google-services.json` | principal-mobile-engineer | |
+| P0-08 | Firebase on Android: Crashlytics, Analytics, Remote Config | Built (8 Oct); owner confirms the test crash in the Crashlytics console and adds `media_base_url` in Remote Config | principal-mobile-engineer | |
 | P0-09 | String resources for English, Indonesian, Spanish, Portuguese, Hindi | Built (7 Oct) | principal-mobile-engineer | [PR #4](https://github.com/ahmadpahmiii/memix/pull/4) |
 
 **Top risks**

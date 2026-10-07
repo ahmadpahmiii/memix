@@ -10,5 +10,9 @@ kotlin {
     }
     sourceSets.androidMain.dependencies {
         implementation(libs.koin.android)
+        implementation(project.dependencies.platform(libs.firebase.bom))
+        implementation(libs.firebase.analytics)
+        implementation(libs.firebase.crashlytics)
+        implementation(libs.firebase.config)
     }
 }

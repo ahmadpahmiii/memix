@@ -29,6 +29,8 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@v6
+      # CI only builds, so a placeholder Firebase config is enough; the real one never leaves the owner's machine.
+      - run: cp androidApp/google-services.ci.json androidApp/google-services.json
       - run: ./gradlew :androidApp:assembleDebug lint --console=plain
 
   ios:

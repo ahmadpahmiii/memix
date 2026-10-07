@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +46,8 @@ import memix.composeapp.generated.resources.nav_home
 import memix.composeapp.generated.resources.nav_sounds
 import memix.composeapp.generated.resources.nav_templates
 import org.jetbrains.compose.resources.stringResource
+import app.memix.core.domain.RefreshAppConfigUseCase
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 private val tabRoutes = listOf(HomeRoute, TemplatesRoute, SoundsRoute, DraftsRoute)
@@ -52,6 +55,8 @@ private val tabRoutes = listOf(HomeRoute, TemplatesRoute, SoundsRoute, DraftsRou
 /** [isDebugBuild] unlocks the component catalog (long-press on the Home wordmark). */
 @Composable
 fun App(isDebugBuild: Boolean) {
+    val refreshAppConfig = koinInject<RefreshAppConfigUseCase>()
+    LaunchedEffect(Unit) { refreshAppConfig() }
     MemixTheme {
         val navController = rememberNavController()
         var createSheetOpen by rememberSaveable { mutableStateOf(false) }
