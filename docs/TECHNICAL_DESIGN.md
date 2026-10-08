@@ -1,6 +1,6 @@
 # Technical design
 
-Source of truth: the "Memix — Product Requirements" Claude Doc (https://claude.ai/code/artifact/c81028c0-e543-4488-ace3-100bdcbb9e10). This file is an export from Oct 7, 2026; if the two disagree, ask the owner which one wins.
+This file is the source of truth (owner, 8 Oct 2026). The "Memix — Product Requirements" Claude Doc (https://claude.ai/code/artifact/c81028c0-e543-4488-ace3-100bdcbb9e10) is the original plan, kept for reference only; changes aren't synced back to it.
 
 ## Architecture at a glance
 
