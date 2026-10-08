@@ -1,6 +1,6 @@
 # Play release path: where P1-15 goes, and when the closed test starts
 
-**Date:** 8 Oct 2026 · **Author:** PM · **Status:** question 1 **Proposed**. Question 2: ticket P5-08 was added on the owner's answer 11 ("yes personal / start early"). The PM picked the start date (B); the owner can change it with "2A" or "2C".
+**Date:** 8 Oct 2026 · **Author:** PM · **Status:** question 1 **Approved: 1B** (owner, 8 Oct 2026). Question 2: ticket P5-08 was added on the owner's answer 11 ("yes personal / start early"). The PM picked the start date (B); the owner can change it with "2A" or "2C".
 
 **Facts used** (Google's help page [answer 14151465](https://support.google.com/googleplay/android-developer/answer/14151465), read through search results on 8 Oct; support.google.com doesn't load from this session. Re-check at P1-15 and when P5-08 starts):
 - Personal accounts created after 13 Nov 2023 must run a closed test before the Production track opens. At least 12 testers must have been opted in for at least the last 14 days in a row.

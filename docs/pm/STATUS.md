@@ -23,7 +23,7 @@ Owned by the product manager. Keep it one screen long. Statuses: Not started · 
 | P1-12 | Export | Not started | yes | principal-mobile-engineer | |
 | P1-13 | Watermark | Not started; top-left, 3% margin (8 Oct) | — | principal-mobile-engineer | |
 | P1-14 | Drafts screen | Not started | yes | principal-mobile-engineer | |
-| P1-15 | Release plumbing: signing, CI upload to internal testing | **Blocked on the owner**: upload key + service account "soon, when ready to publish". Proposed: build it when they arrive, latest 11 Jan 2027; P1 closes without it only if the owner agrees | — | principal-mobile-engineer | proposal 2026-10-08-play-release-path (1) |
+| P1-15 | Release plumbing: signing, CI upload to internal testing | **Waits on the owner (1B, approved 8 Oct):** built in the first session after the upload key + service account exist, latest 11 Jan 2027 (P5-08 needs it). Phases close without it; phase-end internal-testing builds are skipped until then | — | principal-mobile-engineer | proposal 2026-10-08-play-release-path (1) |
 | P1-17 | Hindi display face (added 8 Oct) | Not started; designer picks the face first | yes (pick + document) | ux-designer, principal-mobile-engineer | decision-log 8 Oct |
 | P5-08 | Closed test for production access (added 8 Oct) | Not started; starts ≈ 25 Jan 2027; owner recruits 15–20 testers in early January; needs P1-15 | — | product-manager, owner | proposal 2026-10-08-play-release-path (2) |
 
@@ -34,4 +34,4 @@ Owned by the product manager. Keep it one screen long. Statuses: Not started · 
 
 **Watching:** sounds keep their times when earlier clips are cut (owner tries the P1-06 build, then decides); P1-04 and P1-06 at the top of L; version-1 drafts and silent clips in P1-04; Supabase Storage Free limits until R2 (P6-07); public repo: secret scan, redistributable bundled files only.
 
-**Owner answered all 15 questions on 8 Oct** (decision-log). **To decide:** proposal 2026-10-08-play-release-path, 1A/1B/1C (P1-15), optionally 2A or 2C (closed-test start). **Owner actions:** allow `freesound.org`, `cdn.freesound.org`, `dl.google.com`, `maven.google.com` · P1-02 steps 1–11 and P1-03's export check · Firebase: confirm the test crash, create `media_base_url` · GitHub Secret Protection + Push protection · upload key + service account by 11 Jan 2027.
+**Owner answered all 15 questions on 8 Oct** (decision-log). **Decided:** play-release path 1B (P1-15 when the owner's credentials arrive, latest 11 Jan 2027); closed test from ≈ 25 Jan 2027. **Owner actions:** allow `freesound.org`, `cdn.freesound.org`, `dl.google.com`, `maven.google.com` · P1-02 steps 1–11 and P1-03's export check · Firebase: confirm the test crash, create `media_base_url` · GitHub Secret Protection + Push protection · upload key + service account by 11 Jan 2027.
