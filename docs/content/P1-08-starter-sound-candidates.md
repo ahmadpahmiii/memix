@@ -2,6 +2,9 @@
 
 Prepared by the backend engineer on 8 Oct 2026. No audio is in the repo yet: this list and the two scripts in `scripts/audio/` are committed so the research survives the cloud session. The owner approves each sound before it ships (TICKETS.md: "P1-08 waits until the owner approves each starter-sound license (CC0 or equivalent)"). This is not legal advice; the PRD still recommends an IP-lawyer review before launch.
 
+
+> **Owner decision, 8 Oct 2026:** approved 1–3 and 5–11 (10 sounds); rejected 4 (air horn) and 12 (crowd "ooh"). Columns 1–5 of the checklist (license re-check with date, snapshot, original + sha256, listen, normalize) are done when the files are fetched; no audio is in the repo yet.
+
 ## Summary
 
 - **12 candidates, all CC0 1.0 (Creative Commons 0)**, all from Freesound. Total about 35 s of audio after trimming, about 0.6 MB at AAC 128 kbps, so the APK impact is negligible.
@@ -252,18 +255,18 @@ Steps for each sound:
 
 | # | Sound | Author | 1 License still CC0 (date) | 2 Snapshot + screenshot | 3 Original + sha256 | 4 Listened, clean | 5 Normalized and measured | Approved | Rejected (reason) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Sad trombone | kirbydx | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| 2 | Record scratch | musicvision31 | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| 3 | Boing | reelworldstudio | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| 4 | Air horn | jacksonacademyashmore | [ ] ____ | [ ] | [ ] | [ ] A/B vs the famous montage horn | [ ] | [ ] | [ ] |
-| 5 | Sitcom laugh | Kinoton | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| 6 | Whoosh | qubodup | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| 7 | Deep boom | _earthbound_ | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| 8 | Awkward crickets | Defelozedd94 | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| 9 | Wrong buzzer | KevinVG207 | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| 10 | Cartoon fall | plasterbrain | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| 11 | Drum roll | bigjoedrummer | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| 12 | Crowd "ooh" | noah0189 | [ ] ____ | [ ] | [ ] | [ ] check for broadcast sound | [ ] | [ ] | [ ] |
+| 1 | Sad trombone | kirbydx | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
+| 2 | Record scratch | musicvision31 | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
+| 3 | Boing | reelworldstudio | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
+| 4 | Air horn | jacksonacademyashmore | [ ] ____ | [ ] | [ ] | [ ] A/B vs the famous montage horn | [ ] | [ ] | [x] owner, 8 Oct 2026: thin provenance (medium risk) |
+| 5 | Sitcom laugh | Kinoton | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
+| 6 | Whoosh | qubodup | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
+| 7 | Deep boom | _earthbound_ | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
+| 8 | Awkward crickets | Defelozedd94 | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
+| 9 | Wrong buzzer | KevinVG207 | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
+| 10 | Cartoon fall | plasterbrain | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
+| 11 | Drum roll | bigjoedrummer | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
+| 12 | Crowd "ooh" | noah0189 | [ ] ____ | [ ] | [ ] | [ ] check for broadcast sound | [ ] | [ ] | [x] owner, 8 Oct 2026: thin provenance (medium risk) |
 | B1–B4 | Bench swaps (CC0) | see bench | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
 | B5–B6 | Bench (CC-BY, P3+ only) | see bench | not for P1 | | | | | | |
 
