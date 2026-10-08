@@ -112,8 +112,14 @@ P1 · Core and video editor (started 7 Oct 2026). Phase 0 merged to `main` (PR #
 
 ## Open items that affect code
 
-- Video background removal is **people only** in v1 (pending the owner's final OK).
-- Watermark: small "Memix" text, top-left, 3% margin (position still to be confirmed).
+Settled by the owner on 8 Oct 2026 (decision log):
+- Video background removal is **people only** in v1.
+- Watermark: small "Memix" text, **top-left**, 3% margin.
+- Media files live in **Supabase Storage for now** and move to Cloudflare R2 before launch. Read the media base URL from Remote Config (`media_base_url`), never hardcode it, so the move needs no app change.
+- Performance bar: **no visible lag and no memory leaks, on Android and iOS**. There is no named reference phone; the numbers in the tickets (30 fps preview, 60 fps timeline, 100 ms edits, export time) are measured on the owner's own phone.
+- Hindi uses a Devanagari display font (the designer picks an OFL face, e.g. Teko) where Anton has no glyphs.
+
+Still open:
 - WhatsApp sticker-pack spec must be checked at P2-09. Launch countries for trending lists are not final.
 
 ## Skills in this repo (`.claude/skills/`)
