@@ -6,6 +6,10 @@ on:
     # claude/phase-*: phase branches created by Claude Code cloud sessions, which can't push to phase-<n>.
     branches: [main, 'phase-*', 'claude/phase-*']
 
+# Read-only token: CI only builds and scans.
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -22,7 +26,9 @@ jobs:
       - run: scripts/check-secrets.sh
       # The repo is public: a key added in one commit and deleted in the next is still readable in the history.
       - if: github.event_name == 'pull_request'
-        run: scripts/check-secrets.sh --range "origin/${{ github.base_ref }}"
+        env:
+          BASE_REF: ${{ github.base_ref }}  # through env, never pasted into the script
+        run: scripts/check-secrets.sh --range "origin/$BASE_REF"
 
   android:
     name: Android build and lint

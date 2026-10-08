@@ -21,14 +21,17 @@ import sys
 
 BASE_BRANCH = os.environ.get("MEMIX_PR_BASE", "main")
 VERDICT_FILE = "memix-security-review.json"
-# Only where a command starts (line start, after ; & | ( or $( and optional VAR=value prefixes), so the
-# words inside a commit message or an echo don't count as opening a pull request.
-COMMAND_START = r"(?:^|[;&|(\n]|\$\()\s*(?:\w+=\S*\s+)*"
+# Only where a command starts: line start, after ; & | ( $( or a quote that opens `bash -c "..."`, with
+# optional VAR=value, env, command or sudo prefixes. Words in the middle of a commit message or an echo
+# don't count; a message that starts with the command itself does, and blocking it is the safe mistake.
+COMMAND_START = r"(?:^|[;&|(\n'\"]|\$\()\s*(?:(?:\w+=\S*|env|command|sudo)\s+)*"
 PR_COMMAND = re.compile(
     COMMAND_START
     + r"(?:gh\s+pr\s+create\b"
     r"|hub\s+pull-request\b"
-    r"|gh\s+api\b(?=[^\n]*/pulls\b)(?=[^\n]*(?:-X\s*POST|--method\s+POST|\s-[fF]\s)))"
+    r"|gh\s+api\b(?=[^\n]*/pulls\b)(?=[^\n]*(?:-X\s*POST|--method\s+POST|\s-[fF]\s))"
+    r"|(?:curl|wget|http|https)\b(?=[^\n]*api\.github\.com/repos/[^\s'\"]+/pulls\b)"
+    r"(?=[^\n]*(?:-X\s*POST|--request\s+POST|\s-d\s|--data|--json|\bPOST\b)))"
 )
 
 

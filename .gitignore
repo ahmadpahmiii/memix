@@ -71,6 +71,9 @@ supabase/.env.*
 # ---- Cloudflare Wrangler state (P0-07 upload script, P6-04 pages)
 .wrangler/
 
+# ---- Python bytecode from the Claude Code hooks
+__pycache__/
+
 # ---- Claude Code personal settings (team settings in .claude/ are committed)
 .claude/settings.local.json
 .claude/ios-memory/
