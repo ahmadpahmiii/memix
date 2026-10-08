@@ -10,7 +10,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import app.memix.App
 import app.memix.debug.ExportCheck
-import app.memix.debug.ProjectRoundTripCheck
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -21,9 +20,9 @@ class MainActivity : ComponentActivity() {
         val isDebugBuild = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         // Debug-only Crashlytics check (P0-08): adb shell am start -n app.memix/.android.MainActivity --ez memix.testCrash true
         if (isDebugBuild && intent.getBooleanExtra("memix.testCrash", false)) throw RuntimeException("Memix test crash")
-        // Debug-only project round trip (P1-01): --es memix.projectCheck save, force-stop, then verify. Logcat tag MemixProjectCheck.
+        // Debug-only project checks (P1-01 round trip, P1-07 auto-save): --es memix.projectCheck <step>, see ProjectChecks.kt.
         val projectCheckStep = intent.getStringExtra("memix.projectCheck")
-        if (isDebugBuild && projectCheckStep != null) lifecycleScope.launch { ProjectRoundTripCheck().run(projectCheckStep) }
+        if (isDebugBuild && projectCheckStep != null && savedInstanceState == null) startProjectCheck(projectCheckStep)
         // Debug-only export (P1-03): push the test media first (TECHNICAL_DESIGN), then --ez memix.exportCheck true. Logcat tag MemixExportCheck.
         if (isDebugBuild && intent.getBooleanExtra("memix.exportCheck", false)) lifecycleScope.launch { ExportCheck().run() }
         setContent { App(isDebugBuild) }
