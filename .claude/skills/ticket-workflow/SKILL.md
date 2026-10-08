@@ -34,4 +34,5 @@ Rules:
 4. **Phase gate.** The PM writes `docs/pm/phase-reports/P<n>.md` with final verdicts per ticket and the decisions the owner needs to make.
 5. **Retro.** The PM runs `/retro` and proposes agent, skill and rule changes. The owner approves, the main session applies them, and logs them in `.claude/agents/CHANGELOG.md`.
 6. Upload the phase build to Play internal testing (`/play-release`, internal track). Update `CLAUDE.md` → Current phase.
-7. **Open the phase PR** from `phase-<n>` to `main`: title `Phase <n>: <name>`; body = the ticket list with verdicts, links to the QA report and phase report, and the owner's decisions. The owner merges; the next phase branches from the updated `main`.
+7. **Security review.** Push the phase branch, then run `security-reviewer` on the pushed head. BLOCK means no PR: fix (rotate a leaked credential first), push and review again. `.claude/hooks/pr_security_gate.py` refuses to open a pull request without a PASS for the exact pushed commit, and the same applies to any other pull request.
+8. **Open the phase PR** from `phase-<n>` to `main`: title `Phase <n>: <name>`; body = the ticket list with verdicts, links to the QA report and phase report, and the owner's decisions. The owner merges; the next phase branches from the updated `main`.

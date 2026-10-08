@@ -52,13 +52,14 @@ The Claude Docs / design artifacts linked at the top of each doc are the source 
 
 - No FFmpeg / FFmpegKit or any GPL/LGPL library inside the app (desktop content scripts may use ffmpeg).
 - No secrets or account config in the repo. Every credential, where it lives and how CI gets it: `docs/CREDENTIALS.md`. Secrets live in `.env` (template `.env.example`), `local.properties` and CI secrets. The app ships only the Supabase publishable key (RLS: read active rows, insert `reports`). Turn on the secret check once per clone: `git config core.hooksPath .githooks`.
+- No pull request without a security review. `.claude/hooks/pr_security_gate.py` (registered in `.claude/settings.json`) blocks every pull request until `scripts/check-secrets.sh` is clean for the files and every commit since `main`, the branch is pushed, and the `security-reviewer` agent passed that exact commit. The repo is public, so a key deleted in a later commit is still exposed: rotate it first.
 - No catalog content without a recorded license (`source_url`, `license_type`, `license_proof`, `credit`). No YouTube rips.
 - No ads inside the editors or during export; interstitial max 1 per 3 exports and never on the first; rewarded ad removes the watermark for one export; no banners.
 - No accounts, no uploads of user media, no cloud rendering in v1.
 
 ## Team
 
-Five role agents in `.claude/agents/`. The main session orchestrates them with the `ticket-workflow` skill.
+Six agents in `.claude/agents/`: five role agents plus the `security-reviewer`. The main session orchestrates them with the `ticket-workflow` skill.
 
 | Agent | Owns | May edit |
 | --- | --- | --- |
@@ -67,11 +68,12 @@ Five role agents in `.claude/agents/`. The main session orchestrates them with t
 | `principal-mobile-engineer` | All app code, architecture, performance, code review of every Kotlin change | app modules, Gradle, CI |
 | `backend-engineer` | Supabase, R2, content scripts, remote data layer, cost and security | `supabase/`, `scripts/`, `:core:data` remote |
 | `qa-engineer` | Manual QA at the end of every phase: design + result, bugs, phase verdict | `docs/qa/` (hook-enforced) |
+| `security-reviewer` | Scans every commit a pull request would add for credentials, keys and files that must stay local; PASS or BLOCK per pushed commit | Its verdict in `.git/` and its memory (hook-enforced); never code |
 
 - **Authority:** the PM proposes scope, priority and date changes; **the owner decides**. Nobody changes scope silently.
 - **Branches and PRs:** one branch per phase (`phase-<n>`), one PR per phase, opened only when the phase is done. Tickets are commits on the phase branch.
 - **Per ticket:** PM ready check → designer spec (UI tickets) → engineer builds and checks by hand → principal code review → designer review (UI) → PM ticket check → commit on the phase branch (`<ID>: <ticket name>`, handoff in the commit message) and push.
-- **End of phase:** QA manual pass (emulator via adb + a short device checklist for the owner) → fixes → QA re-test → PM phase gate → `/retro` → internal-testing build → one PR from `phase-<n>` to `main`. The owner merges.
+- **End of phase:** QA manual pass (emulator via adb + a short device checklist for the owner) → fixes → QA re-test → PM phase gate → `/retro` → internal-testing build → `security-reviewer` PASS on the pushed head → one PR from `phase-<n>` to `main`. The owner merges.
 - **Improving the team:** at every phase gate the PM runs `/retro` and proposes exact edits to agents, skills or rules. The owner approves; applied changes are logged in `.claude/agents/CHANGELOG.md`. Each agent keeps lessons in `.claude/agent-memory/<agent>/MEMORY.md`.
 
 ## Quality without automated tests

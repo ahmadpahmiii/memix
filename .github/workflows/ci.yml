@@ -17,7 +17,12 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # the PR scan reads every commit since the base branch
       - run: scripts/check-secrets.sh
+      # The repo is public: a key added in one commit and deleted in the next is still readable in the history.
+      - if: github.event_name == 'pull_request'
+        run: scripts/check-secrets.sh --range "origin/${{ github.base_ref }}"
 
   android:
     name: Android build and lint

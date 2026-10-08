@@ -344,7 +344,7 @@ Memix has no automated tests (no unit, UI, screenshot or golden-frame tests): qu
 Memix keeps no user data on its servers: projects, imports and favorites stay on the phone.
 
 - The app ships only the Supabase public (anon) key. Access rules limit it to reading active catalog rows and inserting reports.
-- The Supabase secret key, R2 write keys and app signing keys never enter the repo. They live in CI secrets and on the admin machine. Full list: `docs/CREDENTIALS.md`; `scripts/check-secrets.sh` blocks credential-looking commits locally (pre-commit hook) and in CI.
+- The Supabase secret key, R2 write keys and app signing keys never enter the repo. They live in CI secrets and on the admin machine. Full list: `docs/CREDENTIALS.md`; `scripts/check-secrets.sh` blocks credential-looking commits locally (pre-commit hook) and in CI, and scans every commit of a pull request (`--range`); the `security-reviewer` agent and `.claude/hooks/pr_security_gate.py` gate every pull request (the repo is public).
 - The advertising ID is used only after consent where consent is required. Analytics events carry no personal data.
 - The Play Data safety form lists: advertising ID, crash logs and app interaction analytics.
 

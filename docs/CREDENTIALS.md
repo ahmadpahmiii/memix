@@ -5,6 +5,7 @@ Every key, password, token and private config file Memix uses from P0 to the iOS
 Guards:
 - `.gitignore` covers every file below.
 - `scripts/check-secrets.sh` blocks a commit that contains a key, token, private key or one of these files. It runs as the pre-commit hook (`.githooks/pre-commit`) and in CI. Turn the hook on once per clone: `git config core.hooksPath .githooks`.
+- Before any pull request, `scripts/check-secrets.sh --range origin/main` also scans every commit on the branch (a key deleted in a later commit is still public), and the `security-reviewer` agent reviews the diff. `.claude/hooks/pr_security_gate.py` blocks the pull request until both pass for the pushed commit; CI repeats the history scan on every pull request.
 - Never `git add -f` an ignored file. If a secret ever reaches GitHub, rotate it first, then clean history.
 - Back up every **Secret** in a password manager; local files can be lost.
 
