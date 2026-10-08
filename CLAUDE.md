@@ -15,7 +15,7 @@ Memix ("Memix: Meme Video & Photo" on the stores) is a meme maker with **two sep
 | Screen spec for a UI ticket | `docs/ux/specs/` |
 | Bugs and QA results | `docs/qa/` |
 
-The Claude Docs / design artifacts linked at the top of each doc are the source of truth; these files are exports. If code and docs disagree, stop and ask — don't silently pick one. When behavior, a module or a command changes, update the docs in the same ticket commit, including any skill or agent file that names it (grep `.claude/` for the old name).
+**The repo files are the source of truth** (owner, 8 Oct 2026). The Claude Docs and design artifacts linked at the top of some docs are the original plan, kept for reference only; don't sync changes back to them. If code and docs disagree, stop and ask — don't silently pick one. When behavior, a module or a command changes, update the docs in the same ticket commit, including any skill or agent file that names it (grep `.claude/` for the old name).
 
 ## Stack (pin latest stable in `gradle/libs.versions.toml` on project creation)
 
@@ -71,6 +71,7 @@ Six agents in `.claude/agents/`: five role agents plus the `security-reviewer`. 
 | `security-reviewer` | Scans every commit a pull request would add for credentials, keys and files that must stay local; PASS or BLOCK per pushed commit | Its verdict in `.git/` and its memory (hook-enforced); never code |
 
 - **Authority:** the PM proposes scope, priority and date changes; **the owner decides**. Nobody changes scope silently.
+- **Asking the owner to decide** (owner, 8 Oct 2026): for each decision give the **problem** (what's wrong or missing, in plain words), the **considerations** (what each option costs and gives: time, money, risk, user impact), and the **suggested fixes** as lettered options with one recommendation. Keep the language simple; the owner answers in short form ("1A, 2B").
 - **Branches and PRs:** one branch per phase (`phase-<n>`), one PR per phase, opened only when the phase is done. Tickets are commits on the phase branch.
 - **Per ticket:** PM ready check → designer spec (UI tickets) → engineer builds and checks by hand → principal code review → designer review (UI) → PM ticket check → commit on the phase branch (`<ID>: <ticket name>`, handoff in the commit message) and push.
 - **One builder at a time** (owner, 8 Oct 2026, to stay inside usage limits): only one agent builds code at once; small helpers (ready checks, reviews, research) may run alongside. Builders write their handoff file early and update it as they go.
