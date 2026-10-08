@@ -12,9 +12,13 @@ Make the cuts a meme needs (split, trim, delete, duplicate, reorder) and control
 
 | Ticket | Done when |
 | --- | --- |
-| P1-06 | Each edit shows in the preview within 100 ms |
+| P1-06 | Each edit shows in the preview within 100 ms on the owner's phone; LeakCanary shows no leaks |
 | P1-08 | The sound stays in sync within 1 frame in preview and export |
 | P1-09 | Detached audio becomes its own audio-track clip |
+
+**Performance bar (owner, 8 Oct):** there is no named reference phone. The bar is no visible lag and no memory leaks, on Android and iOS. The ticket numbers are measured on the owner's own phone with a release-type build.
+
+**Later, not P1 (owner, 8 Oct; TICKETS → Later · Improvements):** keyboard shortcuts are L-01 and the locked-track UI is L-02. Sections marked **Later (L-01)** or **Later (L-02)** are drafts for those tickets: not built or checked in P1.
 
 **Fast path, with tap counts:**
 - **Meme sound:** the "Add a meme sound" pill or the Meme sounds tool (1), then a sound's add button (2). The sound lands at the playhead.
@@ -68,7 +72,7 @@ The tools stay in thumb reach, at the bottom where the main tools were. This rep
 | Meme sound | Volume · Split · Delete · Move here · Duplicate |
 | Audio clip (detached original audio) | Volume · Split · Delete · Move here · Duplicate |
 | Text item | P1-10 puts its own tools first (edit text, style), then Split · Delete · Move here · Duplicate |
-| Any item on a locked track | Unlock, then that item's usual tools |
+| Any item on a locked track: **Later (L-02)** | Unlock, then that item's usual tools |
 
 - **Why this order:**
   - Split comes first because it's the most used cut.
@@ -83,7 +87,7 @@ The tools stay in thumb reach, at the bottom where the main tools were. This rep
   - `detach_audio`
   - `reorder`
   - `move_here`
-  - `lock` (for Unlock)
+  - `lock` (for Unlock): Later (L-02)
 - **Look:**
   - Tools: `text-secondary` icon and label.
   - Delete: icon and label in `danger`, 5.2:1 on `surface`, always with its word.
@@ -219,7 +223,7 @@ All times are in microseconds. The minimum length of any item is 0.1 s (100,000 
 - **Move here** (the tap alternative): sets the item's start to the playhead, with the same lane rule.
   - If the playhead is at the end of the video, the item is placed to end there instead, so it's still heard (same rule as landing).
 - **Undo** is one step ("Move").
-- **Other tracks don't follow the main track.** When main clips ripple (trim, delete, duplicate, reorder), items on other lanes keep their times. A sound placed on a frame can drift off it if earlier clips change afterwards. That's the simple model every mobile editor starts from (Assumption). Undo and Move fix it. Whether a "keep sounds with their clip" option is worth adding is a question for the P1 test (Questions).
+- **Other tracks don't follow the main track.** When main clips ripple (trim, delete, duplicate, reorder), items on other lanes keep their times. A sound placed on a frame can drift off it if earlier clips change afterwards. That's the simple model every mobile editor starts from (Assumption). Undo and Move fix it. **This stays as specified for P1 (owner, 8 Oct):** the owner tries it on the P1-06 build before deciding whether a "keep sounds with their clip" option is worth adding (Questions).
 
 ### Snapping (trim and move)
 - **Targets:**
@@ -266,7 +270,7 @@ While trimming, moving or reordering, a finger within `touch-target` of the time
 ### Mute every clip
 - **Where:** the timeline toggle at the head of the main track (P1-05), and the same toggle in any video clip's Volume panel.
 - **What it changes:** `Track.muted` on the main video track. It applies to every clip's own sound at once and takes effect in the preview immediately. Detached audio clips aren't affected.
-- **Undo** is one step ("Mute original audio" / "Unmute original audio"). It fires `tool_use` `mute_original`.
+- **Undo** is one step ("Mute original audio" / "Unmute original audio"). It fires `tool_use` `mute_original` or `unmute_original` (one id per direction, PM 8 Oct).
 - **Why both places:** muting the original so only the meme sound plays is the most common audio move in reaction memes (Assumption). The toggle sits where the video starts, and the panel reaches it from anywhere.
 
 ### Clip volume
@@ -296,15 +300,15 @@ While trimming, moving or reordering, a finger within `touch-target` of the time
 - Re-attaching isn't in v1; undo is the way back.
 - Clipchamp and CapCut separate audio onto its own track the same way (Guidance; Evidence from vendor pages).
 
-## Locked items
-Nothing in P1 locks a track, but `Track.locked` exists and later templates may set it (P1-05 → Locked).
+## Locked items: Later (L-02)
+Not built or checked in P1 (owner, 8 Oct; TICKETS → Later · Improvements, L-02). Nothing in P1 locks a track. This section is the draft for L-02: `Track.locked` exists and later templates may set it (P1-05 → Locked).
 - **A tap selects the item:** outline, no handles.
 - **A long-press doesn't lift it.** It selects the item and explains "This track is locked. Unlock it to edit."
 - **The clip tool bar** starts with **Unlock** (icon `lock`), then the usual tools. Each of those explains the same way on tap.
 - **Unlock** clears `Track.locked` for the whole track. Undo is one step ("Unlock"), and it fires `tool_use` `unlock`.
 - **Locked main track:** ripple edits from other main clips are refused with the same explanation.
 
-## Replace (pending the owner's decision on P1-16)
+## Replace (P1-16, approved 8 Oct; video and photo clips only; finalized when P1-16 comes up)
 - **Slot:** the clip tool bar on main video and photo clips, after Reorder. Hidden until P1-16 is approved and built.
 - **Recommended behavior,** so P1-16 can start from it:
   - Replace opens the P1-02 picker for one item. The new media takes the old clip's place and length, so sounds and text stay in sync.
@@ -312,7 +316,7 @@ Nothing in P1 locks a track, but `Track.locked` exists and later templates may s
   - **A video at least as long as the clip** is used from its start (trim in 0), with its own sound (audio attached, volume 100%).
   - **A video shorter than the clip** isn't used. A toast explains: "That video is shorter than this clip (00:03.20). Pick a longer one, or trim this clip first." Shrinking the clip would ripple the main track and pull everything after it out of sync, which is exactly what Replace promises not to do.
   - Undo is one step ("Replace"). It fires `tool_use` `replace_clip`.
-- **Open question** (for the PM, with P1-16): should Replace also cover meme sounds (swap the sound, keep its start)? The board shows Replace on a selected sound.
+- **Meme sounds: no Replace (owner, 8 Oct).** In P1, swapping a sound is Delete plus add at the playhead; revisit with the P3-05 picker spec. The board shows Replace on a selected sound; that's dropped.
 
 ## States
 | State | What shows | Copy |
@@ -337,7 +341,7 @@ Nothing in P1 locks a track, but `Track.locked` exists and later templates may s
 | Clip has no sound | Volume and Detach audio explain | `explain_no_sound` |
 | Sound already detached | Volume and Detach audio explain | `explain_detached` |
 | Detached while muted | New clip at 0%; toast | `explain_detached_muted` |
-| Locked | Unlock first; other tools explain | `tool_unlock`, `explain_locked` |
+| Locked: **Later (L-02)** | Unlock first; other tools explain | `tool_unlock`, `explain_locked` (L-02) |
 | Long content | Tool labels wrap to two lines inside 64 dp; at large font scales items widen and the bar grows (Accessibility). Long sound titles end in an ellipsis on the clip and wrap to two lines in the sheet. | |
 | Offline, permission | Doesn't apply: everything is on the phone; no permission needed | none |
 
@@ -379,7 +383,7 @@ English source; the engineer machine-drafts id, es, pt and hi until P5. Budgets 
 | `tool_reorder` | Reorder | 20 | Change the order of clips |
 | `tool_move_here` | Move here | 20 | "Here" = the playhead; the spoken label says so |
 | `tool_move_here_a11y` | Move to playhead | 24 | Screen reader label for Move here |
-| `tool_unlock` | Unlock | 20 | |
+| `tool_unlock` | Unlock | 20 | Later (L-02): don't add in P1 |
 | `tool_replace` | Replace | 20 | P1-16, pending |
 | `clip_tools_close` | Close clip tools | 24 | Screen reader only |
 | `reorder_move_earlier` | Move earlier | 20 | |
@@ -399,7 +403,7 @@ English source; the engineer machine-drafts id, es, pt and hi until P5. Budgets 
 | `explain_no_sound` | This clip has no sound. | 40 | |
 | `explain_detached` | This clip's sound is on its own track now. Select it there. | 70 | |
 | `explain_detached_muted` | Original audio was muted, so the detached sound starts at 0%. | 70 | |
-| `explain_locked` | This track is locked. Unlock it to edit. | 50 | |
+| `explain_locked` | This track is locked. Unlock it to edit. | 50 | Later (L-02): don't add in P1 |
 | `explain_sound_unreadable` | That sound won't play. Try another one. | 50 | |
 | `explain_replace_too_short` | That video is shorter than this clip (%1$s). Pick a longer one, or trim this clip first. | 110 | P1-16, pending. %1$s = timecode "00:03.20" |
 | `a11y_sound_added` | %1$s added at %2$s | 70 | %1$s = sound title, %2$s = spoken time (P1-04) |
@@ -415,7 +419,7 @@ English source; the engineer machine-drafts id, es, pt and hi until P5. Budgets 
 | `edit_unmute_original` | Unmute original audio | 24 | |
 | `edit_detach_audio` | Detach audio | 24 | |
 | `edit_add_sound` | Add sound | 24 | |
-| `edit_unlock` | Unlock | 24 | |
+| `edit_unlock` | Unlock | 24 | Later (L-02): don't add in P1 |
 
 Translator notes:
 - **Edit names** appear after "Undo: " and "Redo: ". Use the noun or verb form that reads naturally there, and keep it short.
@@ -449,7 +453,8 @@ Translator notes:
   - Focus moves to the sheet, and its title is the pane title.
   - Each row's play and add buttons are labeled with the sound's name (SoundRow's existing strings).
   - When the sheet closes after adding, focus goes to the new sound on the timeline, and its announcement plays.
-- **Keyboard** (with the P1-04 and P1-05 keys):
+- **Keyboard in P1** (basic access, not shortcuts): Tab reaches every tool, panel control and sheet button, and Enter activates it. **Escape** does the same as system back: it closes the panel or sheet, cancels reorder, or clears the selection (P1-04 back order).
+- **Keyboard shortcuts: Later (L-01)**, not built or checked in P1. Draft for L-01, alongside the P1-04 and P1-05 drafts:
 
   | Key | Action |
   | --- | --- |
@@ -457,7 +462,6 @@ Translator notes:
   | Delete / Backspace | Delete |
   | Ctrl+D | Duplicate |
   | Alt+Left / Alt+Right | Move earlier or later (main clips), or nudge by one frame (other items) |
-  | Escape | Close the panel or sheet, cancel reorder, or clear the selection |
 
 - **Touch targets:**
   - Tools, Close clip tools, handles, the sheet's buttons and the panel's controls are all 48 dp or more.
@@ -476,9 +480,9 @@ Translator notes:
 ## Analytics
 | Event | When | Parameters |
 | --- | --- | --- |
-| `tool_use` | Once per committed undo step, never during a drag, never when a tool only explains | `editor: "video"`, `tool`: `split`, `trim`, `delete`, `duplicate`, `reorder`, `move`, `volume`, `mute_original`, `detach_audio`, `unlock`; `undo` and `redo` (P1-04); later `add_media` and `replace_clip` (P1-16) |
-| `sound_add` | A meme sound lands from the sheet. Not for duplicates (those are `tool_use` `duplicate`). | `sound_id` (catalog id of the bundled sound), `tab`: `"starter"` (pending the PM, Questions), `editor: "video"` |
-| `sound_preview` | A sound starts playing in the sheet | `sound_id`, `tab: "starter"` (pending) |
+| `tool_use` | Once per committed undo step, never during a drag, never when a tool only explains | `editor: "video"`, `tool`: `split`, `trim`, `delete`, `duplicate`, `reorder`, `move`, `volume`, `mute_original`, `unmute_original`, `detach_audio`; `undo` and `redo` (P1-04); later `add_media` and `replace_clip` (P1-16), and `unlock` (L-02). Ids confirmed by the PM on 8 Oct. |
+| `sound_add` | A meme sound lands from the sheet. Not for duplicates (those are `tool_use` `duplicate`). | `sound_id` (catalog id of the bundled sound), `tab`: `"starter"` (accepted by the PM, 8 Oct), `editor: "video"` |
+| `sound_preview` | A sound starts playing in the sheet | `sound_id`, `tab: "starter"` |
 
 - **Opening a panel or the sheet,** selecting and zooming fire nothing.
 - **Analytics stays off until consent** (P5-01). The events are coded now so they're ready.
@@ -496,6 +500,8 @@ Measured (note in the QA report):
   - Screen-record the emulator or phone at 60 fps.
   - For each edit (split, trim release, delete, duplicate, reorder drop, volume release), count frames from the commit to the preview change. Pass: 6 frames (100 ms) or fewer.
   - Split shows no preview change by design; check that the timeline updates instead.
+  - On the owner's phone with a release-type build; emulator numbers are notes only. Pass also needs no visible lag.
+- **Leaks:** a debug build with LeakCanary. Open and close the editor 5 times and make every edit; no leak reported.
 - **P1-08 Done when:** a debug project with a test-tone sound placed on a frame that has a burned-in timecode (P1-03 method).
   - In the preview, step frame by frame: the tone starts on the right frame.
   - In the export, use `ffprobe` or a waveform view against the timecode frames.
@@ -514,7 +520,7 @@ I don't edit code, so these are requests.
    - `detach_audio`: a rectangle above a short wave line, with a gap between them.
    - `reorder`: two rectangles under a curved two-way arrow.
    - `move_here`: an arrow pointing right into a vertical line.
-   - `lock`: from P1-05.
+   - `lock` waits for L-02.
    - `replace` waits for P1-16.
 2. **Components:**
    - ToolPanel (`design/system/components/ToolPanel/README.md`) and Menu (`design/system/components/Menu/README.md`), in `:core:designsystem` and the debug catalog.
@@ -531,20 +537,19 @@ I don't edit code, so these are requests.
 6. **Volume above 100%:** apply the same gain in preview and export. A soft limiter, or plain clipping, is your call, provided both match.
 7. **Starter pack:** read the title, duration, credit and catalog id from the bundled pack's metadata (the same fields as the catalog: `credit` comes from the license record). Until licensed sounds exist, release builds bundle none; debug builds may add self-made test tones.
 8. **Haptics:** Compose `HapticFeedbackType.Confirm`, `LongPress` and `SegmentTick`, as in the Motion and haptics table. Verify the names in the current Compose docs.
-9. **Analytics:** as in the table. `sound_add.tab` stays `"starter"` until the PM decides.
+9. **Analytics:** as in the table. `sound_add.tab` is `"starter"` (PM, 8 Oct) until P3-05's spec sets the real tab ids.
 
 ## Proposals and questions for the PM
-1. **`sound_add.tab` and `sound_preview.tab` for the starter sheet.** The PRD's tab values are Trending, Local, Global, Favorites and My sounds; none fits a sheet with no tabs. I propose `"starter"` until P3-05 brings real tabs. No scope change.
-2. **`tool_use` values.** Confirm the tool ids above, including `undo` and `redo` (P1-04). The undo rate is the cheapest signal that edits go wrong.
-3. **P1-16 (owner decision pending):**
-   - The Replace slot and the Add media tile (P1-05) stay hidden until it's approved. The recommended Replace behavior is above.
-   - Should Replace also swap meme sounds (keeping the start time)? The board shows it on a sound.
+1. **`sound_add.tab` and `sound_preview.tab` for the starter sheet.** **Decided (PM, 8 Oct):** `"starter"` until P3-05 brings real tabs.
+2. **`tool_use` values.** **Decided (PM, 8 Oct):** ids as in the Analytics table, with one id per direction for mute (`mute_original`, `unmute_original`). `unlock` waits for L-02.
+3. **P1-16. Decided (owner, 8 Oct):** approved. Replace covers video and photo clips only; in P1, swapping a meme sound is Delete plus add at the playhead. The Replace slot and the Add media tile (P1-05) stay hidden until P1-16 is built. I finalize the Replace section when P1-16 comes up.
 4. **Sounds don't follow their clip.** In v1, items on other tracks keep their times when main clips ripple. That's simple and predictable, but a sound placed on a frame drifts if earlier clips are trimmed later.
-   - I'd test it in the P1 build with the owner's usability script before proposing anything.
-   - A "keep sounds with their clip" option would be a P4 proposal, if the test shows drift hurts.
-5. **The board's "Duck audio" chip** isn't in the PRD's v1 audio list, so it's left out. No proposal now.
+   - **Stays as specified (owner, 8 Oct).** The owner tries it on the P1-06 build before deciding. QA's P1 plan and the usability script include "add a sound on a moment, then trim the first clip's start".
+   - A "keep sounds with their clip" option would be a proposal before P4 planning, if the trial shows drift hurts.
+5. **The board's "Duck audio" chip** isn't in the PRD's v1 audio list, so it's left out (PM agreed, 8 Oct).
+6. **Keyboard shortcuts and the locked-track UI** moved to Later, L-01 and L-02 (owner, 8 Oct). The sections here stay as drafts for those tickets.
 
-Nothing here needs the owner's decision beyond P1-16, which is already pending.
+Open for the owner: only item 4, after trying the P1-06 build.
 
 ## Evidence
 | Claim | Strength | Source |

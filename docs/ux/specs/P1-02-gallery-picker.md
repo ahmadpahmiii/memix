@@ -133,8 +133,9 @@ The editor is still the P0-05 placeholder; P1-04 and P1-05 replace it. So the "D
 | None went in | Standard result (grabber and close button): title, body, rows, **Pick again** (primary). It closes the sheet (200 ms), then opens the picker. Close, scrim, drag or back → where you started, no project. | `import_none_title`, `import_none_body`, `import_pick_again` |
 | Can't be read (per item) | Row reason. The file couldn't be opened or read: it was deleted, access was lost, or a cloud-only item couldn't download. | `import_reason_unreadable` |
 | Won't play (per item) | Row reason. The copy has no playable video track, the image won't decode, or the metadata check fails. | `import_reason_unsupported` |
-| Not enough space (before copying) | Checked before the first byte is copied: total known size plus 100 MB headroom, against the space Memix can use. Standard sheet: title, body with both sizes, **Free up space** (primary) opens Android's storage manager and asks for the missing amount. When you come back to Memix it checks again by itself. With enough space, copying starts and the sheet switches to Copying; without, the numbers update. Close → nothing added. | `import_storage_title`, `import_storage_body`, `import_free_up_space` |
+| Not enough space (before copying) | Checked before the first byte is copied: total known size plus 100 MB headroom, against the space Memix can use. Standard sheet: title, body with both sizes, **Free up space** (primary) opens Android's storage manager and asks for the total needed, headroom included (`EXTRA_REQUESTED_BYTES` is the total the app will allocate; the system works out what's missing). When you come back to Memix it checks again by itself. With enough space, copying starts and the sheet switches to Copying; without, the numbers update. Close → nothing added. | `import_storage_title`, `import_storage_body`, `import_free_up_space` |
 | Ran out of space while copying | Same sheet; the first size is what's left to copy. Items already copied are kept for the retry and dropped on Close. | same |
+| Ran out of space saving the new project (added 8 Oct, owner decision) | **When:** every file is copied and checked and at least one went in, but the new project's first save fails because the phone is full (`StorageFull` at the database write). Not "Couldn't add your media": the files are fine, the phone is full. **Shows:** the same "Not enough space" sheet and **Free up space** button. Nothing is left to copy, so the first size is the 100 MB headroom (what Memix waits for before it saves again) and the second is what's free now. If the copying sheet was up, its content cross-fades to this one (the bar showed 100% first); after a quick copy with no sheet, the sheet slides up already in this state. **Copies:** kept while the sheet is open. **Back in Memix** (it checks by itself, as above): with 100 MB free, it saves again, without copying anything again and without going back to Copying, then goes where a good save goes: the editor, or "Some didn't go in" when items failed or the limit applied. `project_create` fires then, once. Still too full: the numbers update, and the sheet stays. **Close** (button, scrim, drag, back): the copies are deleted, no project, no event; you're where you started. If Android stops the app while the sheet is up, the next launch deletes the copies (no saved project uses them). **Other save failures** (not space; rare) keep today's build: "Couldn't add your media" with no rows, copies deleted. **Not here:** saves inside the editor (autosave, later "Add media") use P1-07's save banner, not this sheet. | Reused, no new strings: `import_storage_title`, `import_storage_body` (%1$s = 100 MB), `import_free_up_space`; Close as in "Not enough space" |
 | Offline | Files on the phone copy as usual. A cloud-only item may fail with "Can't be read", because the picker fetches cloud items when Memix opens them (Guidance). | none |
 | No picker app on the phone (launch fails) | Standard sheet: title, body, **Close** (secondary, full width, in thumb reach) | `import_no_picker_title`, `import_no_picker_body`, `close` |
 | App in the background while copying | Copying goes on while the app is running, and the sheet shows the current state on return. If Android stops the app, the pick is lost: the picker's access ends when the app stops (Guidance). Unfinished files are deleted at the next launch, and a first import leaves no project. | none |
@@ -200,7 +201,7 @@ English source. Translators: the engineer machine-drafts id, es, pt and hi (allo
 | `import_reason_unsupported` | Damaged, or a format this phone can't play | 60 | |
 | `import_reason_unreadable` | Couldn't be read. If it's in the cloud, check your connection. | 80 | |
 | `import_storage_title` | Not enough space | 28 | |
-| `import_storage_body` | Your media needs %1$s, and your phone has %2$s free. Free up space, then come back to carry on. | 130 | Sizes in the user's language. "Carry on" = continue. |
+| `import_storage_body` | Your media needs %1$s, and your phone has %2$s free. Free up space, then come back to carry on. | 130 | Sizes in the user's language. "Carry on" = continue. %1$s includes the 100 MB headroom; after a failed first save it is the headroom alone. |
 | `import_free_up_space` | Free up space | 22 | |
 | `import_no_picker_title` | Can't open your gallery | 32 | |
 | `import_no_picker_body` | This phone has no app for picking videos and photos. | 80 | |
@@ -239,7 +240,7 @@ Translator notes:
 - **The picker** handles its own accessibility (system UI).
 
 ## Analytics
-- **`project_create`** `{editor: "video", source: "blank"}` fires once, when the new project is first saved with at least one item, after a full or partial import. It doesn't fire on back-out, cancel, or when nothing went in. "Blank" is the PRD's value for "not from a template"; see the PM question below.
+- **`project_create`** `{editor: "video", source: "gallery"}` fires once, when the new project is first saved with at least one item, after a full or partial import. It doesn't fire on back-out, cancel, when nothing went in, or on a first save that failed for space; it fires when the save after freeing space succeeds. `gallery` was approved by the owner on 8 Oct (decision log; PRD → Metrics and analytics): `blank` now means only the photo editor's blank layout.
 - **Later, "Add media":** `tool_use` `{editor: "video", tool: "add_media"}` when the items land.
 - **No new events.** For import failure rates, the engineer may log Crashlytics non-fatals with only the file type, a size bucket and the error class: no file names, no URIs.
 
@@ -264,7 +265,8 @@ Checks without screenshots (note the results in the QA report):
 - **Limit:**
   - The system picker stops at 35.
   - The file chooser with more than 35 picked shows the limit note and adds 35.
-- **Quick path:** one short phone clip goes straight to the editor and the sheet never flashes. On the reference phone, note how long a 1 GB video takes to copy.
+- **Quick path:** one short phone clip goes straight to the editor and the sheet never flashes. On the owner's phone, note how long a 1 GB video takes to copy.
+- **Failed first save for space** (hard to hit by hand: the disk must fill between the last copy and the save). Checked off-device by the engineer with a save that returns `StorageFull`: the "Not enough space" sheet shows 100 MB needed; Close deletes the pick's folder and leaves no draft; a resume with space saves without copying again, opens the editor (or "Some didn't go in"), and fires `project_create` once.
 - **Phase end, once Drafts (P1-14) exists:** delete the original from the gallery, reopen the draft, and check it still plays from Memix's copy.
 
 ## Requests to the principal mobile engineer
@@ -281,6 +283,7 @@ I don't edit code, so these are requests, not changes.
    - Check with `StorageManager.getAllocatableBytes` before copying, needing the total plus 100 MB. Running out mid-copy goes to the same state.
    - "Free up space" opens `StorageManager.ACTION_MANAGE_STORAGE` with `EXTRA_REQUESTED_BYTES`. If that doesn't open, use the internal storage settings screen. If neither opens, hide the button and the body still tells the user what to do.
    - Check again when the app comes back to the foreground.
+   - **Failed first save (8 Oct):** when `SaveGalleryProjectUseCase` returns `StorageFull`, don't discard the batch. Keep it as the pick waiting for space and show `NotEnoughSpace` (`checkSpace` on a fully copied batch already gives the 100 MB headroom). On resume with enough space, run only the save and the result step again, not `copy`. Today's `finish()` sends every save failure to `NoneAdded` with no rows (`MediaImportViewModel.kt:122-126`); keep that only for failures other than `StorageFull`.
 5. **Check each copy:** a video needs a duration and a playable video track; a photo must decode. Record each source's full duration and pixel size at import, because P1-06 trim limits and P1-11 fit need them. Where to store them is the engineer's call.
 6. **Names and timing:**
    - Leave `Project.name` empty at creation; no schema change.
@@ -297,7 +300,8 @@ I don't edit code, so these are requests, not changes.
    - Memes move faster, and meme sounds are mostly a few seconds long (Assumption).
    - The user can trim it in P1-06.
 2. **No ticket for "add more at any time" and "replace a clip"** (PRD → Video editor → Media). This spec defines how "Add media" behaves. Either fold both into P1-06 or add an S-size ticket after P1-05.
-3. **`project_create.source`** has only `blank` and `template` in the PRD. A gallery start is sent as `blank` for now. Confirm, or add `gallery` so P2 can tell "blank layout" photo projects apart from gallery ones.
+3. ~~**`project_create.source`** has only `blank` and `template` in the PRD.~~ **Decided 8 Oct (owner):** `source` gains `gallery`; video gallery starts send it, and `blank` means only the photo editor's blank layout (decision log; PRD → Metrics and analytics). Analytics above is updated.
+4. **Decided 8 Oct (owner): a failed first save for space** reuses the "Not enough space" sheet with Free up space, not "Couldn't add your media". See States: "Ran out of space saving the new project".
 
 Nothing here needs the owner's decision.
 

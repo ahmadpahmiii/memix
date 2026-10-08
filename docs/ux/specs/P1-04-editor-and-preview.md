@@ -10,7 +10,11 @@ It stays consistent with `P1-02-gallery-picker.md`: the editor opens on a projec
 ## Job
 Show the meme as it will export and let the user find the exact moment to work on. Every video job in the PRD runs through this screen; the first one is "React to a clip with a meme sound": watch the fail, stop on its frame, drop a boom there.
 
-**Done when** (TICKETS): 1080p preview plays at 30 fps or more on the reference phone.
+**Done when** (TICKETS): 1080p preview plays at 30 fps or more on the owner's phone; LeakCanary shows no leaks.
+
+**Performance bar (owner, 8 Oct):** there is no named reference phone. The bar is no visible lag and no memory leaks, on Android and iOS. The ticket numbers are measured on the owner's own phone with a release-type build.
+
+**Later, not P1 (owner, 8 Oct; TICKETS → Later · Improvements):** keyboard shortcuts are L-01 and the locked-track UI is L-02. Sections marked **Later (L-01)** or **Later (L-02)** are drafts for those tickets: not built or checked in P1.
 
 **The one blue action:** **Export**, top-right, arrives with P1-12. Until then the editor has no blue button. Meme-sound UI is blue everywhere by the design-system rule (the Meme sounds tool, the "Add a meme sound" row, sound clips), and that's the only other blue. Selection is white.
 
@@ -108,7 +112,7 @@ Board sample content and what replaces it:
 ### Seek
 - **Main way:** drag the timeline. It scrolls under the fixed playhead, and the preview follows (P1-05).
 - **Speed:** each preview update lands in under 100 ms (PRD scrub target). While the user scrolls fast, the preview may show the nearest frame it can decode quickly. Media3's scrubbing mode exists for this (Guidance). Within 100 ms of the scroll stopping, it shows the exact frame.
-- **Other ways:** tap the ruler (P1-05); arrow keys; the TalkBack playhead control (Accessibility).
+- **Other ways:** tap the ruler (P1-05); the TalkBack playhead control (Accessibility). Arrow keys: later (L-01).
 - **Sound:** seeking is silent. There's no audio scrubbing in v1.
 
 ## Undo and redo (P1-07)
@@ -118,7 +122,7 @@ Board sample content and what replaces it:
   - Disabled: icon in `text-muted`. Taps do nothing, and TalkBack says "Undo, disabled".
   - Undo is disabled when the history is empty (a just-opened project). Redo is disabled until something is undone, and again after any new edit.
   - This is the one place Memix uses a plain disabled state instead of "explain on tap". "Nothing to undo" would only be noise, and greyed undo/redo is a convention everyone reads (Guidance: the board already shows Redo greyed).
-- **What counts as one step:** each committed edit. That means one gesture end (trim, move, reorder), one tool tap (split, delete, duplicate, detach, unlock, mute toggle), one slider release, or one sound landing. Scrolling, zooming, selecting, playing and opening panels are not steps. The history holds 100. The 101st edit drops the oldest without a message.
+- **What counts as one step:** each committed edit. That means one gesture end (trim, move, reorder), one tool tap (split, delete, duplicate, detach, mute toggle; unlock later, L-02), one slider release, or one sound landing. Scrolling, zooming, selecting, playing and opening panels are not steps. The history holds 100. The 101st edit drops the oldest without a message.
 - **During a drag:** undo and redo are ignored while a finger is on the timeline.
 - **After undo or redo:**
   - The change applies instantly, with no animation, so it reads as a jump back.
@@ -175,7 +179,8 @@ Board sample content and what replaces it:
 ## Interactions
 - **Press feedback:** the token pressed states, 120 ms. Icon buttons with no fill show `surface-raised` behind them while pressed, at `radius-md`, 48 × 48. Nothing moves.
 - **Haptics:** none in this region. Haptics belong to content landing and to timeline gestures (P1-05, P1-06).
-- **Keyboard** (hardware keyboards, Chromebooks): required in P1.
+- **Keyboard in P1** (basic keyboard access, not shortcuts): Tab and Shift+Tab move focus in the order under Accessibility, Enter activates the focused control (the platform default), and **Escape does the same as system back**. QA's keyboard pass checks these.
+- **Keyboard shortcuts: Later (L-01)**, not built or checked in P1. Draft for L-01:
 
 | Key | Action |
 | --- | --- |
@@ -185,9 +190,8 @@ Board sample content and what replaces it:
 | Home / End | Start / end |
 | Ctrl+Z | Undo |
 | Ctrl+Shift+Z or Ctrl+Y | Redo |
-| Escape | Same as system back |
 
-Edit keys are in P1-06; zoom keys are in P1-05.
+The L-01 drafts for edit keys are in P1-06 and for zoom keys in P1-05.
 
 ## Motion
 | What | Motion | Reduce motion |
@@ -280,7 +284,7 @@ Keep:
 
 ## Analytics
 - **None new here.** Playback, seeking and zoom aren't PRD events.
-- **Undo and redo** fire `tool_use` `{editor: "video", tool: "undo" | "redo"}`. The undo rate is the best signal of edits going wrong. Confirm with the PM (P1-06 → Questions).
+- **Undo and redo** fire `tool_use` `{editor: "video", tool: "undo" | "redo"}`. The undo rate is the best signal of edits going wrong. Confirmed by the PM on 8 Oct (acceptance log): they fire only when they change the project.
 - **Save failures:** a Crashlytics non-fatal with the error class only (no project data), so StorageFull rates are visible.
 
 ## QA compares
@@ -292,7 +296,8 @@ Keep:
 6. **Preview error** (debug hook that fails the engine session): message and Try again.
 
 Measured, not screenshotted (note results in the QA report):
-- **Done when:** 1080p 30 fps source, a 6-track debug project, 30 s of playback on the reference phone in a release build. Media3 dropped-frame logs plus `dumpsys gfxinfo`. Pass: 30 fps or more, and no visible stutter.
+- **Done when:** 1080p 30 fps source, a 6-track debug project, 30 s of playback on the owner's phone in a release-type build. Media3 dropped-frame logs plus `dumpsys gfxinfo`. Pass: 30 fps or more, and no visible lag or stutter.
+- **Leaks:** a debug build with LeakCanary. Open and close the editor 5 times, play, seek and edit; no leak reported.
 - **Scrub:** each preview update under 100 ms (Perfetto, `mobile-performance` skill).
 - **Open:** tap on a draft to the first preview frame in under 1 s.
 - **Saving:** kill the app 1 s after an edit, reopen, and the edit is there (P1-07). Kill it within 500 ms, and the previous state reopens undamaged.
@@ -307,7 +312,7 @@ I don't edit code, so these are requests.
 4. **Scrubbing:** check the current Media3 docs when the ticket starts for `CompositionPlayer` scrubbing-mode support. Turn it on while the timeline is being dragged and off at rest, if it helps hit the 100 ms target.
 5. **Save failure:** map `AppError.StorageFull` and other failures to the two banner texts. Retry on the next change, on foreground, and on return from `ACTION_MANAGE_STORAGE`.
 6. **Toast:** build the Toast component (spec `design/system/components/Toast/README.md`) in `:core:designsystem` and add it to the debug catalog.
-7. **Debug hooks for QA:** a project that fails the preview session, and the 6-track sample from P1-03 with a locked track (P1-05 uses it).
+7. **Debug hooks for QA:** a project that fails the preview session, and the 6-track sample from P1-03 (P1-05 uses it). The locked track in that sample waits for L-02.
 
 ## Evidence
 | Claim | Strength | Source |

@@ -8,7 +8,11 @@ Part of a set of three for the video editor:
 ## Job
 Show the whole meme in time so the user can put the playhead on the exact frame ("drop a boom hit on the exact frame of a fail") and pick the one thing to edit.
 
-**Done when** (TICKETS): the timeline scrolls at 60 fps on the reference phone.
+**Done when** (TICKETS): the timeline scrolls at 60 fps on the owner's phone; LeakCanary shows no leaks.
+
+**Performance bar (owner, 8 Oct):** there is no named reference phone. The bar is no visible lag and no memory leaks, on Android and iOS. The ticket numbers are measured on the owner's own phone with a release-type build.
+
+**Later, not P1 (owner, 8 Oct; TICKETS → Later · Improvements):** keyboard shortcuts are L-01 and the locked-track UI is L-02. Sections marked **Later (L-01)** or **Later (L-02)** are drafts for those tickets: not built or checked in P1.
 
 **Color roles:**
 - **Blue:** no primary button lives here. Blue appears only where something is a meme sound: sound clips (`track-meme-sound`) and the "Add a meme sound" row.
@@ -122,7 +126,7 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
   - Show whole video (the "most zoomed out" scale)
 
   An item at its limit shows in `text-muted` and does nothing.
-  - This is the single-pointer alternative to pinching (WCAG 2.2 SC 2.5.1, Guidance). It's also reachable through TalkBack and Switch Access actions, and by keyboard.
+  - This is the single-pointer alternative to pinching (WCAG 2.2 SC 2.5.1, Guidance). It's also reachable through TalkBack and Switch Access actions, and by keyboard shortcuts later (L-01).
 
 ### Lanes and items
 - **Lane band:** non-video lanes draw a `surface` band, `track-height` tall, from 0:00 to the end of the video. The main video lane has no band, because its clips fill it. Before 0:00 and after the end there is no band.
@@ -138,7 +142,7 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
   - The project's length is the end of the main video track (request 2).
   - The part of any item past that point is darkened with a `scrim` wash, and its label switches to `text`. Ratios: `on-track` on the washed blue is 1.5:1 (unreadable); `text` on it is 11.4:1.
   - That part doesn't play or export.
-- **Locked items** (`Track.locked`; nothing in P1 locks a track, but later templates may):
+- **Locked items: Later (L-02).** Nothing in P1 locks a track. Draft for L-02 (`Track.locked`; later templates may set it):
   - A `lock` icon at `icon-small` sits before the label, in the label's color.
   - The item can be selected but shows no trim handles (P1-06 → Locked).
 - **Missing file** (P1-04 state): the clip shows `track-video` with no thumbnails and the label "File missing" in `text`.
@@ -174,11 +178,11 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
 - **The same control lives in the Volume panel** of any video clip (P1-06), so it can be reached without scrolling back to the start.
 - **Precedent:** Microsoft Clipchamp mutes a clip from a speaker icon at the left of its timeline clip (Guidance).
 
-### Trailing area: Add media (P1-16, pending the owner's decision)
+### Trailing area: Add media (P1-16, approved by the owner on 8 Oct)
 - **Where:** in the main video row, `space-2` after the end of the video.
 - **Look:** a `track-height-video` square in `surface-raised` with `radius-sm`, holding `MemixIcons.Create` in `text`, inside a 48 dp target. Spoken "Add videos or photos".
 - **What it does:** opens the P1-02 picker; items land as P1-02 → "Add media" describes.
-- **Until P1-16 is approved and built,** leave it out entirely. Don't show it disabled.
+- **Until P1-16 is built,** leave it out entirely. Don't show it disabled.
 
 ### "Add a meme sound" row (P1-08)
 - **Where:** a 48 dp row directly under the last meme-sound lane. With no sounds yet, it sits in the meme-sound position of the track order.
@@ -226,7 +230,7 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
 - **Selecting never moves the playhead.** Clearing the selection never deletes anything.
 - **The selection is kept** through playback, scrolling, zooming and undo, if the item still exists (P1-04).
 - **TalkBack:** selecting an item scrolls it into view and moves the playhead to its start. That happens on double-tap, not on focus.
-- **Locked items** can be selected (outline, no handles) so the user can see what's locked and unlock it (P1-06).
+- **Locked items: Later (L-02).** Draft: they can be selected (outline, no handles) so the user can see what's locked and unlock it (P1-06).
 
 ## Original audio and meme sounds on the timeline
 - **Original audio isn't drawn as its own lane** while it's attached. It's heard, and it's controlled from the toggle and the Volume panel. Waveforms come with P3-09.
@@ -250,7 +254,7 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
 | Playing | Content scrolls under the fixed playhead. The selection is kept. | none |
 | At end | The end sits under the playhead. The right half shows the trailing area and lanes with no bands. | none |
 | Item selected | Outline, handles, badge (main video) | none |
-| Item locked | Lock icon before the label; when selected, outline and no handles | `a11y_state_locked` |
+| Item locked: **Later (L-02)** | Lock icon before the label; when selected, outline and no handles | `a11y_state_locked` (L-02) |
 | Item past the end | `scrim` wash on the part past the end; label in `text` | `a11y_state_past_end`, `a11y_state_after_end` |
 | Very long project (an hour) | Zooms out to the "whole video" scale; ruler steps in minutes; tiles load only near the view | none |
 | Item narrower than its handles' targets | Handle targets reach outward from the item (P1-06), so the item's own body stays tappable. The Edit tool and TalkBack give equal routes. | none |
@@ -299,7 +303,7 @@ English source; machine drafts for id, es, pt and hi until P5. Budgets are in ch
 | `track_effect` | Effect | 16 | |
 | `a11y_clip_media` | %1$s, clip %2$d of %3$d, %4$s long, starts at %5$s | 100 | %1$s = `import_item_video` or `import_item_photo` (P1-02); %4$s and %5$s = spoken times (P1-04 `a11y_time_*`) |
 | `a11y_item` | %1$s, %2$s, %3$s long, starts at %4$s | 110 | %1$s = track name, %2$s = the item's label ("Boom", "Original audio") |
-| `a11y_state_locked` | Locked | 16 | State description |
+| `a11y_state_locked` | Locked | 16 | State description. Later (L-02): don't add it in P1. |
 | `a11y_state_past_end` | Partly after the end of the video | 44 | |
 | `a11y_state_after_end` | After the end of the video, so it won't play | 56 | |
 | `a11y_state_original_muted` | Original audio muted | 30 | On video clips while the track is muted, or at 0% volume |
@@ -321,7 +325,7 @@ Translator notes:
   4. Tracks top to bottom. Within each track, items in time order.
      - Main clips read `a11y_clip_media`, for example "Video, clip 2 of 3, 4.5 seconds long, starts at 3.2 seconds".
      - Other items read `a11y_item`, for example "Meme sound, Boom, 1.4 seconds long, starts at 3.2 seconds".
-     - States are appended: selected (system), locked, muted, sound detached, past the end.
+     - States are appended: selected (system), muted, sound detached, past the end; locked comes with L-02.
      - Double-tap selects the item, scrolls it into view and moves the playhead to its start.
   5. When an item is selected, its two handles follow it: "Start of Boom", value "3.2 seconds". Each is adjustable by one frame and has the action "Trim to playhead". Edits announce through P1-06.
   6. The "Add a meme sound" pill, then the Add media tile (P1-16).
@@ -335,7 +339,8 @@ Translator notes:
   | Drag to trim | Split, then Delete; or the handle's "Trim to playhead" action |
   | Drag to move or reorder | "Move here" and Reorder's "Move earlier" / "Move later" (P1-06) |
 
-- **Keyboard:** the P1-04 transport keys, plus:
+- **Keyboard in P1** (basic access, not shortcuts): Tab reaches the timeline's controls (the original-audio toggle and the "Add a meme sound" pill), Enter activates them, and Escape does the same as system back (P1-04). Known gap until L-01: a keyboard-only user can't move the playhead or step between items. TalkBack and Switch Access reach both through the playhead's and items' accessibility actions.
+- **Keyboard shortcuts: Later (L-01)**, not built or checked in P1. Draft for L-01: the P1-04 transport keys, plus:
   - Ctrl+Plus / Ctrl+Minus zoom in and out.
   - Ctrl+0 shows the whole video.
   - Tab enters the timeline at the playhead. Arrow keys move between items in a track; Up/Down move between tracks.
@@ -367,11 +372,12 @@ None fire from looking at or moving through the timeline. The toggle and every e
 2. **Many tracks** (debug 6-track sample): track order as specified, lane bands ending at the end of the video, a sound reaching past the end with the wash, lanes scrolled vertically.
 3. **A selected meme sound:** white outline with the gap, handles outside, the rest unchanged. Then a selected main clip with the duration badge.
 4. **Zoomed all the way in and all the way out:** ruler steps of 0.25 s and the "whole video" view. Plus the zoom menu open on a long-press.
-5. **Loading:** a 20-clip project opened cold, `track-video` tiles filling in, no spinners. Plus a locked track (debug sample).
+5. **Loading:** a 20-clip project opened cold, `track-video` tiles filling in, no spinners. (The locked-track screenshot waits for L-02.)
 6. **Hindi at 200% font:** taller rows, nothing clipped.
 
 Measured (note in the QA report):
-- **Done when:** a 20-clip, 4-lane debug project with thumbnails loaded, release build, reference phone. Scripted `adb shell input swipe` flings across the timeline, then `dumpsys gfxinfo` "Janky frames" under 5% (`mobile-performance` skill). Repeat while thumbnails are still loading, and note the result.
+- **Done when:** a 20-clip, 4-lane debug project with thumbnails loaded, release-type build, the owner's phone. Scripted `adb shell input swipe` flings across the timeline, then `dumpsys gfxinfo` "Janky frames" under 5% (`mobile-performance` skill), and no visible lag. Repeat while thumbnails are still loading, and note the result.
+- **Leaks:** a debug build with LeakCanary. Open and close the editor 5 times, scroll, zoom and select; no leak reported.
 - **Scrub:** preview updates under 100 ms per update (P1-04).
 - **TalkBack:** every item in the 20-clip project is reachable by swiping, at any scroll position.
 
@@ -379,14 +385,14 @@ Measured (note in the QA report):
 I don't edit code, so these are requests.
 1. **Tokens:** add `MemixSize.trimHandleWidth = 12.dp`, `MemixSize.playheadHeadSize = 12.dp` and `MemixSize.iconSmall = 16.dp` (values in `design/tokens.json`). Replace the "12 dp circular head" note's raw value with `playheadHeadSize`.
 2. **Project length** is the end of the main video track. Check that P1-03's composition ends there and cuts any audio item at that point in preview and export. Sounds past the end are allowed on the timeline but never heard.
-3. **Icons:** draw `volume_off` and `lock` to the icon grammar (`volume_off`: the `sounds` cone with a cross instead of waves; `lock`: shackle stroke, solid body as the core). The toggle's "on" state reuses `sounds`.
+3. **Icons:** draw `volume_off` to the icon grammar (the `sounds` cone with a cross instead of waves). The toggle's "on" state reuses `sounds`. `lock` (shackle stroke, solid body as the core) waits for L-02.
 4. **Constants:** the zoom values and ruler ladder above are layout math. Keep them as named constants in one place in the timeline component, with a comment pointing to this spec, so the token audit can tell them from hardcoded design values.
 5. **Rendering:** draw the timeline as a few layers (ruler, bands and items, playhead, overlays) that read scroll and zoom inside draw or offset lambdas, so a scroll frame doesn't recompose. Virtualize items and tiles to the visible window plus one screen.
 6. **Semantics:** build item semantics from the model, so TalkBack reaches every item regardless of what's drawn. Add the playhead's adjustable semantics and the container's zoom actions.
 7. **Empty tracks:** when an edit leaves a non-main track with no items, remove the track in the same edit (one undo step).
 8. **Thumbnails:** request at strip height, nearest-frame fallback while zooming, cache as in the `mobile-performance` skill.
 9. **Debug samples for QA:**
-   - the 6-track sample (P1-03) with one locked meme-sound track and one sound past the end
+   - the 6-track sample (P1-03) with one sound past the end (its locked meme-sound track waits for L-02)
    - a 20-clip project
    - an hour-long project made of a looped test clip
 

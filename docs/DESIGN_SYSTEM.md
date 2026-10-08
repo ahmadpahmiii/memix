@@ -1,6 +1,6 @@
 # Memix design system (v2)
 
-Source of truth: the "Memix" design-system artifact (https://claude.ai/artifact/7HzM44Ra1z4juDDr4m5kpy) and the "Memix App Screens" design canvas (https://claude.ai/artifact/9sJhkuQFurxbC7wRdpFfpB). Machine-readable tokens: [`design/tokens.json`](../design/tokens.json). Screen references: [`design/screens/`](../design/screens/) (open any `.dc.html` in a browser). Component specs and CSS reference: [`design/system/components/`](../design/system/components/).
+Source of truth: **this file and [`design/tokens.json`](../design/tokens.json)** (owner decision, 8 Oct 2026). The "Memix" design-system artifact (https://claude.ai/artifact/7HzM44Ra1z4juDDr4m5kpy) and the "Memix App Screens" design canvas (https://claude.ai/artifact/9sJhkuQFurxbC7wRdpFfpB) are the original plan, kept for reference only; changes are not synced back to them. Machine-readable tokens: [`design/tokens.json`](../design/tokens.json). Screen references: [`design/screens/`](../design/screens/) (open any `.dc.html` in a browser). Component specs and CSS reference: [`design/system/components/`](../design/system/components/).
 
 > v1 (yellow `#FFE14D` + pink `#FF4FA3`, black outlines, hard offset shadows) was rejected on 7 Oct 2026. Never reintroduce it.
 
