@@ -28,7 +28,7 @@ Full detail: `docs/TECHNICAL_DESIGN.md`. This is the working summary.
 
 1. Domain (`:core:model`, `:core:domain`) is pure `commonMain`.
 2. Features call use cases only.
-3. Platform code only in engine/platform modules, behind domain interfaces.
+3. Platform code only in engine/platform modules, behind domain interfaces, plus the composition root (`:androidApp`, `:composeApp`) for entry and wiring only (driver creation, Koin start-up, debug hooks).
 4. The iOS framework must compile on every PR.
 5. No automated tests in this project; keep interfaces small anyway so behavior is easy to check by hand.
 

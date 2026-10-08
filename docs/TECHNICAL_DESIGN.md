@@ -62,7 +62,7 @@ The code is one Gradle multi-module Kotlin Multiplatform project using clean arc
 
 - **Domain stays pure:** `:core:model` and `:core:domain` live in `commonMain` with no Android or iOS imports.
 - **Features call use cases only:** never repositories or engines directly.
-- **Platform code** lives only in the `androidMain` and `iosMain` source sets of engine and platform modules.
+- **Platform code** lives only in the `androidMain` and `iosMain` source sets of engine and platform modules, plus the composition root (`:androidApp`, `:composeApp`) for app entry and wiring, such as the SQLDelight driver and debug hand-check hooks (owner, 8 Oct 2026).
 - **iOS compiles from day one:** CI builds the iOS framework on every push to a phase branch and every pull request, even before iOS work starts, so Android-only APIs never leak into shared code.
 - **State:** each ViewModel exposes one `StateFlow<UiState>` and takes `Intent` events (MVVM with one-way data flow). Editors keep an undo stack of immutable project snapshots in a `ProjectEditSession` (see Project data model → Editing, undo and auto-save).
 

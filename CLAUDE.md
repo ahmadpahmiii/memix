@@ -30,7 +30,7 @@ The Claude Docs / design artifacts linked at the top of each doc are the source 
 
 1. `:core:model` and `:core:domain` are pure `commonMain` — no Android/iOS imports, no Ktor/SQLDelight types.
 2. Features (`:feature:*`) call **use cases only**. Never a repository, engine or SDK directly.
-3. Platform code lives only in `androidMain` / `iosMain` of `:engine:*` and `:platform:services`, behind interfaces declared in `:core:domain`.
+3. Platform code lives only in `androidMain` / `iosMain` of `:engine:*` and `:platform:services`, behind interfaces declared in `:core:domain`, plus the composition root (`:androidApp`, `:composeApp`) for app entry and wiring (for example creating the SQLDelight driver and debug hand-check hooks). No feature logic in the composition root.
 4. Time is **microseconds (`Long`)** everywhere in the project model. Clips are positioned by time, never by index.
 5. Effects, filters and transitions are **declarative specs** (id + params) in `:core:model`; each engine renders the same spec. Every new spec gets a reference render in `docs/qa/references/`.
 6. `Project` is immutable; every edit returns a new `Project` (undo keeps 100). Autosave 500 ms after the last change. Bump `schemaVersion` + add a migration for any persisted shape change, and check by opening an old draft.
