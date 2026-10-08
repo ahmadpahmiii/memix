@@ -14,6 +14,7 @@ import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import java.io.IOException
 import java.util.Locale
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -64,6 +65,8 @@ private class FirebaseAppConfig : AppConfig {
     override suspend fun refresh(): Outcome<Unit> = try {
         remoteConfig.fetchAndActivate().await()
         Outcome.Success(Unit)
+    } catch (e: CancellationException) {
+        throw e
     } catch (e: IOException) {
         Outcome.Failure(AppError.Offline)
     } catch (e: Exception) {
