@@ -1,6 +1,6 @@
 # Memix — Product Requirements
 
-Source of truth: the "Memix — Product Requirements" Claude Doc (https://claude.ai/code/artifact/c81028c0-e543-4488-ace3-100bdcbb9e10). This file is an export from Oct 7, 2026; if the two disagree, ask the owner which one wins.
+Source of truth: this file (owner, 8 Oct 2026). The "Memix — Product Requirements" Claude Doc (https://claude.ai/code/artifact/c81028c0-e543-4488-ace3-100bdcbb9e10) is the original plan, kept for reference only; changes aren't synced back to it.
 
 ## Summary
 
@@ -257,7 +257,7 @@ The store title becomes **"Memix: Meme Video & Photo" (25 characters)**. "Memix 
 | Privacy policy and support | Hosted on the app's domain, linked from both stores and the app |
 | AdMob | Publish app-ads.txt on the same domain |
 | Play Console | Target audience 13+, "contains ads", Data safety form (advertising ID, analytics, crash data), content rating questionnaire |
-| Play testing gate | The account was created before 13 Nov 2023, so the 12-tester closed-test rule for new personal accounts doesn't apply ([Google Play help](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en-GB)). Internal testing is still used |
+| Play testing gate | The developer account is personal (owner, 8 Oct 2026), so Google's closed test applies before production access: currently at least 12 testers opted in for 14 days in a row, then an application that Google reviews ([Google Play help](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en-GB); re-check at P1-15). Ticket P5-08 starts it around 25 Jan 2027 with 15–20 testers the owner recruits. Internal testing is still used. (Corrects the 7 Oct entry, which said the rule didn't apply.) |
 | Consent | Google UMP for EEA, UK and Switzerland; Apple's tracking prompt (ATT) on iOS later |
 | Credits screen | Open-source licenses, font licenses, sound credits |
 
@@ -278,14 +278,14 @@ Android launches around **7 March 2027** and iOS around **2 May 2027**, if the f
 | P6 | 20–21 | Feb 22 – Mar 7 | Android QA and release → **Android launch ≈ Mar 7, 2027** |
 | P7 | 22–29 | Mar 8 – May 2 | iOS → **iOS launch ≈ May 2, 2027** |
 
-Each phase ends with a build in internal testing and a manual QA pass, so problems surface early. What each phase delivers:
+Each phase ends with a build in internal testing and a manual QA pass, so problems surface early. The internal-testing build starts once P1-15 is built, which waits for the owner's Play upload key and service account (8 Oct 2026); until then QA uses debug builds. What each phase delivers:
 
 - **0 · Foundation (1 week):** KMP project, CI, design system in Compose, Supabase set up. Media storage moved (8 Oct 2026): Supabase Storage in phase 3, Cloudflare R2 before launch.
 - **1 · Core + video editor (4 weeks):** project model, timeline, Android engine preview and export, meme sounds on the timeline, text, watermark. First internal test build.
 - **2 · Photo editor (3 weeks):** meme formats, image tools, layers, photo background removal, PNG / JPG / GIF / WhatsApp stickers, Make it a video meme.
 - **3 · Sounds and audio (3 weeks):** full library with search, tabs, favorites, offline pack and imports; voiceover; audio effects.
 - **4 · Pro video tools (6 weeks):** overlays, keyframes, masks, blend modes, green screen and templates, transitions, effects, filters, text animation, speed curves, video background removal. The late-December holidays fall here.
-- **5 · Ads, analytics, sharing, languages (2 weeks).**
+- **5 · Ads, analytics, sharing, languages (2 weeks).** The closed test for production access (P5-08) starts around 25 Jan 2027, during phase 4, and production access must be granted before phase 6's rollout.
 - **6 · Android QA and release (2 weeks):** device testing, store listing, production rollout.
 - **7 · iOS (8 weeks):** AVFoundation engine, iOS platform pieces, TestFlight, App Review.
 
@@ -303,6 +303,7 @@ Each phase ends with a build in internal testing and a manual QA pass, so proble
 | Name conflict | Costly rename later | Trademark search before launch |
 | File download costs | Bill grows with users | Supabase Storage while only the team downloads, Cloudflare R2 (free egress) before launch, on-device caching |
 | Supabase Free limits | Backend restricted when over quota | Monitor usage, move to Pro at about 1,500 DAU |
+| Closed test before production (personal Play account) | Launch slips about 3 weeks if testers drop below 12 or Google refuses the application | Recruit 15–20 testers; start around 25 Jan 2027 (P5-08) so one rerun still fits before 7 Mar; upload key and service account by 11 Jan 2027 |
 
 **Open items**
 

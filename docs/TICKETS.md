@@ -1,6 +1,6 @@
 # Build tickets
 
-Source of truth: the "Memix — Product Requirements" Claude Doc (https://claude.ai/code/artifact/c81028c0-e543-4488-ace3-100bdcbb9e10). This file is an export from Oct 7, 2026; if the two disagree, ask the owner which one wins.
+Source of truth: this file (owner, 8 Oct 2026). The "Memix — Product Requirements" Claude Doc (https://claude.ai/code/artifact/c81028c0-e543-4488-ace3-100bdcbb9e10) is the original plan, kept for reference only; changes aren't synced back to it.
 
 ## How to work the tickets
 
@@ -35,6 +35,7 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 
 ## Phase 1 · Core and video editor (weeks 2 to 5, from 19 Oct)
 
+> 8 Oct 2026 (owner, answers to the 15 questions): P1-04's run also builds three things: (a) deleting a draft with no clips when the user leaves the editor; (b) P1-02's failed first save after copying, which reuses the "Not enough space" sheet with **Free up space** (the designer adds the state to the P1-02 spec first); (c) P1-02's import-sheet exit animation (N1, accepted as is until then). P1-08's sound files: once the owner opens `freesound.org` and `cdn.freesound.org` to cloud sessions, one session downloads the 10 approved CC0 sounds once, saves each license page into the repo as proof, normalizes the sounds and bundles them. The app never calls Freesound, and from P3 all catalog media comes from Supabase Storage. P1-15 waits for the owner's upload key and service account ("soon, when ready to publish"). Until then, phases close without an internal-testing build and QA uses debug builds. Where P1-15 goes is proposed in `docs/pm/proposals/2026-10-08-play-release-path.md`; the credentials are needed by 11 Jan 2027 for P5-08.
 > 8 Oct 2026 (owner): P1-16 added (`docs/pm/proposals/2026-10-07-p1-02-followups.md`, A). It sits after P1-07 in build order, so its Needs are met working top to bottom.
 > 8 Oct 2026 (owner): no named reference phone. Speed numbers are measured on the owner's own phone with a release-type build; the bar is no visible lag and no memory leaks. Editor and export tickets check for leaks with LeakCanary in debug builds (a debug-only tool added with P1-04, not a test). P1-08 waits until the owner approves each starter-sound license (CC0 or equivalent). P1-17 added (Hindi display face). Keyboard shortcuts and the locked-track UI are not in P1: see Later · Improvements.
 
@@ -43,7 +44,7 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 | P1-01 | Project model, serialization, SQLDelight storage, migrations | A project created, saved, force-closed and reopened comes back identical | M | P0-03 |
 | P1-02 | Gallery picker (Android photo picker, multi-select videos and photos) with a cached copy of each file | Picked media appear in the project without a storage permission prompt | M | P1-01 |
 | P1-03 | `VideoEngine` interface and the Android composition builder (main video sequence, audio sequences) | A sample project with every track type previews and exports correctly | L | P1-01 |
-| P1-04 | Preview: player in Compose, play, pause, seek, timecode | 1080p preview plays at 30 fps or more on the owner's phone; LeakCanary shows no leaks | L | P1-03 |
+| P1-04 | Preview: player in Compose, play, pause, seek, timecode; leaving the editor deletes a draft that has no clips (owner, 8 Oct) | 1080p preview plays at 30 fps or more on the owner's phone; LeakCanary shows no leaks | L | P1-03 |
 | P1-05 | Timeline UI: tracks, pinch zoom, scroll, playhead, thumbnail strip, selection, track colors | Timeline scrolls at 60 fps on the owner's phone; LeakCanary shows no leaks | L | P1-04 |
 | P1-06 | Clip edits: split, trim handles, delete, duplicate, reorder | Each edit shows in the preview within 100 ms on the owner's phone; LeakCanary shows no leaks | L | P1-05 |
 | P1-07 | Undo and redo (100 steps), auto-save 500 ms after the last change | Killing the app mid-edit restores the draft | M | P1-01 |
@@ -55,7 +56,7 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 | P1-12 | Export: resolution and fps choices, device capability check, size and time estimate, free-space check, foreground service with notification, cancel | 60 s at 1080p30 exports in 60 s or less on the owner's phone and plays in the gallery; LeakCanary shows no leaks after an export and a cancel | L | P1-03 |
 | P1-13 | Watermark: small "Memix" text, top-left with a 3% margin, on free exports | Watermark shows by default and is absent when the export is marked watermark-free | S | P1-12 |
 | P1-14 | Drafts screen: list, open, rename, duplicate, delete | Drafts sort by last edited | S | P1-01 |
-| P1-15 | Release plumbing: signing and CI upload to the Play internal testing track | A build installs from internal testing | S | P0-02 |
+| P1-15 | Release plumbing: signing and CI upload to the Play internal testing track. Waits for the owner's upload key and service account (8 Oct); needed by 11 Jan 2027 for P5-08 | A build installs from internal testing | S | P0-02 |
 | P1-17 | Hindi display face: the designer picks an OFL display face with Devanagari (for example Teko) for Anton's display roles and documents it in the design system and tokens; the engineer bundles it and uses it only when the app language is Hindi | In Hindi, the Home hero and entry-card titles render in the new face instead of the system font, nothing clips at 200% font scale and 360 dp, and the other four languages look unchanged | S | P0-04 |
 
 ## Phase 2 · Photo editor (weeks 6 to 8, from 16 Nov)
@@ -115,8 +116,11 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 
 ## Phase 5 · Ads, analytics, sharing, languages (weeks 18 to 19, from 8 Feb)
 
+> 8 Oct 2026 (owner: "yes personal / start early"; start date and placement: PM): P5-08 added because the Play account is personal. It runs by the calendar, so it starts around 25 Jan 2027, during P4's last two weeks, and the P5 gate checks that production access was granted. The owner recruits the testers in early January. The start-date options are in `docs/pm/proposals/2026-10-08-play-release-path.md`, question 2.
+
 | ID | Ticket | Done when | Size | Needs |
 | --- | --- | --- | --- | --- |
+| P5-08 | Closed test for production access (personal Play account): the owner recruits 15–20 testers into one Google Group; the newest build goes to a closed-testing track with first versions of the store listing (English), privacy policy URL, content rating, target audience 13+, ads declaration and Data safety form (P6-03, P6-04 and P6-05 finish them); it runs for 14 days in a row from around 25 Jan 2027; then the owner applies for production access with the testers' feedback. Re-check Google's rule when it starts | Play Console shows production access granted, after at least 12 testers stayed opted in for 14 days in a row | M | P1-15 |
 | P5-01 | AdMob with the UMP consent flow for EEA, UK and Switzerland; test ads in debug builds | The consent form appears on a device set to an EEA region | M | P0-08 |
 | P5-02 | Rewarded ad on the export sheet removes the watermark | A completed ad produces one watermark-free export | M | P5-01, P1-13 |
 | P5-03 | Interstitial after export, capped by Remote Config (1 per 3 exports, never the first export) | A manual run of 10 exports follows every cap rule | S | P5-01 |
@@ -135,7 +139,7 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 | P6-04 | Privacy policy, support page and app-ads.txt on the app's domain | All three URLs are live | S | — |
 | P6-05 | Play Console forms: Data safety, content rating, target audience 13+, ads declaration | All forms are accepted | S | P6-04 |
 | P6-07 | Move media to Cloudflare R2 (Supabase Storage until then, owner 8 Oct): R2 bucket, custom media domain, copy every file under the same keys, switch `media_base_url` in Remote Config | Every catalog file loads from the R2 media domain with immutable cache headers, an installed build picks up the new address without an app update, and no file is served from Supabase Storage | S | P3-13 |
-| P6-06 | Production release with staged rollout (10%, 50%, 100%) and crash monitoring | Crash-free users stay at 99.5% or more at each step | S | P6-01, P6-07 |
+| P6-06 | Production release with staged rollout (10%, 50%, 100%) and crash monitoring | Crash-free users stay at 99.5% or more at each step | S | P6-01, P6-07, P5-08 |
 
 ## Phase 7 · iOS (weeks 22 to 29, from 8 Mar)
 
