@@ -12,7 +12,8 @@ Never guess class names or signatures from memory. If an API you expected doesn'
 
 ## Mapping
 
-- One `Project` → one Media3 `Composition`.
+- Mapping rules (order, gaps, trims, mute, detach, overlap lanes, cut at the main track's end) live in the shared `CompositionPlanner` → `CompositionPlan` (`:engine:video` commonMain). Change them there, never only in the Media3 builder, so iOS keeps matching.
+- One `Project` → one Media3 `Composition` (`Media3CompositionBuilder`).
 - Main video track → one `EditedMediaItemSequence` (clips in order, trims, speed, per-clip effects).
 - Overlays, meme sounds, imported audio and voiceover → further sequences that overlap in time.
 - Text and stickers → bitmaps rendered once per change and composited as overlay effects.

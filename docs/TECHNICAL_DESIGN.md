@@ -126,14 +126,19 @@ data class PhotoScene(val layers: List<Layer>)   // bottom to top
 One shared interface renders a `Project`; each platform implements it with its native framework, so decoding, effects and encoding run on the phone's video hardware.
 
 ```kotlin
+// :core:domain, app.memix.core.domain.video. Built in P1-03:
 interface VideoEngine {
-    fun createPreview(project: Project): PreviewSession
-    suspend fun export(project: Project, settings: ExportSettings, onProgress: (Float) -> Unit): ExportResult
-    suspend fun thumbnails(source: MediaRef, count: Int, heightPx: Int): List<ImageRef>
-    suspend fun waveform(source: AudioRef, buckets: Int): FloatArray
-    fun capabilities(): EngineCapabilities   // max resolution and fps per codec, HEVC support
+    suspend fun export(project: Project, settings: ExportSettings, onProgress: (Float) -> Unit): Outcome<ExportedVideo>
+    // Added by the ticket that first uses each (planned shapes):
+    // fun createPreview(project: Project): PreviewSession                                  P1-04
+    // suspend fun thumbnails(source: MediaRef, count: Int, heightPx: Int): List<ImageRef>   P1-05
+    // suspend fun waveform(source: AudioRef, buckets: Int): FloatArray                     P1-08 / P3-09
+    // fun capabilities(): EngineCapabilities   // max resolution and fps per codec, HEVC    P1-12
 }
+data class ExportSettings(val frameRate: Int = 30)   // P1-12 adds the resolution choice, P1-13 the watermark
+data class ExportedVideo(val path: String, val durationUs: Long, val sizeBytes: Long, val hasAudio: Boolean)
 
+// Planned for P1-04:
 interface PreviewSession {
     val state: StateFlow<PlaybackState>
     fun play(); fun pause(); fun seekTo(us: Long)
@@ -143,6 +148,18 @@ interface PreviewSession {
 ```
 
 **Android (v1): Media3.** The engine maps a project to a Media3 `Composition`. The main video track becomes one `EditedMediaItemSequence`; overlays, meme sounds, audio and voiceover become further sequences that overlap in time, which Media3 supports for layering ([Media3 Composition](https://developer.android.com/media/media3/transformer/composition)). `CompositionPlayer` drives the preview and `Transformer` exports ([multi-asset editing](https://developer.android.com/media/media3/transformer/multi-asset)).
+
+**Project to composition (P1-03).** `CompositionPlanner` (`:engine:video` commonMain) turns a `Project` into a `CompositionPlan`: plain data in µs that both platforms build from, so the mapping rules live in one place. `Media3CompositionBuilder` (androidMain) translates the plan; P7 adds the AVFoundation translation.
+
+- **Main video sequence:** the `MediaClip`s of the `MAIN_VIDEO` track in start-time order, with a gap (black, silent) for empty time. A clip that starts before 0 or before the previous clip ends makes the project unplayable (export fails with `Unexpected`; the editor never produces it). The export is as long as the main track.
+- **Clips:** trims in µs (`ClippingConfiguration`); photos show for their duration (Media3 takes whole milliseconds) at the export frame rate; `FIT` and `FILL` map to `Presentation` at the canvas size (`LAYOUT_SCALE_TO_FIT`, `LAYOUT_SCALE_TO_FIT_WITH_CROP`), with black around fitted clips until P1-11 adds the background.
+- **Clip audio:** plays unless the clip is a photo, its audio is detached, the main track is muted or its volume is 0. Volume is a `ChannelMixingAudioProcessor`, which clamps instead of wrapping when the volume is above 1.
+- **Audio sequences:** each unmuted `MEME_SOUND` and `AUDIO` track becomes an audio-only sequence starting at 0, with gaps before and between sounds. Sounds that overlap on one track spill into an extra sequence so both play. Sounds are cut at the main video's end, because Media3 ends a composition with its longest sequence. A detached clip's audio is an `AudioClip` on an audio track pointing at the video file (its picture isn't decoded). Volume-0 sounds are left out.
+- **Not rendered yet:** overlay (P4-01), text (P1-10), sticker (P4-12) and effect (P4-06) tracks and the canvas background (P1-11) are skipped with one log line each (logcat tag `MemixVideoEngine`).
+- **Export:** Transformer on its own `HandlerThread` per export; H.264 video and AAC audio in MP4; HDR sources are tone-mapped to SDR with OpenGL; a portrait canvas is encoded landscape with a rotation flag (Media3's default, the widest encoder support). The file goes to `cache/exports/`; a failed or cancelled export deletes it. Progress is polled every 100 ms.
+- **Media files:** the app's copy (`cachedCopyPath`, relative to the files directory) first; a gallery URI only when there's no copy. A missing copy, an iOS `PhotoAsset` or a catalog item that isn't downloaded fails with `NotFound`.
+- **Preview inputs for P1-04:** `CompositionPlayer` needs every `EditedMediaItem` to carry its source file's duration (`setDurationUs`), which the project doesn't store yet. P1-04 decides between probing each file when the editor opens and saving the duration at import (a schema bump).
+- **Debug hand check:** in debug builds, push four test files into `files/debug-media/` (`clip-a.mp4`, `clip-b.mp4`, `photo.png`, `sound.m4a`), then `adb shell am start -S -n app.memix/.android.MainActivity --ez memix.exportCheck true` exports `ExportCheckProject` and logs the file path, length, size and track count under the logcat tag `MemixExportCheck` (`ExportCheck`). The ffmpeg commands that make the test files and the ffprobe pass values are in the P1-03 commit message.
 
 - **Video effects:** Media3 GL effects plus custom GLSL shader programs for filters (3D LUTs), chroma key, masks, blend modes, glitch, RGB split, VHS and deep-fry; matrix transforms for zoom punch, shake and keyframed motion.
 - **Text and stickers:** rendered to bitmaps and composited as overlay effects, re-rendered only when they change.
@@ -332,6 +349,10 @@ Engineering decisions made during the build, newest first. Each says what, why a
 
 | Date | Decision | Why | Alternative |
 | --- | --- | --- | --- |
+| 2026-10-08 | P1-03: the Project-to-engine mapping is a shared, plain-Kotlin `CompositionPlan` built by `CompositionPlanner` in `:engine:video` commonMain. The Media3 builder (and the AVFoundation one in P7) only translates it. | Sequence order, gaps, trims, mute, detach, overlap and cutting at the end are decided once, so iOS can't drift from Android, and the rules can be checked without a phone (they were, in a JVM harness). | Map `Project` straight to Media3 in androidMain and re-implement the rules for iOS. |
+| 2026-10-08 | P1-03: `VideoEngine` grows with its tickets. P1-03 adds only `export`, returning `Outcome<ExportedVideo>` with the existing `AppError`s (`NotFound`, `StorageFull`, `Unexpected`); preview, thumbnails, waveform and capabilities join with P1-04, P1-05, P1-08 and P1-12. | No member without a caller and a real implementation. The preview shape depends on how P1-04 hosts the player and gets each file's duration, which `CompositionPlayer` needs up front. P1-12 refines export errors with its spec copy. | Declare the whole interface now with stub implementations. |
+| 2026-10-08 | P1-03: each export runs Transformer on its own `HandlerThread`, writes H.264 and AAC MP4 to `cache/exports/`, tone-maps HDR to SDR with OpenGL, and keeps Media3's default of encoding a portrait canvas landscape with a rotation flag. | The main thread stays free and the thread ends with the export. SDR shows right in every chat app, and Media3 refuses SDR clips or photos after an HDR video in one sequence. The rotation flag is Media3's default for wider encoder support; galleries and share targets honor it. | Run on the main looper; keep HDR (breaks mixed projects); `setPortraitEncodingEnabled(true)` (more encoder failures, per Media3). |
+| 2026-10-08 | P1-03: sounds that overlap on one track go to extra audio sequences, every sound is cut at the main video's end, and volume uses `ChannelMixingAudioProcessor`. | The model allows overlap and both sounds should be heard. Media3 ends a composition with its longest sequence, so a long sound would otherwise lengthen the video. Media3's `GainProcessor` is documented for gains of 0 to 1 and wraps 16-bit samples above 1; channel mixing clamps. | Refuse overlapping sounds; let sounds lengthen the export; `GainProcessor`. |
 | 2026-10-08 | P1-01: the SQLDelight `SqlDriver` is created in the composition root (`:composeApp` `databaseDriverModule`, expect/actual in androidMain and iosMain) and handed to `:core:data` through Koin. `:core:data` stays commonMain only. | CLAUDE.md rule 3 allows platform code only in `:engine:*` and `:platform:services`. A driver is a data-layer detail, not a domain interface, so neither of those fits; the composition root already holds the platform entry code (`MainViewController`, Koin start-up). Suggest the owner names the composition root in rule 3. | Driver factory in `:core:data` androidMain/iosMain (the usual KMP setup, against rule 3's wording); a `SqlDriver` factory interface in `:core:domain` (leaks SQLDelight into the domain). |
 | 2026-10-08 | P1-01: projects are JSON rows. kotlinx.serialization with `encodeDefaults = true` and unknown keys rejected; each load runs a per-version migration chain on the JSON before decoding; JSON from a newer app or damaged JSON loads as `ProjectUnreadable` and stays in the database. | Writing every field means a changed default never changes an old draft. Rejecting unknown keys keeps a missing migration step from silently deleting data on the next save. | `ignoreUnknownKeys` (lenient, but loses data on re-save); a column per field (every shape change becomes a SQL migration). |
 | 2026-10-08 | P1-01: a save is one `INSERT OR REPLACE` that carries `thumbnail_path` over with a subquery. No explicit transaction, no UPSERT, default SQLite 3.18 dialect. `name`, `type`, `schema_version` and the times are copied out of the JSON into columns. | On a full disk SQLite rolls the transaction back itself, SQLDelight's own ROLLBACK then fails, and that error hides `SQLITE_FULL` (seen in the P1-01 harness); one statement is atomic on its own. UPSERT needs SQLite 3.24; Android 10 (minSdk 29) ships 3.22. Copied columns let the drafts list sort and show rows without decoding projects. | Update-then-insert in a transaction (loses the disk-full error); `ON CONFLICT DO UPDATE` (crashes on Android 10). |

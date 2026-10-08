@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import app.memix.App
+import app.memix.debug.ExportCheck
 import app.memix.debug.ProjectRoundTripCheck
 import kotlinx.coroutines.launch
 
@@ -23,6 +24,8 @@ class MainActivity : ComponentActivity() {
         // Debug-only project round trip (P1-01): --es memix.projectCheck save, force-stop, then verify. Logcat tag MemixProjectCheck.
         val projectCheckStep = intent.getStringExtra("memix.projectCheck")
         if (isDebugBuild && projectCheckStep != null) lifecycleScope.launch { ProjectRoundTripCheck().run(projectCheckStep) }
+        // Debug-only export (P1-03): push the test media first (TECHNICAL_DESIGN), then --ez memix.exportCheck true. Logcat tag MemixExportCheck.
+        if (isDebugBuild && intent.getBooleanExtra("memix.exportCheck", false)) lifecycleScope.launch { ExportCheck().run() }
         setContent { App(isDebugBuild) }
     }
 }

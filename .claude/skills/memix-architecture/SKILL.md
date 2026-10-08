@@ -44,13 +44,15 @@ Full detail: `docs/TECHNICAL_DESIGN.md`. This is the working summary.
 ## Engine interfaces (shape)
 
 ```kotlin
-interface VideoEngine {
-    fun createPreview(project: Project): PreviewSession
-    suspend fun export(project: Project, settings: ExportSettings, onProgress: (Float) -> Unit): ExportResult
-    suspend fun thumbnails(source: MediaRef, count: Int, heightPx: Int): List<ImageRef>
-    suspend fun waveform(source: AudioRef, buckets: Int): FloatArray
-    fun capabilities(): EngineCapabilities
+interface VideoEngine {   // app.memix.core.domain.video; members join with the ticket that first uses them
+    suspend fun export(project: Project, settings: ExportSettings, onProgress: (Float) -> Unit): Outcome<ExportedVideo>  // P1-03
+    fun createPreview(project: Project): PreviewSession                                     // P1-04
+    suspend fun thumbnails(source: MediaRef, count: Int, heightPx: Int): List<ImageRef>      // P1-05
+    suspend fun waveform(source: AudioRef, buckets: Int): FloatArray                        // P1-08 / P3-09
+    fun capabilities(): EngineCapabilities                                                  // P1-12
 }
+// Project → engine: CompositionPlanner (:engine:video commonMain) builds a plain CompositionPlan in µs;
+// each platform only translates it (Media3CompositionBuilder on Android, AVFoundation in P7).
 interface Segmenter {
     suspend fun segmentImage(image: ImageRef): SegmentationResult
     fun videoSession(source: MediaRef): VideoSegmentationSession

@@ -8,6 +8,7 @@ import app.memix.core.domain.project.DeleteProjectUseCase
 import app.memix.core.domain.project.GetProjectUseCase
 import app.memix.core.domain.project.ObserveProjectSummariesUseCase
 import app.memix.core.domain.project.SaveProjectUseCase
+import app.memix.engine.video.videoEngineModule
 import app.memix.feature.home.HomeViewModel
 import app.memix.platform.services.platformServicesModule
 import kotlin.time.Clock
@@ -33,6 +34,6 @@ private val appModule = module {
 fun initKoin(platformSetup: KoinAppDeclaration = {}) {
     startKoin {
         platformSetup()
-        modules(platformServicesModule, databaseDriverModule, dataModule, appModule)
+        modules(platformServicesModule, databaseDriverModule, dataModule, videoEngineModule, appModule)
     }
 }
