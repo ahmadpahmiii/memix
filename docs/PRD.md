@@ -229,7 +229,7 @@ The north-star metric is **DAU, with a target of 5,000 by month 3 after the Andr
 | Event | Fires when | Parameters |
 | --- | --- | --- |
 | `onboarding_complete` | Language and region confirmed | language, region |
-| `project_create` | A project starts | editor (video, photo), source (blank, template) |
+| `project_create` | A project starts | editor (video, photo), source (blank, template, gallery); `gallery` for picked media, `blank` only for the photo editor's blank layout |
 | `template_open` | A template opens | template\_id, type |
 | `sound_preview` | A sound plays in the library | sound\_id, tab |
 | `sound_add` | A sound lands on a timeline | sound\_id, tab, editor |

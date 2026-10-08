@@ -34,6 +34,8 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 
 ## Phase 1 · Core and video editor (weeks 2 to 5, from 19 Oct)
 
+> 8 Oct 2026 (owner): P1-16 added (`docs/pm/proposals/2026-10-07-p1-02-followups.md`, A). It sits after P1-07 in build order, so its Needs are met working top to bottom.
+
 | ID | Ticket | Done when | Size | Needs |
 | --- | --- | --- | --- | --- |
 | P1-01 | Project model, serialization, SQLDelight storage, migrations | A project created, saved, force-closed and reopened comes back identical | M | P0-03 |
@@ -43,6 +45,7 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 | P1-05 | Timeline UI: tracks, pinch zoom, scroll, playhead, thumbnail strip, selection, track colors | Timeline scrolls at 60 fps on the reference phone | L | P1-04 |
 | P1-06 | Clip edits: split, trim handles, delete, duplicate, reorder | Each edit shows in the preview within 100 ms | L | P1-05 |
 | P1-07 | Undo and redo (100 steps), auto-save 500 ms after the last change | Killing the app mid-edit restores the draft | M | P1-01 |
+| P1-16 | Add media and replace a clip from the video editor: same picker and import sheet as P1-02; Replace keeps the clip's place and length and covers video and photo clips only (a meme sound is deleted and re-added) | Media added from the editor lands after the clip under the playhead as one undo step, and a replaced clip keeps its start and length so sounds and text stay in sync | S | P1-02, P1-06, P1-07 |
 | P1-08 | Meme sounds on the timeline from the bundled starter pack: add at playhead, move, trim, volume | Sound stays in sync within 1 frame in preview and export | M | P1-05 |
 | P1-09 | Original audio: volume, mute, detach | Detached audio becomes its own audio-track clip | S | P1-04 |
 | P1-10 | Text, basic: add, edit, font (Anton plus 4 more), color, outline, move / scale / rotate gestures, timing on the timeline | Text looks the same in preview and export | L | P1-04 |
