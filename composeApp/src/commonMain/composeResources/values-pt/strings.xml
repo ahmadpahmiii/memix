@@ -7,7 +7,7 @@
     <string name="nav_drafts">Rascunhos</string>
     <string name="create_title">Criar</string>
     <string name="create_video_title">Meme de vídeo</string>
-    <string name="create_video_body">Escolha clipes da sua galeria</string>
+    <string name="create_video_body">Escolha vídeos e fotos</string>
     <string name="create_photo_title">Meme de foto</string>
     <string name="create_photo_body">Escolha uma foto da sua galeria</string>
     <string name="create_template">Comece com um modelo</string>

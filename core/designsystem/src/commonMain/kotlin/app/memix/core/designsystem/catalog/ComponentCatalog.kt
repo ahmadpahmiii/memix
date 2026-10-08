@@ -43,6 +43,7 @@ import app.memix.core.designsystem.component.ButtonVariant
 import app.memix.core.designsystem.component.Chip
 import app.memix.core.designsystem.component.CloseButton
 import app.memix.core.designsystem.component.EntryCard
+import app.memix.core.designsystem.component.ProgressBar
 import app.memix.core.designsystem.component.SegmentedTabs
 import app.memix.core.designsystem.component.Sheet
 import app.memix.core.designsystem.component.Slider
@@ -55,9 +56,11 @@ import kotlin.math.roundToInt
 // Debug-only screen for the designer's review (P0-04). Labels are developer English, never translated,
 // and every name or number here is a placeholder, not catalog data.
 
+/** [appSections] adds sections from outside the design system, such as a feature's sheet states (debug only). */
 @Composable
-fun ComponentCatalog(onClose: () -> Unit) {
+fun ComponentCatalog(onClose: () -> Unit, appSections: @Composable ColumnScope.() -> Unit = {}) {
     var sheetOpen by remember { mutableStateOf(false) }
+    var blockingSheetOpen by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize().background(MemixColors.canvas)) {
         Column(
             Modifier
@@ -77,13 +80,15 @@ fun ComponentCatalog(onClose: () -> Unit) {
                 color = MemixColors.textSecondary,
             )
             TypeSection()
-            ButtonSection(onOpenSheet = { sheetOpen = true })
+            ButtonSection(onOpenSheet = { sheetOpen = true }, onOpenBlockingSheet = { blockingSheetOpen = true })
             ChipSection()
             SoundRowSection()
             CardSection()
             TabSection()
             SliderAndToggleSection()
+            ProgressBarSection()
             IconSection()
+            appSections()
         }
         Sheet(visible = sheetOpen, onDismiss = { sheetOpen = false }, title = "Sheet title") {
             var first by remember { mutableStateOf(true) }
@@ -91,6 +96,12 @@ fun ComponentCatalog(onClose: () -> Unit) {
             Toggle("Setting one", first, { first = it })
             Toggle("Setting two", second, { second = it })
             Button("Done", { sheetOpen = false }, Modifier.fillMaxWidth(), ButtonVariant.Primary)
+        }
+        // Blocking variant: no grabber, no close button; scrim taps and drags do nothing, back runs Cancel.
+        Sheet(visible = blockingSheetOpen, onDismiss = { blockingSheetOpen = false }, title = "Blocking sheet title", blocking = true) {
+            Text("Status line", MemixTheme.type.label, color = MemixColors.textSecondary)
+            ProgressBar(0.4f, "40%")
+            Button("Cancel", { blockingSheetOpen = false }, Modifier.fillMaxWidth())
         }
     }
 }
@@ -114,8 +125,9 @@ private fun TypeSection() = Section("Type") {
 }
 
 @Composable
-private fun ButtonSection(onOpenSheet: () -> Unit) = Section("Button") {
+private fun ButtonSection(onOpenSheet: () -> Unit, onOpenBlockingSheet: () -> Unit) = Section("Button") {
     Button("Open sheet", onOpenSheet, variant = ButtonVariant.Primary)
+    Button("Open blocking sheet", onOpenBlockingSheet)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space3), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space3)) {
         Button("Secondary", {})
         Button("Delete draft", {}, variant = ButtonVariant.Danger)
@@ -181,6 +193,17 @@ private fun SliderAndToggleSection() = Section("Slider and Toggle") {
     Slider("Volume", volume, { volume = it }, "${(volume * 100).roundToInt()}%", defaultValue = 1f)
     var on by remember { mutableStateOf(false) }
     Toggle("Show watermark preview", on, { on = it })
+}
+
+@Composable
+private fun ProgressBarSection() = Section("ProgressBar") {
+    var progress by remember { mutableFloatStateOf(0.4f) }
+    listOf(0f, 1f).forEach { fixed -> ProgressBar(fixed, "${(fixed * 100).roundToInt()}%") }
+    ProgressBar(progress, "${(progress * 100).roundToInt()}%")
+    Row(horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space3)) {
+        Button("Back 10%", { progress = (progress - 0.1f).coerceAtLeast(0f) })
+        Button("Forward 10%", { progress = (progress + 0.1f).coerceAtMost(1f) })
+    }
 }
 
 @Composable

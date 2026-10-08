@@ -32,6 +32,7 @@ kotlin {
         implementation(projects.feature.export)
         implementation(libs.jetbrains.navigation.compose)
         implementation(libs.jetbrains.lifecycle.runtime.compose)
+        implementation(libs.kotlinx.collections.immutable)
         implementation(project.dependencies.platform(libs.koin.bom))
         implementation(libs.koin.core)
         implementation(libs.koin.compose.viewmodel)

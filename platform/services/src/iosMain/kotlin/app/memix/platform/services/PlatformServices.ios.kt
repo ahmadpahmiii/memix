@@ -1,9 +1,13 @@
 package app.memix.platform.services
 
+import app.memix.core.domain.Analytics
+import app.memix.core.domain.AnalyticsEvent
 import app.memix.core.domain.AppConfig
 import app.memix.core.domain.DeviceRegion
 import app.memix.core.domain.Logger
 import app.memix.core.domain.Outcome
+import app.memix.core.domain.media.MediaFiles
+import app.memix.core.domain.media.MediaInspector
 import org.koin.dsl.module
 import platform.Foundation.NSLocale
 import platform.Foundation.NSLocaleCountryCode
@@ -13,6 +17,9 @@ actual val platformServicesModule = module {
     single<DeviceRegion> { IosDeviceRegion() }
     single<Logger> { IosLogger() }
     single<AppConfig> { DefaultAppConfig() }
+    single<Analytics> { NoAnalytics() }
+    single<MediaFiles> { NoMediaFiles() }
+    single<MediaInspector> { NoMediaInspector() }
 }
 
 // iOS keeps the system region in currentLocale even when the app has its own language.
@@ -38,4 +45,9 @@ private class IosLogger : Logger {
 private class DefaultAppConfig : AppConfig {
     override suspend fun refresh(): Outcome<Unit> = Outcome.Success(Unit)
     override val mediaBaseUrl: String = ""
+}
+
+// TODO(P7-08): Firebase Analytics on iOS; until then nothing is logged.
+private class NoAnalytics : Analytics {
+    override fun log(event: AnalyticsEvent) = Unit
 }

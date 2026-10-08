@@ -1,5 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Machine-drafted until P5-06; English source and budgets: docs/ux/specs/P1-02-gallery-picker.md -> Copy. -->
     <string name="editor_video_title">Editor video</string>
-    <string name="editor_video_body">Editor video hadir di fase berikutnya.</string>
+    <string name="editor_video_body">Media kamu sudah masuk. Pratinjau dan timeline menyusul.</string>
+    <string name="editor_media_row_a11y">%1$s %2$d dari %3$d, %4$s</string>
+    <plurals name="duration_seconds">
+        <item quantity="one">%1$d detik</item>
+        <item quantity="other">%1$d detik</item>
+    </plurals>
+    <string name="import_title">Menambahkan media kamu</string>
+    <string name="import_count">%1$d dari %2$d</string>
+    <string name="import_percent">%1$d%</string>
+    <plurals name="import_time_left_seconds">
+        <item quantity="one">Sekitar %1$d detik lagi</item>
+        <item quantity="other">Sekitar %1$d detik lagi</item>
+    </plurals>
+    <plurals name="import_time_left_minutes">
+        <item quantity="one">Sekitar %1$d menit lagi</item>
+        <item quantity="other">Sekitar %1$d menit lagi</item>
+    </plurals>
+    <string name="import_copied">%1$s tersalin</string>
+    <string name="import_cap_note">Kamu bisa menambahkan hingga %1$d sekaligus, jadi ini %1$d pertama yang kamu pilih.</string>
+    <string name="import_cancel">Batal</string>
+    <string name="import_partial_title">%1$d dari %2$d ditambahkan</string>
+    <string name="import_partial_body">Yang ini tidak bisa ditambahkan. Sisanya sudah ada di proyekmu.</string>
+    <string name="import_continue">Lanjut</string>
+    <string name="import_none_title">Media kamu gagal ditambahkan</string>
+    <string name="import_none_body">Tidak ada yang bisa ditambahkan. Coba video atau foto lain.</string>
+    <string name="import_pick_again">Pilih lagi</string>
+    <string name="import_item_video">Video</string>
+    <string name="import_item_photo">Foto</string>
+    <string name="import_reason_unsupported">Rusak, atau formatnya tidak bisa diputar di HP ini</string>
+    <string name="import_reason_unreadable">Tidak bisa dibaca. Jika ada di cloud, periksa koneksimu.</string>
+    <string name="import_storage_title">Ruang tidak cukup</string>
+    <string name="import_storage_body">Media kamu butuh %1$s, dan HP kamu punya %2$s kosong. Kosongkan ruang, lalu kembali untuk melanjutkan.</string>
+    <string name="import_free_up_space">Kosongkan ruang</string>
+    <string name="import_no_picker_title">Galeri tidak bisa dibuka</string>
+    <string name="import_no_picker_body">HP ini tidak punya aplikasi untuk memilih video dan foto.</string>
+    <string name="close">Tutup</string>
 </resources>

@@ -44,11 +44,14 @@ import memix.feature.home.generated.resources.region_global
 import memix.feature.home.generated.resources.wordmark
 import org.jetbrains.compose.resources.stringResource
 
-/** [onOpenCatalog] is non-null only in debug builds; it opens the component catalog on a long-press of the wordmark. */
+/**
+ * [onStartVideoMeme] opens the gallery picker (P1-02). [onOpenCatalog] is non-null only in debug builds; it opens the
+ * component catalog on a long-press of the wordmark.
+ */
 @Composable
 fun HomeScreen(
     state: HomeUiState,
-    onOpenVideoEditor: () -> Unit,
+    onStartVideoMeme: () -> Unit,
     onOpenPhotoEditor: () -> Unit,
     modifier: Modifier = Modifier,
     onOpenCatalog: (() -> Unit)? = null,
@@ -75,7 +78,7 @@ fun HomeScreen(
                         description = stringResource(Res.string.entry_video_body),
                         icon = MemixIcons.Video,
                         emphasized = true,
-                        onClick = onOpenVideoEditor,
+                        onClick = onStartVideoMeme,
                         modifier = cardModifier,
                     )
                     EntryCard(

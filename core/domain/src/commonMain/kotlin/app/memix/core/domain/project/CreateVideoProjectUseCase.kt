@@ -13,17 +13,20 @@ import kotlin.time.Clock
 import kotlin.uuid.Uuid
 
 /**
- * Starts an empty video project in memory. It isn't saved until the first edit, so backing out of
- * the editor right away leaves no empty draft behind.
+ * Starts an empty video project in memory. It isn't saved until something lands in it, so backing out
+ * right away leaves no empty draft behind.
  */
 class CreateVideoProjectUseCase(private val clock: Clock) {
-    /** [name] comes from string resources, so it is in the user's language. */
-    operator fun invoke(name: String): Project {
+    /**
+     * The name stays empty until the user gives one: screens show a translated stand-in instead, so an
+     * unnamed draft follows the user's language (P1-02 spec, P1-14).
+     */
+    operator fun invoke(): Project {
         val now = clock.nowEpochUs()
         return Project(
             id = Uuid.random().toString(),
             type = ProjectType.VIDEO,
-            name = name,
+            name = "",
             canvas = DEFAULT_CANVAS,
             video = VideoTimeline(
                 tracks = listOf(Track(id = Uuid.random().toString(), kind = TrackKind.MAIN_VIDEO, items = emptyList())),

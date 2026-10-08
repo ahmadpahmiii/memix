@@ -39,7 +39,6 @@ import app.memix.core.designsystem.Text
 import app.memix.core.designsystem.focusRing
 import kotlin.math.abs
 
-private val TrackHeight = 4.dp
 private val ThumbDiameter = 22.dp
 
 /**
@@ -110,13 +109,13 @@ fun Slider(
                     )
                 }
                 .drawBehind {
-                    val trackHeight = TrackHeight.toPx()
+                    val railHeight = MemixSize.railHeight.toPx()
                     val thumbRadius = ThumbDiameter.toPx() / 2
                     val centerY = size.height / 2
                     val thumbX = fractionOf(currentValue) * size.width
-                    val radius = CornerRadius(trackHeight / 2)
-                    drawRoundRect(MemixColors.hairline, Offset(0f, centerY - trackHeight / 2), Size(size.width, trackHeight), radius)
-                    drawRoundRect(MemixColors.primary, Offset(0f, centerY - trackHeight / 2), Size(thumbX, trackHeight), radius)
+                    val radius = CornerRadius(railHeight / 2)
+                    drawRoundRect(MemixColors.hairline, Offset(0f, centerY - railHeight / 2), Size(size.width, railHeight), radius)
+                    drawRoundRect(MemixColors.primary, Offset(0f, centerY - railHeight / 2), Size(thumbX, railHeight), radius)
                     drawCircle(MemixColors.selection, thumbRadius, Offset(thumbX.coerceIn(thumbRadius, size.width - thumbRadius), centerY))
                 },
         ) {}

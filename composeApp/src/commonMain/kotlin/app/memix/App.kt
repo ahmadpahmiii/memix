@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -25,13 +26,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixIcons
 import app.memix.core.designsystem.MemixMotion
 import app.memix.core.designsystem.MemixTheme
-import app.memix.core.designsystem.catalog.ComponentCatalog
 import app.memix.core.designsystem.component.BottomNav
 import app.memix.core.designsystem.component.NavDestination
+import app.memix.core.designsystem.component.Scrim
+import app.memix.debug.DebugComponentCatalog
 import app.memix.feature.drafts.DraftsScreen
 import app.memix.feature.home.HomeScreen
 import app.memix.feature.home.HomeViewModel
@@ -39,6 +42,7 @@ import app.memix.feature.photoeditor.PhotoEditorPlaceholder
 import app.memix.feature.sounds.SoundsScreen
 import app.memix.feature.templates.TemplatesScreen
 import app.memix.feature.videoeditor.VideoEditorPlaceholder
+import app.memix.feature.videoeditor.VideoEditorViewModel
 import memix.composeapp.generated.resources.Res
 import memix.composeapp.generated.resources.nav_create
 import memix.composeapp.generated.resources.nav_drafts
@@ -49,6 +53,7 @@ import org.jetbrains.compose.resources.stringResource
 import app.memix.core.domain.RefreshAppConfigUseCase
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 private val tabRoutes = listOf(HomeRoute, TemplatesRoute, SoundsRoute, DraftsRoute)
 
@@ -60,29 +65,51 @@ fun App(isDebugBuild: Boolean) {
     MemixTheme {
         val navController = rememberNavController()
         var createSheetOpen by rememberSaveable { mutableStateOf(false) }
+        val videoMemeImport = rememberVideoMemeImport(
+            closeCreateSheet = { createSheetOpen = false },
+            openEditor = { projectId -> navController.navigate(VideoEditorRoute(projectId)) },
+        )
         val backStackEntry by navController.currentBackStackEntryAsState()
         val currentTab = tabRoutes.firstOrNull { route -> backStackEntry?.destination?.hasRoute(route::class) == true }
 
         Box(Modifier.fillMaxSize().background(MemixColors.canvas)) {
             Column(Modifier.fillMaxSize()) {
-                MemixNavHost(navController, isDebugBuild, onOpenCreate = { createSheetOpen = true }, Modifier.weight(1f))
+                MemixNavHost(
+                    navController,
+                    isDebugBuild,
+                    onOpenCreate = { createSheetOpen = true },
+                    onStartVideoMeme = { videoMemeImport.start(fromCreateSheet = false) },
+                    Modifier.weight(1f),
+                )
                 if (currentTab != null) {
                     MemixBottomNav(currentTab, onSelect = { navController.navigateToTab(it) }, onCreate = { createSheetOpen = true })
                 }
             }
+            // One scrim for both sheets, so it stays up when the Create sheet hands over to the import (spec P1-02).
+            Scrim(
+                visible = createSheetOpen || videoMemeImport.needsScrim,
+                onDismiss = if (createSheetOpen) ({ createSheetOpen = false }) else videoMemeImport.scrimTap,
+            )
             CreateSheet(
                 visible = createSheetOpen,
                 onDismiss = { createSheetOpen = false },
-                onVideoMeme = { createSheetOpen = false; navController.navigate(VideoEditorRoute) },
+                onVideoMeme = { videoMemeImport.start(fromCreateSheet = true) },
                 onPhotoMeme = { createSheetOpen = false; navController.navigate(PhotoEditorRoute) },
                 onTemplates = { createSheetOpen = false; navController.navigateToTab(TemplatesRoute) },
             )
+            VideoMemeImportSheet(videoMemeImport)
         }
     }
 }
 
 @Composable
-private fun MemixNavHost(navController: NavHostController, isDebugBuild: Boolean, onOpenCreate: () -> Unit, modifier: Modifier) {
+private fun MemixNavHost(
+    navController: NavHostController,
+    isDebugBuild: Boolean,
+    onOpenCreate: () -> Unit,
+    onStartVideoMeme: () -> Unit,
+    modifier: Modifier,
+) {
     val reduceMotion = MemixTheme.reduceMotion
     NavHost(
         navController,
@@ -99,7 +126,7 @@ private fun MemixNavHost(navController: NavHostController, isDebugBuild: Boolean
             val state by viewModel.state.collectAsStateWithLifecycle()
             HomeScreen(
                 state = state,
-                onOpenVideoEditor = { navController.navigate(VideoEditorRoute) },
+                onStartVideoMeme = onStartVideoMeme,
                 onOpenPhotoEditor = { navController.navigate(PhotoEditorRoute) },
                 onOpenCatalog = if (isDebugBuild) ({ navController.navigate(CatalogRoute) }) else null,
             )
@@ -107,23 +134,28 @@ private fun MemixNavHost(navController: NavHostController, isDebugBuild: Boolean
         composable<TemplatesRoute> { TemplatesScreen() }
         composable<SoundsRoute> { SoundsScreen() }
         composable<DraftsRoute> { DraftsScreen(onMakeMeme = onOpenCreate) }
-        fullScreen<VideoEditorRoute>(reduceMotion) { VideoEditorPlaceholder(onClose = { navController.popBackStack() }) }
+        fullScreen<VideoEditorRoute>(reduceMotion) { entry ->
+            val route = entry.toRoute<VideoEditorRoute>()
+            val viewModel = koinViewModel<VideoEditorViewModel> { parametersOf(route.projectId) }
+            val state by viewModel.state.collectAsStateWithLifecycle()
+            VideoEditorPlaceholder(state, onClose = { navController.popBackStack() })
+        }
         fullScreen<PhotoEditorRoute>(reduceMotion) { PhotoEditorPlaceholder(onClose = { navController.popBackStack() }) }
         if (isDebugBuild) {
-            fullScreen<CatalogRoute>(reduceMotion) { ComponentCatalog(onClose = { navController.popBackStack() }) }
+            fullScreen<CatalogRoute>(reduceMotion) { DebugComponentCatalog(onClose = { navController.popBackStack() }) }
         }
     }
 }
 
 private inline fun <reified T : Any> androidx.navigation.NavGraphBuilder.fullScreen(
     reduceMotion: Boolean,
-    noinline content: @Composable () -> Unit,
+    noinline content: @Composable (NavBackStackEntry) -> Unit,
 ) {
     val duration = tween<androidx.compose.ui.unit.IntOffset>(MemixMotion.durationScreen)
     composable<T>(
         enterTransition = { if (reduceMotion) fadeIn(tween(MemixMotion.durationPress)) else slideIntoContainer(SlideDirection.Start, duration) },
         popExitTransition = { if (reduceMotion) fadeOut(tween(MemixMotion.durationPress)) else slideOutOfContainer(SlideDirection.End, duration) },
-    ) { content() }
+    ) { entry -> content(entry) }
 }
 
 @Composable

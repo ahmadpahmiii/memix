@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 10 and 11 (data_extraction_rules.xml covers 12+). Media copies stay out of backups, for the same reason:
+     the 25 MB cloud quota. On these versions the rule applies to device-to-device transfers too. -->
+<full-backup-content>
+    <exclude domain="file" path="media" />
+</full-backup-content>

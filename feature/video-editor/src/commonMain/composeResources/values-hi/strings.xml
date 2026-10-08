@@ -1,5 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Machine-drafted until P5-06; English source and budgets: docs/ux/specs/P1-02-gallery-picker.md -> Copy. -->
     <string name="editor_video_title">वीडियो एडिटर</string>
-    <string name="editor_video_body">वीडियो एडिटर अगले चरण में आएगा।</string>
+    <string name="editor_video_body">आपकी मीडिया आ गई है। प्रीव्यू और टाइमलाइन आगे आएंगे।</string>
+    <string name="editor_media_row_a11y">%1$s, %3$d में से %2$d, %4$s</string>
+    <plurals name="duration_seconds">
+        <item quantity="one">%1$d सेकंड</item>
+        <item quantity="other">%1$d सेकंड</item>
+    </plurals>
+    <string name="import_title">आपकी मीडिया जोड़ी जा रही है</string>
+    <string name="import_count">%2$d में से %1$d</string>
+    <string name="import_percent">%1$d%</string>
+    <plurals name="import_time_left_seconds">
+        <item quantity="one">लगभग %1$d सेकंड बाकी</item>
+        <item quantity="other">लगभग %1$d सेकंड बाकी</item>
+    </plurals>
+    <plurals name="import_time_left_minutes">
+        <item quantity="one">लगभग %1$d मिनट बाकी</item>
+        <item quantity="other">लगभग %1$d मिनट बाकी</item>
+    </plurals>
+    <string name="import_copied">%1$s कॉपी हुआ</string>
+    <string name="import_cap_note">आप एक बार में %1$d तक जोड़ सकते हैं, इसलिए ये आपके चुने हुए पहले %1$d हैं।</string>
+    <string name="import_cancel">रद्द करें</string>
+    <string name="import_partial_title">%2$d में से %1$d जोड़े गए</string>
+    <string name="import_partial_body">ये नहीं जोड़े जा सके। बाकी सब आपके प्रोजेक्ट में है।</string>
+    <string name="import_continue">जारी रखें</string>
+    <string name="import_none_title">आपकी मीडिया नहीं जोड़ी जा सकी</string>
+    <string name="import_none_body">इनमें से कुछ भी नहीं जोड़ा जा सका। दूसरे वीडियो या फ़ोटो आज़माएं।</string>
+    <string name="import_pick_again">फिर से चुनें</string>
+    <string name="import_item_video">वीडियो</string>
+    <string name="import_item_photo">फ़ोटो</string>
+    <string name="import_reason_unsupported">खराब है, या ऐसा फ़ॉर्मैट जो यह फ़ोन नहीं चला सकता</string>
+    <string name="import_reason_unreadable">पढ़ी नहीं जा सकी। अगर यह क्लाउड में है, तो अपना कनेक्शन जांचें।</string>
+    <string name="import_storage_title">पर्याप्त जगह नहीं है</string>
+    <string name="import_storage_body">आपकी मीडिया को %1$s चाहिए, और आपके फ़ोन में %2$s खाली है। जगह खाली करें, फिर जारी रखने के लिए वापस आएं।</string>
+    <string name="import_free_up_space">जगह खाली करें</string>
+    <string name="import_no_picker_title">आपकी गैलरी नहीं खुल सकती</string>
+    <string name="import_no_picker_body">इस फ़ोन में वीडियो और फ़ोटो चुनने के लिए कोई ऐप नहीं है।</string>
+    <string name="close">बंद करें</string>
 </resources>

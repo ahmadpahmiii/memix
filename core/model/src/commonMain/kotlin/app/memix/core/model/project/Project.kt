@@ -26,7 +26,7 @@ data class Project(
 ) {
     companion object {
         /** Bump with a migration step in :core:data for any change to the saved shape (CLAUDE.md rule 6). */
-        const val CURRENT_SCHEMA_VERSION = 1
+        const val CURRENT_SCHEMA_VERSION = 2
     }
 }
 

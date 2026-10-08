@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- File sizes: %1$s is the number, already rounded, with the decimal mark below. A no-break space (\u00A0) keeps the unit on the number's line. -->
+    <string name="file_size_bytes">%1$s\u00A0B</string>
+    <string name="file_size_kilobytes">%1$s\u00A0kB</string>
+    <string name="file_size_megabytes">%1$s\u00A0MB</string>
+    <string name="file_size_gigabytes">%1$s\u00A0GB</string>
+    <string name="file_size_terabytes">%1$s\u00A0TB</string>
+    <string name="file_size_decimal_separator">,</string>
+</resources>

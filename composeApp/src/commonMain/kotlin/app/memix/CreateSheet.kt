@@ -38,6 +38,7 @@ import memix.composeapp.generated.resources.create_video_title
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.stringResource
 
+/** Draws no scrim of its own: the app root's shared scrim stays up when a pick hands over to the import sheet. */
 @Composable
 internal fun CreateSheet(
     visible: Boolean,
@@ -46,7 +47,7 @@ internal fun CreateSheet(
     onPhotoMeme: () -> Unit,
     onTemplates: () -> Unit,
 ) {
-    Sheet(visible, onDismiss, stringResource(Res.string.create_title), heroTitle = true) {
+    Sheet(visible, onDismiss, stringResource(Res.string.create_title), heroTitle = true, drawScrim = false) {
         EditorRow(stringResource(Res.string.create_video_title), stringResource(Res.string.create_video_body), MemixIcons.Video, emphasized = true, onVideoMeme)
         EditorRow(stringResource(Res.string.create_photo_title), stringResource(Res.string.create_photo_body), MemixIcons.Photo, emphasized = false, onPhotoMeme)
         TemplateRow(stringResource(Res.string.create_template), onTemplates)

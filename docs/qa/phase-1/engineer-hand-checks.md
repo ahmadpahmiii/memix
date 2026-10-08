@@ -20,6 +20,56 @@ adb logcat -d -s MemixProjectCheck:* ProjectRepository:*     # expect: verify: i
 - Optional, a cross-check from outside the app: `adb shell run-as app.memix sqlite3 databases/memix.db "select id,name,type,updated_at_epoch_us,length(project_json) from project"` (if the device has sqlite3).
 - In a release build the extra does nothing: the gate is `FLAG_DEBUGGABLE`.
 
+## P1-02 · picked media appear in the project without a storage permission prompt
+
+Test files on the desktop (ffmpeg):
+```
+ffmpeg -f lavfi -i testsrc2=size=1080x1920:rate=30 -f lavfi -i sine=frequency=440 -t 12.4 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest clip-12s.mp4
+ffmpeg -f lavfi -i testsrc2=size=1080x1920:rate=30 -t 5 -c:v libx264 -pix_fmt yuv420p -an clip-5s-silent.mp4
+ffmpeg -f lavfi -i testsrc2=size=3024x4032 -frames:v 1 photo.jpg
+head -c 300000 clip-12s.mp4 > damaged.mp4
+ffmpeg -f lavfi -i testsrc2=size=3840x2160:rate=30 -t 300 -c:v libx264 -b:v 25M -pix_fmt yuv420p big-1gb.mp4
+adb push clip-12s.mp4 clip-5s-silent.mp4 photo.jpg damaged.mp4 big-1gb.mp4 /sdcard/DCIM/MemixTest/
+for f in clip-12s.mp4 clip-5s-silent.mp4 photo.jpg damaged.mp4 big-1gb.mp4; do adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/DCIM/MemixTest/$f; done
+```
+1. `adb uninstall app.memix; ./gradlew :androidApp:installDebug` (fresh install).
+2. **No permission:** `adb shell dumpsys package app.memix | grep -i permission` -> no `READ_MEDIA_*`, `READ_EXTERNAL_STORAGE`,
+   `WRITE_EXTERNAL_STORAGE`, `READ_MEDIA_VISUAL_USER_SELECTED` (strict: `adb shell dumpsys package app.memix | grep -iE "READ_MEDIA|EXTERNAL_STORAGE"`
+   prints nothing). Merged manifest: `./gradlew :androidApp:processDebugMainManifest` then
+   `grep -iE "READ_MEDIA|EXTERNAL_STORAGE" $(find androidApp/build/intermediates -path "*merged_manifest*debug*" -name AndroidManifest.xml)` prints nothing.
+   App info -> Permissions lists no "Photos and videos" or "Files".
+3. **Done when:** `adb logcat -c`; Create -> Video meme -> picker opens at half height, no dialog -> tap clip-12s, photo,
+   clip-5s-silent (in that order) -> confirm the selection -> editor lists Video 00:12.40 / Photo 00:03.00 / Video 00:05.00, no sheet flash.
+   `adb logcat -d -s MemixAnalytics:* MediaImport:*` -> one `project_create {editor=video, source=gallery}`.
+   `adb shell run-as app.memix ls -laR files/media` -> one folder, three files ending .mp4/.jpg/.mp4, no `.part`.
+4. **Back out:** Create -> Video meme -> back -> the Create sheet is still open; `run-as ... ls files/media` unchanged.
+5. **Cancel:** pick big-1gb.mp4 -> import sheet at ~0.3 s with count, percent, bar, time left after ~2 s -> note the copy
+   rate -> Cancel -> back where you started, no new folder under files/media. Repeat and let it finish: note seconds per GB.
+6. **Partial / none:** clip-12s + damaged + photo -> "2 of 3 added", row "damaged.mp4 / Damaged, or a format this phone
+   can't play" -> Continue -> editor. damaged alone -> "Couldn't add your media" -> Pick again reopens the picker.
+7. **Not enough space:** `adb shell df -h /data`; fill: `adb shell dd if=/dev/zero of=/sdcard/Download/fill.bin bs=1048576 count=<free MB - 600>`;
+   pick big-1gb.mp4 -> "Not enough space" with both sizes -> Free up space opens the storage screen ->
+   `adb shell rm /sdcard/Download/fill.bin` -> back to Memix -> copying starts by itself.
+8. **Process death:** open the picker from Create, then `adb shell am kill app.memix` (if the process survives, set
+   Developer options -> Background process limit -> No background processes), pick a clip -> Memix restarts and the
+   editor opens with it. Mid-copy kill: start big-1gb.mp4, `adb shell am force-stop app.memix`, relaunch, wait 2 s ->
+   `run-as app.memix ls -laR files/media` shows no `.part` and no folder for that pick.
+9. **Rotation and background:** rotate and press Home during a big copy -> copying continues; the sheet shows the current state on return.
+10. **Android 10 (API 29) emulator or phone:** same as step 3 -> backport picker or the file chooser, no prompt. In the
+    file chooser, select 36+ files -> the sheet shows the 35 note, result "35 of N added".
+11. **TalkBack** spot check: sheet title announced on open and on result; "4 of 5" spoken per item, not per percent.
+Pass = all of the above; report the 1 GB copy time and anything off.
+
+### States to screenshot for the design review (`docs/ux/reviews/P1-02/`)
+
+Debug catalog (long-press the Home wordmark -> Catalog -> "Import sheet (P1-02)" buttons; sample data):
+`copying`, `copying-long` (About 45 seconds left), `copying-minutes`, `copying-size-unknown` (48 MB copied),
+`copying-over-limit`, `some-not-added`, `some-limit-only`, `some-limit-and-failures`, `none-added`, `none-long-list`
+(scrolls, title/button fixed), `not-enough-space`, `not-enough-space-no-button`, `no-picker`; plus `catalog-progressbar`
+and `catalog-blocking-sheet`. Hindi at 200% font: `copying-hi-200`, `some-not-added-hi-200`.
+Real flow: `create-sheet` (en, and `create-sheet-hi-200`), `copying-real-1gb`, `some-not-added-real`, `none-added-real`,
+`editor-after-mixed-pick` (video, photo, video). The system picker is not compared.
+
 ## P1-03 · export of a project with every supported track type
 
 Ticket scope (PM): main video and audio tracks; overlay, text, sticker and effect tracks are skipped with a log line. The preview half of the Done when is checked in P1-04.

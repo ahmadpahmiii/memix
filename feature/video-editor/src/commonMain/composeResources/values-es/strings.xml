@@ -1,5 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Machine-drafted until P5-06; English source and budgets: docs/ux/specs/P1-02-gallery-picker.md -> Copy. -->
     <string name="editor_video_title">Editor de video</string>
-    <string name="editor_video_body">El editor de video llega en la próxima fase.</string>
+    <string name="editor_video_body">Ya está todo aquí. Pronto llegan la vista previa y la línea de tiempo.</string>
+    <string name="editor_media_row_a11y">%1$s %2$d de %3$d, %4$s</string>
+    <plurals name="duration_seconds">
+        <item quantity="one">%1$d segundo</item>
+        <item quantity="other">%1$d segundos</item>
+    </plurals>
+    <string name="import_title">Agregando tus videos y fotos</string>
+    <string name="import_count">%1$d de %2$d</string>
+    <string name="import_percent">%1$d\u00A0%</string>
+    <plurals name="import_time_left_seconds">
+        <item quantity="one">Falta cerca de %1$d segundo</item>
+        <item quantity="other">Faltan cerca de %1$d segundos</item>
+    </plurals>
+    <plurals name="import_time_left_minutes">
+        <item quantity="one">Falta cerca de %1$d minuto</item>
+        <item quantity="other">Faltan cerca de %1$d minutos</item>
+    </plurals>
+    <string name="import_copied">%1$s copiados</string>
+    <string name="import_cap_note">Puedes agregar hasta %1$d a la vez, así que estos son los primeros %1$d que elegiste.</string>
+    <string name="import_cancel">Cancelar</string>
+    <string name="import_partial_title">%1$d de %2$d agregados</string>
+    <string name="import_partial_body">No se pudieron agregar estos. Todo lo demás ya está en tu proyecto.</string>
+    <string name="import_continue">Continuar</string>
+    <string name="import_none_title">No se pudo agregar nada</string>
+    <string name="import_none_body">No se pudo agregar ninguno. Prueba con otros videos o fotos.</string>
+    <string name="import_pick_again">Elegir de nuevo</string>
+    <string name="import_item_video">Video</string>
+    <string name="import_item_photo">Foto</string>
+    <string name="import_reason_unsupported">Dañado o con un formato que este teléfono no reproduce</string>
+    <string name="import_reason_unreadable">No se pudo leer. Si está en la nube, revisa tu conexión.</string>
+    <string name="import_storage_title">No hay espacio suficiente</string>
+    <string name="import_storage_body">Tus videos y fotos necesitan %1$s y tu teléfono tiene %2$s libres. Libera espacio y vuelve para continuar.</string>
+    <string name="import_free_up_space">Liberar espacio</string>
+    <string name="import_no_picker_title">No se puede abrir tu galería</string>
+    <string name="import_no_picker_body">Este teléfono no tiene una app para elegir videos y fotos.</string>
+    <string name="close">Cerrar</string>
 </resources>

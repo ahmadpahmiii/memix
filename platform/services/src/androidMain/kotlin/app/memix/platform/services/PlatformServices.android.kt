@@ -2,14 +2,21 @@ package app.memix.platform.services
 
 import android.app.LocaleManager
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.os.Build
+import android.os.Bundle
 import android.util.Log
+import app.memix.core.domain.Analytics
+import app.memix.core.domain.AnalyticsEvent
 import app.memix.core.domain.AppConfig
 import app.memix.core.domain.AppError
 import app.memix.core.domain.DeviceRegion
 import app.memix.core.domain.Logger
 import app.memix.core.domain.Outcome
+import app.memix.core.domain.media.MediaFiles
+import app.memix.core.domain.media.MediaInspector
 import com.google.android.gms.tasks.Task
+import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import java.io.IOException
@@ -17,6 +24,7 @@ import java.util.Locale
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
@@ -25,6 +33,9 @@ actual val platformServicesModule = module {
     single<DeviceRegion> { AndroidDeviceRegion(androidContext()) }
     single<Logger> { AndroidLogger() }
     single<AppConfig> { FirebaseAppConfig() }
+    single<Analytics> { FirebaseAnalyticsLogger(androidContext()) }
+    single<MediaFiles> { AndroidMediaFiles(androidContext(), Dispatchers.IO, get()) }
+    single<MediaInspector> { AndroidMediaInspector(androidContext(), Dispatchers.IO, get()) }
 }
 
 private class AndroidDeviceRegion(private val context: Context) : DeviceRegion {
@@ -54,6 +65,28 @@ private class AndroidLogger : Logger {
         Log.e(tag, message, throwable)
         crashlytics.log("$tag: $message")
         crashlytics.recordException(throwable ?: IllegalStateException("$tag: $message"))
+    }
+}
+
+/**
+ * Firebase Analytics. The manifest keeps collection off until the consent flow turns it on (P5-01, P5-04); until then
+ * Firebase doesn't collect what is logged here. Debug builds also print each event to logcat (tag MemixAnalytics), so
+ * a hand check can see it fire while collection is off; events carry no personal data.
+ */
+private class FirebaseAnalyticsLogger(private val context: Context) : Analytics {
+    // Fetched on the first event, not when the import screen's ViewModel is built during app start.
+    private val firebase by lazy { FirebaseAnalytics.getInstance(context) }
+    private val isDebugBuild by lazy { (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0 }
+
+    override fun log(event: AnalyticsEvent) {
+        val params = Bundle()
+        event.params.forEach { (key, value) -> params.putString(key, value) }
+        firebase.logEvent(event.name, params)
+        if (isDebugBuild) Log.d(ANALYTICS_TAG, "${event.name} ${event.params}")
+    }
+
+    private companion object {
+        const val ANALYTICS_TAG = "MemixAnalytics"
     }
 }
 

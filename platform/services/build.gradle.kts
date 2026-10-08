@@ -1,5 +1,6 @@
 plugins {
-    id("memix.kmp.library")
+    // Compose for the two system screens the app opens and gets results from: the photo picker and the storage manager.
+    id("memix.kmp.compose")
 }
 
 kotlin {
@@ -10,6 +11,7 @@ kotlin {
     }
     sourceSets.androidMain.dependencies {
         implementation(libs.koin.android)
+        implementation(libs.androidx.activity.compose)
         implementation(project.dependencies.platform(libs.firebase.bom))
         implementation(libs.firebase.analytics)
         implementation(libs.firebase.crashlytics)

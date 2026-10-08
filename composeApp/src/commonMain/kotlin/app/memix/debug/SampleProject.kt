@@ -13,6 +13,7 @@ import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.MediaOrigin
+import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.ProjectType
 import app.memix.core.model.project.StickerItem
@@ -36,7 +37,10 @@ internal object SampleProject {
     private val galleryVideo = MediaRef(
         origin = MediaOrigin.GalleryUri("content://media/picker/0/com.android.providers.media.photopicker/media/1000000018"),
         kind = MediaKind.VIDEO,
-        cachedCopyPath = "projects/$ID/media/1000000018.mp4",
+        cachedCopyPath = "media/$ID/1000000018.mp4",
+        durationUs = 12_400_000,
+        pixelSize = PixelSize(widthPx = 1080, heightPx = 1920),
+        hasAudio = true,
     )
 
     fun everyTrackType(): Project = Project(

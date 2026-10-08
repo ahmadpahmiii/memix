@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+. Media copies (files/media, see MediaPaths.ROOT) stay out of the cloud backup: its 25 MB quota is
+     smaller than one video, and over the quota Android backs up nothing at all. Drafts (databases/memix.db) are still
+     backed up; a draft restored without its media is the editor's "missing media" case. Device-to-device transfers
+     have no section here, so they carry everything, media included. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="media" />
+    </cloud-backup>
+</data-extraction-rules>
