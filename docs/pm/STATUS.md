@@ -16,20 +16,21 @@ Owned by the product manager. Keep it one screen long. Statuses: Not started · 
 | P1-05 | Timeline UI | Not ready: waits for P1-04 (all else passes) | done | principal-mobile-engineer | spec a30ae8e |
 | P1-06 | Clip edits: split, trim, delete, duplicate, reorder | Not ready: waits for P1-05 (all else passes) | done | principal-mobile-engineer | spec a30ae8e |
 | P1-16 | Add media and replace a clip (approved 8 Oct) | Not ready: waits for P1-02, P1-06, P1-07 (all else passes) | Add media in P1-02 spec; tile in P1-05; Replace drafted in P1-06 spec: designer finalizes it (drop "pending", sounds out of scope) when P1-16 comes up | principal-mobile-engineer | proposal 2026-10-07-p1-02-followups |
-| P1-08 | Meme sounds from the bundled starter pack | Not started; needs licensed starter sounds | done (in P1-05/06) | principal-mobile-engineer | |
+| P1-08 | Meme sounds from the bundled starter pack | Not started; blocked until the owner approves each starter-sound license (backend engineer searching CC0 since 8 Oct) | done (in P1-05/06) | principal-mobile-engineer | |
 | P1-09 | Original audio: volume, mute, detach | Not started | done (in P1-05/06) | principal-mobile-engineer | |
 | P1-10 | Text, basic | Not started | yes | principal-mobile-engineer | |
 | P1-11 | Canvas: ratios, fit/fill, background | Not started | yes | principal-mobile-engineer | |
 | P1-12 | Export | Not started | yes | principal-mobile-engineer | |
-| P1-13 | Watermark | Not started; position unconfirmed (PRD open item) | — | principal-mobile-engineer | |
+| P1-13 | Watermark | Not started; position confirmed top-left, 3% margin (8 Oct) | — | principal-mobile-engineer | |
 | P1-14 | Drafts screen | Not started | yes | principal-mobile-engineer | |
 | P1-15 | Release plumbing: signing, CI upload to internal testing | Not started; blocked on credentials | — | principal-mobile-engineer | |
+| P1-17 | Hindi display face (added 8 Oct) | Not started; designer picks the face first | yes (pick + document) | ux-designer, principal-mobile-engineer | decision-log 8 Oct |
 
 **Top risks**
-1. **No device in this session.** Every hand check and perf number falls to the owner: now P1-01's round trip, P1-03's export and P1-07's kill checks; later 30 fps (P1-04), 60 fps (P1-05), 100 ms edits (P1-06), export time (P1-12). Perf needs a named reference phone and a release-type build P1-04 adds.
+1. **No device in this session.** Every hand check and perf number falls to the owner: now P1-01's round trip, P1-03's export and P1-07's kill checks; later 30 fps (P1-04), 60 fps (P1-05), 100 ms edits (P1-06), export time (P1-12) and LeakCanary runs, all on the owner's phone with the release-type build P1-04 adds.
 2. **Phase 0 had no QA pass.** The P1 test plan also covers P0-01…P0-09, incl. unverified focus rings and the S4 nav-bar flicker on pop.
-3. **Media hosting undecided** (P0-07 moved). Decide before P3 (7 Dec); P3-01, P3-04, P3-12, P4-05, P4-15 wait on it.
+3. **Starter sounds gate P1-08** (sound first): nothing ships until the owner approves each license; the sound-sync Done when can't be checked before then.
 
-**Watching:** sounds keep their times when earlier clips are cut (tested in the P1 build); P1-06 at the top of L; source duration and has-audio stored in P1-02's build, not discovered in P1-04.
+**Watching:** sounds keep their times when earlier clips are cut (tested in the P1 build); P1-06 at the top of L; source duration and has-audio stored in P1-02's build, not discovered in P1-04; Supabase Storage Free limits until the R2 move (P3-13 now, P6-07 before launch); public repo: secret scan and redistributable bundled files only.
 
-**Owner decisions open:** (a) GitHub merge gate: Pro, public repo, or convention · (b) Devanagari display face for Hindi · (c) media hosting, before 7 Dec · (d) Firebase: confirm the test crash, add `media_base_url` · (g) **name the reference phone** (2023 or newer, upper-mid or flagship) · (h) keyboard shortcuts and the locked-track UI in the P1 specs go beyond the PRD: not pass/fail unless you want them in P1. **P1 inputs:** licensed starter sounds for P1-08 · watermark position for P1-13 · upload keystore and Play service account for P1-15 (`docs/CREDENTIALS.md`).
+**Decided 8 Oct** (decision-log): (a) merge gate: convention, no branch protection; P0-02's follow-up closed · (b) Hindi face → P1-17 · (c) Supabase Storage now (P3-13), R2 before launch (P6-07) · (g) no named phone; owner's phone, no lag, no leaks · (h) shortcuts and lock UI → Later (L-01, L-02). **Open:** (d) Firebase: confirm the test crash, add `media_base_url`. **P1 inputs:** starter sounds: team search plus owner approval of each license · watermark: done · upload keystore and Play service account for P1-15 (`docs/CREDENTIALS.md`): open.

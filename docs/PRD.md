@@ -133,7 +133,7 @@ The sound library is the main reason to choose Memix: **500 licensed sounds at l
 - **Audio spec:** AAC (.m4a), 128 kbps, loudness-normalized to −16 LUFS with peaks at −1 dBTP, so sounds don't jump in volume.
 - **Report:** every sound has a Report option that sends a takedown request to the team.
 
-Prefer CC0 sounds. A CC-BY sound is accepted only when an in-app credit satisfies its license.
+Prefer CC0 sounds. A CC-BY sound is accepted only when an in-app credit satisfies its license. The starter sounds bundled in phase 1 are free to use (CC0 or equivalent), and the owner approves each license before it ships (8 Oct 2026).
 
 ## Templates
 
@@ -208,15 +208,16 @@ Android 10 and up ships first. iOS 17 and up follows from the same codebase; iOS
 
 | Target | Value |
 | --- | --- |
-| Cold start to Home | under 1.5 s on the reference phone |
+| Cold start to Home | under 1.5 s |
 | Open an editor | under 1 s |
 | Preview playback, 1080p, 6 tracks | 30 fps minimum; 60 fps where the phone allows |
 | Scrub response | under 100 ms per frame update |
-| Export, 60 s at 1080p30 | 60 s or less on the reference phone (about real time) |
+| Export, 60 s at 1080p30 | 60 s or less (about real time) |
+| Memory leaks | none in the editors or export (LeakCanary on Android debug builds; Xcode Instruments Leaks on iOS) |
 | Crash-free users | 99.5% or more |
 | Download size | under 50 MB (ML models downloaded on demand) |
 
-- **Reference phone:** a 2023 or newer upper-mid or flagship Android. Older phones still run every feature, just slower.
+- **Where it's measured:** no named reference phone (owner, 8 Oct 2026). The bar is no visible lag and no memory leaks on Android and iOS; the numbers above are the yardstick, measured on the owner's own phone with a release-type build. LeakCanary is a debug-only tool, not a test. Older phones still run every feature, just slower.
 - **Stack:** Kotlin Multiplatform; Compose Multiplatform for shared UI; native video engines (Media3 on Android, AVFoundation on iOS); no FFmpeg.
 - **Offline:** everything except catalog browsing and downloads works offline.
 - **Accessibility:** touch targets of 48 dp or more, WCAG AA contrast, screen-reader labels on every tool.
@@ -279,7 +280,7 @@ Android launches around **7 March 2027** and iOS around **2 May 2027**, if the f
 
 Each phase ends with a build in internal testing and a manual QA pass, so problems surface early. What each phase delivers:
 
-- **0 · Foundation (1 week):** KMP project, CI, design system in Compose, Supabase and R2 set up.
+- **0 · Foundation (1 week):** KMP project, CI, design system in Compose, Supabase set up. Media storage moved (8 Oct 2026): Supabase Storage in phase 3, Cloudflare R2 before launch.
 - **1 · Core + video editor (4 weeks):** project model, timeline, Android engine preview and export, meme sounds on the timeline, text, watermark. First internal test build.
 - **2 · Photo editor (3 weeks):** meme formats, image tools, layers, photo background removal, PNG / JPG / GIF / WhatsApp stickers, Make it a video meme.
 - **3 · Sounds and audio (3 weeks):** full library with search, tabs, favorites, offline pack and imports; voiceover; audio effects.
@@ -300,14 +301,14 @@ Each phase ends with a build in internal testing and a manual QA pass, so proble
 | Video background removal quality | Rough edges | People only in v1, refine brush, low-res preview |
 | ML Kit subject segmentation is beta | API changes | Behind our own interface, MediaPipe fallback |
 | Name conflict | Costly rename later | Trademark search before launch |
-| File download costs | Bill grows with users | Cloudflare R2 from day one (free egress), on-device caching |
+| File download costs | Bill grows with users | Supabase Storage while only the team downloads, Cloudflare R2 (free egress) before launch, on-device caching |
 | Supabase Free limits | Backend restricted when over quota | Monitor usage, move to Pro at about 1,500 DAU |
 
 **Open items**
 
 - [ ] Pick the 5 to 10 launch countries for trending lists (proposed: Indonesia, United States, India, Brazil, Mexico, Philippines, Spain)
 - [ ] Trademark search for "Memix" and buy the domain
-- [ ] Confirm watermark position (proposed top-left)
+- [x] Confirm watermark position: top-left, 3% margin (owner, 8 Oct 2026)
 - [ ] Verify WhatsApp sticker spec during the photo export ticket
 - [ ] Book the IP lawyer review before launch
 
@@ -320,14 +321,14 @@ Each phase ends with a build in internal testing and a manual QA pass, so proble
 | Editors | Two separate editors: video and photo |
 | Background removal | Free in both editors |
 | Accounts | None in v1 |
-| Backend | Supabase (Free, then Pro at about 1,500 DAU) + Cloudflare R2 for files; Supabase dashboard as the first CMS |
+| Backend | Supabase (Free, then Pro at about 1,500 DAU) + Cloudflare R2 for files; Supabase dashboard as the first CMS. Revised 8 Oct: files on Supabase Storage until P6, then R2 before launch |
 | Crash and analytics | Firebase Crashlytics and Analytics |
 | Money | Ads only; rewarded ad removes the watermark; capped interstitial after export |
-| Watermark | Small "Memix" text, no logo |
+| Watermark | Small "Memix" text, no logo; top-left, 3% margin (confirmed 8 Oct) |
 | Look | Dark only; neutral Adobe Spectrum grays in CapCut's layout, sky-blue accent #2BB3F3, white selection (revised 7 Oct after the first draft's yellow and pink) |
 | Name | Memix |
 | Goal | 5,000 DAU by month 3 after launch |
-| Languages | English, Indonesian, Spanish, Portuguese, Hindi |
+| Languages | English, Indonesian, Spanish, Portuguese, Hindi; Hindi gets an OFL Devanagari display face in Anton's place (8 Oct) |
 | Testing | No automated tests; manual QA at the end of each phase by the QA agent, with device-only checks done by the owner |
 
 How it's built: [TECHNICAL_DESIGN.md](TECHNICAL_DESIGN.md) · What to build, phase by phase: [TICKETS.md](TICKETS.md) · Look and feel: [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md)

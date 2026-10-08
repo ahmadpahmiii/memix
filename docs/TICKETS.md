@@ -6,7 +6,7 @@ Source of truth: the "Memix — Product Requirements" Claude Doc (https://claude
 
 Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.g. `phase-1`) and one pull request, opened when the phase is done (after the QA pass and the phase gate). Each ticket is one or more commits on that branch, titled `<ID>: <ticket name>`. Every phase ends with a build in Play internal testing.
 
-- **IDs:** `P<phase>-<number>`, for example `P1-04`. The Needs column lists tickets that must merge first.
+- **IDs:** `P<phase>-<number>`, for example `P1-04`; `L-<number>` for unscheduled improvements after launch. The Needs column lists tickets that must merge first.
 - **Sizes** (one developer working with Claude): S is up to 1 day, M is 2 to 3 days, L is 4 to 5 days.
 - **Definition of done** for every ticket:
   - The Android app builds, the iOS framework compiles, and CI is green.
@@ -19,6 +19,7 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 ## Phase 0 · Foundation (week 1, from 12 Oct)
 
 > 8 Oct 2026 (owner): P0-07 moved out of Phase 0 while another media-hosting approach is found; P0-06's seed sounds and templates move with it. Every later ticket that needs hosted media (P3-01, P3-04, P3-12, P4-05, P4-15) waits for that decision, due before P3 starts.
+> Decided 8 Oct 2026 (owner): Supabase Storage now (P3-13, first in P3), Cloudflare R2 before launch (P6-07). P0-02's "merging requires green" stays a convention, without branch protection.
 
 | ID | Ticket | Done when | Size | Needs |
 | --- | --- | --- | --- | --- |
@@ -35,46 +36,51 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 ## Phase 1 · Core and video editor (weeks 2 to 5, from 19 Oct)
 
 > 8 Oct 2026 (owner): P1-16 added (`docs/pm/proposals/2026-10-07-p1-02-followups.md`, A). It sits after P1-07 in build order, so its Needs are met working top to bottom.
+> 8 Oct 2026 (owner): no named reference phone. Speed numbers are measured on the owner's own phone with a release-type build; the bar is no visible lag and no memory leaks. Editor and export tickets check for leaks with LeakCanary in debug builds (a debug-only tool added with P1-04, not a test). P1-08 waits until the owner approves each starter-sound license (CC0 or equivalent). P1-17 added (Hindi display face). Keyboard shortcuts and the locked-track UI are not in P1: see Later · Improvements.
 
 | ID | Ticket | Done when | Size | Needs |
 | --- | --- | --- | --- | --- |
 | P1-01 | Project model, serialization, SQLDelight storage, migrations | A project created, saved, force-closed and reopened comes back identical | M | P0-03 |
 | P1-02 | Gallery picker (Android photo picker, multi-select videos and photos) with a cached copy of each file | Picked media appear in the project without a storage permission prompt | M | P1-01 |
 | P1-03 | `VideoEngine` interface and the Android composition builder (main video sequence, audio sequences) | A sample project with every track type previews and exports correctly | L | P1-01 |
-| P1-04 | Preview: player in Compose, play, pause, seek, timecode | 1080p preview plays at 30 fps or more on the reference phone | L | P1-03 |
-| P1-05 | Timeline UI: tracks, pinch zoom, scroll, playhead, thumbnail strip, selection, track colors | Timeline scrolls at 60 fps on the reference phone | L | P1-04 |
-| P1-06 | Clip edits: split, trim handles, delete, duplicate, reorder | Each edit shows in the preview within 100 ms | L | P1-05 |
+| P1-04 | Preview: player in Compose, play, pause, seek, timecode | 1080p preview plays at 30 fps or more on the owner's phone; LeakCanary shows no leaks | L | P1-03 |
+| P1-05 | Timeline UI: tracks, pinch zoom, scroll, playhead, thumbnail strip, selection, track colors | Timeline scrolls at 60 fps on the owner's phone; LeakCanary shows no leaks | L | P1-04 |
+| P1-06 | Clip edits: split, trim handles, delete, duplicate, reorder | Each edit shows in the preview within 100 ms on the owner's phone; LeakCanary shows no leaks | L | P1-05 |
 | P1-07 | Undo and redo (100 steps), auto-save 500 ms after the last change | Killing the app mid-edit restores the draft | M | P1-01 |
 | P1-16 | Add media and replace a clip from the video editor: same picker and import sheet as P1-02; Replace keeps the clip's place and length and covers video and photo clips only (a meme sound is deleted and re-added) | Media added from the editor lands after the clip under the playhead as one undo step, and a replaced clip keeps its start and length so sounds and text stay in sync | S | P1-02, P1-06, P1-07 |
 | P1-08 | Meme sounds on the timeline from the bundled starter pack: add at playhead, move, trim, volume | Sound stays in sync within 1 frame in preview and export | M | P1-05 |
 | P1-09 | Original audio: volume, mute, detach | Detached audio becomes its own audio-track clip | S | P1-04 |
 | P1-10 | Text, basic: add, edit, font (Anton plus 4 more), color, outline, move / scale / rotate gestures, timing on the timeline | Text looks the same in preview and export | L | P1-04 |
 | P1-11 | Canvas: ratios 9:16, 1:1, 4:5, 3:4, 16:9 and custom; fit or fill; background color or blur | Changing ratio keeps every layer inside the frame | M | P1-04 |
-| P1-12 | Export: resolution and fps choices, device capability check, size and time estimate, free-space check, foreground service with notification, cancel | 60 s at 1080p30 exports in 60 s or less on the reference phone and plays in the gallery | L | P1-03 |
-| P1-13 | Watermark: small "Memix" text, top-left, on free exports | Watermark shows by default and is absent when the export is marked watermark-free | S | P1-12 |
+| P1-12 | Export: resolution and fps choices, device capability check, size and time estimate, free-space check, foreground service with notification, cancel | 60 s at 1080p30 exports in 60 s or less on the owner's phone and plays in the gallery; LeakCanary shows no leaks after an export and a cancel | L | P1-03 |
+| P1-13 | Watermark: small "Memix" text, top-left with a 3% margin, on free exports | Watermark shows by default and is absent when the export is marked watermark-free | S | P1-12 |
 | P1-14 | Drafts screen: list, open, rename, duplicate, delete | Drafts sort by last edited | S | P1-01 |
 | P1-15 | Release plumbing: signing and CI upload to the Play internal testing track | A build installs from internal testing | S | P0-02 |
+| P1-17 | Hindi display face: the designer picks an OFL display face with Devanagari (for example Teko) for Anton's display roles and documents it in the design system and tokens; the engineer bundles it and uses it only when the app language is Hindi | In Hindi, the Home hero and entry-card titles render in the new face instead of the system font, nothing clips at 200% font scale and 360 dp, and the other four languages look unchanged | S | P0-04 |
 
 ## Phase 2 · Photo editor (weeks 6 to 8, from 16 Nov)
 
 | ID | Ticket | Done when | Size | Needs |
 | --- | --- | --- | --- | --- |
-| P2-01 | Photo editor shell: canvas, layer model, move / scale / rotate gestures, layers panel (reorder, lock, hide, opacity) | A 10-layer scene stays smooth while dragging | L | P1-01, P0-04 |
+| P2-01 | Photo editor shell: canvas, layer model, move / scale / rotate gestures, layers panel (reorder, lock, hide, opacity) | A 10-layer scene stays smooth while dragging; LeakCanary shows no leaks | L | P1-01, P0-04 |
 | P2-02 | Meme formats: Classic, Caption bar, Panels (2 to 6 cells, draggable dividers), Demotivational, Speech bubbles | Each format exports correctly at 1080 px and 2160 px | L | P2-01 |
 | P2-03 | Text and stickers in the photo editor, sharing the video editor's text engine | The same style looks identical in both editors | M | P2-01, P1-10 |
 | P2-04 | Image tools: crop, rotate, flip, straighten; adjustments; 20 LUT filters; deep-fry | Filter ids and looks match the video filters | L | P2-01 |
 | P2-05 | Draw (brush sizes and colors, eraser) and censor (blur, pixelate, black bar) | Strokes and censor areas stay editable as layers | M | P2-01 |
-| P2-06 | `Segmenter` interface and ML Kit subject segmentation, with model availability check and "Preparing…" state | A person, pet or object cut-out takes under 1.5 s for a 12 MP photo on the reference phone | M | P0-03 |
+| P2-06 | `Segmenter` interface and ML Kit subject segmentation, with model availability check and "Preparing…" state | A person, pet or object cut-out takes under 1.5 s for a 12 MP photo on the owner's phone | M | P0-03 |
 | P2-07 | Photo background removal UX: one tap, checkerboard result, refine brush, edge softness, save as sticker | Refine strokes survive save and reopen | M | P2-06, P2-01 |
-| P2-08 | Photo export: PNG, JPG with quality, GIF for animated layers, copy to clipboard, save to the "Memix" album | Each format opens correctly in the gallery and in chat apps | M | P2-01 |
+| P2-08 | Photo export: PNG, JPG with quality, GIF for animated layers, copy to clipboard, save to the "Memix" album | Each format opens correctly in the gallery and in chat apps; LeakCanary shows no leaks | M | P2-01 |
 | P2-09 | WhatsApp sticker pack export (check WhatsApp's current sticker spec first) | A pack installs into WhatsApp on a test phone | M | P2-08 |
 | P2-10 | Make it a video meme: convert the photo scene to a video timeline, then open the sound picker | Every layer keeps its position, size and style | M | P2-01, P1-03 |
 
 ## Phase 3 · Sounds and audio (weeks 9 to 11, from 7 Dec)
 
+> 8 Oct 2026 (owner): P3-13 replaces the moved P0-07 with Supabase Storage. It comes first in build order; P3-01 and P3-12 need it.
+
 | ID | Ticket | Done when | Size | Needs |
 | --- | --- | --- | --- | --- |
-| P3-01 | Catalog repositories: categories, sound pages, trending, search, with SQLDelight caching and refresh rules | Launching offline shows the cached catalog | L | P0-06, P1-01 |
+| P3-13 | Media storage on Supabase Storage (replaces P0-07): public bucket in the `memix` project, upload script that sets long cache headers, `media_base_url` in Remote Config; seed rows for the owner-approved starter sounds (P0-06's moved sound seed) | A seed sound loads from `media_base_url` plus its `file_path` with immutable cache headers, and the publishable key can read files but can't upload or delete them | S | P0-06 |
+| P3-01 | Catalog repositories: categories, sound pages, trending, search, with SQLDelight caching and refresh rules | Launching offline shows the cached catalog | L | P0-06, P1-01, P3-13 |
 | P3-02 | Sounds screen: Trending, Local, Global, Favorites and My sounds tabs; categories; typo-tolerant search | Search finds "bruh" when typed "bruhh" | L | P3-01 |
 | P3-03 | Sound preview with waveform and details (credit, license) | A cached sound starts playing within 300 ms | M | P3-01 |
 | P3-04 | Download manager: 500 MB cache with least-recently-used cleanup, progress, retries; 50-sound offline starter pack | Airplane mode still plays the starter pack and every cached sound | M | P3-01 |
@@ -85,7 +91,7 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 | P3-09 | Audio effects: fades, pitch, speed, echo, bass boost / distortion, voice-changer presets; waveforms on the timeline | Preview and export sound the same | L | P1-08 |
 | P3-10 | Report a sound | The report appears as a row in Supabase | S | P3-03 |
 | P3-11 | Region and language: detect from the phone, confirm in onboarding, filter the Local tab | Changing region in settings changes the Local tab | S | P3-01 |
-| P3-12 | Content intake script (trim, normalize, encode, waveform, upload, row template), then load the first 500 sounds | 500 sounds are live, each with complete license fields | L | P0-07 |
+| P3-12 | Content intake script (trim, normalize, encode, waveform, upload, row template), then load the first 500 sounds | 500 sounds are live, each with complete license fields | L | P3-13 |
 
 ## Phase 4 · Pro video tools (weeks 12 to 17, from 28 Dec)
 
@@ -95,7 +101,7 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 | P4-02 | Keyframes for position, scale, rotation, opacity and volume, with easing and keyframe markers on the timeline | Motion matches between preview and export | L | P4-01 |
 | P4-03 | 10 blend modes and shape masks (rectangle, circle, linear, mirror) | Each mode and mask matches its reference render | L | P4-01 |
 | P4-04 | Green screen keying on clips and overlays: pick color, strength, edge softness | A standard green screen clip keys cleanly at default settings | M | P4-01 |
-| P4-05 | Templates: repository, Templates screen (Video / Photo switch, categories, previews), slot-fill flow, open in editor | A user fills a 2-slot preset and exports it | L | P3-01, P4-04 |
+| P4-05 | Templates: repository, Templates screen (Video / Photo switch, categories, previews), slot-fill flow, open in editor; loads P0-06's 3 seed templates | A user fills a 2-slot preset and exports it | L | P3-01, P4-04 |
 | P4-06 | About 30 video effects as timeline items with intensity | Each effect matches its reference render and preview stays at 30 fps or more | L | P1-05 |
 | P4-07 | About 20 LUT filters and adjustments for video | Same ids and looks as the photo filters | M | P2-04 |
 | P4-08 | About 20 transitions between clips | Transitions keep audio continuous | M | P1-06 |
@@ -128,7 +134,8 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 | P6-03 | Store listing: "Memix: Meme Video & Photo", short description, screenshots, feature graphic, in five languages | Listing passes Play review | M | P5-06 |
 | P6-04 | Privacy policy, support page and app-ads.txt on the app's domain | All three URLs are live | S | — |
 | P6-05 | Play Console forms: Data safety, content rating, target audience 13+, ads declaration | All forms are accepted | S | P6-04 |
-| P6-06 | Production release with staged rollout (10%, 50%, 100%) and crash monitoring | Crash-free users stay at 99.5% or more at each step | S | P6-01 |
+| P6-07 | Move media to Cloudflare R2 (Supabase Storage until then, owner 8 Oct): R2 bucket, custom media domain, copy every file under the same keys, switch `media_base_url` in Remote Config | Every catalog file loads from the R2 media domain with immutable cache headers, an installed build picks up the new address without an app update, and no file is served from Supabase Storage | S | P3-13 |
+| P6-06 | Production release with staged rollout (10%, 50%, 100%) and crash monitoring | Crash-free users stay at 99.5% or more at each step | S | P6-01, P6-07 |
 
 ## Phase 7 · iOS (weeks 22 to 29, from 8 Mar)
 
@@ -138,11 +145,20 @@ Start the Apple Developer enrollment during phase 5 so it's ready when this phas
 | --- | --- | --- | --- | --- |
 | P7-01 | Apple Developer enrollment, bundle id, signing in CI | CI produces a signed iOS build | S | — |
 | P7-02 | iOS app running the shared UI; fix iOS-only layout and gesture issues | Every screen works on a current iPhone | M | P7-01 |
-| P7-03 | iOS `VideoEngine`, part 1: `AVMutableComposition` tracks and `AVPlayerLayer` preview | A basic project previews like Android | L | P7-02 |
+| P7-03 | iOS `VideoEngine`, part 1: `AVMutableComposition` tracks and `AVPlayerLayer` preview | A basic project previews like Android; Xcode Instruments Leaks shows no leaks | L | P7-02 |
 | P7-04 | iOS `VideoEngine`, part 2: custom compositor on Metal / Core Image for effects, filters, transitions, masks, keying, overlays | Reference renders match Android side by side | L | P7-03 |
-| P7-05 | iOS export with `AVAssetWriter`, background task and progress | 60 s at 1080p30 exports in about real time | M | P7-04 |
+| P7-05 | iOS export with `AVAssetWriter`, background task and progress | 60 s at 1080p30 exports in about real time on the owner's iPhone; Instruments Leaks shows no leaks | M | P7-04 |
 | P7-06 | iOS audio: mixing, effects, voiceover | Preview and export sound the same as Android | M | P7-03 |
 | P7-07 | iOS `Segmenter`: Vision foreground mask for photos, person segmentation with a sequence handler for video | Cut-outs match the Android behavior | M | P7-02 |
 | P7-08 | iOS platform services: photo picker, share sheet and direct targets, AdMob with UMP and the tracking prompt (ATT), Firebase | All services work on a TestFlight build | M | P7-02 |
 | P7-09 | iOS photo encoders and WhatsApp sticker export | Photo exports match Android | M | P7-02 |
 | P7-10 | TestFlight beta, App Store listing, privacy labels, App Review submission | The app is approved | M | All of phase 7 |
+
+## Later · Improvements (after launch, not scheduled)
+
+> 8 Oct 2026 (owner): "put that improvement into separate phase". Items here are outside the v1 dates and get a phase when the owner schedules them.
+
+| ID | Ticket | Done when | Size | Needs |
+| --- | --- | --- | --- | --- |
+| L-01 | Keyboard shortcuts in the video editor (play and pause, split, delete, undo and redo, nudge), reusing the editor's existing actions as drafted in the P1-04/05/06 specs | With a hardware keyboard, each shortcut does exactly what its button does, including one undo step per edit | S | P1-06 |
+| L-02 | Locked-track UI in the video editor: lock and unlock a track; edits on a locked track are refused (drafted in the P1-05/06 specs) | A locked track refuses every edit and Unlock restores editing, each as one undo step | S | P1-06 |
