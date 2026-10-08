@@ -21,8 +21,10 @@ import memix.core.designsystem.generated.resources.ic_home
 import memix.core.designsystem.generated.resources.ic_pause
 import memix.core.designsystem.generated.resources.ic_photo
 import memix.core.designsystem.generated.resources.ic_play
+import memix.core.designsystem.generated.resources.ic_redo
 import memix.core.designsystem.generated.resources.ic_sounds
 import memix.core.designsystem.generated.resources.ic_templates
+import memix.core.designsystem.generated.resources.ic_undo
 import memix.core.designsystem.generated.resources.ic_video
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -41,8 +43,10 @@ object MemixIcons {
     val Pause = Res.drawable.ic_pause
     val Photo = Res.drawable.ic_photo
     val Play = Res.drawable.ic_play
+    val Redo = Res.drawable.ic_redo
     val Sounds = Res.drawable.ic_sounds
     val Templates = Res.drawable.ic_templates
+    val Undo = Res.drawable.ic_undo
     val Video = Res.drawable.ic_video
 }
 

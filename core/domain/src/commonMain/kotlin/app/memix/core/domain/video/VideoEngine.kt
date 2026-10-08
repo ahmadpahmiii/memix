@@ -13,8 +13,8 @@ import app.memix.core.model.project.Project
  * Overlay, text, sticker and effect tracks and the canvas background are skipped with a log line
  * until their tickets add them (P4-01, P1-10, P4-12, P4-06, P1-11).
  *
- * Preview (P1-04), thumbnails (P1-05), waveforms and device capabilities (P1-12) join this interface
- * with the tickets that first use them.
+ * Thumbnails (P1-05), waveforms and device capabilities (P1-12) join this interface with the tickets
+ * that first use them.
  */
 interface VideoEngine {
     /**
@@ -31,4 +31,13 @@ interface VideoEngine {
      * including a project with nothing on its main video track.
      */
     suspend fun export(project: Project, settings: ExportSettings, onProgress: (Float) -> Unit): Outcome<ExportedVideo>
+
+    /**
+     * Starts a live preview of [project], rendered like [export] (same tracks, trims, fit and volumes) at
+     * [ExportSettings.DEFAULT_FRAME_RATE] or less. Returns at once, paused at 0; the first frame follows when the
+     * media is read. Main thread only. A clip whose media file is missing or unreadable plays as black and
+     * silence and sets [PreviewPlayback.missingMedia]; a project that can't be rendered at all ends in
+     * [PreviewStatus.FAILED]. The caller closes the session.
+     */
+    fun createPreview(project: Project): PreviewSession
 }

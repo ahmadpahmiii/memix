@@ -24,6 +24,7 @@ media3 = "1.11.1"
 firebase-bom = "34.19.0"
 google-services = "4.5.0"
 firebase-crashlytics-gradle = "3.0.8"
+leakcanary = "2.14"
 
 [libraries]
 # Gradle plugins, on the build-logic classpath
@@ -68,10 +69,13 @@ coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" 
 media3-transformer = { module = "androidx.media3:media3-transformer", version.ref = "media3" }
 media3-effect = { module = "androidx.media3:media3-effect", version.ref = "media3" }
 media3-common = { module = "androidx.media3:media3-common", version.ref = "media3" }
+media3-ui-compose = { module = "androidx.media3:media3-ui-compose", version.ref = "media3" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
 firebase-config = { module = "com.google.firebase:firebase-config" }
+# Debug builds only: reports leaked screens and ViewModels on the phone (a debug tool, not a test).
+leakcanary-android = { module = "com.squareup.leakcanary:leakcanary-android", version.ref = "leakcanary" }
 
 [plugins]
 # Kotlin, AGP and Compose plugins come from build-logic's classpath, so modules apply them by id without a version.

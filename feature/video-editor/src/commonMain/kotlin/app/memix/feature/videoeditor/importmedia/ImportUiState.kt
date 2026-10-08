@@ -35,16 +35,29 @@ sealed interface ImportUiState {
     /** The phone has no app that can pick media. */
     data object NoPicker : ImportUiState
 
-    /** Everything went in: the app opens the editor, then sends [ImportIntent.EditorOpened]. */
-    data class OpenEditor(val projectId: String) : ImportUiState
+    /**
+     * The project is saved and nothing needs saying: the app opens the editor, then sends [ImportIntent.EditorOpened]
+     * once the editor's push has covered the screen. [sheetShown]: the sheet that was up stays, unchanged, until then,
+     * so the editor slides in over it instead of the sheet sliding away (spec P1-02 → Motion).
+     */
+    data class OpenEditor(val projectId: String, val sheetShown: Boolean) : ImportUiState
 }
 
 /** Whether the import sheet is up. */
 val ImportUiState.showsSheet: Boolean
     get() = when (this) {
         is ImportUiState.Copying -> sheetShown
+        is ImportUiState.OpenEditor -> sheetShown
         is ImportUiState.NotEnoughSpace, is ImportUiState.SomeNotAdded, is ImportUiState.NoneAdded, ImportUiState.NoPicker -> true
+        ImportUiState.Idle -> false
+    }
+
+/** Whether the sheet has content of its own in this state; otherwise it keeps showing what it showed last. */
+internal val ImportUiState.hasSheetContent: Boolean
+    get() = when (this) {
         ImportUiState.Idle, is ImportUiState.OpenEditor -> false
+        is ImportUiState.Copying, is ImportUiState.NotEnoughSpace, is ImportUiState.SomeNotAdded -> true
+        is ImportUiState.NoneAdded, ImportUiState.NoPicker -> true
     }
 
 /**

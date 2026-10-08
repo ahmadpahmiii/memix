@@ -16,6 +16,12 @@ class ProjectEditState internal constructor(
     val canUndo: Boolean get() = history.canUndo
     val canRedo: Boolean get() = history.canRedo
 
+    /** The name given to [ProjectEditSession.commit] for the edit [ProjectEditSession.undo] would take back. */
+    val undoEditName: String? get() = history.undoEditName
+
+    /** The name of the edit [ProjectEditSession.redo] would put back. */
+    val redoEditName: String? get() = history.redoEditName
+
     internal fun withHistory(history: ProjectHistory) = ProjectEditState(history, saveFailure)
 
     internal fun withSaveFailure(saveFailure: AppError?) = ProjectEditState(history, saveFailure)

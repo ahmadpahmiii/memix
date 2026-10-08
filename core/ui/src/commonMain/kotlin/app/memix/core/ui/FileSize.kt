@@ -2,8 +2,8 @@ package app.memix.core.ui
 
 import androidx.compose.runtime.Composable
 import memix.core.ui.generated.resources.Res
+import memix.core.ui.generated.resources.decimal_separator
 import memix.core.ui.generated.resources.file_size_bytes
-import memix.core.ui.generated.resources.file_size_decimal_separator
 import memix.core.ui.generated.resources.file_size_gigabytes
 import memix.core.ui.generated.resources.file_size_kilobytes
 import memix.core.ui.generated.resources.file_size_megabytes
@@ -32,7 +32,7 @@ fun fileSizeText(bytes: Long, rounding: SizeRounding = SizeRounding.NEAREST): St
     val number = if (size.tenthsDigit == null) {
         size.whole.toString()
     } else {
-        size.whole.toString() + stringResource(Res.string.file_size_decimal_separator) + size.tenthsDigit
+        size.whole.toString() + stringResource(Res.string.decimal_separator) + size.tenthsDigit
     }
     return stringResource(size.unit.format, number)
 }

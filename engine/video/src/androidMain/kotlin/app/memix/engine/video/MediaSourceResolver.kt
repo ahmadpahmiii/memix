@@ -5,31 +5,26 @@ import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.MediaRef
 import java.io.File
 
-/** What [MediaSourceResolver.resolve] returns. */
-internal sealed interface ResolvedSources {
-    /** A playable URI for every media file the plan uses. */
-    data class Found(val uriByMedia: Map<MediaRef, Uri>) : ResolvedSources
-
-    /** The first clip whose media isn't on the phone. */
-    data class Missing(val itemId: String) : ResolvedSources
-}
+/** What [MediaSourceResolver.resolve] found. */
+internal data class ResolvedSources(
+    /** A playable URI for each media file of the plan that is on the phone. */
+    val uriByMedia: Map<MediaRef, Uri>,
+    /** The items whose media file isn't on the phone, in plan order. */
+    val missingItemIds: List<String>,
+)
 
 /** Finds the file each clip of a [CompositionPlan] plays from. Reads the disk, so call it off the main thread. */
 internal class MediaSourceResolver(private val filesDir: File) {
 
     fun resolve(plan: CompositionPlan): ResolvedSources {
         val uriByMedia = mutableMapOf<MediaRef, Uri>()
-        for ((itemId, media) in mediaUsedBy(plan)) {
+        val missingItemIds = mutableListOf<String>()
+        for ((itemId, media) in plan.mediaItems) {
             if (media in uriByMedia) continue
-            uriByMedia[media] = uriFor(media) ?: return ResolvedSources.Missing(itemId)
+            val uri = uriFor(media)
+            if (uri != null) uriByMedia[media] = uri else missingItemIds += itemId
         }
-        return ResolvedSources.Found(uriByMedia)
-    }
-
-    private fun mediaUsedBy(plan: CompositionPlan): List<Pair<String, MediaRef>> {
-        val mainMedia = plan.mainVideo.filterIsInstance<VisualClip>().map { it.itemId to it.source }
-        val laneMedia = plan.audioLanes.flatMap { lane -> lane.segments.filterIsInstance<SoundClip>().map { it.itemId to it.source } }
-        return mainMedia + laneMedia
+        return ResolvedSources(uriByMedia, missingItemIds)
     }
 
     // The app's own copy wins: it survives the original being moved or deleted, and a photo picker

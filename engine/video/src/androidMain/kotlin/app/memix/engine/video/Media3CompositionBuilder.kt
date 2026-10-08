@@ -19,7 +19,11 @@ import app.memix.core.model.project.MediaRef
 /**
  * Builds the Media3 [Composition] for a [CompositionPlan]: the main video sequence first, then one
  * audio-only sequence per audio lane. Media3 mixes sequences that overlap in time and ends with the
- * longest one, which the plan guarantees is the main video sequence.
+ * longest one, which the plan guarantees is the main video sequence. The same composition feeds the
+ * export (Transformer) and the preview (CompositionPlayer), so both render alike.
+ *
+ * Each video and sound item carries its source file's length when the project knows it: CompositionPlayer
+ * needs it up front, and Transformer would otherwise read it from the file.
  */
 @OptIn(UnstableApi::class)
 internal class Media3CompositionBuilder(
@@ -59,12 +63,14 @@ internal class Media3CompositionBuilder(
             mediaItem.setClippingConfiguration(clipping(clip.trimInUs, clip.trimOutUs))
         }
         val audioProcessors = if (clip.playsOwnAudio) volumeProcessors(clip.volume) else emptyList()
-        return EditedMediaItem.Builder(mediaItem.build())
+        val item = EditedMediaItem.Builder(mediaItem.build())
             .setRemoveAudio(!clip.playsOwnAudio)
             // The output rate for photos; a ceiling that drops extra frames from faster videos.
             .setFrameRate(frameRate)
             .setEffects(Effects(audioProcessors, listOf(fitToCanvas(clip.fit))))
-            .build()
+        // A photo's length comes from its image duration.
+        if (!clip.isStill) item.setSourceDuration(clip.source, clip.trimOutUs)
+        return item.build()
     }
 
     private fun audioSequence(lane: AudioLane): EditedMediaItemSequence {
@@ -87,7 +93,15 @@ internal class Media3CompositionBuilder(
         return EditedMediaItem.Builder(mediaItem)
             .setRemoveVideo(true)
             .setEffects(Effects(volumeProcessors(clip.volume), emptyList()))
+            .setSourceDuration(clip.source, clip.trimOutUs)
             .build()
+    }
+
+    // Media3 checks that the trim ends inside the source. A length measured at import can be a few µs shorter
+    // than a trim set from another measurement, so the source counts as at least as long as the trim.
+    private fun EditedMediaItem.Builder.setSourceDuration(source: MediaRef, trimOutUs: Long): EditedMediaItem.Builder {
+        val durationUs = source.durationUs ?: return this
+        return setDurationUs(maxOf(durationUs, trimOutUs))
     }
 
     private fun clipping(trimInUs: Long, trimOutUs: Long): MediaItem.ClippingConfiguration =

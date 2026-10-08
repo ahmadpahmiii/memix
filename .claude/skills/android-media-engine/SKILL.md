@@ -19,11 +19,14 @@ Never guess class names or signatures from memory. If an API you expected doesn'
 - Text and stickers → bitmaps rendered once per change and composited as overlay effects.
 - Effects/filters/transitions come from their declarative specs (`media-effect` skill); time params in µs.
 
-## Preview
+## Preview (built in P1-04: `Media3PreviewSession`, TECHNICAL_DESIGN → Preview)
 
-- `CompositionPlayer` drives the preview; host its view in Compose with `AndroidView`.
-- `PreviewSession.update(project)` applies edits without rebuilding the player when possible.
-- Expose playback position as a `StateFlow` sampled at frame rate; the UI reads it in layout/draw lambdas.
+- `CompositionPlayer` plays the same `Composition` as export (same plan, same builder, same HDR mode). It needs every video and sound item's source length (`EditedMediaItem.setDurationUs`, at least the trim end); items without one, and missing files, become gaps and set `missingMedia`.
+- Create the player only once the first composition is ready: in Media3 1.11.1, releasing a player that never got a composition leaves its playback thread running. `seekTo` before `setComposition` crashes.
+- `PreviewSession.update(project)` calls `setComposition(new, positionMs)`, which rebuilds every sequence player in 1.11.1 (no incremental update yet). Measure it before promising an edit-to-preview time.
+- Show it with `VideoPreviewSurface(session, modifier)` (media3-ui-compose `PlayerSurface`, a SurfaceView; CompositionPlayer refuses TextureView). The composition root hands it to the editor screen as a slot, because features can't depend on the engine.
+- Position: a `StateFlow<Long>` ticked by `Choreographer` while playing; the UI reads it only where it's drawn.
+- `CompositionPlayer` and `media3-ui-compose` are `@UnstableApi`, `CompositionPlayer` also `@ExperimentalApi`: opt in to both with `androidx.annotation.OptIn` (lint).
 
 ## Export
 

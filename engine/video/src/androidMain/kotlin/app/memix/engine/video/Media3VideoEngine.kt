@@ -12,6 +12,7 @@ import app.memix.core.domain.Logger
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.video.ExportSettings
 import app.memix.core.domain.video.ExportedVideo
+import app.memix.core.domain.video.PreviewSession
 import app.memix.core.domain.video.VideoEngine
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.Project
@@ -25,7 +26,8 @@ import kotlinx.coroutines.withContext
 
 /**
  * The Android [VideoEngine]: plans the project in shared code ([CompositionPlanner]), builds a Media3
- * composition from the plan and exports it with Transformer into the app's cache.
+ * composition from the plan, exports it with Transformer into the app's cache, and previews it with
+ * CompositionPlayer ([Media3PreviewSession]).
  */
 @OptIn(UnstableApi::class)
 internal class Media3VideoEngine(
@@ -35,6 +37,9 @@ internal class Media3VideoEngine(
 ) : VideoEngine {
     private val sourceResolver = MediaSourceResolver(context.filesDir)
     private val transformerExport = TransformerExport(context)
+
+    override fun createPreview(project: Project): PreviewSession =
+        Media3PreviewSession(context, sourceResolver, logger, ioDispatcher, project)
 
     override suspend fun export(
         project: Project,
@@ -51,13 +56,13 @@ internal class Media3VideoEngine(
         onProgress: (Float) -> Unit,
     ): Outcome<ExportedVideo> {
         plan.notRendered.forEach { logger.debug(TAG, it) }
-        val sources = when (val resolved = withContext(ioDispatcher) { sourceResolver.resolve(plan) }) {
-            is ResolvedSources.Found -> resolved.uriByMedia
-            is ResolvedSources.Missing -> {
-                logger.debug(TAG, "Export stopped: the media for item ${resolved.itemId} isn't on the phone")
-                return Outcome.Failure(AppError.NotFound)
-            }
+        val resolved = withContext(ioDispatcher) { sourceResolver.resolve(plan) }
+        val firstMissing = resolved.missingItemIds.firstOrNull()
+        if (firstMissing != null) {
+            logger.debug(TAG, "Export stopped: the media for item $firstMissing isn't on the phone")
+            return Outcome.Failure(AppError.NotFound)
         }
+        val sources = resolved.uriByMedia
         val outputFile = try {
             withContext(ioDispatcher) { newOutputFile() }
         } catch (e: IOException) {

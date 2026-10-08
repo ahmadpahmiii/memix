@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Machine-drafted until P5-06; English source and budgets: docs/ux/specs/P1-02-gallery-picker.md -> Copy. -->
-    <string name="editor_video_title">Editor de video</string>
-    <string name="editor_video_body">Ya está todo aquí. Pronto llegan la vista previa y la línea de tiempo.</string>
-    <string name="editor_media_row_a11y">%1$s %2$d de %3$d, %4$s</string>
     <plurals name="duration_seconds">
         <item quantity="one">%1$d segundo</item>
         <item quantity="other">%1$d segundos</item>
@@ -38,4 +35,27 @@
     <string name="import_no_picker_title">No se puede abrir tu galería</string>
     <string name="import_no_picker_body">Este teléfono no tiene una app para elegir videos y fotos.</string>
     <string name="close">Cerrar</string>
+    <string name="editor_close">Cerrar editor</string>
+    <string name="editor_play">Reproducir</string>
+    <string name="editor_pause">Pausar</string>
+    <string name="editor_undo">Deshacer</string>
+    <string name="editor_redo">Rehacer</string>
+    <string name="editor_undo_toast">Deshacer: %1$s</string>
+    <string name="editor_redo_toast">Rehacer: %1$s</string>
+    <string name="editor_preview_a11y">Vista previa, %1$s</string>
+    <string name="editor_preview_error_body">La vista previa se detuvo. Tus cambios están a salvo.</string>
+    <string name="editor_preview_retry">Reintentar</string>
+    <string name="editor_missing_media">Falta el archivo de un clip, así que se ve en negro. Elimina ese clip para arreglarlo.</string>
+    <string name="editor_save_storage_full">Tu teléfono está lleno, así que tus últimos cambios no se guardaron.</string>
+    <string name="editor_save_failed">Tus últimos cambios aún no se guardaron. Memix lo intentará con tu próximo cambio.</string>
+    <string name="editor_dismiss">Descartar</string>
+    <string name="editor_saved_a11y">Cambios guardados</string>
+    <string name="editor_unsaved_title">Tus últimos cambios no se guardaron</string>
+    <string name="editor_unsaved_body">Tu teléfono está lleno. Libera espacio para conservarlos, o sal y piérdelos.</string>
+    <string name="editor_leave_anyway">Salir igual</string>
+    <string name="editor_empty_title">Este borrador no tiene clips</string>
+    <string name="editor_empty_body">Ciérralo y crea un nuevo meme en video.</string>
+    <string name="edit_trim">Recortar</string>
+    <string name="import_row_a11y">%1$s, %2$s. %3$s</string>
+    <string name="import_row_a11y_no_name">%1$s. %2$s</string>
 </resources>

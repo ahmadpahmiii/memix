@@ -43,6 +43,8 @@ import app.memix.core.designsystem.component.ButtonVariant
 import app.memix.core.designsystem.component.Chip
 import app.memix.core.designsystem.component.CloseButton
 import app.memix.core.designsystem.component.EntryCard
+import app.memix.core.designsystem.component.FadingToast
+import app.memix.core.designsystem.component.IconButton
 import app.memix.core.designsystem.component.ProgressBar
 import app.memix.core.designsystem.component.SegmentedTabs
 import app.memix.core.designsystem.component.Sheet
@@ -50,6 +52,9 @@ import app.memix.core.designsystem.component.Slider
 import app.memix.core.designsystem.component.SoundRow
 import app.memix.core.designsystem.component.Tabs
 import app.memix.core.designsystem.component.TemplateCard
+import app.memix.core.designsystem.component.Toast
+import app.memix.core.designsystem.component.ToastAction
+import app.memix.core.designsystem.component.ToastDismiss
 import app.memix.core.designsystem.component.Toggle
 import kotlin.math.roundToInt
 
@@ -87,6 +92,8 @@ fun ComponentCatalog(onClose: () -> Unit, appSections: @Composable ColumnScope.(
             TabSection()
             SliderAndToggleSection()
             ProgressBarSection()
+            IconButtonSection()
+            ToastSection()
             IconSection()
             appSections()
         }
@@ -207,6 +214,28 @@ private fun ProgressBarSection() = Section("ProgressBar") {
 }
 
 @Composable
+private fun IconButtonSection() = Section("IconButton") {
+    var playing by remember { mutableStateOf(false) }
+    Row(horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space2)) {
+        IconButton(MemixIcons.Close, "Close", {})
+        IconButton(if (playing) MemixIcons.Pause else MemixIcons.Play, if (playing) "Pause" else "Play", { playing = !playing })
+        IconButton(MemixIcons.Undo, "Undo", {})
+        IconButton(MemixIcons.Redo, "Redo", {}, enabled = false)
+    }
+}
+
+@Composable
+private fun ToastSection() = Section("Toast") {
+    Toast("Undo: Split")
+    Toast("To split, move the playhead inside this clip. A longer explanation wraps up to three lines, then stops.")
+    var bannerShown by remember { mutableStateOf(true) }
+    FadingToast(if (bannerShown) "Your phone is full, so your latest changes aren't saved." else null) { message ->
+        Toast(message, action = ToastAction("Free up space") {}, dismiss = ToastDismiss("Dismiss") { bannerShown = false })
+    }
+    Button("Show the persistent variant again", { bannerShown = true })
+}
+
+@Composable
 private fun IconSection() = Section("Icons") {
     val icons = listOf(
         "home" to MemixIcons.Home, "templates" to MemixIcons.Templates, "create" to MemixIcons.Create,
@@ -214,6 +243,7 @@ private fun IconSection() = Section("Icons") {
         "photo" to MemixIcons.Photo, "close" to MemixIcons.Close, "chevron_right" to MemixIcons.ChevronRight,
         "arrow_back" to MemixIcons.ArrowBack, "globe" to MemixIcons.Globe, "play" to MemixIcons.Play,
         "pause" to MemixIcons.Pause, "heart" to MemixIcons.Heart, "heart_filled" to MemixIcons.HeartFilled,
+        "undo" to MemixIcons.Undo, "redo" to MemixIcons.Redo,
     )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space4), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4)) {
         icons.forEach { (name, icon) ->

@@ -18,7 +18,7 @@ Full detail: `docs/TECHNICAL_DESIGN.md`. This is the working summary.
 | `:core:data` | Data | repositories, supabase-kt remote, SQLDelight local, file cache, settings | `:core:domain` |
 | `:core:designsystem` | UI | `MemixTheme`, tokens, base components | — |
 | `:core:ui` | UI | timeline, layer handles, sliders, pickers | designsystem, model |
-| `:engine:video` | Platform | `VideoEngine`: Media3 (androidMain), AVFoundation (iosMain) | domain |
+| `:engine:video` | Platform | `VideoEngine`: Media3 (androidMain), AVFoundation (iosMain); `VideoPreviewSurface`, which the composition root passes to the editor screen | domain |
 | `:engine:photo` | Platform | photo renderer + PNG/JPG/GIF/WebP encoders | domain |
 | `:engine:segmentation` | Platform | `Segmenter`: ML Kit + MediaPipe / Vision | domain |
 | `:platform:services` | Platform | AdMob+UMP, Firebase, share intents, gallery picker | domain |
@@ -36,7 +36,7 @@ Full detail: `docs/TECHNICAL_DESIGN.md`. This is the working summary.
 
 - `Project(id, type: VIDEO|PHOTO, name, canvas, video: VideoTimeline?, photo: PhotoScene?, createdAtEpochUs, updatedAtEpochUs, schemaVersion)` in `app.memix.core.model.project`.
 - `Track(kind: MAIN_VIDEO|OVERLAY|TEXT|STICKER|MEME_SOUND|AUDIO|EFFECT, items, muted, locked)`; `TimelineItem(id, startUs, durationUs)` sealed: MediaClip, AudioClip, TextItem, StickerItem, EffectItem. Clip `durationUs` is derived from `trimOutUs - trimInUs`.
-- Time = microseconds (`Long`), wall-clock timestamps included. Immutable; each edit → new Project. Editors edit through `ProjectEditSession` (`StartEditSessionUseCase`): `commit`/`undo`/`redo`, 100 undo steps, auto-save 500 ms after the last change, `saveNow()` on ON_STOP, closed with `addCloseable`; stored as JSON in the SQLDelight `project` table (`:core:data`) + a thumbnail file. The composition root (`:composeApp` `databaseDriverModule`) creates the `SqlDriver`; `:core:data` stays commonMain.
+- Time = microseconds (`Long`), wall-clock timestamps included. Immutable; each edit → new Project. Editors edit through `ProjectEditSession` (`StartEditSessionUseCase`): `commit(editName) { }`/`undo`/`redo` (the edit name is the `tool_use` id, shown as "Undo: Split"), 100 undo steps, auto-save 500 ms after the last change, `saveNow()` on ON_STOP, closed with `addCloseable` (a video draft left with no clip is deleted then); the video editor opens drafts with `OpenVideoDraftUseCase` (measures media saved before schema 2); stored as JSON in the SQLDelight `project` table (`:core:data`) + a thumbnail file. The composition root (`:composeApp` `databaseDriverModule`) creates the `SqlDriver`; `:core:data` stays commonMain.
 - Media refs = `MediaRef(origin: GalleryUri | PhotoAsset | CatalogItem, kind, cachedCopyPath, durationUs, pixelSize, hasAudio)`; paths are relative to the app's files directory (gallery copies in `media/<project id>/`). Duration, shown size and has-sound are measured at import (schema 2) and null in older drafts. Importing goes through `ImportMediaUseCase` (copy, check, measure) and `withMediaAppended`/`SaveGalleryProjectUseCase`; the picker is a Compose hook in `:platform:services` used only by the composition root (TECHNICAL_DESIGN → Media import).
 - Effects/filters/transitions = `id + params` specs rendered identically by both engines; each has a reference render in `docs/qa/references/`.
 - Persisted shape change → bump `Project.CURRENT_SCHEMA_VERSION` and add a `ProjectMigration` step in `:core:data` (`ProjectMigrations.kt`); check by opening an old draft after upgrading. A table change adds `migrations/<n>.sqm`; CI runs `:core:data:verifySqlDelightMigration`.
@@ -46,7 +46,7 @@ Full detail: `docs/TECHNICAL_DESIGN.md`. This is the working summary.
 ```kotlin
 interface VideoEngine {   // app.memix.core.domain.video; members join with the ticket that first uses them
     suspend fun export(project: Project, settings: ExportSettings, onProgress: (Float) -> Unit): Outcome<ExportedVideo>  // P1-03
-    fun createPreview(project: Project): PreviewSession                                     // P1-04
+    fun createPreview(project: Project): PreviewSession   // P1-04: play/pause/seekTo/update/close, playback + positionUs StateFlows
     suspend fun thumbnails(source: MediaRef, count: Int, heightPx: Int): List<ImageRef>      // P1-05
     suspend fun waveform(source: AudioRef, buckets: Int): FloatArray                        // P1-08 / P3-09
     fun capabilities(): EngineCapabilities                                                  // P1-12

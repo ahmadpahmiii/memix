@@ -71,6 +71,8 @@ import memix.feature.video_editor.generated.resources.import_percent
 import memix.feature.video_editor.generated.resources.import_pick_again
 import memix.feature.video_editor.generated.resources.import_reason_unreadable
 import memix.feature.video_editor.generated.resources.import_reason_unsupported
+import memix.feature.video_editor.generated.resources.import_row_a11y
+import memix.feature.video_editor.generated.resources.import_row_a11y_no_name
 import memix.feature.video_editor.generated.resources.import_storage_body
 import memix.feature.video_editor.generated.resources.import_storage_title
 import memix.feature.video_editor.generated.resources.import_time_left_minutes
@@ -93,10 +95,11 @@ fun ImportSheet(
     onFreeUpSpace: (requestedBytes: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // While the sheet slides away, it keeps showing the last state it had instead of going blank.
+    // While the sheet slides away, or holds still under the editor's push, it keeps showing its last content
+    // instead of going blank.
     var lastShown by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
-    SideEffect { if (state.showsSheet) lastShown = state }
-    val shown = if (state.showsSheet) state else lastShown
+    SideEffect { if (state.hasSheetContent) lastShown = state }
+    val shown = if (state.hasSheetContent) state else lastShown
 
     // Before the sheet comes up (the first 300 ms of copying), system back still cancels the import.
     NavigationBackHandler(
@@ -152,7 +155,7 @@ private fun SheetContent(
         )
         is ImportUiState.NotEnoughSpace -> NotEnoughSpaceContent(state, onFreeUpSpace)
         ImportUiState.NoPicker -> NoPickerContent(onClose = { onIntent(ImportIntent.Close) })
-        // Never shown: the sheet is hidden in these states and keeps its last content while it slides away.
+        // Never shown: in these states the sheet is hidden or held under the editor, keeping its last content.
         ImportUiState.Idle, is ImportUiState.OpenEditor -> Unit
     }
 }
@@ -252,9 +255,14 @@ private fun NotAddedRow(item: NotAddedItemUi) {
             ImportFailure.UNSUPPORTED -> Res.string.import_reason_unsupported
         },
     )
-    val spokenName = listOfNotNull(item.displayName, kindLabel).joinToString(", ")
+    // "IMG_2041.MOV, Video. Damaged, ..." with the language's own punctuation (Hindi ends a sentence with "।").
+    val spokenRow = if (item.displayName != null) {
+        stringResource(Res.string.import_row_a11y, item.displayName, kindLabel, reason)
+    } else {
+        stringResource(Res.string.import_row_a11y_no_name, kindLabel, reason)
+    }
     Row(
-        Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = "$spokenName. $reason" },
+        Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = spokenRow },
         horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space3),
     ) {
         Icon(if (item.isVideo) MemixIcons.Video else MemixIcons.Photo, contentDescription = null, tint = MemixColors.textSecondary)

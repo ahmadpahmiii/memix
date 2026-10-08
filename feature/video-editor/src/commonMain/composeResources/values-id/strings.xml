@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Machine-drafted until P5-06; English source and budgets: docs/ux/specs/P1-02-gallery-picker.md -> Copy. -->
-    <string name="editor_video_title">Editor video</string>
-    <string name="editor_video_body">Media kamu sudah masuk. Pratinjau dan timeline menyusul.</string>
-    <string name="editor_media_row_a11y">%1$s %2$d dari %3$d, %4$s</string>
     <plurals name="duration_seconds">
         <item quantity="one">%1$d detik</item>
         <item quantity="other">%1$d detik</item>
@@ -38,4 +35,27 @@
     <string name="import_no_picker_title">Galeri tidak bisa dibuka</string>
     <string name="import_no_picker_body">HP ini tidak punya aplikasi untuk memilih video dan foto.</string>
     <string name="close">Tutup</string>
+    <string name="editor_close">Tutup editor</string>
+    <string name="editor_play">Putar</string>
+    <string name="editor_pause">Jeda</string>
+    <string name="editor_undo">Urungkan</string>
+    <string name="editor_redo">Ulangi</string>
+    <string name="editor_undo_toast">Urungkan: %1$s</string>
+    <string name="editor_redo_toast">Ulangi: %1$s</string>
+    <string name="editor_preview_a11y">Pratinjau, %1$s</string>
+    <string name="editor_preview_error_body">Pratinjau berhenti. Editanmu aman.</string>
+    <string name="editor_preview_retry">Coba lagi</string>
+    <string name="editor_missing_media">File sebuah klip hilang, jadi klip itu tampil hitam. Hapus klip itu untuk memperbaikinya.</string>
+    <string name="editor_save_storage_full">HP kamu penuh, jadi perubahan terbarumu belum tersimpan.</string>
+    <string name="editor_save_failed">Perubahan terbarumu belum tersimpan. Memix mencoba lagi saat kamu mengubah sesuatu.</string>
+    <string name="editor_dismiss">Tutup pesan</string>
+    <string name="editor_saved_a11y">Perubahan tersimpan</string>
+    <string name="editor_unsaved_title">Perubahan terbarumu belum tersimpan</string>
+    <string name="editor_unsaved_body">HP kamu penuh. Kosongkan ruang agar tetap tersimpan, atau keluar dan perubahannya hilang.</string>
+    <string name="editor_leave_anyway">Tetap keluar</string>
+    <string name="editor_empty_title">Draf ini tidak punya klip</string>
+    <string name="editor_empty_body">Tutup draf ini dan buat meme video baru.</string>
+    <string name="edit_trim">Pangkas</string>
+    <string name="import_row_a11y">%1$s, %2$s. %3$s</string>
+    <string name="import_row_a11y_no_name">%1$s. %2$s</string>
 </resources>

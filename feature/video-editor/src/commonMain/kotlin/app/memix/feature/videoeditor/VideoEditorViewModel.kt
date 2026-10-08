@@ -1,69 +1,241 @@
 package app.memix.feature.videoeditor
 
-import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
+import app.memix.core.domain.AppError
 import app.memix.core.domain.Outcome
-import app.memix.core.domain.project.GetProjectUseCase
-import app.memix.core.model.project.MediaClip
-import app.memix.core.model.project.MediaKind
+import app.memix.core.domain.project.OpenVideoDraftUseCase
+import app.memix.core.domain.project.ProjectEditSession
+import app.memix.core.domain.project.ProjectEditState
+import app.memix.core.domain.project.StartEditSessionUseCase
+import app.memix.core.domain.project.hasNoClips
+import app.memix.core.domain.project.videoLengthUs
+import app.memix.core.domain.video.ExportSettings
+import app.memix.core.domain.video.PreviewPlayback
+import app.memix.core.domain.video.PreviewSession
+import app.memix.core.domain.video.PreviewStatus
+import app.memix.core.domain.video.StartPreviewUseCase
+import app.memix.core.model.project.Canvas
+import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.Project
-import app.memix.core.model.project.TrackKind
 import app.memix.core.ui.MemixViewModel
-import app.memix.core.ui.formatTimecode
-import kotlin.math.roundToInt
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-// TODO(P1-04): becomes the editor's ViewModel, editing through a ProjectEditSession (StartEditSessionUseCase).
-/** The editor placeholder's state: the clips of the main video track, read back from the saved project. */
-@Immutable
-data class VideoEditorUiState(val clips: ImmutableList<EditorClipRow>)
+/**
+ * The video editor (spec docs/ux/specs/P1-04-editor-and-preview.md): opens a draft, edits it through a
+ * [ProjectEditSession] (undo, redo, auto-save) and shows it in a live [PreviewSession].
+ *
+ * The session's state and the preview's playback are copied into the one UiState; the preview's time is not (it
+ * changes every frame, see [EditorPreview]). Both sessions close with this ViewModel: the edit session saves on the
+ * way out (or deletes a draft left with no clips), and the preview frees its decoders.
+ */
+class VideoEditorViewModel(
+    projectId: String,
+    openVideoDraft: OpenVideoDraftUseCase,
+    private val startEditSession: StartEditSessionUseCase,
+    private val startPreview: StartPreviewUseCase,
+    private val debugEdit: EditorDebugEdit?,
+) : MemixViewModel<VideoEditorUiState, VideoEditorIntent>(VideoEditorUiState(canMakeDebugEdit = debugEdit != null)) {
 
-@Immutable
-data class EditorClipRow(
-    val id: String,
-    val isVideo: Boolean,
-    /** "00:12.40", in the timecode format every editor screen uses. */
-    val durationText: String,
-    /** For the screen reader: whole seconds, at least 1. */
-    val durationSeconds: Int,
-)
-
-/** The placeholder has nothing to tap yet. */
-sealed interface VideoEditorIntent
-
-class VideoEditorViewModel(projectId: String, getProject: GetProjectUseCase) :
-    MemixViewModel<VideoEditorUiState, VideoEditorIntent>(VideoEditorUiState(persistentListOf())) {
+    private var editSession: ProjectEditSession? = null
+    private var preview: PreviewSession? = null
+    private var previewWatch: Job? = null
+    private var shownProject: Project? = null
+    private var saveFailure: AppError? = null
+    private var bannerDismissed = false
+    private var missingMediaShown = false
+    private var nextToastId = 0L
 
     init {
+        addCloseable(AutoCloseable { preview?.close() })
         viewModelScope.launch {
-            // A draft that can't be read keeps the list empty; P1-04 specs what the editor says then.
-            val project = (getProject(projectId) as? Outcome.Success)?.value ?: return@launch
-            updateState { VideoEditorUiState(mainTrackRows(project)) }
+            when (val opened = openVideoDraft(projectId)) {
+                is Outcome.Success -> startEditing(opened.value)
+                // Not reachable from P1 flows (the import opens the draft it just saved); P1-14 specs what an
+                // unreadable draft says. The repository has logged why.
+                is Outcome.Failure -> updateState { it.copy(isClosing = true) }
+            }
         }
     }
 
-    override fun onIntent(intent: VideoEditorIntent) = Unit
-
-    private fun mainTrackRows(project: Project): ImmutableList<EditorClipRow> {
-        val mainTrack = project.video?.tracks?.firstOrNull { it.kind == TrackKind.MAIN_VIDEO } ?: return persistentListOf()
-        return mainTrack.items
-            .filterIsInstance<MediaClip>()
-            .sortedBy { it.startUs }
-            .map { clip ->
-                EditorClipRow(
-                    id = clip.id,
-                    isVideo = clip.source.kind == MediaKind.VIDEO,
-                    durationText = formatTimecode(clip.durationUs),
-                    durationSeconds = (clip.durationUs / MICROS_PER_SECOND).roundToInt().coerceAtLeast(1),
-                )
-            }
-            .toImmutableList()
+    override fun onIntent(intent: VideoEditorIntent) {
+        when (intent) {
+            VideoEditorIntent.PlayPause -> togglePlayback()
+            VideoEditorIntent.Undo -> undo()
+            VideoEditorIntent.Redo -> redo()
+            VideoEditorIntent.Close -> requestClose()
+            VideoEditorIntent.LeaveAnyway -> updateState { it.copy(unsavedSheetOpen = false, isClosing = true) }
+            VideoEditorIntent.StayInEditor -> updateState { it.copy(unsavedSheetOpen = false) }
+            VideoEditorIntent.DismissSaveBanner -> dismissSaveBanner()
+            VideoEditorIntent.RetryPreview -> retryPreview()
+            is VideoEditorIntent.ToastTimedOut -> updateState { if (it.toast?.id == intent.id) it.copy(toast = null) else it }
+            VideoEditorIntent.AppStarted -> retryFailedSave()
+            VideoEditorIntent.AppStopped -> goToBackground()
+            VideoEditorIntent.DebugEdit -> makeDebugEdit()
+        }
     }
 
+    private fun startEditing(project: Project) {
+        val session = startEditSession(project)
+        addCloseable(session)
+        editSession = session
+        updateState { it.copy(canvas = canvasUiOf(project.canvas)) }
+        viewModelScope.launch { session.state.collect(::showEditState) }
+    }
+
+    private fun showEditState(edit: ProjectEditState) {
+        if (edit.project !== shownProject) showProject(edit.project)
+        showSaveState(edit.saveFailure)
+        updateState { it.copy(canUndo = edit.canUndo, canRedo = edit.canRedo) }
+    }
+
+    private fun showProject(project: Project) {
+        shownProject = project
+        updateState { it.copy(lengthUs = project.videoLengthUs()) }
+        if (project.hasNoClips()) {
+            closePreview()
+            updateState { it.copy(stage = StageContent.EMPTY, isPlaying = false) }
+            return
+        }
+        val current = preview
+        if (current == null) openPreview(project) else current.update(project)
+    }
+
+    private fun openPreview(project: Project) {
+        val session = startPreview(project)
+        preview = session
+        updateState { it.copy(preview = EditorPreview(session), stage = StageContent.OPENING) }
+        previewWatch = viewModelScope.launch { session.playback.collect(::showPlayback) }
+    }
+
+    private fun closePreview() {
+        previewWatch?.cancel()
+        preview?.close()
+        preview = null
+        updateState { it.copy(preview = null) }
+    }
+
+    private fun showPlayback(playback: PreviewPlayback) {
+        val stage = when {
+            playback.status == PreviewStatus.FAILED -> StageContent.ERROR
+            playback.firstFrameShown -> StageContent.VIDEO
+            else -> StageContent.OPENING
+        }
+        updateState { it.copy(stage = stage, isPlaying = playback.isPlaying) }
+        if (playback.missingMedia && !missingMediaShown) {
+            missingMediaShown = true
+            showToast(ToastMessage.MissingMedia)
+        }
+    }
+
+    private fun togglePlayback() {
+        val session = preview ?: return
+        if (state.value.stage == StageContent.ERROR) return
+        if (session.playback.value.isPlaying) {
+            session.pause()
+            return
+        }
+        // At the end (within a frame), Play starts again from 0:00; there is no loop (spec P1-04 → Playback).
+        if (session.positionUs.value >= state.value.lengthUs - END_TOLERANCE_US) session.seekTo(0)
+        session.play()
+    }
+
+    private fun undo() {
+        val session = editSession ?: return
+        val edit = session.state.value.takeIf { it.canUndo }?.undoEditName ?: return
+        preview?.pause()
+        session.undo()
+        VideoEdit.fromId(edit)?.let { showToast(ToastMessage.Undone(it)) }
+    }
+
+    private fun redo() {
+        val session = editSession ?: return
+        val edit = session.state.value.takeIf { it.canRedo }?.redoEditName ?: return
+        preview?.pause()
+        session.redo()
+        VideoEdit.fromId(edit)?.let { showToast(ToastMessage.Redone(it)) }
+    }
+
+    private fun makeDebugEdit() {
+        val edit = debugEdit ?: return
+        preview?.pause()
+        editSession?.commit(VideoEdit.TRIM.id, edit::apply)
+    }
+
+    // Leaving saves by itself; only changes that can't be saved make it ask first (spec P1-04 → Saving).
+    private fun requestClose() {
+        preview?.pause()
+        if (saveFailure != null) updateState { it.copy(unsavedSheetOpen = true) } else updateState { it.copy(isClosing = true) }
+    }
+
+    private fun retryPreview() {
+        val project = shownProject ?: return
+        closePreview()
+        openPreview(project)
+    }
+
+    private fun goToBackground() {
+        preview?.pause()
+        // Android may end a background app without warning, so the newest change is written now.
+        editSession?.saveNow()
+    }
+
+    // Back from the storage manager, or from anywhere else: a failed save tries again.
+    private fun retryFailedSave() {
+        if (saveFailure != null) editSession?.saveNow()
+    }
+
+    private fun showSaveState(failure: AppError?) {
+        val failedBefore = saveFailure != null
+        saveFailure = failure
+        when {
+            failure != null -> updateState {
+                it.copy(isSaveFailing = true, saveBanner = if (bannerDismissed) null else saveProblemOf(failure))
+            }
+            failedBefore -> {
+                // The banner can come back if a later save fails again.
+                bannerDismissed = false
+                updateState {
+                    it.copy(isSaveFailing = false, saveBanner = null, unsavedSheetOpen = false, savedAgainCount = it.savedAgainCount + 1)
+                }
+            }
+        }
+    }
+
+    private fun dismissSaveBanner() {
+        bannerDismissed = true
+        updateState { it.copy(saveBanner = null) }
+    }
+
+    private fun showToast(message: ToastMessage) {
+        val toast = EditorToast(nextToastId++, message)
+        updateState { it.copy(toast = toast) }
+    }
+
+    private fun saveProblemOf(failure: AppError): SaveProblem =
+        if (failure == AppError.StorageFull) SaveProblem.STORAGE_FULL else SaveProblem.OTHER
+
+    private fun canvasUiOf(canvas: Canvas) = CanvasUi(
+        aspectRatio = canvas.widthPx.toFloat() / canvas.heightPx,
+        ratioLabel = ratioLabelOf(canvas),
+    )
+
+    private fun ratioLabelOf(canvas: Canvas): String = when (canvas.ratio) {
+        CanvasRatio.RATIO_9_16 -> "9:16"
+        CanvasRatio.RATIO_1_1 -> "1:1"
+        CanvasRatio.RATIO_4_5 -> "4:5"
+        CanvasRatio.RATIO_3_4 -> "3:4"
+        CanvasRatio.RATIO_16_9 -> "16:9"
+        CanvasRatio.CUSTOM -> {
+            val divisor = greatestCommonDivisor(canvas.widthPx, canvas.heightPx).coerceAtLeast(1)
+            "${canvas.widthPx / divisor}:${canvas.heightPx / divisor}"
+        }
+    }
+
+    private tailrec fun greatestCommonDivisor(a: Int, b: Int): Int = if (b == 0) a else greatestCommonDivisor(b, a % b)
+
     private companion object {
-        const val MICROS_PER_SECOND = 1_000_000.0
+        /** One frame at the export's frame rate: Play this close to the end counts as "at the end". */
+        const val END_TOLERANCE_US = 1_000_000L / ExportSettings.DEFAULT_FRAME_RATE
     }
 }

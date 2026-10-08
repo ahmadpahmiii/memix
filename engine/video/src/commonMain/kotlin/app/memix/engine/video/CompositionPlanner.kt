@@ -73,9 +73,13 @@ internal object CompositionPlanner {
         trimInUs = trimInUs,
         trimOutUs = trimOutUs,
         fit = fit,
-        playsOwnAudio = source.kind == MediaKind.VIDEO && !audioDetached && !trackMuted && volume > 0f,
+        playsOwnAudio = hasOwnSound() && !audioDetached && !trackMuted && volume > 0f,
         volume = volume,
     )
+
+    // A video measured without a sound track this phone can decode (P1-02) is left silent. Media added before
+    // schema 2 isn't measured (null); Media3 fills a sound track it can't find with silence.
+    private fun MediaClip.hasOwnSound(): Boolean = source.kind == MediaKind.VIDEO && source.hasAudio != false
 
     private fun audioLanes(track: Track, timelineEndUs: Long): List<AudioLane> {
         val clips = track.items

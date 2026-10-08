@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Hand-check hooks (adb extras such as memix.openEditor, the editor's debug edit): off in release.
+         src/debug and src/benchmark turn them on. -->
+    <bool name="memix_hand_checks">false</bool>
+</resources>

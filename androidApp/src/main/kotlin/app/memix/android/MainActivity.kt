@@ -25,6 +25,10 @@ class MainActivity : ComponentActivity() {
         if (isDebugBuild && projectCheckStep != null && savedInstanceState == null) startProjectCheck(projectCheckStep)
         // Debug-only export (P1-03): push the test media first (TECHNICAL_DESIGN), then --ez memix.exportCheck true. Logcat tag MemixExportCheck.
         if (isDebugBuild && intent.getBooleanExtra("memix.exportCheck", false)) lifecycleScope.launch { ExportCheck().run() }
-        setContent { App(isDebugBuild) }
+        // Debug and benchmark builds (P1-04): --es memix.openEditor <project> opens a hand-check project in the editor.
+        // Projects and steps: docs/qa/phase-1/engineer-hand-checks.md → P1-04. Logcat tag MemixEditorCheck.
+        val handChecks = resources.getBoolean(R.bool.memix_hand_checks)
+        val editorCheck = if (handChecks && savedInstanceState == null) intent.getStringExtra("memix.openEditor") else null
+        setContent { App(isDebugBuild, debugEditorProject = editorCheck) }
     }
 }

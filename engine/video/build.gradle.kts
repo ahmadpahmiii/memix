@@ -1,5 +1,6 @@
 plugins {
-    id("memix.kmp.library")
+    // Compose only for the preview surface the composition root hands to the editor (VideoPreviewSurface).
+    id("memix.kmp.compose")
 }
 
 kotlin {
@@ -13,6 +14,7 @@ kotlin {
         implementation(libs.media3.transformer)
         implementation(libs.media3.effect)
         implementation(libs.media3.common)
+        implementation(libs.media3.ui.compose)
         implementation(libs.kotlinx.coroutines.android)
         implementation(libs.koin.android)
     }

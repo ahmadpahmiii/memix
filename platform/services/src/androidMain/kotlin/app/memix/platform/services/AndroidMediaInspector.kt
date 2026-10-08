@@ -17,7 +17,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * Checks copies with the phone's own media framework: MediaExtractor and the decoder list for videos (picture and
- * sound), ImageDecoder for photos. Nothing is played or fully decoded, so a check takes milliseconds.
+ * sound) and sounds, ImageDecoder for photos. Nothing is played or fully decoded, so a check takes milliseconds.
  */
 internal class AndroidMediaInspector(
     private val context: Context,
@@ -34,7 +34,7 @@ internal class AndroidMediaInspector(
             when (kind) {
                 MediaKind.VIDEO -> inspectVideo(file)
                 MediaKind.IMAGE -> inspectPhoto(file)
-                MediaKind.AUDIO -> null
+                MediaKind.AUDIO -> inspectSound(file)
             }
         } catch (e: Exception) {
             logger.debug(TAG, "Media check failed: ${e::class.simpleName}")
@@ -57,6 +57,19 @@ internal class AndroidMediaInspector(
             val quarterTurn = rotation % HALF_TURN_DEGREES != 0
             val shownSize = if (quarterTurn) PixelSize(height, width) else PixelSize(width, height)
             return MediaFacts(durationUs, shownSize, hasAudio = formats.any(::isDecodableAudio))
+        } finally {
+            extractor.release()
+        }
+    }
+
+    private fun inspectSound(file: File): MediaFacts? {
+        val extractor = MediaExtractor()
+        try {
+            extractor.setDataSource(file.path)
+            val formats = (0 until extractor.trackCount).map(extractor::getTrackFormat)
+            if (formats.none(::isDecodableAudio)) return null
+            val durationUs = longestTrackUs(formats)
+            return if (durationUs > 0) MediaFacts(durationUs, pixelSize = null, hasAudio = true) else null
         } finally {
             extractor.release()
         }

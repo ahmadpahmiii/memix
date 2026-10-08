@@ -26,6 +26,31 @@ internal data class CompositionPlan(
     /** True when the export needs an audio track: a main clip plays its own sound, or an audio lane exists. */
     val hasAudio: Boolean
         get() = audioLanes.isNotEmpty() || mainVideo.any { it is VisualClip && it.playsOwnAudio }
+
+    /** Every item the plan plays from a media file, with that file. */
+    val mediaItems: List<Pair<String, MediaRef>>
+        get() {
+            val mainMedia = mainVideo.filterIsInstance<VisualClip>().map { it.itemId to it.source }
+            val laneMedia = audioLanes.flatMap { it.segments }.filterIsInstance<SoundClip>().map { it.itemId to it.source }
+            return mainMedia + laneMedia
+        }
+
+    /**
+     * This plan with the items [itemIds] replaced by gaps of the same length: black and silent on the main video
+     * sequence, silent in their lane. Lanes left with nothing but silence are dropped. The preview uses it to keep
+     * playing when a clip's media file is missing; export refuses such a project instead.
+     */
+    fun withGapsFor(itemIds: Set<String>): CompositionPlan {
+        if (itemIds.isEmpty()) return this
+        fun MainVideoSegment.gapIfListed() = if (this is VisualClip && itemId in itemIds) Gap(durationUs) else this
+        fun AudioSegment.gapIfListed() = if (this is SoundClip && itemId in itemIds) Gap(durationUs) else this
+        return copy(
+            mainVideo = mainVideo.map { it.gapIfListed() },
+            audioLanes = audioLanes
+                .map { lane -> lane.copy(segments = lane.segments.map { it.gapIfListed() }) }
+                .filter { lane -> lane.segments.any { it is SoundClip } },
+        )
+    }
 }
 
 /** One piece of the main video sequence. */
@@ -48,7 +73,7 @@ internal data class VisualClip(
     val trimInUs: Long,
     val trimOutUs: Long,
     val fit: FrameFit,
-    /** False for photos, detached audio, a muted main track and volume 0. */
+    /** False for photos, videos without a sound track, detached audio, a muted main track and volume 0. */
     val playsOwnAudio: Boolean,
     /** 1 is the original loudness; only used when [playsOwnAudio]. */
     val volume: Float,

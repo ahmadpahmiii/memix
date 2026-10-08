@@ -23,6 +23,21 @@ sealed interface AnalyticsEvent {
         override val name = "project_create"
         override val params = mapOf("editor" to editor.eventValue, "source" to source.eventValue)
     }
+
+    /** A tool changed the project: one event per committed step, never during a drag (PM, 8 Oct 2026). */
+    data class ToolUse(val editor: ProjectType, val tool: EditorTool) : AnalyticsEvent {
+        override val name = "tool_use"
+        override val params = mapOf("editor" to editor.eventValue, "tool" to tool.eventValue)
+    }
+}
+
+/**
+ * `tool_use.tool`: lowercase ids, the same id for the same action in both editors (PM acceptance log, 8 Oct
+ * 2026). Each editor ticket adds the tools it builds (P1-06: split, trim, delete, ...).
+ */
+enum class EditorTool(val eventValue: String) {
+    UNDO("undo"),
+    REDO("redo"),
 }
 
 /** Where a new project came from (`project_create.source`). */

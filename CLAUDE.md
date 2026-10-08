@@ -103,6 +103,7 @@ Run from the repo root. The Gradle daemon runs on JDK 21 (`gradle/gradle-daemon-
 ./gradlew lint                                            # Android lint; covers the KMP library modules through checkDependencies
 ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 # iOS framework compiles (needs macOS)
 ./gradlew :androidApp:installDebug                        # install on the running emulator/phone for hand checks
+./gradlew :androidApp:installBenchmark                    # release-like build signed with the debug key, for fps and cold-start checks (never uploaded)
 xcodebuild -project iosApp/iosApp.xcodeproj -target iosApp -sdk iphonesimulator -arch arm64 SYMROOT="$PWD/iosApp/build" build  # iOS app for the simulator
 ```
 

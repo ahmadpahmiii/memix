@@ -41,6 +41,13 @@ class ImportMediaUseCase(
     }
 
     /**
+     * After a new project's first save failed because the phone is full: the space Memix waits for before saving
+     * again ([HEADROOM_BYTES]; the copies are already on disk), and what's free now. Check with [checkSpace] on the
+     * same batch when the user is back.
+     */
+    suspend fun spaceToSaveAgain(): SpaceCheck.NotEnough = SpaceCheck.NotEnough(HEADROOM_BYTES, mediaFiles.allocatableBytes())
+
+    /**
      * Copies and checks every item that has no outcome yet, one at a time in pick order, reporting progress on the
      * copying thread. Stops early, keeping what's done, when the phone runs out of space. Cancelling deletes every
      * copy of the batch, earlier runs' included, so a cancelled pick leaves nothing behind.

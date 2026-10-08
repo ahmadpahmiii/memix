@@ -14,6 +14,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.memix.core.designsystem.MemixMotion
+import app.memix.core.designsystem.MemixTheme
 import app.memix.core.domain.media.MAX_ITEMS_PER_PICK
 import app.memix.feature.videoeditor.importmedia.ImportIntent
 import app.memix.feature.videoeditor.importmedia.ImportSheet
@@ -116,9 +117,12 @@ internal fun rememberVideoMemeImport(closeCreateSheet: () -> Unit, openEditor: (
 
     val editorToOpen by remember { derivedStateOf { (importState.value as? ImportUiState.OpenEditor)?.projectId } }
     val currentOpenEditor by rememberUpdatedState(openEditor)
+    val pushMillis = if (MemixTheme.reduceMotion) MemixMotion.durationPress else MemixMotion.durationScreen
     LaunchedEffect(editorToOpen) {
         val projectId = editorToOpen ?: return@LaunchedEffect
         currentOpenEditor(projectId)
+        // The sheet and scrim hold still while the editor's push covers them, then go (spec P1-02 → Motion).
+        delay(pushMillis.toLong())
         viewModel.onIntent(ImportIntent.EditorOpened)
     }
     val idle by remember { derivedStateOf { importState.value == ImportUiState.Idle } }

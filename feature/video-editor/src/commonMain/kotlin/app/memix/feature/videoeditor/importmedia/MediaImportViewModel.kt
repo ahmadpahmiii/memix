@@ -1,6 +1,7 @@
 package app.memix.feature.videoeditor.importmedia
 
 import androidx.lifecycle.viewModelScope
+import app.memix.core.domain.AppError
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.media.CopyRun
 import app.memix.core.domain.media.ImportBatch
@@ -115,22 +116,35 @@ class MediaImportViewModel(
         landing = true
         // The copy is done, so a sheet that is up may now show a full bar while it waits out MIN_SHEET_TIME.
         updateState { if (it is ImportUiState.Copying) it.copy(progress = CopyProgressUi.finished(batch.items.size)) else it }
-        val notAdded = notAddedRows(batch)
-        val added = batch.added
-        if (added.isEmpty()) return showResult(ImportUiState.NoneAdded(notAdded))
-        val saved = saveGalleryProject(project, added)
-        if (saved is Outcome.Failure) {
-            // The repository has logged why. The spec has no state for a failed save, so this reads as nothing added.
-            importMedia.discard(batch)
+        if (batch.added.isEmpty()) return showResult(ImportUiState.NoneAdded(notAddedRows(batch)))
+        saveAndOpen(Pick(project, batch, copied = true))
+    }
+
+    private suspend fun saveAndOpen(pick: Pick) {
+        when (val saved = saveGalleryProject(pick.project, pick.batch.added)) {
+            is Outcome.Success -> showResult(resultOfSaved(pick))
+            is Outcome.Failure -> onFirstSaveFailed(pick, saved.error)
+        }
+    }
+
+    private fun resultOfSaved(pick: Pick): ImportUiState {
+        val notAdded = notAddedRows(pick.batch)
+        val limit = limitIf(pick.batch.isOverLimit)
+        if (notAdded.isNotEmpty() || limit != null) {
+            return ImportUiState.SomeNotAdded(pick.project.id, pick.batch.added.size, pick.batch.pickedCount, notAdded, limit)
+        }
+        return ImportUiState.OpenEditor(pick.project.id, sheetShown = sheetShownAt != null)
+    }
+
+    private suspend fun onFirstSaveFailed(pick: Pick, error: AppError) {
+        if (error != AppError.StorageFull) {
+            // The repository has logged why. Rare; the spec keeps "Couldn't add your media" with no rows for it.
+            importMedia.discard(pick.batch)
             return showResult(ImportUiState.NoneAdded(persistentListOf()))
         }
-        val limit = limitIf(batch.isOverLimit)
-        val result = if (notAdded.isEmpty() && limit == null) {
-            ImportUiState.OpenEditor(project.id)
-        } else {
-            ImportUiState.SomeNotAdded(project.id, added.size, batch.pickedCount, notAdded, limit)
-        }
-        showResult(result)
+        // The files are fine and the phone is full: wait for the headroom like a copy that ran out, keeping the
+        // copies, then only save again (spec P1-02 → States, "Ran out of space saving the new project").
+        waitForSpace(pick, importMedia.spaceToSaveAgain())
     }
 
     private suspend fun showResult(result: ImportUiState) {
@@ -147,12 +161,14 @@ class MediaImportViewModel(
 
     private fun continueToEditor() {
         val result = state.value as? ImportUiState.SomeNotAdded ?: return
-        updateState { ImportUiState.OpenEditor(result.projectId) }
+        updateState { ImportUiState.OpenEditor(result.projectId, sheetShown = true) }
     }
 
     private fun closeResult() {
         when (state.value) {
-            is ImportUiState.NotEnoughSpace -> discardWaitingCopies()
+            // While a retry runs (the space check, or the save after a failed first save, which may already have
+            // landed), Close waits: its result shows in a moment.
+            is ImportUiState.NotEnoughSpace -> if (importJob?.isActive == true) return else discardWaitingCopies()
             is ImportUiState.NoneAdded, ImportUiState.NoPicker -> Unit
             ImportUiState.Idle, is ImportUiState.Copying, is ImportUiState.SomeNotAdded, is ImportUiState.OpenEditor -> return
         }
@@ -173,12 +189,19 @@ class MediaImportViewModel(
             when (val space = importMedia.checkSpace(pick.batch)) {
                 SpaceCheck.Enough -> {
                     waitingForSpace = null
-                    updateState { ImportUiState.Copying(sheetShown = true, startingProgress(pick.batch), limitIf(pick.batch.isOverLimit)) }
-                    copy(pick)
+                    carryOn(pick)
                 }
                 is SpaceCheck.NotEnough -> updateState { ImportUiState.NotEnoughSpace(space.neededBytes, space.freeBytes, canFreeUpSpace) }
             }
         }
+    }
+
+    // A pick that ran out while copying copies the rest; one whose first save failed only saves again, with the
+    // "Not enough space" sheet still up until the result shows.
+    private suspend fun carryOn(pick: Pick) {
+        if (pick.copied) return saveAndOpen(pick)
+        updateState { ImportUiState.Copying(sheetShown = true, startingProgress(pick.batch), limitIf(pick.batch.isOverLimit)) }
+        copy(pick)
     }
 
     private fun hideFreeUpSpace() {
@@ -207,8 +230,8 @@ class MediaImportViewModel(
         NotAddedItemUi(item.file?.displayName, isVideo = item.kind == MediaKind.VIDEO, outcome.reason)
     }.toImmutableList()
 
-    /** A pick and the new, not yet saved project its copies are for. */
-    private class Pick(val project: Project, val batch: ImportBatch)
+    /** A pick and the new, not yet saved project its copies are for. [copied]: every item has been copied and checked. */
+    private class Pick(val project: Project, val batch: ImportBatch, val copied: Boolean = false)
 
     private companion object {
         val SHEET_DELAY = 300.milliseconds

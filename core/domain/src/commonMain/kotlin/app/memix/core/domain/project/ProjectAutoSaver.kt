@@ -24,9 +24,13 @@ import kotlinx.coroutines.withContext
  * [close] still finishes after the editor is gone. Writes run one at a time, so an older version can never
  * land after a newer one. A failed write keeps the project waiting: the next change, [saveNow] or [close]
  * tries again, and [onSaveFailureChanged] reports the failure, then `null` once a write works.
+ *
+ * Closing is final: [close] makes the last write, or [closeDeletingDraft] deletes the draft instead, and no
+ * write runs after either, so a delete can't be undone by a save that was still waiting (P1-07 review R4).
  */
 internal class ProjectAutoSaver(
     private val saveProject: SaveProjectUseCase,
+    private val deleteProject: DeleteProjectUseCase,
     private val scope: CoroutineScope,
     private val onSaveFailureChanged: (AppError?) -> Unit,
 ) {
@@ -34,8 +38,10 @@ internal class ProjectAutoSaver(
     private val newest = MutableStateFlow<Project?>(null)
     private val writeLock = Mutex()
 
-    // What this session last put in the database. Read and written only while holding writeLock.
+    // What this session last put in the database, and whether it has closed. Read and written only while
+    // holding writeLock.
     private var lastWritten: Project? = null
+    private var closed = false
 
     private val waitForPause: Job = scope.launch {
         newest.filterNotNull().collectLatest {
@@ -53,14 +59,32 @@ internal class ProjectAutoSaver(
 
     fun saveNow(): Job = scope.launch { writeNewest() }
 
-    fun close() {
-        waitForPause.cancel()
-        scope.launch { writeNewest() }
+    /** Writes the newest version, then stops saving. */
+    fun close() = closeWith { writeNewestLocked() }
+
+    /** Stops saving and deletes the saved draft [projectId] instead of writing it. */
+    fun closeDeletingDraft(projectId: String) = closeWith {
+        // The repository logs a failed delete; the empty draft then stays in the drafts list.
+        deleteProject(projectId)
     }
 
-    private suspend fun writeNewest() = writeLock.withLock {
+    private fun closeWith(lastAction: suspend () -> Unit) {
+        waitForPause.cancel()
+        scope.launch {
+            writeLock.withLock {
+                if (closed) return@withLock
+                closed = true
+                lastAction()
+            }
+        }
+    }
+
+    private suspend fun writeNewest() = writeLock.withLock { if (!closed) writeNewestLocked() }
+
+    // Call only while holding writeLock.
+    private suspend fun writeNewestLocked() {
         val project = newest.value
-        if (project == null || project === lastWritten) return@withLock
+        if (project == null || project === lastWritten) return
         when (val outcome = saveProject(project)) {
             is Outcome.Success -> {
                 lastWritten = project
