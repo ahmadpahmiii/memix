@@ -210,6 +210,9 @@ Fixed sizes used across screens (dp on Android).
 | `track-height-video` | `MemixSize.trackHeightVideo` | `40px` | Main video track clips. |
 | `track-height` | `MemixSize.trackHeight` | `28px` | Every other track's clips. |
 | `playhead-width` | `MemixSize.playheadWidth` | `2px` | Timeline playhead line, in selection white. |
+| `playhead-head-size` | `MemixSize.playheadHeadSize` | `12px` | Round head on top of the playhead, in selection white, centered on the line at the top of the ruler. |
+| `trim-handle-width` | `MemixSize.trimHandleWidth` | `12px` | White trim handles at both ends of the selected timeline item, just outside its outline. Each handle's touch target is still `touch-target` wide. |
+| `icon-small` | `MemixSize.iconSmall` | `16px` | Icons inside timeline items and badges where 24px doesn't fit (the lock on a locked item). Same drawings, scaled; never a standalone control. |
 | `rail-height` | `MemixSize.railHeight` | `4px` | The thin rail under a fill: progress bar and slider. Rail in `hairline`, fill in `primary` (7.3:1 on surface, 4.9:1 against the rail). "Rail", not "track", because a track is a timeline lane in Memix. |
 
 ### Motion
@@ -229,7 +232,8 @@ Fixed sizes used across screens (dp on Android).
 - Selection is always white (`selection`): selected clip/layer outline (`stroke-selection`), trim handles, playhead, selected chip fill. Never use `primary` for selection.
 - `primary` sky blue: one main action per screen (+ the global Create button), active tool (on `primary-subtle`), links, progress, and all meme-sound UI.
 - `meme-caption` is Anton, white fill with a 3 dp black stroke: draw the text twice (stroke pass with `TextStyle(drawStyle = Stroke(width))`, then fill). This is user content styling, not chrome.
-- Timeline: clips are positioned by time (µs → px via the zoom scale), never by index. Track heights from `trackHeightVideo` / `trackHeight`; playhead `playheadWidth` in `selection` with a 12 dp circular head.
+- Timeline: clips are positioned by time (µs → px via the zoom scale), never by index. Track heights from `trackHeightVideo` / `trackHeight`; playhead `playheadWidth` in `selection` with a `playheadHeadSize` circular head, fixed in the center while the content scrolls; trim handles `trimHandleWidth` in `selection`. Zoom scales and ruler steps are layout math kept as named constants in the timeline component (spec `docs/ux/specs/P1-05-timeline.md`), not tokens.
+- Editor tool panels (Volume, later Text and Canvas) use the ToolPanel component; floating menus use Menu; short messages use Toast (`design/system/components/`).
 - Pressed states: `primary` → `primary-pressed`; neutral controls go one value step lighter (`surface-raised` → `hairline`). No translate/scale on press; the 240 ms "bonk" scale is only for content landing on the timeline.
 - Icons: Memix-drawn vector drawables in `composeResources/drawable/` (see Iconography), 24 dp, 2 dp flat-cap stroke, tinted per state.
 - Build a component catalog screen (debug builds only) showing every component in every state; the UX designer reviews it from screenshots. No automated screenshot tests in this project.
@@ -242,7 +246,7 @@ Fixed sizes used across screens (dp on Android).
 | Create sheet | `Create.dc.html` | Scrim + sheet: Video meme, Photo meme, Start from a template |
 | Templates | `Templates.dc.html` | Video/Photo segmented tabs, category chips (selected = white), 2-column template grid |
 | Sounds | `Sounds.dc.html` | Labelled search, Trending/Local/Global/Favorites/My sounds tabs, category chips, sound rows (one playing) |
-| Video editor | `VideoEditor.dc.html` | Top bar (close, 9:16, 1080p, Export), preview on black stage, transport row, 6-track timeline with a white-selected meme sound, selected-clip bar, tool bar with active tool |
+| Video editor | `VideoEditor.dc.html` | Top bar (close, 9:16, 1080p, Export), preview on black stage, transport row, 6-track timeline with a white-selected meme sound, selected-clip bar, tool bar with active tool. The P1-04/05/06 specs supersede parts of it: no track-label column, clip tools replace the tool bar instead of a separate bar, "Add a meme sound" row, original-audio toggle. |
 | Export sheet | `Export.dc.html` | Resolution, frame rate, watermark row with rewarded-ad Remove, size/time estimate, Export video |
 | Exported | `ExportDone.dc.html` | Result preview with watermark, saved status, share grid, Make another / Done |
 | Photo editor | `PhotoEditor.dc.html` | Classic caption canvas with a white-selected text layer, Make it a video meme, format chips, text bar, tool bar |
