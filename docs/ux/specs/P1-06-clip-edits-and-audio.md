@@ -50,7 +50,7 @@ Component ToolBar (`design/system/components/ToolBar/README.md`, updated with th
 | --- | --- | --- | --- | --- |
 | 1 | Edit | `edit` (new; the board's scissors) | P1-06 | Selects the main clip under the playhead (at the very end: the last clip) and shows its tools. It's the tap route to clip tools for clips too thin to hit. |
 | 2 | Meme sounds | `sounds` | P1-08 | Opens the Meme sounds sheet. Always `primary` icon and label, because it's meme-sound UI. On `primary-subtle` while the sheet is open (the board's active look). |
-| 3 | Text | P1-10 | P1-10 | **Slot.** P1-10's spec defines it. Not shown before P1-10. |
+| 3 | Text | `text` | P1-10 | Opens typing for a new caption at the playhead (`P1-10-text.md`). Not shown before P1-10. |
 | later | Audio (P3), Stickers (P4-12), Effects (P4-06), Filters, Overlay (P4-01), Remove BG (P4-13), Speed (P4-09) | | | Each appears with its own ticket, never as a disabled placeholder |
 
 **Board differences:**
@@ -71,7 +71,7 @@ The tools stay in thumb reach, at the bottom where the main tools were. This rep
 | Photo clip (main track) | Split · Delete · Duplicate · Reorder · Replace *(pending P1-16)* |
 | Meme sound | Volume · Split · Delete · Move here · Duplicate |
 | Audio clip (detached original audio) | Volume · Split · Delete · Move here · Duplicate |
-| Text item | P1-10 puts its own tools first (edit text, style), then Split · Delete · Move here · Duplicate |
+| Text item | Edit text · Style · Position · Delete · Split · Move here · Duplicate (P1-10: Delete ahead of Split, because captions are deleted more often than cut) |
 | Any item on a locked track: **Later (L-02)** | Unlock, then that item's usual tools |
 
 - **Why this order:**

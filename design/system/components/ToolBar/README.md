@@ -12,7 +12,7 @@ The bottom tool bar in both editors: a horizontally scrolling row of icon-plus-l
 - **Clip mode (an item is selected):**
   - The same bar switches to that item's tools: a leading 48 dp Close clip tools button (`arrow_back`), a `hairline` divider, then the tools.
   - Delete sits among the first tools, visible without scrolling at 360 dp, and uses `danger` for its icon and label.
-  - The switch is a 120 ms cross-fade. Full lists: `docs/ux/specs/P1-06-clip-edits-and-audio.md`.
+  - The switch is a 120 ms cross-fade. Full lists: `docs/ux/specs/P1-06-clip-edits-and-audio.md`; text items in `docs/ux/specs/P1-10-text.md` (Edit text · Style · Position · Delete · Split · Move here · Duplicate).
 - **Photo editor tools:** Formats, Text, Stickers, Draw, Adjust, Filters, Remove BG, Censor, Crop.
 - **Meme sounds tool:** always `primary` icon and label, because it's meme-sound UI.
 - **Active tool** (its panel or sheet is open): `primary` icon and label on a `primary-subtle` `radius-md` highlight.

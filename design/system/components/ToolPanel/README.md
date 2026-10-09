@@ -1,6 +1,6 @@
 # ToolPanel
 
-The settings area for an editor tool that needs more than one tap: Volume (P1-06), and later Text (P1-10) and Canvas (P1-11). It takes the place of the timeline and the tool bar while the preview and the transport row stay visible and working. That way the user can play and see or hear each change. A sheet with a scrim would hide the very thing being adjusted.
+The settings area for an editor tool that needs more than one tap: Volume (P1-06), Style and Position for text (P1-10), and later Canvas (P1-11). It takes the place of the timeline and the tool bar while the preview and the transport row stay visible and working. That way the user can play and see or hear each change. A sheet with a scrim would hide the very thing being adjusted.
 
 - **Bounds:** exactly the region the timeline and tool bar occupy, so the preview never moves or resizes. The navigation inset sits below it in `surface`.
 - **Look:**
@@ -8,7 +8,7 @@ The settings area for an editor tool that needs more than one tap: Volume (P1-06
   - No scrim, no shadow, no grabber.
   - Content padding `space-4`.
 - **Top row:** the tool's name in `title` on the left; **Done** (Ghost button, `touch-target` tall) on the right.
-- **Content:** Slider, Toggle and other rows, `space-4` apart. It scrolls inside the panel when taller; the top row stays in place.
+- **Content:** Slider, Toggle, FontTile and Swatch rows, stepper rows (label, IconButton, readout, IconButton) and other rows, `space-4` apart. It scrolls inside the panel when taller; the top row stays in place.
 - **Behavior:**
   - Changes apply live. Each committed change (a slider release, a toggle) is one undo step.
   - There's no Cancel: undo is the way back.

@@ -52,7 +52,7 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 - `danger` and `success` always come with a word or an icon; never rely on hue.
 
 **Type.**
-- Anton (`display-xl`, `display`) only for the wordmark, the Home hero and entry cards; `meme-caption` is the default caption in both editors: white fill with a 3px black stroke.
+- Anton (`display-xl`, `display`) only for the wordmark, the Home hero and entry cards; `meme-caption` is the default caption look (white fill, black stroke at font size ÷ 12) for interface samples. Inside the editors, captions are content: five caption fonts, sized by the canvas (see Tokens → Captions).
 - Space Grotesk for everything else in the interface: `title-l` screen titles, `title` sheet titles, `body` and `body-strong` rows, `label` chips and tabs, `caption` tool bar labels and metadata.
 - Space Mono `timecode` for playback time, ruler marks and durations.
 - **Hindi:** Anton and Space Grotesk have no Devanagari. When the app language is Hindi, `display-xl` and `display` switch to **Teko Bold** (see Tokens → Type → Hindi display face). The `wordmark` stays Anton. Interface text falls back to the system Devanagari face.
@@ -65,7 +65,7 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 
 **Radii, borders, shadows.**
 - `radius-sm` timeline clips and badges, `radius-md` buttons, inputs and tool highlights, `radius-lg` cards and sheets, `radius-full` chips, segmented tabs and play buttons.
-- Borders are `stroke-hairline` in `hairline`, used for dividers and the search field only. Depth comes from value steps, not lines or shadows.
+- Borders are `stroke-hairline` in `hairline`, used for dividers and the search field only. Depth comes from value steps, not lines or shadows. Two exceptions, both so a mark can't vanish: a Swatch whose color is under 3:1 against `surface` (Black, "No outline") gets a `stroke-hairline` ring in `text-muted`, and white selection marks drawn over the user's content get a `stroke-hairline` `on-primary` edge.
 - Bottom sheets use `shadow-sheet` over `scrim`; floating menus and toasts use `shadow-float`.
 
 **States.**
@@ -122,7 +122,7 @@ Map each token to the Memix theme objects, kebab-case to camelCase: `track-meme-
 | `primary` | `MemixColors.primary` | `#2BB3F3` | Memix sky blue: CapCut's cyan moved 9° toward Spectrum blue. The one primary action per screen (Create, Export, Apply), the active tool, links, progress, and everything that is a meme sound. Text on it is on-primary (7.9:1). |
 | `primary-pressed` | `MemixColors.primaryPressed` | `#189BD8` | Pressed state of primary fills. Text on it is on-primary (6.0:1). |
 | `primary-subtle` | `MemixColors.primarySubtle` | `#2BB3F329` | 16% sky wash behind the active tool, the playing sound row and sound play buttons. Icons on it use primary. |
-| `on-primary` | `MemixColors.onPrimary` | `#111111` | Text and icons on primary, primary-pressed, selection-white fills and danger. |
+| `on-primary` | `MemixColors.onPrimary` | `#111111` | Text and icons on primary, primary-pressed, selection-white fills and danger. Also the 1px dark edge beside white selection marks drawn over the user's content (text frame, handle, snap guides on the preview), so they read on any video: white plus this edge is 4.3:1 or more against any color. |
 | `selection` | `MemixColors.selection` | `#FFFFFF` | Selected clip or layer outline, trim handles, playhead, selected chip fill: white, as in CapCut, so selection never competes with clip colors. |
 | `track-video` | `MemixColors.trackVideo` | `#3D3D3D` | Main video and overlay clips (they show thumbnails). Labels on it are text. |
 | `track-text` | `MemixColors.trackText` | `#E78E40` | Text clips on the timeline and text layers in the layers panel. Labels on it are on-track (7.5:1). |
@@ -139,14 +139,15 @@ Map each token to the Memix theme objects, kebab-case to camelCase: `track-meme-
 
 ### Type
 
-Families: display = Anton, display-hi = Teko (Hindi only), sans = Space Grotesk (400/500/700), mono = Space Mono. All SIL OFL; bundle the TTFs in `composeResources/font/`.
+Families: display = Anton, display-hi = Teko (Hindi only), sans = Space Grotesk (400/500/700), mono = Space Mono. Caption fonts (user content, see Captions): Anton, Poppins, Baloo 2, Kalam, Rozha One, with Teko for Anton's Devanagari. All SIL OFL; bundle the TTFs in `composeResources/font/`.
 
 | Style | Compose name | Family | Size / line (sp) | Weight | Use |
 | --- | --- | --- | --- | --- | --- |
 | `display-xl` | `MemixType.displayXl` | display | 40 / 44 | 400 | Home hero and empty-state headlines, uppercase. |
 | `display` | `MemixType.display` | display | 28 / 30 | 400 | Entry cards and sheet heroes, uppercase. |
 | `wordmark` | `MemixType.wordmark` | display | 28 / 30 | 400 | The name "Memix" (Home top bar) until a logo exists. Always Anton, in every language; written as is. |
-| `meme-caption` | `MemixType.memeCaption` | display | 36 / 40 | 400 | Default caption style in both editors: white fill with a 3px black outline stroke (the classic meme look; this is the user's content, not chrome). |
+| `meme-caption` | `MemixType.memeCaption` | display | 36 / 40 | 400 | The classic caption look for interface samples (template cards, catalog): white fill with a 3px black outline stroke. In the editors, a caption's size comes from the canvas (Captions below). |
+| `caption-sample` | `MemixType.captionSample` | the caption font it shows | 18 / 28 | that file's | The name on each FontTile, drawn in that caption font (P1-10). Line height 28 fits Devanagari marks in every caption font. |
 | `title-l` | `MemixType.titleL` | sans | 22 / 28 | 700 | Screen titles. |
 | `title` | `MemixType.title` | sans | 18 / 24 | 700 | Section and sheet titles. |
 | `body` | `MemixType.body` | sans | 15 / 22 | 400 | Default text. |
@@ -183,6 +184,26 @@ When the app language is Hindi, `MemixType.displayXl` and `MemixType.display` us
 | Anek Devanagari (Ek Type) | variable: width 75–125, weight 100–800 | 2.09 MB | Its heaviest condensed instance is the closest to Anton's mass, but the file is 8× Teko and would need instancing to ship. |
 
 Sources: [Teko metadata](https://github.com/google/fonts/blob/main/ofl/teko/METADATA.pb), [Teko description](https://github.com/google/fonts/blob/main/ofl/teko/DESCRIPTION.en_us.html), [Teko OFL](https://github.com/google/fonts/blob/main/ofl/teko/OFL.txt), [Khand](https://github.com/google/fonts/tree/main/ofl/khand), [Rajdhani](https://github.com/google/fonts/tree/main/ofl/rajdhani), [Anek Devanagari](https://github.com/google/fonts/tree/main/ofl/anekdevanagari).
+
+### Captions (user content, P1-10)
+
+Captions are the user's meme, not chrome, so they have their own fonts, palette and geometry in `design/tokens.json` → `caption`. They are never read through `MemixTheme`; one commonMain place holds them for the engines and both editors, and one renderer draws them in preview, export and the photo editor. Full rules: `docs/ux/specs/P1-10-text.md` → Caption rendering.
+
+| Id (saved) | Tile name | File | Size | Scripts |
+| --- | --- | --- | --- | --- |
+| `anton` | Classic (default) | `anton_regular.ttf` | already bundled | Latin, Latin Ext, Vietnamese; **Devanagari from Teko Bold** (whole clusters) |
+| `poppins` | Modern | `poppins_bold.ttf` (Poppins-Bold) | 152 KB | Latin, Latin Ext, Devanagari |
+| `baloo2` | Bubbly | `baloo2_extrabold.ttf` (Baloo2-ExtraBold, static) | 348 KB | Latin, Latin Ext, Vietnamese, Devanagari |
+| `kalam` | Handwritten | `kalam_bold.ttf` (Kalam-Bold) | 450 KB | Latin, Latin Ext, Devanagari |
+| `rozha` | Serif | `rozha_one_regular.ttf` (RozhaOne-Regular) | 315 KB | Latin, Latin Ext, Devanagari |
+
+- **Why these five:** together they cover the caption styles people know from TikTok and Instagram (classic meme, clean sans, rounded, handwriting, serif). Every one draws all five launch languages, and the four new files add 1,265 KB. Teko isn't a sixth tile because, as Anton's Devanagari partner, it would draw Hindi exactly like Classic. Considered and dropped: Bangers (no Devanagari), Yatra One (very regional look; second choice), Baloo 2 variable (twice the static size), Apache-licensed marker faces (not OFL). All four new files are SIL OFL 1.1 with no Reserved Font Name.
+- **Fallback:** anything a caption font lacks (emoji, other scripts) comes from the system font, in preview and export alike. Emoji get no outline.
+- **Palette** (text and outline, opaque): White `#FFFFFF`, Black `#000000`, Yellow `#FFD60A`, Orange `#FF9500`, Red `#FF3B30`, Pink `#FF6BC1`, Purple `#AF52DE`, Blue `#0A84FF`, Light blue `#64D2FF`, Green `#30D158`. Content colors only: they appear in the interface only inside Swatches, and they avoid the rejected v1 values.
+- **Default:** Classic, White, Black outline.
+- **Geometry:** font size 8% of the canvas's shorter side at scale 1; wrap width 90% of it; scale 25–500%; lines centered; letter spacing 0; outline stroke = font size ÷ 12 with round joins, drawn under the fill; laid out once in canvas pixels, then drawn scaled. These values are part of every saved draft's look: changing one after P1 needs a schema bump and a migration.
+
+Sources: [Poppins](https://github.com/google/fonts/blob/main/ofl/poppins/METADATA.pb), [Baloo 2](https://github.com/google/fonts/blob/main/ofl/baloo2/METADATA.pb) and its [upstream](https://github.com/google/fonts/blob/main/ofl/baloo2/upstream_info.md), [Kalam](https://github.com/google/fonts/blob/main/ofl/kalam/METADATA.pb), [Rozha One](https://github.com/google/fonts/blob/main/ofl/rozhaone/METADATA.pb), [Anton](https://github.com/google/fonts/blob/main/ofl/anton/METADATA.pb); file sizes from the GitHub file pages, 9 Oct 2026.
 
 ### Spacing
 
@@ -245,6 +266,8 @@ Fixed sizes used across screens (dp on Android).
 | `trim-handle-width` | `MemixSize.trimHandleWidth` | `12px` | White trim handles at both ends of the selected timeline item, just outside its outline. Each handle's touch target is still `touch-target` wide. |
 | `icon-small` | `MemixSize.iconSmall` | `16px` | Icons inside timeline items and badges where 24px doesn't fit (the lock on a locked item). Same drawings, scaled; never a standalone control. |
 | `rail-height` | `MemixSize.railHeight` | `4px` | The thin rail under a fill: progress bar and slider. Rail in `hairline`, fill in `primary` (7.3:1 on surface, 4.9:1 against the rail). "Rail", not "track", because a track is a timeline lane in Memix. |
+| `canvas-handle-size` | `MemixSize.canvasHandleSize` | `24px` | The white scale-and-rotate handle on a selected caption on the preview (later stickers and layers), with a 1px `on-primary` edge and an `icon-small` icon in `on-primary` (18.9:1). Its target is still `touch-target`. |
+| `swatch-size` | `MemixSize.swatchSize` | `32px` | A color swatch (caption text and outline; later brush colors), drawn inside a `touch-target` square. Selected: a `stroke-selection` white ring 2px outside it (17.2:1 on surface). |
 
 ### Motion
 
@@ -262,9 +285,9 @@ Fixed sizes used across screens (dp on Android).
 - No borders on shapes and no elevation shadows except `shadow-sheet` (bottom sheets) and `shadow-float` (menus, toasts). Depth = canvas → surface → surface-raised.
 - Selection is always white (`selection`): selected clip/layer outline (`stroke-selection`), trim handles, playhead, selected chip fill. Never use `primary` for selection.
 - `primary` sky blue: one main action per screen (+ the global Create button), active tool (on `primary-subtle`), links, progress, and all meme-sound UI.
-- `meme-caption` is Anton, white fill with a 3 dp black stroke: draw the text twice (stroke pass with `TextStyle(drawStyle = Stroke(width))`, then fill). This is user content styling, not chrome.
+- `meme-caption` is Anton, white fill with a 3 dp black stroke: draw the text twice (stroke pass with `TextStyle(drawStyle = Stroke(width, join = StrokeJoin.Round))`, then fill). This is user content styling, not chrome. Editor captions use the same two passes with the stroke at font size ÷ 12, through the one caption renderer (P1-10); their fonts, palette and geometry are caption constants, not `MemixTheme` tokens.
 - Timeline: clips are positioned by time (µs → px via the zoom scale), never by index. Track heights from `trackHeightVideo` / `trackHeight`; playhead `playheadWidth` in `selection` with a `playheadHeadSize` circular head, fixed in the center while the content scrolls; trim handles `trimHandleWidth` in `selection`. Zoom scales and ruler steps are layout math kept as named constants in the timeline component (spec `docs/ux/specs/P1-05-timeline.md`), not tokens.
-- Editor tool panels (Volume, later Text and Canvas) use the ToolPanel component; floating menus use Menu; short messages use Toast (with `FadingToast` for its fade, one at a time); icon-only controls with no fill (Close, Play/Pause, Undo, Redo, a toast's ×) use IconButton (`design/system/components/`). An IconButton on `surface-raised` presses to `hairline`.
+- Editor tool panels (Volume, Style and Position for text, later Canvas) use the ToolPanel component; font choices use FontTile and color choices use Swatch; floating menus use Menu; short messages use Toast (with `FadingToast` for its fade, one at a time); icon-only controls with no fill (Close, Play/Pause, Undo, Redo, a toast's ×) use IconButton (`design/system/components/`). An IconButton on `surface-raised` presses to `hairline`.
 - Pressed states: `primary` → `primary-pressed`; neutral controls go one value step lighter (`surface-raised` → `hairline`). No translate/scale on press; the 240 ms "bonk" scale is only for content landing on the timeline.
 - Icons: Memix-drawn vector drawables in `composeResources/drawable/` (see Iconography), 24 dp, 2 dp flat-cap stroke, tinted per state.
 - Build a component catalog screen (debug builds only) showing every component in every state; the UX designer reviews it from screenshots. No automated screenshot tests in this project.

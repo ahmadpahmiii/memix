@@ -21,7 +21,7 @@ Show the meme as it will export and let the user find the exact moment to work o
 ## Entry and exit
 - **Arrives from:** the P1-02 import (new project), Drafts (P1-14), and later P2-10 "Make it a video meme" and templates. Every entry opens the same state: playhead at 0:00, paused, nothing selected, default zoom (P1-05), and the preview showing the first frame. The undo history starts empty.
 - **Close** (top-left) or system back, after the back order below → the screen the flow started from (Home or a tab, per P1-02). Any pending save is written first. There's no "Save?" question, because saving is automatic. The one exception: changes that couldn't be saved (see Saving).
-- **System back order:** an open menu closes → an open sheet or tool panel closes → a drag in progress is cancelled → reorder mode is cancelled → the selection clears → the editor closes. Predictive back (Android 14+) shows the previous screen only at the last step. In every earlier step, back is handled inside the editor.
+- **System back order:** typing a caption commits and the keyboard closes (P1-10) → an open menu closes → an open sheet or tool panel closes → a drag in progress is cancelled → reorder mode is cancelled → the selection clears → the editor closes. Predictive back (Android 14+) shows the previous screen only at the last step. In every earlier step, back is handled inside the editor.
 - **App goes to the background:** playback pauses and the pending save is flushed (P1-07). On return the editor is unchanged and paused.
 - **Kept:** the project (autosaved). Not kept: zoom, scroll, selection, undo history (in memory only, per the PM's P1-07 note).
 
@@ -55,7 +55,7 @@ Worked sizes (dp, 100% font):
   - On large screens, Android 16+ ignores orientation locks for apps targeting API 36, and Android 17 removes the opt-out (Guidance), so the layout must still work in any window.
   - In short windows (split screen, a large screen in landscape), the timeline keeps its minimum and the preview takes what's left.
   - Tablet-optimized layouts are out of v1 (PRD → Not in v1).
-- **Tool panels** (P1-06 Volume; later Text and Canvas) cover exactly the timeline and tool bar region. The preview and transport row stay visible and working, so the user can play and hear a change. Sheets (the P1-08 Meme sounds sheet) rise over the whole screen as usual.
+- **Tool panels** (P1-06 Volume; P1-10 Style and Position; later Canvas) cover exactly the timeline and tool bar region. While typing a caption (P1-10), the stage instead shrinks to fit above the keyboard's entry bar, never growing. The preview and transport row stay visible and working, so the user can play and hear a change. Sheets (the P1-08 Meme sounds sheet) rise over the whole screen as usual.
 
 ### Top bar
 `canvas`, no divider.
@@ -68,7 +68,7 @@ Worked sizes (dp, 100% font):
 - **Canvas frame:** the largest rectangle with the project's canvas ratio that fits inside the stage, inset by `space-2` on every side and centered. The engine's player surface fills it.
 - **Before the first frame:** the frame shows `surface-raised` (the "empty media frame" role), static. No spinner and no shimmer, because nothing in Memix loops (MOTION 2). PRD target: the editor opens in under 1 s.
 - **Frame edge:** a black canvas background (the default) blends into the black stage, so a fitted landscape clip doesn't show where the 9:16 frame ends. P1-11 owns showing the frame boundary; nothing is added here.
-- **Taps:** a tap anywhere on the stage toggles play/pause. P1-10 will take taps that land on a text layer.
+- **Taps:** a tap anywhere on the stage toggles play/pause, except on a caption: P1-10 selects it (and a tap on the selected caption edits it). Taps outside every caption keep toggling play, even with a caption selected (`P1-10-text.md` → On the preview).
 - **Toasts and the save banner** sit at the top of the stage (component `design/system/components/Toast/README.md`).
 
 Board sample content and what replaces it:
