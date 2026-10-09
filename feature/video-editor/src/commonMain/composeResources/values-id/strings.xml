@@ -58,4 +58,29 @@
     <string name="edit_trim">Pangkas</string>
     <string name="import_row_a11y">%1$s, %2$s. %3$s</string>
     <string name="import_row_a11y_no_name">%1$s. %2$s</string>
+    <!-- Timeline (P1-05): machine draft until P5. -->
+    <string name="timeline_a11y">Linimasa</string>
+    <string name="timeline_original_audio">Audio asli</string>
+    <string name="clip_missing_file">File hilang</string>
+    <string name="timeline_zoom_in">Perbesar</string>
+    <string name="timeline_zoom_out">Perkecil</string>
+    <string name="timeline_zoom_fit">Tampilkan seluruh video</string>
+    <string name="a11y_playhead">Playhead</string>
+    <string name="a11y_forward_1s">Maju 1 detik</string>
+    <string name="a11y_back_1s">Mundur 1 detik</string>
+    <string name="a11y_go_start">Ke awal</string>
+    <string name="a11y_go_end">Ke akhir</string>
+    <string name="track_video">Video</string>
+    <string name="track_overlay">Overlay</string>
+    <string name="track_text">Teks</string>
+    <string name="track_sticker">Stiker</string>
+    <string name="track_meme_sound">Suara meme</string>
+    <string name="track_audio">Audio</string>
+    <string name="track_effect">Efek</string>
+    <string name="a11y_clip_media">%1$s, klip %2$d dari %3$d, durasi %4$s, mulai pada %5$s</string>
+    <string name="a11y_item">%1$s, %2$s, durasi %3$s, mulai pada %4$s</string>
+    <string name="a11y_state_past_end">Sebagian setelah akhir video</string>
+    <string name="a11y_state_after_end">Setelah akhir video, jadi tidak akan diputar</string>
+    <string name="a11y_state_original_muted">Audio asli dibisukan</string>
+    <string name="a11y_state_sound_detached">Suara dipisahkan</string>
 </resources>

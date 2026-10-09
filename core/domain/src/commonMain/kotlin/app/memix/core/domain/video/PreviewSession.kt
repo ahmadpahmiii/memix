@@ -33,6 +33,13 @@ interface PreviewSession : AutoCloseable {
     fun seekTo(positionUs: Long)
 
     /**
+     * True while the user drags or flings the timeline (P1-05): many quick [seekTo] calls follow, and the preview may
+     * show the nearest frame it can decode fast. False at rest, which shows the exact frame of the last seek. Pause
+     * before turning it on: playback stays suppressed while it's on.
+     */
+    fun setScrubbing(scrubbing: Boolean)
+
+    /**
      * Renders [project] from now on, keeping the position (clamped to the new length) and play or pause. Call it
      * after every committed edit, undo or redo. Several quick calls only render the last project.
      */

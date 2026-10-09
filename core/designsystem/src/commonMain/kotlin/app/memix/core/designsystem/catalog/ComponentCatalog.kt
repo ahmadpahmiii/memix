@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.memix.core.designsystem.Icon
 import app.memix.core.designsystem.MemixColors
@@ -45,6 +46,8 @@ import app.memix.core.designsystem.component.CloseButton
 import app.memix.core.designsystem.component.EntryCard
 import app.memix.core.designsystem.component.FadingToast
 import app.memix.core.designsystem.component.IconButton
+import app.memix.core.designsystem.component.Menu
+import app.memix.core.designsystem.component.MenuItem
 import app.memix.core.designsystem.component.ProgressBar
 import app.memix.core.designsystem.component.SegmentedTabs
 import app.memix.core.designsystem.component.Sheet
@@ -95,6 +98,7 @@ fun ComponentCatalog(onClose: () -> Unit, appSections: @Composable ColumnScope.(
             ProgressBarSection()
             IconButtonSection()
             ToastSection()
+            MenuSection()
             IconSection()
             appSections()
         }
@@ -241,6 +245,29 @@ private fun ToastSection() = Section("Toast") {
     }
     Button("Show the persistent variant again", { bannerShown = true })
     Toast("Persistent, no action: your latest changes aren't saved yet. Memix tries again with your next change.", dismiss = ToastDismiss("Dismiss") {})
+}
+
+// The timeline's zoom menu (P1-05): opens where the button is pressed; the middle item shows the "at its limit" state.
+@Composable
+private fun MenuSection() = Section("Menu") {
+    var open by remember { mutableStateOf(false) }
+    var steps by remember { mutableIntStateOf(0) }
+    Box {
+        Button("Open the menu (zoom steps: $steps)", { open = true })
+        Menu(
+            expanded = open,
+            pressPoint = IntOffset.Zero,
+            title = "Timeline",
+            items = {
+                listOf(
+                    MenuItem("Zoom in", { steps++ }, closesMenu = false),
+                    MenuItem("Zoom out", {}, enabled = false),
+                    MenuItem("Show whole video", { steps = 0 }),
+                )
+            },
+            onDismiss = { open = false },
+        )
+    }
 }
 
 @Composable

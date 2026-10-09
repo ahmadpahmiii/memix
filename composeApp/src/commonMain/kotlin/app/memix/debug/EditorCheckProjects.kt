@@ -66,6 +66,9 @@ internal class EditorCheckProjects : KoinComponent {
         PREVIEW_ERROR -> previewError()
         MISSING_MEDIA -> missingMedia()
         EMPTY -> project(EMPTY, mainClips = emptyList())
+        TIMELINE_CHECK -> timelineCheck()
+        TIMELINE_TRACKS -> timelineTracks()
+        HOUR_LONG -> hourLong()
         else -> null
     }
 
@@ -100,6 +103,63 @@ internal class EditorCheckProjects : KoinComponent {
                 listOf(EffectItem("check-zoom", startUs = 4_000_000, durationUs = 400_000, EffectSpec("effect.zoom_punch"))),
             ),
         ),
+    )
+
+    /**
+     * The P1-05 scroll check (spec → QA compares, Measured): 20 main clips (videos of three shapes and a photo, 80 s)
+     * and three more lanes: captions, meme sounds (the last one runs 2 s past the end) and the first clip's detached
+     * sound, labelled "Original audio".
+     */
+    private fun timelineCheck(): Project {
+        val pattern = listOf(
+            Triple(clipA, 0L, 6_000_000L),
+            Triple(clipB, 1_000_000L, 4_000_000L),
+            Triple(clip1080p, 0L, 5_000_000L),
+            Triple(photo, 0L, 2_000_000L),
+        )
+        var startUs = 0L
+        val mainClips = (0 until TIMELINE_CHECK_CLIPS).map { index ->
+            val (source, trimInUs, trimOutUs) = pattern[index % pattern.size]
+            MediaClip("timeline-clip-$index", startUs, source, trimInUs, trimOutUs, audioDetached = index == 0).also { startUs += it.durationUs }
+        }
+        val lengthUs = startUs
+        val captions = (0 until lengthUs / 10_000_000).map { index ->
+            TextItem("timeline-caption-$index", startUs = index * 10_000_000, durationUs = 3_000_000, "Caption ${index + 1}", CAPTION)
+        }
+        val sounds = (0 until lengthUs / 7_000_000).map { index ->
+            AudioClip("timeline-beep-$index", startUs = index * 7_000_000 + 2_000_000, source = sound, trimInUs = 0, trimOutUs = 1_000_000)
+        } + AudioClip("timeline-past-end", startUs = lengthUs - 2_000_000, source = clipA, trimInUs = 0, trimOutUs = 4_000_000)
+        return project(
+            TIMELINE_CHECK,
+            mainClips,
+            extraTracks = listOf(
+                Track("timeline-text", TrackKind.TEXT, captions),
+                Track("timeline-sounds", TrackKind.MEME_SOUND, sounds),
+                Track("timeline-original", TrackKind.AUDIO, listOf(AudioClip("timeline-original-0", 0, clipA, trimInUs = 0, trimOutUs = 6_000_000))),
+            ),
+        )
+    }
+
+    /**
+     * Many tracks (spec P1-05 → QA compares 2): the preview check's six tracks plus an overlay and a second meme-sound
+     * lane whose sound runs 3 s past the end, so the lanes scroll on a phone.
+     */
+    private fun timelineTracks(): Project {
+        val base = previewCheck()
+        val video = base.video ?: return base
+        val extra = listOf(
+            Track("tracks-overlay", TrackKind.OVERLAY, listOf(MediaClip("tracks-overlay-b", startUs = 6_000_000, source = clipB, trimInUs = 0, trimOutUs = 2_000_000))),
+            Track("tracks-sounds-2", TrackKind.MEME_SOUND, listOf(AudioClip("tracks-past-end", startUs = 28_000_000, source = clipA, trimInUs = 0, trimOutUs = 5_000_000))),
+        )
+        return base.copy(id = TIMELINE_TRACKS, name = "Editor check: $TIMELINE_TRACKS", video = video.copy(tracks = video.tracks + extra))
+    }
+
+    /** An hour of video (spec P1-05 → States, very long project): the 1080p clip's first 30 s, 120 times. */
+    private fun hourLong() = project(
+        HOUR_LONG,
+        mainClips = (0 until HOUR_LONG_CLIPS).map { index ->
+            MediaClip("hour-$index", startUs = index * 30_000_000L, source = clip1080p, trimInUs = 0, trimOutUs = 30_000_000)
+        },
     )
 
     /** Two main clips that overlap: a damaged project the engine refuses, so the editor shows "The preview stopped". */
@@ -138,7 +198,12 @@ internal class EditorCheckProjects : KoinComponent {
         const val PREVIEW_ERROR = "preview-error"
         const val MISSING_MEDIA = "missing-media"
         const val EMPTY = "empty"
-        private val NAMES = listOf(EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY)
+        const val TIMELINE_CHECK = "timeline-check"
+        const val TIMELINE_TRACKS = "timeline-tracks"
+        const val HOUR_LONG = "hour-long"
+        private val NAMES = listOf(EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG)
+        private const val TIMELINE_CHECK_CLIPS = 20
+        private const val HOUR_LONG_CLIPS = 120
 
         // 8 Oct 2026, 12:00:00 UTC; saving sets the real edit time.
         private const val EDITED_AT_EPOCH_US = 1_791_460_800_000_000L

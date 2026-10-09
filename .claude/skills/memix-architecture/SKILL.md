@@ -17,7 +17,7 @@ Full detail: `docs/TECHNICAL_DESIGN.md`. This is the working summary.
 | `:core:domain` | Domain | use cases; repository + engine interfaces (`VideoEngine`, `PreviewSession`, `PhotoRenderer`, `Segmenter`, `MediaFiles`, `MediaInspector`, `Sharer`, `Ads`, `Analytics`) | `:core:model` |
 | `:core:data` | Data | repositories, supabase-kt remote, SQLDelight local, file cache, settings | `:core:domain` |
 | `:core:designsystem` | UI | `MemixTheme`, tokens, base components | — |
-| `:core:ui` | UI | timeline, layer handles, sliders, pickers | designsystem, model |
+| `:core:ui` | UI | shared composables with more than one user: time formatting, layer handles, sliders, pickers (the video timeline is in `:feature:video-editor`) | designsystem, model |
 | `:engine:video` | Platform | `VideoEngine`: Media3 (androidMain), AVFoundation (iosMain); `VideoPreviewSurface`, which the composition root passes to the editor screen | domain |
 | `:engine:photo` | Platform | photo renderer + PNG/JPG/GIF/WebP encoders | domain |
 | `:engine:segmentation` | Platform | `Segmenter`: ML Kit + MediaPipe / Vision | domain |
@@ -46,8 +46,8 @@ Full detail: `docs/TECHNICAL_DESIGN.md`. This is the working summary.
 ```kotlin
 interface VideoEngine {   // app.memix.core.domain.video; members join with the ticket that first uses them
     suspend fun export(project: Project, settings: ExportSettings, onProgress: (Float) -> Unit): Outcome<ExportedVideo>  // P1-03
-    fun createPreview(project: Project): PreviewSession   // P1-04: play/pause/seekTo/update/close, playback + positionUs StateFlows
-    suspend fun thumbnails(source: MediaRef, count: Int, heightPx: Int): List<ImageRef>      // P1-05
+    fun createPreview(project: Project): PreviewSession   // P1-04: play/pause/seekTo/update/close, playback + positionUs StateFlows; P1-05 setScrubbing
+    fun openThumbnails(): ThumbnailReader   // P1-05: suspend thumbnail(source, timeUs, sizePx) -> one square JPEG tile; close()
     suspend fun waveform(source: AudioRef, buckets: Int): FloatArray                        // P1-08 / P3-09
     fun capabilities(): EngineCapabilities                                                  // P1-12
 }

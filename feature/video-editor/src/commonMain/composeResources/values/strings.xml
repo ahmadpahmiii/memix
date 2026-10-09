@@ -61,4 +61,29 @@
     <!-- Screen reader only: a row of the "didn't go in" list. %1$s = file name, %2$s = Video or Photo, %3$s = the reason. -->
     <string name="import_row_a11y">%1$s, %2$s. %3$s</string>
     <string name="import_row_a11y_no_name">%1$s. %2$s</string>
+    <!-- Timeline (P1-05). Budgets and translator notes: docs/ux/specs/P1-05-timeline.md -> Copy. Spoken times come from a11y_time_* (core:ui); never put timecode digits in spoken strings. -->
+    <string name="timeline_a11y">Timeline</string>
+    <string name="timeline_original_audio">Original audio</string>
+    <string name="clip_missing_file">File missing</string>
+    <string name="timeline_zoom_in">Zoom in</string>
+    <string name="timeline_zoom_out">Zoom out</string>
+    <string name="timeline_zoom_fit">Show whole video</string>
+    <string name="a11y_playhead">Playhead</string>
+    <string name="a11y_forward_1s">Forward 1 second</string>
+    <string name="a11y_back_1s">Back 1 second</string>
+    <string name="a11y_go_start">Go to start</string>
+    <string name="a11y_go_end">Go to end</string>
+    <string name="track_video">Video</string>
+    <string name="track_overlay">Overlay</string>
+    <string name="track_text">Text</string>
+    <string name="track_sticker">Sticker</string>
+    <string name="track_meme_sound">Meme sound</string>
+    <string name="track_audio">Audio</string>
+    <string name="track_effect">Effect</string>
+    <string name="a11y_clip_media">%1$s, clip %2$d of %3$d, %4$s long, starts at %5$s</string>
+    <string name="a11y_item">%1$s, %2$s, %3$s long, starts at %4$s</string>
+    <string name="a11y_state_past_end">Partly after the end of the video</string>
+    <string name="a11y_state_after_end">After the end of the video, so it won't play</string>
+    <string name="a11y_state_original_muted">Original audio muted</string>
+    <string name="a11y_state_sound_detached">Sound detached</string>
 </resources>

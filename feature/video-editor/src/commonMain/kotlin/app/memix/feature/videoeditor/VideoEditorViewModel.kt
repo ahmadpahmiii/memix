@@ -14,26 +14,34 @@ import app.memix.core.domain.video.PreviewPlayback
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.domain.video.PreviewStatus
 import app.memix.core.domain.video.StartPreviewUseCase
+import app.memix.core.domain.video.StartThumbnailsUseCase
 import app.memix.core.model.project.Canvas
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.Project
 import app.memix.core.ui.MemixViewModel
+import app.memix.feature.videoeditor.timeline.TimelineThumbnails
+import app.memix.feature.videoeditor.timeline.timelineUiOf
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
- * The video editor (spec docs/ux/specs/P1-04-editor-and-preview.md): opens a draft, edits it through a
- * [ProjectEditSession] (undo, redo, auto-save) and shows it in a live [PreviewSession].
+ * The video editor (specs docs/ux/specs/P1-04-editor-and-preview.md and P1-05-timeline.md): opens a draft, edits it
+ * through a [ProjectEditSession] (undo, redo, auto-save), shows it in a live [PreviewSession] and on the timeline.
  *
- * The session's state and the preview's playback are copied into the one UiState; the preview's time is not (it
- * changes every frame, see [EditorPreview]). Both sessions close with this ViewModel: the edit session saves on the
- * way out (or deletes a draft left with no clips), and the preview frees its decoders.
+ * The session's state, the preview's playback, the timeline's items and the selection are copied into the one
+ * UiState; the preview's time is not (it changes every frame, see [EditorPreview]), and neither are the timeline's
+ * scroll and zoom (the timeline keeps them). The sessions and the thumbnail reader close with this ViewModel: the
+ * edit session saves on the way out (or deletes a draft left with no clips), the preview frees its decoders and the
+ * thumbnails their open files. [decodeDispatcher] decodes thumbnail pictures off the main thread.
  */
 class VideoEditorViewModel(
     projectId: String,
     openVideoDraft: OpenVideoDraftUseCase,
     private val startEditSession: StartEditSessionUseCase,
     private val startPreview: StartPreviewUseCase,
+    private val startThumbnails: StartThumbnailsUseCase,
+    private val decodeDispatcher: CoroutineDispatcher,
     private val debugEdit: EditorDebugEdit?,
 ) : MemixViewModel<VideoEditorUiState, VideoEditorIntent>(VideoEditorUiState(canMakeDebugEdit = debugEdit != null)) {
 
@@ -73,6 +81,13 @@ class VideoEditorViewModel(
             VideoEditorIntent.AppStarted -> retryFailedSave()
             VideoEditorIntent.AppStopped -> goToBackground()
             VideoEditorIntent.DebugEdit -> makeDebugEdit()
+            VideoEditorIntent.TimelineTouched -> preview?.pause()
+            VideoEditorIntent.ScrubStarted -> startScrubbing()
+            is VideoEditorIntent.ScrubTo -> preview?.seekTo(intent.positionUs)
+            is VideoEditorIntent.ScrubEnded -> endScrubbing(intent.positionUs)
+            is VideoEditorIntent.SeekTo -> seekTo(intent.positionUs)
+            is VideoEditorIntent.SelectItem -> selectItem(intent.itemId)
+            VideoEditorIntent.ClearSelection -> updateState { it.copy(selectedItemId = null) }
         }
     }
 
@@ -80,7 +95,9 @@ class VideoEditorViewModel(
         val session = startEditSession(project)
         addCloseable(session)
         editSession = session
-        updateState { it.copy(canvas = canvasUiOf(project.canvas)) }
+        val thumbnails = TimelineThumbnails(startThumbnails(), viewModelScope, decodeDispatcher)
+        addCloseable(thumbnails)
+        updateState { it.copy(canvas = canvasUiOf(project.canvas), thumbnails = thumbnails) }
         viewModelScope.launch { session.state.collect(::showEditState) }
     }
 
@@ -92,7 +109,11 @@ class VideoEditorViewModel(
 
     private fun showProject(project: Project) {
         shownProject = project
-        updateState { it.copy(lengthUs = project.videoLengthUs()) }
+        val timeline = timelineUiOf(project)
+        // The selection outlives edits, undo and redo while its item exists (spec P1-04, P1-05 → Selection).
+        updateState {
+            it.copy(lengthUs = project.videoLengthUs(), timeline = timeline, selectedItemId = it.selectedItemId?.takeIf { id -> timeline.item(id) != null })
+        }
         if (project.hasNoClips()) {
             closePreview()
             updateState { it.copy(stage = StageContent.EMPTY, isPlaying = false) }
@@ -139,6 +160,30 @@ class VideoEditorViewModel(
         // At the end (within a frame), Play starts again from 0:00; there is no loop (spec P1-04 → Playback).
         if (session.positionUs.value >= state.value.lengthUs - END_TOLERANCE_US) session.seekTo(0)
         session.play()
+    }
+
+    // Media3's scrubbing mode shows fast nearby frames while the timeline moves; paused, as the session asks.
+    private fun startScrubbing() {
+        val session = preview ?: return
+        session.pause()
+        session.setScrubbing(true)
+    }
+
+    // The exact frame under the playhead once the timeline rests.
+    private fun endScrubbing(positionUs: Long) {
+        val session = preview ?: return
+        session.setScrubbing(false)
+        session.seekTo(positionUs)
+    }
+
+    private fun seekTo(positionUs: Long) {
+        val session = preview ?: return
+        session.pause()
+        session.seekTo(positionUs)
+    }
+
+    private fun selectItem(itemId: String) {
+        updateState { if (it.timeline.item(itemId) != null) it.copy(selectedItemId = itemId) else it }
     }
 
     private fun undo() {

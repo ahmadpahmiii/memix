@@ -58,4 +58,29 @@
     <string name="edit_trim">Cortar</string>
     <string name="import_row_a11y">%1$s, %2$s. %3$s</string>
     <string name="import_row_a11y_no_name">%1$s. %2$s</string>
+    <!-- Timeline (P1-05): machine draft until P5. -->
+    <string name="timeline_a11y">Linha do tempo</string>
+    <string name="timeline_original_audio">Áudio original</string>
+    <string name="clip_missing_file">Arquivo ausente</string>
+    <string name="timeline_zoom_in">Aproximar</string>
+    <string name="timeline_zoom_out">Afastar</string>
+    <string name="timeline_zoom_fit">Mostrar vídeo inteiro</string>
+    <string name="a11y_playhead">Cursor</string>
+    <string name="a11y_forward_1s">Avançar 1 segundo</string>
+    <string name="a11y_back_1s">Voltar 1 segundo</string>
+    <string name="a11y_go_start">Ir para o início</string>
+    <string name="a11y_go_end">Ir para o fim</string>
+    <string name="track_video">Vídeo</string>
+    <string name="track_overlay">Sobreposição</string>
+    <string name="track_text">Texto</string>
+    <string name="track_sticker">Figurinha</string>
+    <string name="track_meme_sound">Som de meme</string>
+    <string name="track_audio">Áudio</string>
+    <string name="track_effect">Efeito</string>
+    <string name="a11y_clip_media">%1$s, clipe %2$d de %3$d, dura %4$s, começa em %5$s</string>
+    <string name="a11y_item">%1$s, %2$s, dura %3$s, começa em %4$s</string>
+    <string name="a11y_state_past_end">Parte depois do fim do vídeo</string>
+    <string name="a11y_state_after_end">Depois do fim do vídeo, então não toca</string>
+    <string name="a11y_state_original_muted">Áudio original sem som</string>
+    <string name="a11y_state_sound_detached">Som separado</string>
 </resources>

@@ -14,6 +14,7 @@ import app.memix.core.domain.project.OpenVideoDraftUseCase
 import app.memix.core.domain.project.SaveProjectUseCase
 import app.memix.core.domain.project.StartEditSessionUseCase
 import app.memix.core.domain.video.StartPreviewUseCase
+import app.memix.core.domain.video.StartThumbnailsUseCase
 import app.memix.debug.DebugEdits
 import app.memix.debug.ImportSaveFailure
 import app.memix.engine.video.videoEngineModule
@@ -49,6 +50,7 @@ private val appModule = module {
     factoryOf(::ObserveProjectSummariesUseCase)
     factoryOf(::OpenVideoDraftUseCase)
     factoryOf(::StartPreviewUseCase)
+    factoryOf(::StartThumbnailsUseCase)
     factory { StartEditSessionUseCase(get(), get(), get(), get(appScope)) }
     // Created at start-up so it clears last run's leftover media in the background before any import copies.
     single(createdAtStart = true) { LeftoverMediaCleaner(get(), get(), get(), get(appScope)) }
@@ -62,6 +64,8 @@ private val appModule = module {
             openVideoDraft = get(),
             startEditSession = get(),
             startPreview = get(),
+            startThumbnails = get(),
+            decodeDispatcher = Dispatchers.Default,
             // Bound only in builds with hand checks (handCheckModule).
             debugEdit = getOrNull(),
         )

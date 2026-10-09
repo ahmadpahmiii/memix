@@ -14,6 +14,7 @@ import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.CompositionPlayer
 import app.memix.core.domain.Logger
+import app.memix.core.domain.project.videoLengthUs
 import app.memix.core.domain.video.ExportSettings
 import app.memix.core.domain.video.PreviewPlayback
 import app.memix.core.domain.video.PreviewSession
@@ -68,7 +69,9 @@ internal class Media3PreviewSession(
     /** What the preview surface shows; null until the first composition is ready, and again after [close]. */
     val player: StateFlow<CompositionPlayer?> = mutablePlayer.asStateFlow()
 
-    private var lengthUs = 0L
+    // The newest project's length, so a seek before its composition is ready already lands inside it.
+    private var lengthUs = project.videoLengthUs()
+    private var scrubbing = false
     private var closed = false
     private val positionTicker = FrameTicker(::publishPlayerPosition)
     private val headphonesUnplugged = HeadphonesUnpluggedReceiver(context, onUnplugged = ::pause)
@@ -131,10 +134,18 @@ internal class Media3PreviewSession(
         mutablePlayer.value?.seekTo(clampedUs / MICROS_PER_MILLI)
     }
 
+    // Media3's scrubbing mode keeps decoders warm and may show the nearest fast frame while many seeks arrive.
+    override fun setScrubbing(scrubbing: Boolean) {
+        if (closed || this.scrubbing == scrubbing) return
+        this.scrubbing = scrubbing
+        mutablePlayer.value?.setScrubbingModeEnabled(scrubbing)
+    }
+
     override fun update(project: Project) {
         // An equal project renders nothing new, so there is no edit to time.
         if (closed || project == projects.value) return
         showTiming.start(ShowTimingLog.Change.EDIT)
+        lengthUs = project.videoLengthUs()
         projects.value = project
     }
 
@@ -211,6 +222,7 @@ internal class Media3PreviewSession(
         player.addListener(playerListener)
         player.addAnalyticsListener(playSpan)
         player.playWhenReady = mutablePlayback.value.isPlaying
+        player.setScrubbingModeEnabled(scrubbing)
         return player
     }
 

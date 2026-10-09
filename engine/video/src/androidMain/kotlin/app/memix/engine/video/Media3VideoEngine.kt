@@ -13,6 +13,7 @@ import app.memix.core.domain.Outcome
 import app.memix.core.domain.video.ExportSettings
 import app.memix.core.domain.video.ExportedVideo
 import app.memix.core.domain.video.PreviewSession
+import app.memix.core.domain.video.ThumbnailReader
 import app.memix.core.domain.video.VideoEngine
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.Project
@@ -26,8 +27,8 @@ import kotlinx.coroutines.withContext
 
 /**
  * The Android [VideoEngine]: plans the project in shared code ([CompositionPlanner]), builds a Media3
- * composition from the plan, exports it with Transformer into the app's cache, and previews it with
- * CompositionPlayer ([Media3PreviewSession]).
+ * composition from the plan, exports it with Transformer into the app's cache, previews it with
+ * CompositionPlayer ([Media3PreviewSession]), and reads the timeline's thumbnails ([MediaThumbnailReader]).
  */
 @OptIn(UnstableApi::class)
 internal class Media3VideoEngine(
@@ -40,6 +41,8 @@ internal class Media3VideoEngine(
 
     override fun createPreview(project: Project): PreviewSession =
         Media3PreviewSession(context, sourceResolver, logger, ioDispatcher, project)
+
+    override fun openThumbnails(): ThumbnailReader = MediaThumbnailReader(context.filesDir, ioDispatcher, logger)
 
     override suspend fun export(
         project: Project,

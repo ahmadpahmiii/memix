@@ -13,7 +13,7 @@ import app.memix.core.model.project.Project
  * Overlay, text, sticker and effect tracks and the canvas background are skipped with a log line
  * until their tickets add them (P4-01, P1-10, P4-12, P4-06, P1-11).
  *
- * Thumbnails (P1-05), waveforms and device capabilities (P1-12) join this interface with the tickets
+ * Waveforms (P1-08 / P3-09) and device capabilities (P1-12) join this interface with the tickets
  * that first use them.
  */
 interface VideoEngine {
@@ -40,4 +40,10 @@ interface VideoEngine {
      * [PreviewStatus.FAILED]. The caller closes the session.
      */
     fun createPreview(project: Project): PreviewSession
+
+    /**
+     * Opens a [ThumbnailReader] for the timeline's thumbnail strips (P1-05). Returns at once; nothing is read until
+     * the first [ThumbnailReader.thumbnail]. The caller closes it.
+     */
+    fun openThumbnails(): ThumbnailReader
 }

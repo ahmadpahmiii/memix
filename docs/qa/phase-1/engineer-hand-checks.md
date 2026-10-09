@@ -306,6 +306,93 @@ darker frame, Play greyed), `empty-draft` (Play greyed) and `catalog-toast`.
 Free up space hiding when no storage screen opens can't be forced on a normal phone (Android's storage manager or
 Settings always opens); it is checked in code and on iOS in P7.
 
+## P1-05 · the timeline scrolls at 60 fps, no visible lag, no leaks
+
+Spec `docs/ux/specs/P1-05-timeline.md`. Media: P1-04's files in `files/debug-media/` (`clip-a.mp4`, `clip-b.mp4`, `photo.png`,
+`sound.m4a`, `clip-1080p.mp4`; P1-04 step 0 and 1). New hand-check projects (debug and benchmark builds):
+`timeline-check` (20 main clips, 80 s, plus caption, meme-sound and "Original audio" lanes; the last sound runs 2 s past
+the end), `timeline-tracks` (8 lanes) and `hour-long` (120 × 30 s of the 1080p clip). Not in P1-05, so not on screen:
+the original-audio toggle (P1-06/P1-09), the "Add a meme sound" row (P1-08), Add media (P1-16); the white handles of a
+selected item are drawn but drag with P1-06.
+
+```sh
+./gradlew :androidApp:installDebug
+adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor timeline-check
+adb logcat -s MemixThumbnails:* MemixPreview:* MemixEditorCheck:*      # second terminal
+```
+
+**A. Hand checks (debug build).**
+1. **Open:** the white playhead (a line with a round head) is in the middle at `00:00`, the left half is empty. Ruler labels
+   every 2 s (`00:00`, `00:02`, `00:04`) with small ticks between. Main row: gray tiles that fill with frames one by one,
+   each fading in; no spinner, no shimmer. Under it: orange captions ("Caption 1"), blue meme sounds (no titles until
+   P1-08), green "Original audio". Lanes have a slightly lighter band from 00:00 to the end of the video. Nothing selected.
+2. **Scroll:** drag left: time moves under the playhead, the preview shows frames while you drag and the exact frame when
+   you stop, the timecode follows. Fling: it slows down by itself and stops exactly at the end (the end under the playhead,
+   no bands on the right half), with no stretch or bounce; fling back: stops exactly at `00:00`. A label whose clip
+   starts off screen stays at the left edge ("Original audio" while you scroll through it).
+3. **Touch pauses:** Play, then touch the timeline anywhere: playback stops at once. While playing untouched, the content
+   scrolls under the fixed playhead.
+4. **Pinch:** zooms around the playhead; the timecode doesn't change while you pinch. All the way in: labels every 0.25 s
+   (`00:03`, `.25`, `.50`, `.75`). All the way out: the whole 80 s in the right half of the timeline. Thumbnails
+   stretch, then the exact frames fade in; no gray flash for frames already seen.
+5. **Ruler:** tap it: that time slides under the playhead in about 0.2 s, the preview shows it, a selected item stays
+   selected. Long-press it: a small menu (Zoom in, Zoom out, Show whole video) above your finger. Zoom steps keep it open;
+   the step at its limit is gray and does nothing; Show whole video closes it; a tap outside or Back closes it.
+6. **Selection:** tap a main clip: white outline with a thin dark gap, a white handle at each end, and its length
+   (`00:06.00`) on a dark badge in its top-left corner. Tap it again: nothing changes. Tap a caption: the selection moves
+   there (no badge). Tap an empty part of a lane, or below the lanes: cleared. Selecting never moves the playhead; scroll,
+   zoom and Play keep the selection; a test edit (long-press the timecode) and Undo keep it while the item exists.
+7. **Past the end:** scroll to the end: the last blue sound continues past the end of the video, that part is darkened,
+   and the bands stop at the end.
+8. **Many lanes:** `--es memix.openEditor timeline-tracks`: eight lanes in this order: video, overlay (gray), text,
+   sticker (yellow), meme sound, meme sound, audio (green), effect (violet). The lanes scroll up and down under the
+   ruler; the playhead reaches the bottom of the visible lanes; a diagonal drag moves one way only (the first that
+   moves far enough).
+9. **Missing file:** `missing-media`: the middle clip is gray with "File missing" and no thumbnails.
+10. **Empty:** `empty`: the ruler and an empty main row, no bands.
+11. **An hour:** `hour-long`: open, long-press the ruler, Show whole video: the hour fits in the right half, ruler labels
+    are minutes or hours and never overlap, thumbnails load only around the playhead, nothing stutters while you fling.
+12. **TalkBack:** swipe right from the top of the timeline: "Timeline" (actions: Zoom in, Zoom out, Show whole video);
+    "Playhead, 0 seconds of 1 minute 20 seconds" (swipe up or down steps one frame; actions Forward 1 second, Back 1
+    second, Go to start, Go to end); then the items in each lane, e.g. "Video, clip 1 of 20, 6 seconds long, starts at 0
+    seconds, Sound detached", "Text, Caption 1, 3 seconds long, starts at 0 seconds". Past the last item on screen,
+    swiping on scrolls the lane and reaches the next one; double-tap selects the item and brings its start under the
+    playhead. All 20 clips can be reached this way. A sound past the end says "Partly after the end of the video".
+13. **Hindi at 200% font** (Settings → Display → Font size largest, app language Hindi): taller rows, bigger ruler with
+    longer steps, "मूल ऑडियो" not cut off; the main row keeps its height and the badge still fits.
+14. `MemixThumbnails` shows no "No thumbnail" line for the good files (one per tile of `missing.mp4` is expected: it isn't
+    there).
+
+**B. Leaks (debug build, LeakCanary 2.14).** Open and close the editor 5 times with `timeline-check`, each time scrolling,
+flinging, pinching, selecting and opening the zoom menu; wait 10 s on Home. Pass: no LeakCanary notification and
+`adb logcat -d -s LeakCanary:*` reports no leak.
+
+**C. Done when: 60 fps scroll, under 5% janky frames (benchmark build, the owner's phone).**
+```sh
+./gradlew :androidApp:installBenchmark
+adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor timeline-check
+#    find the timeline on screen (its bounds), e.g. bounds="[0,1290][1080,2010]" -> y = 1650
+adb shell uiautomator dump /sdcard/ui.xml > /dev/null && adb exec-out cat /sdcard/ui.xml | tr '>' '\n' | grep 'content-desc="Timeline"'
+#    wait about 5 s (thumbnails near the start), then 10 flings, 120 ms each, across the middle of the timeline
+adb shell dumpsys gfxinfo app.memix reset
+for i in 1 2 3 4 5; do adb shell input swipe 900 1650 150 1650 120; sleep 1.5; adb shell input swipe 150 1650 900 1650 120; sleep 1.5; done
+adb shell dumpsys gfxinfo app.memix | grep -E "Total frames|Janky frames|percentile"
+```
+- Pass: janky frames under 5% in each run and nothing that looks like a stutter. Run it 3 times; report the median and
+  worst janky %, the 90th and 99th percentile frame times, the phone model and Android version.
+- Repeat once right after opening (no wait, thumbnails still loading) and once on `hour-long` after Show whole video;
+  note both results.
+- Also pinch in and out for 10 s with `dumpsys gfxinfo` reset before: note the janky %.
+- Scrub response (P1-04's 100 ms): by eye while dragging slowly; there is no log line for it yet.
+
+### States to screenshot for the design review (`docs/ux/reviews/P1-05/`)
+At 360 dp wide if possible, English unless noted: `open-one-clip` (export-check just opened: playhead over 00:00, ruler
+every 2 s, thumbnails loaded), `open-timeline-check`, `loading` (timeline-check right after opening, tiles filling in),
+`many-tracks` (timeline-tracks scrolled down a little), `past-end` (timeline-check at the end, the washed sound),
+`selected-sound` (outline, gap, handles) and `selected-clip-badge`, `zoom-max` (0.25 s labels), `zoom-whole`
+(Show whole video), `zoom-menu`, `hour-long-whole`, `missing-file`, `empty`, `hi-200` (Hindi at 200% font, a clip
+selected).
+
 ## P1-17 · Hindi display face: hero and entry cards in Teko, nothing clipped, other languages unchanged
 
 ```sh

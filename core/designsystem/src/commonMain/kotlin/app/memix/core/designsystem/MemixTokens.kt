@@ -68,6 +68,9 @@ object MemixSize {
     val trackHeightVideo = 40.dp
     val trackHeight = 28.dp
     val playheadWidth = 2.dp
+    val playheadHeadSize = 12.dp
+    val trimHandleWidth = 12.dp
+    val iconSmall = 16.dp
     val railHeight = 4.dp
 }
 

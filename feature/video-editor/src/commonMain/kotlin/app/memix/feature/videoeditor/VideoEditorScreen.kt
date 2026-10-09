@@ -57,9 +57,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.constrainWidth
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigationevent.NavigationEventInfo
@@ -83,6 +83,8 @@ import app.memix.core.designsystem.component.ToastDismiss
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.ui.formatTimecode
 import app.memix.core.ui.spokenTimeOf
+import app.memix.feature.videoeditor.timeline.Timeline
+import app.memix.feature.videoeditor.timeline.timelineMinHeight
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -155,8 +157,8 @@ fun VideoEditorScreen(
             StageTransportAndTimeline(
                 stage = { PreviewStage(state, onIntent, previewSurface, onFreeUpSpace) },
                 transport = { TransportRow(state, onIntent) },
-                // TODO(P1-05): the timeline.
-                timeline = { Box(Modifier.fillMaxSize()) },
+                timeline = { Timeline(state.timeline, state.selectedItemId, state.preview, state.thumbnails, onIntent) },
+                timelineMinHeight = timelineMinHeight(),
                 modifier = Modifier.weight(1f),
             )
             ToolBarRegion()
@@ -175,13 +177,14 @@ private fun TopBar(onClose: () -> Unit) {
 
 /**
  * Stage on top, transport row, timeline below. The transport row takes what it needs (it grows at large font
- * sizes); the timeline takes 40% of the rest but never less than its minimum, and the stage everything else.
+ * sizes); the timeline takes 40% of the rest but never less than [timelineMinHeight], and the stage everything else.
  */
 @Composable
 private fun StageTransportAndTimeline(
     stage: @Composable () -> Unit,
     transport: @Composable () -> Unit,
     timeline: @Composable () -> Unit,
+    timelineMinHeight: Dp,
     modifier: Modifier = Modifier,
 ) {
     Layout(contents = listOf(stage, transport, timeline), modifier) { (stageParts, transportParts, timelineParts), constraints ->
@@ -189,7 +192,7 @@ private fun StageTransportAndTimeline(
         val height = constraints.maxHeight
         val transportRow = transportParts.first().measure(Constraints(minWidth = width, maxWidth = width))
         val sharedHeight = (height - transportRow.height).coerceAtLeast(0)
-        val timelineHeight = max((sharedHeight * TIMELINE_SHARE).roundToInt(), TimelineMinHeight.roundToPx()).coerceAtMost(sharedHeight)
+        val timelineHeight = max((sharedHeight * TIMELINE_SHARE).roundToInt(), timelineMinHeight.roundToPx()).coerceAtMost(sharedHeight)
         val stageHeight = sharedHeight - timelineHeight
         val stageBox = stageParts.first().measure(Constraints.fixed(width, stageHeight))
         val timelineBox = timelineParts.first().measure(Constraints.fixed(width, timelineHeight))
@@ -525,12 +528,6 @@ private val NoPosition: StateFlow<Long> = MutableStateFlow(0L)
 
 /** The timeline's share of the space it splits with the stage (spec P1-04 → Layout). */
 private const val TIMELINE_SHARE = 0.4f
-
-/**
- * The timeline's minimum at 100% font: its ruler (24) plus the main video row (48) and the "Add a meme sound" row
- * (48), spec P1-05. P1-05 replaces it with the timeline's own measured minimum.
- */
-private val TimelineMinHeight = 120.dp
 
 /** Between the time and the length on one line, with real spaces; a timecode, so it is never translated. */
 private const val TIMECODE_SEPARATOR = " / "

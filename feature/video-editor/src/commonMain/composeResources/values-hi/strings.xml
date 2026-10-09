@@ -58,4 +58,29 @@
     <string name="edit_trim">ट्रिम</string>
     <string name="import_row_a11y">%1$s, %2$s। %3$s</string>
     <string name="import_row_a11y_no_name">%1$s। %2$s</string>
+    <!-- Timeline (P1-05): machine draft until P5. -->
+    <string name="timeline_a11y">टाइमलाइन</string>
+    <string name="timeline_original_audio">मूल ऑडियो</string>
+    <string name="clip_missing_file">फ़ाइल नहीं मिली</string>
+    <string name="timeline_zoom_in">ज़ूम इन</string>
+    <string name="timeline_zoom_out">ज़ूम आउट</string>
+    <string name="timeline_zoom_fit">पूरा वीडियो दिखाएं</string>
+    <string name="a11y_playhead">प्लेहेड</string>
+    <string name="a11y_forward_1s">1 सेकंड आगे</string>
+    <string name="a11y_back_1s">1 सेकंड पीछे</string>
+    <string name="a11y_go_start">शुरुआत पर जाएं</string>
+    <string name="a11y_go_end">अंत पर जाएं</string>
+    <string name="track_video">वीडियो</string>
+    <string name="track_overlay">ओवरले</string>
+    <string name="track_text">टेक्स्ट</string>
+    <string name="track_sticker">स्टिकर</string>
+    <string name="track_meme_sound">मीम साउंड</string>
+    <string name="track_audio">ऑडियो</string>
+    <string name="track_effect">इफ़ेक्ट</string>
+    <string name="a11y_clip_media">%1$s, %3$d में से क्लिप %2$d, %4$s लंबी, %5$s पर शुरू</string>
+    <string name="a11y_item">%1$s, %2$s, %3$s लंबा, %4$s पर शुरू</string>
+    <string name="a11y_state_past_end">कुछ हिस्सा वीडियो के अंत के बाद</string>
+    <string name="a11y_state_after_end">वीडियो के अंत के बाद, इसलिए नहीं चलेगा</string>
+    <string name="a11y_state_original_muted">मूल ऑडियो म्यूट है</string>
+    <string name="a11y_state_sound_detached">साउंड अलग किया गया</string>
 </resources>

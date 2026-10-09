@@ -1,5 +1,6 @@
 package app.memix.platform.services
 
+import android.annotation.SuppressLint
 import android.app.LocaleManager
 import android.content.Context
 import android.content.pm.ApplicationInfo
@@ -75,8 +76,13 @@ private class AndroidLogger : Logger {
  */
 private class FirebaseAnalyticsLogger(private val context: Context) : Analytics {
     // Fetched on the first event, not when the import screen's ViewModel is built during app start.
-    private val firebase by lazy { FirebaseAnalytics.getInstance(context) }
+    private val firebase by lazy { firebaseAnalytics() }
     private val isDebugBuild by lazy { (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0 }
+
+    // Its permissions (INTERNET, ACCESS_NETWORK_STATE, WAKE_LOCK) come from firebase-analytics' own manifest, merged
+    // into the app's; lint on this library module alone can't see the merged manifest.
+    @SuppressLint("MissingPermission")
+    private fun firebaseAnalytics(): FirebaseAnalytics = FirebaseAnalytics.getInstance(context)
 
     override fun log(event: AnalyticsEvent) {
         val params = Bundle()

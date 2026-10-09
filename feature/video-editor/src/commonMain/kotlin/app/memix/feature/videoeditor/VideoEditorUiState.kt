@@ -3,6 +3,8 @@ package app.memix.feature.videoeditor
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import app.memix.core.domain.video.PreviewSession
+import app.memix.feature.videoeditor.timeline.TimelineThumbnails
+import app.memix.feature.videoeditor.timeline.TimelineUi
 import kotlinx.coroutines.flow.StateFlow
 
 /** What the video editor shows (spec docs/ux/specs/P1-04-editor-and-preview.md → States). */
@@ -15,6 +17,12 @@ data class VideoEditorUiState(
     val stage: StageContent = StageContent.OPENING,
     /** The live preview, once the draft has opened and has clips. */
     val preview: EditorPreview? = null,
+    /** The project's tracks and items as the timeline draws them (spec P1-05). */
+    val timeline: TimelineUi = TimelineUi.Empty,
+    /** The one selected timeline item; null when nothing is. Kept through edits and undo while the item exists. */
+    val selectedItemId: String? = null,
+    /** The thumbnail tiles of the timeline's strips, once the draft has opened. Compared by identity. */
+    val thumbnails: TimelineThumbnails? = null,
     /** The play button shows Pause; switches as soon as play is asked for. */
     val isPlaying: Boolean = false,
     val canUndo: Boolean = false,
@@ -124,4 +132,25 @@ sealed interface VideoEditorIntent {
 
     /** Debug and benchmark builds only (see [VideoEditorUiState.canMakeDebugEdit]). */
     data object DebugEdit : VideoEditorIntent
+
+    /** A finger landed on the timeline: playback pauses (spec P1-05 → Scroll, zoom and scrub). */
+    data object TimelineTouched : VideoEditorIntent
+
+    /** The timeline started moving time under the playhead (a drag, then maybe a fling). */
+    data object ScrubStarted : VideoEditorIntent
+
+    /** The time under the playhead while the timeline moves, µs; many arrive per second. */
+    data class ScrubTo(val positionUs: Long) : VideoEditorIntent
+
+    /** The timeline stopped at [positionUs]: the preview shows that exact frame. */
+    data class ScrubEnded(val positionUs: Long) : VideoEditorIntent
+
+    /** A tap on the ruler, or a screen reader's step or jump: pause and show [positionUs]. */
+    data class SeekTo(val positionUs: Long) : VideoEditorIntent
+
+    /** A tap on a timeline item. */
+    data class SelectItem(val itemId: String) : VideoEditorIntent
+
+    /** A tap on an empty part of the timeline. */
+    data object ClearSelection : VideoEditorIntent
 }
