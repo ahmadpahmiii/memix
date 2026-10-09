@@ -87,6 +87,8 @@ Board sample content and what replaces it:
 
 - **Fit at 360 dp:** the left slot is (360 − 48) ÷ 2 = 156 wide. "00:03.20 / 00:08.00" is 19 Space Mono characters, about 137 dp, so it fits with the gutter. The right slot needs 2 × 48 + 8 = 104.
 - **Large font or hour-long projects:** when the timecode doesn't fit on one line, the total wraps under the current time (two lines), and the row grows taller. The play button stays centered vertically and horizontally. Nothing is cut off.
+  - On one line it is a single text with real spaces, "00:03.20 / 00:08.00" (19 characters, about 139 dp at 12 sp). A separate gap token adds width and can wrap English at 360 dp.
+  - Wrapped, the total shows alone under the current time, **without the slash**. The `text` / `text-muted` colors already tell them apart, and a "/" left on its own line at 200% wastes a line of preview (review P1-04, polish 3).
 - **Board differences:** buttons go from 44 to 48 dp, to meet `touch-target`. The play icon uses `text`, not pure white.
 
 ### Timecode format
@@ -144,7 +146,10 @@ Board sample content and what replaces it:
     | `StorageFull` | "Your phone is full, so your latest changes aren't saved." | **Free up space**: Quiet button. It opens Android's storage manager, the same intent as P1-02. |
     | Any other error | "Your latest changes aren't saved yet. Memix tries again with your next change." | none |
 
+  - **Layout:** the message and × share the first row. Free up space sits on its own row below, aligned to the end. The message is never cut off (Toast README → persistent variant).
+  - **No storage screen:** if the storage manager can't be opened (some OEM builds; iOS until P7), Free up space is hidden here and in the sheet below. The rule is the same as P1-02's no-button variant: never show a button that does nothing.
   - A **Dismiss** (×) button hides the banner for the rest of the session. It comes back only if a save succeeds and a later one fails again.
+  - **One message at a time:** while the banner shows, other toasts (undo, redo, missing media) are not shown and not queued, because a late "Undo: Trim" would be stale. Their text is still announced politely to screen readers (review P1-04, R4).
 - **Retries:**
   - with the next change (PM)
   - when the app returns to the foreground
@@ -154,6 +159,7 @@ Board sample content and what replaces it:
   - Title "Your latest changes aren't saved". Body "Your phone is full. Free up space to keep them, or leave and lose them."
   - **Free up space** is primary. **Leave anyway** is a secondary button.
   - Close, scrim or back keep the user in the editor.
+  - If a save succeeds while the sheet is open (for example, back from the storage manager), the sheet closes by itself and the user stays in the editor with the work saved. One more tap on Close leaves. Leaving on its own after a trip to Settings would be disorienting.
   - This is the only confirmation in the editor. Losing work is the one thing undo can't fix. Store reviews of VN and InShot show how badly lost drafts land (Evidence, anecdotal).
 
 ## States
@@ -166,11 +172,11 @@ Board sample content and what replaces it:
 | At end | "{length} / {length}"; Play icon; Play restarts from 0:00 | none |
 | One clip, many tracks | No difference in this region; see P1-05 | |
 | Tool panel open | Preview and transport row stay; panel covers the timeline and tool bar (P1-06) | |
-| Preview error (the engine can't build or play the composition) | The frame shows `surface-raised` with a centered line in `body` `text-secondary` and a secondary **Try again** button. Edits keep working and saving. Try again rebuilds the preview session. | `editor_preview_error_body`, `editor_preview_retry` |
+| Preview error (the engine can't build or play the composition) | The frame shows `surface` (not `surface-raised`: a secondary button on `surface-raised` loses its shape) with a centered line in `body` `text-secondary` and a secondary **Try again** button. Play/Pause is disabled. Edits keep working and saving. Try again rebuilds the preview session. | `editor_preview_error_body`, `editor_preview_retry` |
 | A clip's file is missing (defensive: the app's copy is gone) | That clip plays as the canvas background. Its timeline clip shows no thumbnails (P1-05). A toast shows once per open. | `editor_missing_media` |
 | Save failing | Banner at the top of the stage (Saving) | `editor_save_storage_full` or `editor_save_failed`, `editor_free_up_space`, `editor_dismiss` |
 | Leaving while a save is failing | Sheet (Saving) | `editor_unsaved_title`, `editor_unsaved_body`, `editor_free_up_space`, `editor_leave_anyway` |
-| Empty project (defensive: P1-02 never creates one, and P1-06 won't delete the last clip) | The frame shows the canvas background with a centered title in `title` and a body in `body` `text-secondary`. The timeline shows the ruler and an empty main row. The tool bar has no tools. Close is the way out. Once P1-16 ships, the body changes and the Add media tile (P1-05) is the action. | `editor_empty_title`, `editor_empty_body` (`editor_empty_body_add` with P1-16) |
+| Empty project (defensive: P1-02 never creates one, and P1-06 won't delete the last clip) | The frame shows the canvas background with a centered title in `title` and a body in `body` `text-secondary`. The timeline shows the ruler and an empty main row. The tool bar has no tools. Play/Pause is disabled. Close is the way out. Once P1-16 ships, the body changes and the Add media tile (P1-05) is the action. | `editor_empty_title`, `editor_empty_body` (`editor_empty_body_add` with P1-16) |
 | Offline | No difference. Everything here is on the phone. | none |
 | Permission | None needed | none |
 | Long content | Hour-long project: the timecode wraps. 200% font: see Accessibility. | |
@@ -223,7 +229,7 @@ English source. The engineer machine-drafts id, es, pt and hi (allowed until P5)
 | `editor_save_storage_full` | Your phone is full, so your latest changes aren't saved. | 80 | |
 | `editor_save_failed` | Your latest changes aren't saved yet. Memix tries again with your next change. | 100 | "Memix" never translates |
 | `editor_free_up_space` | Free up space | 22 | Same text as `import_free_up_space` (P1-02): reuse that resource |
-| `editor_dismiss` | Dismiss | 16 | Screen reader label of the banner's × |
+| `editor_dismiss` | Dismiss | 16 | Screen reader label of the banner's ×. Means "hide this message". Never use a word that can mean discard or reject, since it's heard right after "your changes aren't saved" (es "Cerrar aviso", not "Descartar") |
 | `editor_saved_a11y` | Changes saved | 24 | Spoken only, when a failing save recovers |
 | `editor_unsaved_title` | Your latest changes aren't saved | 40 | |
 | `editor_unsaved_body` | Your phone is full. Free up space to keep them, or leave and lose them. | 100 | |
@@ -279,7 +285,7 @@ Keep:
   - The timecode wraps to two lines and the transport row grows.
   - The top bar keeps its height (icons only in P1).
   - The preview's 60% share shrinks only by what the transport row grows.
-  - Toast text wraps up to 3 lines.
+  - Toast text wraps as far as it needs to and is never cut off (WCAG 2.2 SC 1.4.4). The budgets keep it to about 3 lines at 100%.
 - **Reduce motion:** see Motion.
 
 ## Analytics

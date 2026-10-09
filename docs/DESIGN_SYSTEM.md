@@ -55,7 +55,8 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 - Anton (`display-xl`, `display`) only for the wordmark, the Home hero and entry cards; `meme-caption` is the default caption in both editors: white fill with a 3px black stroke.
 - Space Grotesk for everything else in the interface: `title-l` screen titles, `title` sheet titles, `body` and `body-strong` rows, `label` chips and tabs, `caption` tool bar labels and metadata.
 - Space Mono `timecode` for playback time, ruler marks and durations.
-- All three are SIL OFL. The Compose app bundles the font files; these previews load them from Google Fonts.
+- **Hindi:** Anton and Space Grotesk have no Devanagari. When the app language is Hindi, `display-xl` and `display` switch to **Teko Bold** (see Tokens → Type → Hindi display face). The `wordmark` stays Anton. Interface text falls back to the system Devanagari face.
+- All four are SIL OFL. The Compose app bundles the font files; these previews load them from Google Fonts.
 
 **Spacing and layout.**
 - 4px grid. Side gutter `space-4`; between sections `space-6`; card and sheet padding `space-4`.
@@ -138,12 +139,13 @@ Map each token to the Memix theme objects, kebab-case to camelCase: `track-meme-
 
 ### Type
 
-Families: display = Anton, sans = Space Grotesk (400/500/700), mono = Space Mono. All SIL OFL; bundle the TTFs in `composeResources/font/`.
+Families: display = Anton, display-hi = Teko (Hindi only), sans = Space Grotesk (400/500/700), mono = Space Mono. All SIL OFL; bundle the TTFs in `composeResources/font/`.
 
 | Style | Compose name | Family | Size / line (sp) | Weight | Use |
 | --- | --- | --- | --- | --- | --- |
 | `display-xl` | `MemixType.displayXl` | display | 40 / 44 | 400 | Home hero and empty-state headlines, uppercase. |
 | `display` | `MemixType.display` | display | 28 / 30 | 400 | Entry cards and sheet heroes, uppercase. |
+| `wordmark` | `MemixType.wordmark` | display | 28 / 30 | 400 | The name "Memix" (Home top bar) until a logo exists. Always Anton, in every language; written as is. |
 | `meme-caption` | `MemixType.memeCaption` | display | 36 / 40 | 400 | Default caption style in both editors: white fill with a 3px black outline stroke (the classic meme look; this is the user's content, not chrome). |
 | `title-l` | `MemixType.titleL` | sans | 22 / 28 | 700 | Screen titles. |
 | `title` | `MemixType.title` | sans | 18 / 24 | 700 | Section and sheet titles. |
@@ -152,6 +154,35 @@ Families: display = Anton, sans = Space Grotesk (400/500/700), mono = Space Mono
 | `label` | `MemixType.label` | sans | 13 / 16 | 500 | Chips, tabs, small buttons. |
 | `caption` | `MemixType.caption` | sans | 11 / 14 | 500 | Tool bar labels, metadata, timeline clip labels. |
 | `timecode` | `MemixType.timecode` | mono | 12 / 16 | 400 | Playback timecode, ruler marks, durations in the editors. |
+
+#### Hindi display face (P1-17, owner-approved 8 Oct 2026)
+
+When the app language is Hindi, `MemixType.displayXl` and `MemixType.display` use these values. The names stay the same, so screens don't change. The other four languages are unchanged.
+
+| Style (Hindi) | Family | Size / line (sp) | Weight | Letter spacing |
+| --- | --- | --- | --- | --- |
+| `display-xl` | display-hi (Teko) | 40 / 52 | 700 | 0 |
+| `display` | display-hi (Teko) | 28 / 36 | 700 | 0 |
+
+- **Where it applies:** every `display-xl` and `display` use, which means the Home hero, entry-card titles, sheet heroes (Create) and empty-state headlines. The whole string is set in Teko, Latin letters included, so one headline never mixes two display faces.
+- **Where it doesn't:**
+  - The `wordmark` (always Anton: it's the name, never translated).
+  - Interface roles (Space Grotesk, where Devanagari falls back to the system face, Noto Sans Devanagari on Android).
+  - `meme-caption`, which is user content. In captions, Teko Bold draws the Devanagari letters Anton lacks (spec P1-10).
+- **Letter spacing 0:** tracking opens gaps in the headline bar (shirorekha) that joins Devanagari letters.
+- **Line height 1.3×:** Devanagari has marks above the headline bar and below the baseline. At build time, compare it with Teko's built-in line spacing; if that is taller, use it, rounded up to the 4 dp grid.
+- **File to bundle:** `teko_bold.ttf`, which is `fonts/ttf/Teko-Bold.ttf` from [googlefonts/teko](https://github.com/googlefonts/teko/tree/master/fonts/ttf) (the 2023 Google Fonts build, 251 KB). Add its `OFL.txt` to the app's font licenses.
+  - The variable [`ofl/teko/Teko[wght].ttf`](https://github.com/google/fonts/tree/main/ofl/teko) (285 KB, weights 300–700) is an alternative only if Compose Multiplatform resources can set its weight axis on both Android and iOS. Check at ticket start.
+- **Why Teko** (compared 8 Oct 2026 from the google/fonts metadata and file pages; all four are SIL OFL with Latin, Latin Extended and Devanagari):
+
+| Face | Weights | File size | Fit for Anton's role |
+| --- | --- | --- | --- |
+| **Teko** (Indian Type Foundry) | 300–700 (variable, plus static builds) | 251 KB (Bold), 285 KB (variable) | Chosen. Tall, condensed, square, low contrast; made for headlines and news tickers. 1090 glyphs per font with full Devanagari conjuncts. No Reserved Font Name. The closest to Anton's silhouette (Assumption, visual comparison). |
+| Khand (Indian Type Foundry) | 5 static | 350 KB per weight | Compact, monolinear headline face. Wider and calmer than Teko, so less of a meme voice. |
+| Rajdhani (Indian Type Foundry) | 5 static | 391 KB per weight | Squared and technical; reads sci-fi rather than meme. |
+| Anek Devanagari (Ek Type) | variable: width 75–125, weight 100–800 | 2.09 MB | Its heaviest condensed instance is the closest to Anton's mass, but the file is 8× Teko and would need instancing to ship. |
+
+Sources: [Teko metadata](https://github.com/google/fonts/blob/main/ofl/teko/METADATA.pb), [Teko description](https://github.com/google/fonts/blob/main/ofl/teko/DESCRIPTION.en_us.html), [Teko OFL](https://github.com/google/fonts/blob/main/ofl/teko/OFL.txt), [Khand](https://github.com/google/fonts/tree/main/ofl/khand), [Rajdhani](https://github.com/google/fonts/tree/main/ofl/rajdhani), [Anek Devanagari](https://github.com/google/fonts/tree/main/ofl/anekdevanagari).
 
 ### Spacing
 
@@ -233,7 +264,7 @@ Fixed sizes used across screens (dp on Android).
 - `primary` sky blue: one main action per screen (+ the global Create button), active tool (on `primary-subtle`), links, progress, and all meme-sound UI.
 - `meme-caption` is Anton, white fill with a 3 dp black stroke: draw the text twice (stroke pass with `TextStyle(drawStyle = Stroke(width))`, then fill). This is user content styling, not chrome.
 - Timeline: clips are positioned by time (µs → px via the zoom scale), never by index. Track heights from `trackHeightVideo` / `trackHeight`; playhead `playheadWidth` in `selection` with a `playheadHeadSize` circular head, fixed in the center while the content scrolls; trim handles `trimHandleWidth` in `selection`. Zoom scales and ruler steps are layout math kept as named constants in the timeline component (spec `docs/ux/specs/P1-05-timeline.md`), not tokens.
-- Editor tool panels (Volume, later Text and Canvas) use the ToolPanel component; floating menus use Menu; short messages use Toast (`design/system/components/`).
+- Editor tool panels (Volume, later Text and Canvas) use the ToolPanel component; floating menus use Menu; short messages use Toast (with `FadingToast` for its fade, one at a time); icon-only controls with no fill (Close, Play/Pause, Undo, Redo, a toast's ×) use IconButton (`design/system/components/`). An IconButton on `surface-raised` presses to `hairline`.
 - Pressed states: `primary` → `primary-pressed`; neutral controls go one value step lighter (`surface-raised` → `hairline`). No translate/scale on press; the 240 ms "bonk" scale is only for content landing on the timeline.
 - Icons: Memix-drawn vector drawables in `composeResources/drawable/` (see Iconography), 24 dp, 2 dp flat-cap stroke, tinted per state.
 - Build a component catalog screen (debug builds only) showing every component in every state; the UX designer reviews it from screenshots. No automated screenshot tests in this project.
