@@ -61,11 +61,14 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 
 ## Phase 2 · Photo editor (weeks 6 to 8, from 16 Nov)
 
+> 9 Oct 2026 (owner, option C): P2-11 adds the PRD's text shadow and background box right after P2-03, built once in the shared text engine so both editors get them (the P1-10 spec covers font, color and outline only).
+
 | ID | Ticket | Done when | Size | Needs |
 | --- | --- | --- | --- | --- |
 | P2-01 | Photo editor shell: canvas, layer model, move / scale / rotate gestures, layers panel (reorder, lock, hide, opacity) | A 10-layer scene stays smooth while dragging; LeakCanary shows no leaks | L | P1-01, P0-04 |
 | P2-02 | Meme formats: Classic, Caption bar, Panels (2 to 6 cells, draggable dividers), Demotivational, Speech bubbles | Each format exports correctly at 1080 px and 2160 px | L | P2-01 |
 | P2-03 | Text and stickers in the photo editor, sharing the video editor's text engine | The same style looks identical in both editors | M | P2-01, P1-10 |
+| P2-11 | Text shadow and background box in the shared text engine (video and photo editors): shadow on/off with color and softness, a box behind the text with color and corner radius; declarative style params with a reference render | A caption with shadow and box looks the same in preview and export in both editors | M | P2-03 |
 | P2-04 | Image tools: crop, rotate, flip, straighten; adjustments; 20 LUT filters; deep-fry | Filter ids and looks match the video filters | L | P2-01 |
 | P2-05 | Draw (brush sizes and colors, eraser) and censor (blur, pixelate, black bar) | Strokes and censor areas stay editable as layers | M | P2-01 |
 | P2-06 | `Segmenter` interface and ML Kit subject segmentation, with model availability check and "Preparing…" state | A person, pet or object cut-out takes under 1.5 s for a 12 MP photo on the owner's phone | M | P0-03 |
