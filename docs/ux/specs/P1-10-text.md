@@ -396,7 +396,7 @@ Translator notes:
 ## Analytics
 | Event | When | Parameters |
 | --- | --- | --- |
-| `tool_use` | Once per committed undo step (never during typing, a drag or a hold; never when a tool only explains) | `editor: "video"`, `tool`: `add_text`, `edit_text`, `text_font`, `text_color`, `text_outline`, `move_text`, `transform_text`; and P1-06's `split`, `trim`, `delete`, `duplicate`, `move` when they act on text. A text cleared to blank logs `delete`. |
+| `tool_use` | Once per committed undo step (never during typing, a drag or a hold; never when a tool only explains) | `editor: "video"`, `tool`: `add_text`, `edit_text`, `text_font`, `text_color`, `text_outline`, `position_text`, `transform_text`; and P1-06's `split`, `trim`, `delete`, `duplicate`, `move` when they act on text. A text cleared to blank logs `delete`. With `add_text` and `text_font` it also sends `font` (the font id: `anton`, `poppins`, `baloo2`, `kalam`, `rozha`; owner, 9 Oct 2026). |
 
 - These ids are the edit names in the undo history (TECHNICAL_DESIGN → Editing), so each must be confirmed by the PM at the ready check, as P1-06's were.
 - Opening Typing, Style or Position, selecting, and tapping an already-selected option fire nothing.
@@ -466,8 +466,8 @@ I don't edit code, so these are requests.
 11. **Analytics:** as in the table, once the PM confirms the ids.
 
 ## Proposals and questions for the PM
-1. **New `tool_use` ids** for text: `add_text`, `edit_text`, `text_font`, `text_color`, `text_outline`, `move_text`, `transform_text`. Please confirm or rename at the ready check.
-2. **Which fonts get used** (proposal, a PRD change): an optional `font` parameter (the font id) on `tool_use` when `tool` is `add_text` or `text_font`. It would show by P5 which of the five earn their bundle size. Without it, fonts can't be judged from data.
+1. **New `tool_use` ids** for text: `add_text`, `edit_text`, `text_font`, `text_color`, `text_outline`, `move_text`, `transform_text`. Confirmed by the PM (9 Oct) with `move_text` renamed `position_text`.
+2. **Which fonts get used** (proposal, a PRD change): an optional `font` parameter (the font id) on `tool_use` when `tool` is `add_text` or `text_font`. **Approved by the owner (9 Oct, 2A)**; in the analytics table above.
 3. **Owner decision below** on shadow and background box.
 
 ## Decision for the owner: text shadow and background box

@@ -1,6 +1,6 @@
 # Which caption fonts get used: a `font` parameter on `tool_use`
 
-**Date:** 9 Oct 2026 · **Author:** PM (from the designer's P1-10 spec, 3db2ab3 → Proposals and questions for the PM, 2) · **Status:** Proposed
+**Date:** 9 Oct 2026 · **Author:** PM (from the designer's P1-10 spec, 3db2ab3 → Proposals and questions for the PM, 2) · **Status:** Approved: A (owner, 9 Oct 2026)
 
 **Problem:** P1-10 bundles four caption fonts beside Anton (Poppins, Baloo 2, Kalam, Rozha One), which adds about 1.27 MB to the app. The PRD's `tool_use` event has only `editor` and `tool`, so after launch nobody can tell which fonts people pick. Without that, we can't judge whether a font earns its size or which fonts P4-11's text presets should use.
 

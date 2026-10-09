@@ -234,7 +234,7 @@ The north-star metric is **DAU, with a target of 5,000 by month 3 after the Andr
 | `template_open` | A template opens | template\_id, type |
 | `sound_preview` | A sound plays in the library | sound\_id, tab |
 | `sound_add` | A sound lands on a timeline | sound\_id, tab, editor |
-| `tool_use` | A tool is applied | editor, tool |
+| `tool_use` | A tool is applied | editor, tool; font (font id: anton, poppins, baloo2, kalam, rozha) when tool is add_text or text_font |
 | `bg_remove` | Background removal finishes | editor, success, duration\_ms |
 | `export_start` | The user taps Export | editor, format, resolution, fps, length\_s |
 | `export_complete` | The file is saved | editor, format, time\_ms, size\_mb |
