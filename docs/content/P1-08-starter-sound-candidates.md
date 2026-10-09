@@ -1,16 +1,18 @@
 # P1-08 starter sounds: candidate list for the owner's license approval
 
-Prepared by the backend engineer on 8 Oct 2026. No audio is in the repo yet: this list and the two scripts in `scripts/audio/` are committed so the research survives the cloud session. The owner approves each sound before it ships (TICKETS.md: "P1-08 waits until the owner approves each starter-sound license (CC0 or equivalent)"). This is not legal advice; the PRD still recommends an IP-lawyer review before launch.
+Prepared by the backend engineer on 8 Oct 2026. The owner approves each sound before it ships (TICKETS.md: "P1-08 waits until the owner approves each starter-sound license (CC0 or equivalent)"). This is not legal advice; the PRD still recommends an IP-lawyer review before launch.
 
 
-> **Owner decision, 8 Oct 2026:** approved 1–3 and 5–11 (10 sounds); rejected 4 (air horn) and 12 (crowd "ooh"). Columns 1–5 of the checklist (license re-check with date, snapshot, original + sha256, listen, normalize) are done when the files are fetched; no audio is in the repo yet.
+> **Owner decision, 8 Oct 2026:** approved 1–3 and 5–11 (10 sounds); rejected 4 (air horn) and 12 (crowd "ooh").
+>
+> **Fetched 9 Oct 2026 (backend engineer):** the owner opened freesound.org and cdn.freesound.org to cloud sessions. All 10 approved pages still read "Creative Commons 0" (read 09:17–09:18 UTC). License proof is a text snapshot per sound (owner's choice: no web.archive.org). The files are the pages' public HQ previews, because originals need a login. They are trimmed, normalized and staged in `content/starter-sounds/` (10 × `.m4a`, 27.2 s, 450 KB total, plus `manifest.json`, `README.md` and `licenses/<slug>.md`). Checklist columns 1, 2, 3 and 5 are done. **Column 4 (listen) is still open:** an agent can't listen, so only objective checks were run (see "Findings, 9 Oct" and "Owner decision needed").
 
 ## Summary
 
 - **12 candidates, all CC0 1.0 (Creative Commons 0)**, all from Freesound. Total about 35 s of audio after trimming, about 0.6 MB at AAC 128 kbps, so the APK impact is negligible.
 - **No CC-BY in the P1 pack.** P1 has nowhere in the app to show a credit: sound details with credit arrive in P3-03 and the Credits screen in P5-07. CC-BY 4.0 also binds anyone who shares the sound, so every user who posts a video with it would owe a credit, which Memix can't guarantee. Two CC-BY sounds are on the bench for P3 and later.
-- **Nothing downloaded or measured.** This container's network policy blocks freesound.org and cdn.freesound.org, along with every other sound and license site (list below). Durations and formats come from each Freesound page's file details, read through search-index snapshots on 8 Oct 2026. The normalize and measure scripts are ready and self-tested on synthetic audio (see "Audio processing").
-- **Evidence status:** for each sound, the page's license field and description were read on 8 Oct 2026 through the search index. The live page, a Wayback snapshot and a screenshot could not be captured here (web.archive.org is blocked too). Capturing them is the first item on the approval checklist.
+- **Downloaded and measured on 9 Oct 2026** (the 10 approved sounds). On 8 Oct the network policy blocked freesound.org and cdn.freesound.org, so durations and formats in the candidate tables come from search-index snapshots. All of them matched the live pages on 9 Oct.
+- **Evidence status:** on 9 Oct 2026 each live page was read with curl and saved as a text snapshot in `content/starter-sounds/licenses/<slug>.md`. Each snapshot holds the URL, title, author, upload date, the license line as shown, file details, the description, the UTC read time and the SHA-256 of the page HTML. The raw HTML stayed in the session scratchpad. There is no Wayback capture or screenshot, by the owner's choice.
 
 ## How the license bar was applied
 
@@ -21,7 +23,7 @@ Prepared by the backend engineer on 8 Oct 2026. No audio is in the repo yet: thi
 
 ## Candidates (proposed for the P1 starter pack)
 
-Every candidate: **license** Creative Commons 0 (CC0 1.0 Universal), https://creativecommons.org/publicdomain/zero/1.0/ · **why it qualifies** CC0 allows commercial redistribution, modification and use in users' published videos with no credit and no field-of-use limit · **credit line** none required. We still put a courtesy credit "`<author>` via Freesound" in the manifest and the later Credits screen. · **checked** 8 Oct 2026, page license field via search-index snapshot; the live page must be re-checked at download.
+Every candidate: **license** Creative Commons 0 (CC0 1.0 Universal), https://creativecommons.org/publicdomain/zero/1.0/ · **why it qualifies** CC0 allows commercial redistribution, modification and use in users' published videos with no credit and no field-of-use limit · **credit line** none required. We still put a courtesy credit "`<author>` via Freesound" in the manifest and the later Credits screen. · **checked** 8 Oct 2026, page license field via search-index snapshot; the 10 approved pages were re-checked live on 9 Oct 2026 and still read "Creative Commons 0" (snapshots in `content/starter-sounds/licenses/`).
 
 ### 1. Sad trombone
 
@@ -188,28 +190,70 @@ Every candidate: **license** Creative Commons 0 (CC0 1.0 Universal), https://cre
 
 ## Network access in this container (8 Oct 2026)
 
+- **Update, 9 Oct 2026:** the owner opened freesound.org and cdn.freesound.org. Pages and previews download with plain curl and no login. Originals still need a login. The other sites below were not re-tested.
 - **Blocked by the egress policy** (403 on CONNECT; "do not retry" per the proxy README): freesound.org, cdn.freesound.org, commons.wikimedia.org, upload.wikimedia.org, opengameart.org, pixabay.com, mixkit.co, kenney.nl, creativecommons.org, web.archive.org, archive.org, www.zapsplat.com, sonniss.com, bigsoundbank.com, soundbible.com, www.soundjay.com, uppbeat.io, huggingface.co, cdn.jsdelivr.net, unpkg.com.
 - **WebFetch** failed with DNS errors (ENOTFOUND) for freesound.org, pixabay.com and mixkit.co.
 - **GitHub:** api.github.com answers only for repos attached to the session; raw.githubusercontent.com works; codeload.github.com is blocked.
 - **WebSearch worked.** All license facts above come from search-index snapshots of the named pages.
 
-## Audio processing (ready; not run on real files)
+## Audio processing (run on the 10 approved sounds, 9 Oct 2026)
 
 Scripts live outside this folder, in `scripts/audio/`:
 
-- `normalize.sh <input> <output.m4a> [start_s] [duration_s]` does the following:
-  1. Optionally cuts an excerpt.
-  2. Trims leading and trailing silence at −60 dB.
+- `normalize.sh <input> <output.m4a> [start_s] [duration_s] [fade_in_s] [fade_out_s]` does the following:
+  1. Optionally cuts an excerpt and fades its edges. The fade arguments were added on 9 Oct.
+  2. Trims leading and trailing silence below the clip's peak − 60 dB, with a floor of −90 dBFS. On 9 Oct this replaced a fixed −60 dBFS threshold, which would have cut the boing's audible tail: that source peaks at only −22 dBFS and needs +22.5 dB of gain.
   3. Measures with ffmpeg's `ebur128` meter, padding clips shorter than 3 s with silence. Silence doesn't change gated loudness.
   4. Applies one linear gain of min(−16 − I, −1.5 − TP).
   5. Encodes AAC 128 kbps at 48 kHz to `.m4a`.
 
   Peaky sounds (rimshot, boom attack) finish below −16 LUFS because the peak cap wins. No limiter is used, so nothing gets squashed.
 - `measure.sh <file>` prints duration, integrated LUFS, true peak and the stream format.
-- Planned layout once downloads are possible: `starter-sounds/originals/` (untouched downloads plus `sha256sums.txt`) and `starter-sounds/normalized/<slug>.m4a`.
-- Excerpt arguments: crickets `<start> 3`, crowd ooh `<start> 3`, deep boom `0 3`, then add a fade. Pick the start times by ear.
+- Actual layout: the downloads and intermediates stayed in the session scratchpad. The repo holds only `content/starter-sounds/<slug>.m4a`, `manifest.json` (with both SHA-256s), `README.md` and `licenses/<slug>.md`.
+- Excerpts used:
+  - `deep-boom`: `0 3 0 0.5`, the first 3 s with a 0.5 s fade-out. The source is a flat, deliberately distorted boom for about 3.5 s before it decays.
+  - `awkward-crickets`: `129.75 3 0.2 0.5`. The start was picked by analysis, not by ear: in that window 99.5% of the energy is in the 3–8 kHz cricket band, there's no rumble below 300 Hz, and the level is steady.
+- Re-running gives byte-identical files with the same ffmpeg (6.1.1, checked on `boing` and `awkward-crickets`).
 
-Self-test on synthetic audio generated with ffmpeg (no downloads):
+### Results, 9 Oct 2026
+
+The source is the page's HQ preview (MP3 128 kbps). "Out" is the bundled `.m4a`, measured with `measure.sh`.
+
+| # | Slug | Source len / LUFS / TP | Edit | Gain | Out ms | Out LUFS | Out TP (dBTP) | Ch | Bytes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | sad-trombone | 5.25 s / −14.4 / −3.2 | trim | −2.0 | 4729 | −16.0 | −5.1 | 2 | 77,400 |
+| 2 | record-scratch | 1.92 s / −10.2 / +0.8 | trim | −5.8 | 1835 | −16.1 | −4.0 | 2 | 30,469 |
+| 3 | boing | 2.28 s / −37.5 / −24.9 | trim | +22.5 | 1668 | −16.2 | −2.5 | 2 | 28,398 |
+| 5 | sitcom-laugh | 5.83 s / −18.4 / −1.5 | trim | 0.0 (peak cap) | 5295 | **−18.5** | −1.9 | 2 | 87,260 |
+| 6 | whoosh | 0.47 s / −20.5 / −3.6 | trim | +2.1 (peak cap) | 426 | **−18.5** | −1.7 | 2 | 7,501 |
+| 7 | deep-boom | 10.53 s / −2.5 / +2.5 | 0–3 s, 0.5 s fade-out | −13.8 | 2997 | −16.0 | −9.4 | 2 | 49,616 |
+| 8 | awkward-crickets | 169.03 s / −27.1 / −12.8 | 129.75–132.75 s, fades 0.2/0.5 s | +9.3 | 2982 | −16.1 | −7.2 | 2 | 49,219 |
+| 9 | wrong-buzzer | 0.52 s / −5.9 / −0.2 | trim | −10.1 | 494 | −16.1 | −6.1 | 1 | 8,904 |
+| 10 | cartoon-fall | 2.09 s / −8.0 / −7.3 | trim | −8.0 | 1991 | −16.0 | −15.2 | 2 | 33,344 |
+| 11 | drum-roll | 4.81 s / −22.4 / −0.2 | trim | −1.3 (peak cap) | 4738 | **−23.7** | −1.8 | 2 | 77,872 |
+| | **Total** | | | | **27,155** | | | | **449,983** |
+
+All ten are at or under −1.7 dBTP and within −16 ± 0.2 LUFS, except the three peak-capped sounds in bold. No source is silent or hard-clipped: astats flat factor is 0 on all of them. Record scratch and deep boom read slightly above 0 dBFS only as decoded-MP3 overshoot, and the float pipeline keeps it without clipping.
+
+### Findings, 9 Oct 2026
+
+- **Drum roll is quiet (−23.7 LUFS).** The single rimshot peak caps the gain, so the roll sits about 8 LU under the others. It isn't a license issue, so no bench swap. If the P1-08 hand check finds it too quiet next to the others, re-run it with a fast look-ahead limiter on the rimshot (a new optional `normalize.sh` flag). That fix is mine to make and doesn't need the owner. Sitcom laugh and whoosh at −18.5 LUFS are within normal tolerance.
+- **Sad trombone is not Benboncan's CC-BY take (bench B5).** I downloaded B5's preview and compared the two. Kirbydx plays the four notes at about 240 → 199 Hz (around Bb3 down to G3) at about 0.9 s per note. B5 plays about 302 → 245 Hz (around D4 down to B3) at about 0.6 s per note. A resampled copy would shift pitch and tempo by the same ratio (1.26x here, against a measured 1.5x tempo ratio). So these are different performances.
+- **Record scratch has no music bed.** The gaps hold only 50 Hz mains hum with odd harmonics at about −58 dBFS (−64 dBFS after gain), with no tonal or melodic content. A short pre-scratch at 0–0.3 s is part of the recording.
+- **Sitcom laugh** shows a diffuse crowd and broadband claps, with no music or announcer lines. There's a low room tone around 240 Hz at −59 to −72 dBFS.
+- **Pages unchanged:** every title, author, duration and file format matches the 8 Oct research. Record scratch shows 4,885 downloads (not recorded on 8 Oct). Deep boom, uploaded in June 2026, still reads CC0. Whoosh still carries qubodup's "See profile for CC BY attribution requirements." line next to the CC0 license. We honour it with a courtesy credit and the URL.
+- **Nothing failed:** no license changed, no page is gone, no audio is unusable, so no bench replacement is proposed.
+
+### Owner decision needed: who listens (checklist column 4)
+
+- **Problem:** step 4 says a person listens to each sound to confirm it isn't a famous film, TV, game or meme recording and has no voice. I can only measure the audio, not hear it. The checks above found nothing wrong, but the doc's risk notes for #1 and #2 ask for an ear check.
+- **Considerations:** all 10 files together run 27 seconds, and they're in `content/starter-sounds/`. Skipping the ear check saves a minute but leaves the one check that matches recognizability untested.
+- **Suggested fixes:**
+  - **A (recommended):** the owner plays the 10 files once (about 1 minute) before the P1-08 commit and replies "OK" or names a sound to swap.
+  - **B:** the engineer's P1-08 hand check covers it, and the owner listens in the app at the end of the phase.
+  - **C:** ship on the objective checks alone.
+
+Self-test on synthetic audio generated with ffmpeg on 8 Oct, before any downloads, using the old fixed −60 dBFS trim:
 
 | Test signal | Input | Output |
 | --- | --- | --- |
@@ -221,7 +265,9 @@ Self-test on synthetic audio generated with ffmpeg (no downloads):
 
 Finding for the P3-12 intake script: on the 0.6 s transient, ffmpeg's `loudnorm` pass 1 reported −21.9 LUFS while `ebur128` reported −14.3, so loudnorm would apply a gain that is about 7.6 dB off. The intake script should measure with `ebur128` and apply a peak-capped linear gain.
 
-## Proposed repo locations for P1-08 (not created)
+## Proposed repo locations for P1-08
+
+> **9 Oct 2026:** the files are staged in `content/starter-sounds/`, and P1-08 decides where the bundled copy lives. The manifest as built uses these field names: `sha256Source` and `sha256Output` (not `sha256Original` and `sha256Bundled`), `licenseCheckedAt` (not `checkedOn`), and `licenseProof`, which is the repo path of the text snapshot (not a Wayback URL). It adds `fetchedFrom`, `previewUrl`, `loudness` and `channels`. `id` = `uuid5(NAMESPACE_URL, "https://freesound.org/s/<id>/")`. License evidence lives in `content/starter-sounds/licenses/`, so no screenshots are needed and `core/data/licenses/starter-sounds/` isn't needed. The rest of this section is the original 8 Oct proposal.
 
 The principal mobile engineer should confirm the module; this is a proposal.
 
@@ -247,26 +293,26 @@ The principal mobile engineer should confirm the module; this is a proposal.
 Steps for each sound:
 
 1. Open the Freesound page and confirm the license line reads "Creative Commons 0". Note the date.
-2. Save a Wayback snapshot (`https://web.archive.org/save/<page URL>`) and a screenshot of the license field.
-3. Download the original (Freesound needs a login for originals) and record its sha256.
+2. Save a text snapshot of the page to `content/starter-sounds/licenses/<slug>.md` (owner's choice: no web.archive.org; raw HTML stays out of the repo, its SHA-256 goes in the snapshot).
+3. Download the file and record its sha256. Originals need a Freesound login, so the P1 pack uses the page's public HQ preview (MP3 128 kbps) and says so in the manifest (`fetchedFrom`).
 4. Listen. It must not be a recognizable film, TV, game, song or viral-meme recording, and it must have no identifiable voice.
 5. Run `scripts/audio/normalize.sh`. Then `scripts/audio/measure.sh` must show −16 ± 1 LUFS (or lower when peak-capped) and true peak ≤ −1 dBTP.
 6. Tick "Approved", or "Rejected" with a reason.
 
-| # | Sound | Author | 1 License still CC0 (date) | 2 Snapshot + screenshot | 3 Original + sha256 | 4 Listened, clean | 5 Normalized and measured | Approved | Rejected (reason) |
+| # | Sound | Author | 1 License still CC0 (UTC) | 2 Text snapshot | 3 HQ preview + sha256 | 4 Listened, clean | 5 Normalized and measured | Approved | Rejected (reason) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Sad trombone | kirbydx | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
-| 2 | Record scratch | musicvision31 | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
-| 3 | Boing | reelworldstudio | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
-| 4 | Air horn | jacksonacademyashmore | [ ] ____ | [ ] | [ ] | [ ] A/B vs the famous montage horn | [ ] | [ ] | [x] owner, 8 Oct 2026: thin provenance (medium risk) |
-| 5 | Sitcom laugh | Kinoton | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
-| 6 | Whoosh | qubodup | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
-| 7 | Deep boom | _earthbound_ | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
-| 8 | Awkward crickets | Defelozedd94 | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
-| 9 | Wrong buzzer | KevinVG207 | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
-| 10 | Cartoon fall | plasterbrain | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
-| 11 | Drum roll | bigjoedrummer | [ ] ____ | [ ] | [ ] | [ ] | [ ] | [x] owner, 8 Oct 2026 | [ ] |
-| 12 | Crowd "ooh" | noah0189 | [ ] ____ | [ ] | [ ] | [ ] check for broadcast sound | [ ] | [ ] | [x] owner, 8 Oct 2026: thin provenance (medium risk) |
+| 1 | Sad trombone | kirbydx | [x] 9 Oct 2026 09:17:22Z, "Creative Commons 0" | [x] `licenses/sad-trombone.md` | [x] `de4a029a…` (full hash in manifest) | [ ] ear check open (owner decision above); objective: not B5 (pitch and tempo differ) | [x] 4729 ms, −16.0 LUFS, −5.1 dBTP | [x] owner, 8 Oct 2026 | [ ] |
+| 2 | Record scratch | musicvision31 | [x] 9 Oct 2026 09:17:40Z, "Creative Commons 0" | [x] `licenses/record-scratch.md` | [x] `18e5517e…` (full hash in manifest) | [ ] ear check open (owner decision above); objective: no music bed in the gaps (50 Hz hum only) | [x] 1835 ms, −16.1 LUFS, −4.0 dBTP | [x] owner, 8 Oct 2026 | [ ] |
+| 3 | Boing | reelworldstudio | [x] 9 Oct 2026 09:17:43Z, "Creative Commons 0" | [x] `licenses/boing.md` | [x] `c354584c…` (full hash in manifest) | [ ] ear check open (owner decision above); objective: quiet source, tail kept | [x] 1668 ms, −16.2 LUFS, −2.5 dBTP | [x] owner, 8 Oct 2026 | [ ] |
+| 4 | Air horn | jacksonacademyashmore | n/a (rejected) | | | | | [ ] | [x] owner, 8 Oct 2026: thin provenance (medium risk) |
+| 5 | Sitcom laugh | Kinoton | [x] 9 Oct 2026 09:17:45Z, "Creative Commons 0" | [x] `licenses/sitcom-laugh.md` | [x] `9b812927…` (full hash in manifest) | [ ] ear check open (owner decision above); objective: crowd and claps only | [x] 5295 ms, −18.5 LUFS (peak cap), −1.9 dBTP | [x] owner, 8 Oct 2026 | [ ] |
+| 6 | Whoosh | qubodup | [x] 9 Oct 2026 09:17:48Z, "Creative Commons 0" | [x] `licenses/whoosh.md` | [x] `ebdb219e…` (full hash in manifest) | [ ] ear check open (owner decision above) | [x] 426 ms, −18.5 LUFS (peak cap), −1.7 dBTP | [x] owner, 8 Oct 2026 | [ ] |
+| 7 | Deep boom | _earthbound_ | [x] 9 Oct 2026 09:17:51Z, "Creative Commons 0" | [x] `licenses/deep-boom.md` | [x] `dbf2675d…` (full hash in manifest) | [ ] ear check open (owner decision above); objective: distortion is by design | [x] first 3 s + 0.5 s fade; 2997 ms, −16.0 LUFS, −9.4 dBTP | [x] owner, 8 Oct 2026 | [ ] |
+| 8 | Awkward crickets | Defelozedd94 | [x] 9 Oct 2026 09:17:54Z, "Creative Commons 0" | [x] `licenses/awkward-crickets.md` | [x] `8ae77b16…` (full hash in manifest) | [ ] ear check open (owner decision above); objective: 3–8 kHz only, no rumble | [x] 129.75–132.75 s + fades; 2982 ms, −16.1 LUFS, −7.2 dBTP | [x] owner, 8 Oct 2026 | [ ] |
+| 9 | Wrong buzzer | KevinVG207 | [x] 9 Oct 2026 09:17:57Z, "Creative Commons 0" | [x] `licenses/wrong-buzzer.md` | [x] `4a15cae7…` (full hash in manifest) | [ ] ear check open (owner decision above) | [x] 494 ms, −16.1 LUFS, −6.1 dBTP (mono) | [x] owner, 8 Oct 2026 | [ ] |
+| 10 | Cartoon fall | plasterbrain | [x] 9 Oct 2026 09:18:00Z, "Creative Commons 0" | [x] `licenses/cartoon-fall.md` | [x] `8285df3f…` (full hash in manifest) | [ ] ear check open (owner decision above) | [x] 1991 ms, −16.0 LUFS, −15.2 dBTP | [x] owner, 8 Oct 2026 | [ ] |
+| 11 | Drum roll | bigjoedrummer | [x] 9 Oct 2026 09:18:02Z, "Creative Commons 0" | [x] `licenses/drum-roll.md` | [x] `2f3d571b…` (full hash in manifest) | [ ] ear check open (owner decision above) | [x] 4738 ms, **−23.7 LUFS** (rimshot caps gain; see Findings), −1.8 dBTP | [x] owner, 8 Oct 2026 | [ ] |
+| 12 | Crowd "ooh" | noah0189 | n/a (rejected) | | | | | [ ] | [x] owner, 8 Oct 2026: thin provenance (medium risk) |
 | B1–B4 | Bench swaps (CC0) | see bench | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
 | B5–B6 | Bench (CC-BY, P3+ only) | see bench | not for P1 | | | | | | |
 
