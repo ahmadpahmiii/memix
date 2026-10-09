@@ -15,6 +15,7 @@ import app.memix.core.domain.project.SaveProjectUseCase
 import app.memix.core.domain.project.StartEditSessionUseCase
 import app.memix.core.domain.video.StartPreviewUseCase
 import app.memix.debug.DebugEdits
+import app.memix.debug.ImportSaveFailure
 import app.memix.engine.video.videoEngineModule
 import app.memix.feature.home.HomeViewModel
 import app.memix.feature.videoeditor.EditorDebugEdit
@@ -67,9 +68,12 @@ private val appModule = module {
     }
 }
 
-// Debug and benchmark builds: the editor's test edit for the P1-07 hand checks (TECHNICAL_DESIGN → Debug hand checks).
+// Debug and benchmark builds: the editor's test edit for the P1-07 hand checks (TECHNICAL_DESIGN → Debug hand checks),
+// and the import's save that can be made to fail once for the P1-02 N2 check. Loaded after appModule, so its
+// SaveGalleryProjectUseCase replaces the plain one.
 private val handCheckModule = module {
     single<EditorDebugEdit> { DebugEdits.shortenLastClip }
+    factory { SaveGalleryProjectUseCase(SaveProjectUseCase(ImportSaveFailure.around(get()), get()), get()) }
 }
 
 /**

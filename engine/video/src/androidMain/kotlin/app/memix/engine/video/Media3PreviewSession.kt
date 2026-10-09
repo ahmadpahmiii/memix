@@ -23,8 +23,10 @@ import app.memix.core.model.project.Project
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -71,6 +73,8 @@ internal class Media3PreviewSession(
     private val positionTicker = FrameTicker(::publishPlayerPosition)
     private val headphonesUnplugged = HeadphonesUnpluggedReceiver(context, onUnplugged = ::pause)
     private val playSpan = PlaySpanLog(logger)
+    private val showTiming = ShowTimingLog(logger)
+    private var firstFrameWatch: Job? = null
 
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -91,12 +95,17 @@ internal class Media3PreviewSession(
             if (playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS) pause()
         }
 
-        override fun onRenderedFirstFrame() = publish { it.copy(firstFrameShown = true) }
+        override fun onRenderedFirstFrame() {
+            firstFrameWatch?.cancel()
+            showTiming.firstFrameShown()
+            publish { it.copy(firstFrameShown = true) }
+        }
 
         override fun onPlayerError(error: PlaybackException) = fail("playback error ${error.errorCodeName}", error)
     }
 
     init {
+        showTiming.start(ShowTimingLog.Change.OPEN)
         scope.launch {
             projects.collectLatest { next -> show(withContext(ioDispatcher) { prepare(next) }) }
         }
@@ -123,7 +132,10 @@ internal class Media3PreviewSession(
     }
 
     override fun update(project: Project) {
-        if (!closed) projects.value = project
+        // An equal project renders nothing new, so there is no edit to time.
+        if (closed || project == projects.value) return
+        showTiming.start(ShowTimingLog.Change.EDIT)
+        projects.value = project
     }
 
     override fun close() {
@@ -177,6 +189,18 @@ internal class Media3PreviewSession(
         }
         mutablePosition.value = startUs
         publish { it.copy(missingMedia = prepared.missingMedia) }
+        timeFirstFrame()
+    }
+
+    // P1-04 review R1: how long each edit takes to show. A player that never reports a frame is logged too, so a
+    // missing line never hides a slow edit.
+    private fun timeFirstFrame() {
+        showTiming.compositionSet()
+        firstFrameWatch?.cancel()
+        firstFrameWatch = scope.launch {
+            delay(FIRST_FRAME_TIMEOUT_MS)
+            showTiming.firstFrameMissing()
+        }
     }
 
     private fun newPlayer(): CompositionPlayer {
@@ -234,6 +258,7 @@ internal class Media3PreviewSession(
 
     private companion object {
         const val MICROS_PER_MILLI = 1_000L
+        const val FIRST_FRAME_TIMEOUT_MS = 5_000L
         val MEDIA_AUDIO: AudioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)

@@ -234,6 +234,63 @@ adb logcat -d | grep droppedFrames            # Media3's own counts, if any
 - Cold start with P1-02's launch cleanup (N6): `adb shell am force-stop app.memix`, then
   `adb shell am start -W -n app.memix/.android.MainActivity | grep TotalTime`, 5 times; report the median (PRD: under 1.5 s).
 
+**D. Added 9 Oct (PM gaps): edit timing, P1-02 N2, `project_create` once, open-editor time.**
+
+1. **Edit timing, P1-04 review R1 (benchmark build; P1-06 starts from this number).** Media3 1.11.1 rebuilds every
+   player on each edit, and P1-06's bar is "each edit shows in the preview within 100 ms". Since 9 Oct the preview logs
+   one line per edit under `MemixPreview`: `Edit shown in N ms (rebuild R ms, first frame F ms)`, from the edit to the
+   first picture of the edited project (rebuild = planning, file checks, building and the player's setup; first frame =
+   from there to the picture).
+   ```sh
+   ./gradlew :androidApp:installBenchmark
+   adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor preview-check
+   #    wait for the first picture, then
+   adb logcat -c
+   #    long-press the timecode 10 times, about 2 s apart (each is one test edit: 1 s off the last clip; 30 s -> 20 s)
+   adb logcat -d -s MemixPreview:* | grep "Edit shown"
+   ```
+   - Pass: 10 lines, N at most 100 ms in the median and the worst (P1-06's bar). Report the median and worst N with
+     their R and F, the phone model and Android version. Repeat with `export-check` (3 clips: 5 presses) and note it too.
+   - Undo and redo are edits as well: each logs its own line.
+   - A line `Edit shown: no first frame reported N ms after the composition was set (rebuild R ms)` means the player
+     didn't report a picture within 5 s: note it, and whether the picture on the stage changed.
+   - If N is over 100 ms, tell the PM before P1-06 starts (it's P1-06's main risk).
+2. **P1-02 N2: the first save fails after copying (debug build).** A real phone can't be filled in the milliseconds
+   between the end of the copy and the save, so a hand-check switch makes that one save fail as if the phone were full.
+   ```sh
+   ./gradlew :androidApp:installDebug
+   adb shell am start -S -n app.memix/.android.MainActivity --ez memix.failImportSave true
+   adb logcat -c
+   ```
+   Create -> Video meme -> pick P1-02's `clip-12s.mp4` -> the copy runs, then the sheet says "Not enough space" ("Your
+   media needs 100 MB, and your phone has … free": the save's headroom against what's really free, because the failure
+   is simulated). Then:
+   - `adb shell run-as app.memix ls -laR files/media` -> one new folder holding the clip's copy, no `.part`: the copies
+     are kept.
+   - `adb logcat -d -s MemixAnalytics:*` -> no `project_create` yet.
+   - Free up space -> Android's storage screen -> back to Memix -> the editor opens by itself with the clip
+     (`00:00.00 / 00:12.40`), and the log now has exactly one `project_create {editor=video, source=gallery}`.
+   - Run it again and press Close on the sheet instead: back on Home, and `ls -laR files/media` no longer has that
+     pick's folder (the copies go with the closed sheet).
+   - Without the extra, imports save normally (the switch lasts for one save, in that app process only).
+3. **`project_create` fires once per new project (debug build).** `adb logcat -c`, import one clip normally, then in
+   the editor make 3 test edits (long-press the timecode), Undo, Redo, Close; open `--es memix.openEditor export-check`
+   and close it. `adb logcat -d -s MemixAnalytics:*` -> exactly one `project_create`, plus one `tool_use` for the undo
+   and one for the redo. Opening a saved draft never logs it (reopening by tapping a draft arrives with P1-14's list;
+   the adb extra stands in for it).
+4. **Open-editor time (benchmark build; PRD: under 1 s from tap to the first picture).** Tapping a draft arrives with
+   P1-14, so this times the editor from the moment it's asked to open. The preview also logs
+   `Preview opened in N ms (build B ms, first frame F ms)`: from creating the preview to its first picture.
+   ```sh
+   adb shell am start -S -W -n app.memix/.android.MainActivity --es memix.openEditor preview-check | grep TotalTime
+   adb logcat -d -v time -s MemixEditorCheck:* MemixPreview:*
+   ```
+   - The editor's open time is the clock time from `openEditor: saved preview-check, opening it` to
+     `Preview opened in …` (navigation, the slide-in, reading the draft and the preview); N is the preview's share.
+     `TotalTime` is only the app's own start and first frame, without the video.
+   - Run it 5 times (`-S` restarts the app each time; clear the log in between). Report the median and worst open time,
+     and N, B and F of the median run.
+
 ### States to screenshot for the design review (`docs/ux/reviews/P1-04/`)
 At 360 dp wide if possible (an emulator with a 360 × 800 dp screen), English unless noted:
 `default-paused` (export-check just opened: frame 0, 00:00.00 / 00:08.00, Undo and Redo grey), `opening` (gray frame; catch

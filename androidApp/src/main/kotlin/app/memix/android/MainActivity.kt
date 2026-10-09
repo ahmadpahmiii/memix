@@ -10,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import app.memix.App
 import app.memix.debug.ExportCheck
+import app.memix.debug.ImportSaveFailure
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -29,6 +30,9 @@ class MainActivity : ComponentActivity() {
         // Projects and steps: docs/qa/phase-1/engineer-hand-checks.md → P1-04. Logcat tag MemixEditorCheck.
         val handChecks = resources.getBoolean(R.bool.memix_hand_checks)
         val editorCheck = if (handChecks && savedInstanceState == null) intent.getStringExtra("memix.openEditor") else null
+        // Debug and benchmark builds (P1-02 N2): --ez memix.failImportSave true makes the next import's first save fail as if
+        // the phone were full. Steps: docs/qa/phase-1/engineer-hand-checks.md → P1-04.
+        if (handChecks && savedInstanceState == null && intent.getBooleanExtra("memix.failImportSave", false)) ImportSaveFailure.arm()
         setContent { App(isDebugBuild, debugEditorProject = editorCheck) }
     }
 }
