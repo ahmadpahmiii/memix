@@ -101,7 +101,7 @@ private fun TopRow(region: Region, onOpenCatalog: (() -> Unit)?, modifier: Modif
         detectTapGestures(onLongPress = { onOpenCatalog() })
     }
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(stringResource(Res.string.wordmark), MemixTheme.type.display, debugGesture.weight(1f))
+        Text(stringResource(Res.string.wordmark), MemixTheme.type.wordmark, debugGesture.weight(1f))
         // A label until region picking arrives (P3-11): a pill here would look tappable and do nothing.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space1)) {
             Icon(MemixIcons.Globe, contentDescription = null, tint = MemixColors.textSecondary, size = 16.dp)

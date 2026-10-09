@@ -67,6 +67,7 @@ class VideoEditorViewModel(
             VideoEditorIntent.LeaveAnyway -> updateState { it.copy(unsavedSheetOpen = false, isClosing = true) }
             VideoEditorIntent.StayInEditor -> updateState { it.copy(unsavedSheetOpen = false) }
             VideoEditorIntent.DismissSaveBanner -> dismissSaveBanner()
+            VideoEditorIntent.FreeUpSpaceUnavailable -> updateState { it.copy(canFreeUpSpace = false) }
             VideoEditorIntent.RetryPreview -> retryPreview()
             is VideoEditorIntent.ToastTimedOut -> updateState { if (it.toast?.id == intent.id) it.copy(toast = null) else it }
             VideoEditorIntent.AppStarted -> retryFailedSave()
@@ -130,7 +131,7 @@ class VideoEditorViewModel(
 
     private fun togglePlayback() {
         val session = preview ?: return
-        if (state.value.stage == StageContent.ERROR) return
+        if (!state.value.canPlay) return
         if (session.playback.value.isPlaying) {
             session.pause()
             return
@@ -207,9 +208,10 @@ class VideoEditorViewModel(
         updateState { it.copy(saveBanner = null) }
     }
 
+    // The save banner owns the one message slot: a toast that arrives under it is spoken, not shown or queued.
     private fun showToast(message: ToastMessage) {
-        val toast = EditorToast(nextToastId++, message)
-        updateState { it.copy(toast = toast) }
+        val id = nextToastId++
+        updateState { it.copy(toast = EditorToast(id, message, isSpokenOnly = it.saveBanner != null)) }
     }
 
     private fun saveProblemOf(failure: AppError): SaveProblem =

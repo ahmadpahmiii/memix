@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -29,6 +28,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,6 +45,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.MeasurePolicy
 import androidx.compose.ui.platform.AccessibilityManager
 import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -56,6 +57,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -158,7 +161,7 @@ fun VideoEditorScreen(
             )
             ToolBarRegion()
         }
-        UnsavedChangesSheet(state.unsavedSheetOpen, onIntent, onFreeUpSpace)
+        UnsavedChangesSheet(state.unsavedSheetOpen, onIntent, onFreeUpSpace.takeIf { state.canFreeUpSpace })
     }
 }
 
@@ -208,16 +211,16 @@ private fun PreviewStage(
     val canvas = state.canvas
     val playLabel = stringResource(if (state.isPlaying) Res.string.editor_pause else Res.string.editor_play)
     val previewLabel = canvas?.let { stringResource(Res.string.editor_preview_a11y, it.ratioLabel) }.orEmpty()
+    // A tap anywhere on the stage plays or pauses; screen readers hear one node, "Preview, 9:16", whose action is
+    // "Play" or "Pause". With nothing to play (empty draft, preview error) the stage takes no taps and has no action.
+    val playOnTap = if (state.canPlay) {
+        Modifier.clickable(interactionSource = null, indication = null, onClickLabel = playLabel) { onIntent(VideoEditorIntent.PlayPause) }
+    } else {
+        Modifier
+    }
     // A traversal group, so screen readers reach the save banner before the preview (spec P1-04 → Accessibility).
     Box(Modifier.fillMaxSize().background(MemixColors.stage).semantics { isTraversalGroup = true }) {
-        // A tap anywhere on the stage plays or pauses; screen readers hear one node, "Preview, 9:16", whose action
-        // is "Play" or "Pause".
-        Box(
-            Modifier
-                .matchParentSize()
-                .clickable(interactionSource = null, indication = null, onClickLabel = playLabel) { onIntent(VideoEditorIntent.PlayPause) }
-                .clearAndSetSemantics { contentDescription = previewLabel },
-        ) {
+        Box(Modifier.matchParentSize().then(playOnTap).clearAndSetSemantics { contentDescription = previewLabel }) {
             if (canvas != null) {
                 CanvasFrame(canvas.aspectRatio) {
                     state.preview?.let { previewSurface(it.session, Modifier.fillMaxSize()) }
@@ -256,9 +259,10 @@ private fun FrameMessage(stage: StageContent, aspectRatio: Float, onRetry: () ->
     }
 }
 
+// `surface`, not `surface-raised`: the Secondary button's own fill is `surface-raised` and would lose its shape.
 @Composable
 private fun PreviewError(onRetry: () -> Unit) {
-    CenteredMessage(Modifier.background(MemixColors.surfaceRaised)) {
+    CenteredMessage(Modifier.background(MemixColors.surface)) {
         Text(stringResource(Res.string.editor_preview_error_body), MemixTheme.type.body, color = MemixColors.textSecondary, textAlign = TextAlign.Center)
         Button(stringResource(Res.string.editor_preview_retry), onRetry)
     }
@@ -285,7 +289,10 @@ private fun CenteredMessage(modifier: Modifier = Modifier, content: @Composable 
     }
 }
 
-/** The save banner, else the latest toast, `space-2` below the top of the stage. They never stack. */
+/**
+ * The save banner, else the latest toast, `space-2` below the top of the stage. They never stack: a toast under the
+ * banner is spoken to screen readers only (spec P1-04 → Saving).
+ */
 @Composable
 private fun StageMessages(
     state: VideoEditorUiState,
@@ -295,10 +302,22 @@ private fun StageMessages(
 ) {
     val toast = state.toast
     if (toast != null) ToastTimer(toast, onTimedOut = { onIntent(VideoEditorIntent.ToastTimedOut(it)) })
+    val banner = state.saveBanner
+    val shownToast = toast?.takeIf { banner == null && !it.isSpokenOnly }
     Box(modifier.padding(top = MemixSpacing.space2, start = MemixSpacing.space4, end = MemixSpacing.space4)) {
-        val banner = state.saveBanner
-        FadingToast(banner) { problem -> SaveBanner(problem, onFreeUpSpace, onDismiss = { onIntent(VideoEditorIntent.DismissSaveBanner) }) }
-        FadingToast(toast.takeIf { banner == null }) { shown -> Toast(toastText(shown.message)) }
+        // Scrolls rather than cutting a message off when a large font makes it taller than a small stage.
+        Box(Modifier.verticalScroll(rememberScrollState())) {
+            FadingToast(banner) { problem ->
+                SaveBanner(
+                    problem,
+                    onFreeUpSpace = onFreeUpSpace.takeIf { state.canFreeUpSpace },
+                    onDismiss = { onIntent(VideoEditorIntent.DismissSaveBanner) },
+                )
+            }
+            FadingToast(shownToast) { shown -> Toast(toastText(shown.message)) }
+        }
+        // A new node per toast, so the same text twice ("Undo: Trim") is announced twice.
+        if (toast != null && toast.isSpokenOnly) key(toast.id) { SpokenOnly(toastText(toast.message)) }
         SavedAgainAnnouncement(state.savedAgainCount)
     }
 }
@@ -334,14 +353,15 @@ private fun editName(edit: VideoEdit): String = stringResource(
     },
 )
 
+/** [onFreeUpSpace] is null when the phone's storage screen can't open; the banner then has no action. */
 @Composable
-private fun SaveBanner(problem: SaveProblem, onFreeUpSpace: () -> Unit, onDismiss: () -> Unit) {
+private fun SaveBanner(problem: SaveProblem, onFreeUpSpace: (() -> Unit)?, onDismiss: () -> Unit) {
     val message = when (problem) {
         SaveProblem.STORAGE_FULL -> stringResource(Res.string.editor_save_storage_full)
         SaveProblem.OTHER -> stringResource(Res.string.editor_save_failed)
     }
     val action = when (problem) {
-        SaveProblem.STORAGE_FULL -> ToastAction(stringResource(Res.string.import_free_up_space), onFreeUpSpace)
+        SaveProblem.STORAGE_FULL -> onFreeUpSpace?.let { ToastAction(stringResource(Res.string.import_free_up_space), it) }
         SaveProblem.OTHER -> null
     }
     Toast(message, action = action, dismiss = ToastDismiss(stringResource(Res.string.editor_dismiss), onDismiss))
@@ -361,8 +381,12 @@ private fun SavedAgainAnnouncement(savedAgainCount: Int) {
         delay(recommendedTimeoutMillis(accessibilityManager, WHAT_HAPPENED_TOAST_MILLIS))
         speaking = false
     }
-    if (!speaking) return
-    val text = stringResource(Res.string.editor_saved_a11y)
+    if (speaking) SpokenOnly(stringResource(Res.string.editor_saved_a11y))
+}
+
+/** Nothing on screen: an empty node that screen readers announce politely as it appears. */
+@Composable
+private fun SpokenOnly(text: String) {
     Box(
         Modifier.size(MemixSize.touchTarget).clearAndSetSemantics {
             liveRegion = LiveRegionMode.Polite
@@ -390,6 +414,7 @@ private fun TransportRow(state: VideoEditorUiState, onIntent: (VideoEditorIntent
             if (state.isPlaying) MemixIcons.Pause else MemixIcons.Play,
             stringResource(if (state.isPlaying) Res.string.editor_pause else Res.string.editor_play),
             { onIntent(VideoEditorIntent.PlayPause) },
+            enabled = state.canPlay,
         )
         Row(
             Modifier.weight(1f).padding(end = MemixSpacing.space2),
@@ -407,9 +432,10 @@ private fun DrawScope.drawBottomHairline() {
 }
 
 /**
- * "00:03.20 / 00:08.00": the time on screen in `text`, the length in `text-muted`. When both don't fit (large fonts,
- * hour-long projects), the length wraps under the time. Screen readers hear "3.2 seconds of 8 seconds" instead of
- * the digits; it isn't a live region, because it changes every frame.
+ * "00:03.20 / 00:08.00" on one line: the time on screen in `text`, then " / " and the length in `text-muted`. When
+ * that doesn't fit (large fonts, hour-long projects), the length goes under the time, without the slash (spec P1-04
+ * → Transport row). Screen readers hear "3.2 seconds of 8 seconds" instead of the digits; it isn't a live region,
+ * because it changes every frame.
  */
 @Composable
 private fun Timecode(preview: EditorPreview?, lengthUs: Long, onDebugEdit: (() -> Unit)?, modifier: Modifier = Modifier) {
@@ -422,12 +448,45 @@ private fun Timecode(preview: EditorPreview?, lengthUs: Long, onDebugEdit: (() -
     } else {
         Modifier.pointerInput(onDebugEdit) { detectTapGestures(onLongPress = { onDebugEdit() }) }
     }
-    FlowRow(
-        modifier.then(debugEditGesture).clearAndSetSemantics { contentDescription = spoken },
-        horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space2),
-    ) {
-        CurrentTime(position)
-        Text(TIMECODE_SEPARATOR + formatTimecode(lengthUs), MemixTheme.type.timecode, color = MemixColors.textMuted)
+    val length = formatTimecode(lengthUs)
+    val style = MemixTheme.type.timecode
+    Layout(
+        content = {
+            CurrentTime(position)
+            Text(TIMECODE_SEPARATOR + length, style, color = MemixColors.textMuted)
+            Text(length, style, color = MemixColors.textMuted)
+            // Measured, never drawn: the widest the one-line timecode gets (see TimecodeMeasurePolicy).
+            Text(length + TIMECODE_SEPARATOR + length, style)
+        },
+        modifier = modifier.then(debugEditGesture).clearAndSetSemantics { contentDescription = spoken },
+        measurePolicy = TimecodeMeasurePolicy,
+    )
+}
+
+/**
+ * Lays out [Timecode]: the time and " / length" side by side when they fit, else the time over the length alone.
+ * The fit is decided by the fourth text, the length twice as one line: the time is never wider than the length
+ * (Space Mono gives every digit the same width, and the time never passes the length), so the row doesn't jump when
+ * the time gains a digit, and one text is measured the way the spec counts it (two texts can round 1 px wider, and
+ * at 360 dp the line fits by less than 1 dp).
+ */
+private val TimecodeMeasurePolicy = MeasurePolicy { measurables, constraints ->
+    val (time, separatorAndLength, lengthAlone, widestOneLine) = measurables
+    val loose = constraints.copy(minWidth = 0, minHeight = 0)
+    val fitsOnOneLine = widestOneLine.maxIntrinsicWidth(Constraints.Infinity) <= constraints.maxWidth
+    val timeText = time.measure(loose)
+    if (fitsOnOneLine) {
+        val rest = separatorAndLength.measure(loose)
+        layout(constraints.constrainWidth(timeText.width + rest.width), constraints.constrainHeight(max(timeText.height, rest.height))) {
+            timeText.placeRelative(0, 0)
+            rest.placeRelative(timeText.width, 0)
+        }
+    } else {
+        val below = lengthAlone.measure(loose)
+        layout(constraints.constrainWidth(max(timeText.width, below.width)), constraints.constrainHeight(timeText.height + below.height)) {
+            timeText.placeRelative(0, 0)
+            below.placeRelative(0, timeText.height)
+        }
     }
 }
 
@@ -449,12 +508,15 @@ private fun ToolBarRegion() {
     )
 }
 
+/** [onFreeUpSpace] is null when the phone's storage screen can't open; Leave anyway is then the only button. */
 @Composable
-private fun UnsavedChangesSheet(visible: Boolean, onIntent: (VideoEditorIntent) -> Unit, onFreeUpSpace: () -> Unit) {
+private fun UnsavedChangesSheet(visible: Boolean, onIntent: (VideoEditorIntent) -> Unit, onFreeUpSpace: (() -> Unit)?) {
     // Its close button, the scrim and back keep the user in the editor; only "Leave anyway" leaves.
     Sheet(visible, onDismiss = { onIntent(VideoEditorIntent.StayInEditor) }, title = stringResource(Res.string.editor_unsaved_title)) {
         Text(stringResource(Res.string.editor_unsaved_body), MemixTheme.type.body, color = MemixColors.textSecondary)
-        Button(stringResource(Res.string.import_free_up_space), onFreeUpSpace, Modifier.fillMaxWidth(), ButtonVariant.Primary)
+        if (onFreeUpSpace != null) {
+            Button(stringResource(Res.string.import_free_up_space), onFreeUpSpace, Modifier.fillMaxWidth(), ButtonVariant.Primary)
+        }
         Button(stringResource(Res.string.editor_leave_anyway), { onIntent(VideoEditorIntent.LeaveAnyway) }, Modifier.fillMaxWidth())
     }
 }
@@ -470,8 +532,8 @@ private const val TIMELINE_SHARE = 0.4f
  */
 private val TimelineMinHeight = 120.dp
 
-/** Between the time and the length; a timecode, so it is never translated. */
-private const val TIMECODE_SEPARATOR = "/ "
+/** Between the time and the length on one line, with real spaces; a timecode, so it is never translated. */
+private const val TIMECODE_SEPARATOR = " / "
 
 private const val MICROS_PER_TENTH = 100_000L
 private const val WHAT_HAPPENED_TOAST_MILLIS = 2_000L

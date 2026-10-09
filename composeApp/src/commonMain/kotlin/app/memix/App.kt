@@ -48,6 +48,7 @@ import app.memix.feature.home.HomeViewModel
 import app.memix.feature.photoeditor.PhotoEditorPlaceholder
 import app.memix.feature.sounds.SoundsScreen
 import app.memix.feature.templates.TemplatesScreen
+import app.memix.feature.videoeditor.VideoEditorIntent
 import app.memix.feature.videoeditor.VideoEditorScreen
 import app.memix.feature.videoeditor.VideoEditorViewModel
 import app.memix.platform.services.LockPortraitOnPhones
@@ -214,8 +215,11 @@ private fun VideoEditorDestination(projectId: String, onClose: () -> Unit) {
         state = state,
         onIntent = viewModel::onIntent,
         previewSurface = { session, modifier -> VideoPreviewSurface(session, modifier) },
-        // A save needs little room; ask for the import's headroom, so the next import fits too.
-        onFreeUpSpace = { freeUpSpace.launch(ImportMediaUseCase.HEADROOM_BYTES) },
+        // A save needs little room; ask for the import's headroom, so the next import fits too. When no storage screen
+        // opens, the editor hides the button (spec P1-04 → Saving).
+        onFreeUpSpace = {
+            if (!freeUpSpace.launch(ImportMediaUseCase.HEADROOM_BYTES)) viewModel.onIntent(VideoEditorIntent.FreeUpSpaceUnavailable)
+        },
     )
 }
 

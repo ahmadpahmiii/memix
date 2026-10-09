@@ -25,12 +25,17 @@ import app.memix.core.designsystem.pressedColor
 import org.jetbrains.compose.resources.DrawableResource
 
 /**
- * An icon-only control with no fill, such as the editor's Close, Play and Undo (spec P1-04 → Interactions): a
- * `touch-target` square, the icon in `text`, and `surface-raised` behind it at `radius-md` while pressed. When
- * [icon] changes (Play to Pause) the two cross-fade over `duration-press`.
+ * An icon-only control with no fill, such as the editor's Close, Play and Undo
+ * (`design/system/components/IconButton/README.md`): a `touch-target` square, the icon in `text`, and a fill behind
+ * it at `radius-md` while pressed. When [icon] changes (Play to Pause) the two cross-fade over `duration-press`.
+ *
+ * The pressed fill is `surface-raised`, one value step above `canvas`, `surface` or `stage`. Set [onSurfaceRaised]
+ * when the button sits on `surface-raised` itself (the × of a Toast): it then presses to `hairline`, the next step,
+ * so the press stays visible.
  *
  * Disabled ([enabled] false): the icon turns `text-muted`, taps do nothing, and screen readers say "disabled". Use
- * it only where greyed-out is the convention (undo and redo); elsewhere a control explains why it can't act.
+ * it only where greyed-out is the convention (undo and redo, play with nothing to play); elsewhere a control
+ * explains why it can't act.
  */
 @Composable
 fun IconButton(
@@ -39,10 +44,12 @@ fun IconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    onSurfaceRaised: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val pressedFill = if (onSurfaceRaised) MemixColors.hairline else MemixColors.surfaceRaised
     // Fades in from a see-through copy of the same gray, so the press never passes through black.
-    val container = pressedColor(interactionSource, MemixColors.surfaceRaised.copy(alpha = 0f), MemixColors.surfaceRaised)
+    val container = pressedColor(interactionSource, pressedFill.copy(alpha = 0f), pressedFill)
     val tint = if (enabled) MemixColors.text else MemixColors.textMuted
     Box(
         modifier

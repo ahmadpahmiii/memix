@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -38,10 +39,12 @@ class ToastDismiss(val label: String, val onClick: () -> Unit)
 
 /**
  * A short message that doesn't interrupt (`design/system/components/Toast/README.md`): `surface-raised`, `radius-md`,
- * `shadow-float`, text in `label`, up to three lines. Screen readers hear it politely as a status message; it never
- * takes focus, but its buttons can be focused.
+ * `shadow-float`, text in `label`. The text wraps as far as it needs to and is never cut off (WCAG 2.2 SC 1.4.4 at
+ * 200% font); the copy budgets keep it short. Screen readers hear it politely as a status message; it never takes
+ * focus, but its buttons can be focused.
  *
- * The persistent variant (save failures) adds an [action] and a [dismiss] button and stays until the caller hides
+ * The persistent variant (save failures) adds a [dismiss] × beside the message and an [action] on its own row below,
+ * aligned to the end, so the message keeps almost the full width in every language. It stays until the caller hides
  * it. Place it yourself: centered, `space-2` below the top of the editor's stage, `space-4` from the screen edges.
  */
 @Composable
@@ -51,26 +54,31 @@ fun Toast(
     action: ToastAction? = null,
     dismiss: ToastDismiss? = null,
 ) {
-    val hasButtons = action != null || dismiss != null
-    Row(
+    Column(
         modifier
             .dropShadow(MemixShapes.radiusMd, MemixElevation.shadowFloat)
             .clip(MemixShapes.radiusMd)
             .background(MemixColors.surfaceRaised)
             .semantics { liveRegion = LiveRegionMode.Polite }
-            // The buttons bring their own 48 dp targets, so the text keeps the spec's padding and the row grows.
-            .padding(start = MemixSpacing.space3, end = if (hasButtons) MemixSpacing.space1 else MemixSpacing.space3),
-        horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space1),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(start = MemixSpacing.space3),
     ) {
-        Text(
-            message,
-            MemixTheme.type.label,
-            Modifier.weight(1f, fill = false).padding(vertical = MemixSpacing.space2),
-            maxLines = MAX_LINES,
-        )
-        if (action != null) Button(action.label, action.onClick, variant = ButtonVariant.Quiet)
-        if (dismiss != null) IconButton(MemixIcons.Close, dismiss.label, dismiss.onClick)
+        // The buttons bring their own 48 dp targets, so next to one the gap to the edge shrinks to space-1.
+        Row(
+            Modifier.padding(end = if (dismiss != null) MemixSpacing.space1 else MemixSpacing.space3),
+            horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space1),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(message, MemixTheme.type.label, Modifier.weight(1f, fill = false).padding(vertical = MemixSpacing.space2))
+            if (dismiss != null) IconButton(MemixIcons.Close, dismiss.label, dismiss.onClick, onSurfaceRaised = true)
+        }
+        if (action != null) {
+            Button(
+                action.label,
+                action.onClick,
+                Modifier.align(Alignment.End).padding(end = MemixSpacing.space1),
+                ButtonVariant.Quiet,
+            )
+        }
     }
 }
 
@@ -92,5 +100,3 @@ fun <T : Any> FadingToast(toast: T?, modifier: Modifier = Modifier, content: @Co
         shown?.let { content(it) }
     }
 }
-
-private const val MAX_LINES = 3

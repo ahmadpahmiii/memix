@@ -189,16 +189,19 @@ adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor <
    `tool_use {editor=video, tool=undo|redo}` (MemixAnalytics); a greyed button logs nothing.
 5. **Save failing (P1-07):** fill the phone (`adb shell df -h /data`, then
    `adb shell dd if=/dev/zero of=/sdcard/Download/fill.bin bs=1048576 count=<free MB - 20>`), long-press the timecode ->
-   after about half a second the banner "Your phone is full, so your latest changes aren't saved." with Free up space and ×.
-   × hides it (another edit doesn't bring it back). Close -> the sheet "Your latest changes aren't saved" (Free up space,
+   after about half a second the banner "Your phone is full, so your latest changes aren't saved." with × beside the
+   message and Free up space on its own row below, on the right; the whole message shows (also in pt and hi, and at 200%
+   font). Pressing × shows a lighter gray square behind it. With TalkBack on and the banner up, Undo speaks "Undo: Trim"
+   but no toast appears. × hides the banner (another edit doesn't bring it back). Close -> the sheet "Your latest changes aren't saved" (Free up space,
    Leave anyway); back or the scrim keep you in the editor. Free up space opens Android's storage screen;
    `adb shell rm /sdcard/Download/fill.bin`, come back: the banner and sheet go by themselves (TalkBack says "Changes saved").
-6. **Preview error:** `--es memix.openEditor preview-error` -> gray frame with "The preview stopped. Your edits are safe." and
-   Try again (it fails again: the project is damaged on purpose). Close works.
+6. **Preview error:** `--es memix.openEditor preview-error` -> dark gray frame with "The preview stopped. Your edits are safe."
+   and a lighter gray Try again button (it fails again: the project is damaged on purpose). Play is greyed, and a tap on the
+   stage does nothing. Close works.
 7. **Missing media:** `--es memix.openEditor missing-media` -> once, the toast "A clip's file is missing, so it plays black.
    …" (about 4 s); playing shows A, 3 s of black and silence, then B.
-8. **No clips, deleted on leaving (owner, 8 Oct):** `--es memix.openEditor empty` -> "This draft has no clips" on the stage.
-   Close. Then `adb exec-out run-as app.memix cat databases/memix.db > memix.db` (pull `memix.db-wal` too if it exists) and
+8. **No clips, deleted on leaving (owner, 8 Oct):** `--es memix.openEditor empty` -> "This draft has no clips" on the stage,
+   Play greyed. Close. Then `adb exec-out run-as app.memix cat databases/memix.db > memix.db` (pull `memix.db-wal` too if it exists) and
    `sqlite3 memix.db "select id from project"` on the desktop: no `empty` row. Also: open `export-check`, long-press the
    timecode until the frame says "This draft has no clips" (8 presses), Close -> no `export-check` row; open it again
    with the extra to get it back. A draft that still has clips is kept.
@@ -237,8 +240,38 @@ At 360 dp wide if possible (an emulator with a 360 × 800 dp screen), English un
 it right after the push, or skip), `playing` (Pause icon, running time), `at-end` (00:08.00 / 00:08.00, Play),
 `undo-toast` (after a test edit and Undo: "Undo: Trim", Redo white), `redo-toast`, `save-banner-storage-full`,
 `unsaved-sheet`, `preview-error`, `missing-media-toast`, `empty-draft`, `timecode-hi-200` (Hindi at 200% font: the length
-wraps under the time, nothing cut off), `transport-hi-200`, and `catalog-toast` / `catalog-iconbutton` from the
+under the time with no "/", nothing cut off), `transport-hi-200`, and `catalog-toast` / `catalog-iconbutton` from the
 component catalog (long-press the Home wordmark).
+After the design-review fixes (9 Oct), these must show the fixed build: `default-paused` ("00:00.00 / 00:08.00" on one
+line at 360 dp), `timecode-hi-200`, `save-banner-storage-full` plus `save-banner-storage-full-pt-200` and
+`save-banner-storage-full-hi` (whole message, Free up space under it on the right), `preview-error` (gray button on a
+darker frame, Play greyed), `empty-draft` (Play greyed) and `catalog-toast`.
+Free up space hiding when no storage screen opens can't be forced on a normal phone (Android's storage manager or
+Settings always opens); it is checked in code and on iOS in P7.
+
+## P1-17 · Hindi display face: hero and entry cards in Teko, nothing clipped, other languages unchanged
+
+```sh
+./gradlew :androidApp:installDebug
+adb shell cmd locale set-app-locales app.memix --locales hi    # Android 13+; back to the phone's language: --locales ""
+adb shell settings put system font_scale 2.0                   # 200%; back with 1.0
+adb shell wm size 1080x2400 && adb shell wm density 480        # 360 dp wide; back with "wm size reset" and "wm density reset"
+```
+1. **Hindi, 100% and 200%, 360 dp:** Home shows "मीम बनाएं" and the two entry-card titles in Teko Bold (tall, condensed,
+   square), not the phone's regular Devanagari. The "Memix" wordmark top-left is still Anton. At 200% the titles wrap;
+   no mark above the headline bar or below the baseline is cut, including inside the cards' rounded corners.
+2. **Create sheet hero** in Hindi at 200%, and the **Drafts** empty headline (`display-xl`) in Hindi at 200%: same checks.
+3. **Other languages unchanged:** `--locales en` at 360 dp, compare Home with `docs/ux/reviews/P0-05/android-home-360.png`
+   (pixel-identical apart from content); spot-check id, es, pt.
+4. **Catalog in Hindi** (long-press the wordmark): Type shows "मीम बनाएं (display-xl)" and "वीडियो मीम (display)" in Teko,
+   and "Memix (wordmark)" in Anton.
+5. **Vertical position:** compare the Hindi hero's size and centering with the English hero; note in the QA report if Teko
+   sits low in its line (the designer adjusts the token).
+6. **APK size:** compare `androidApp/build/outputs/apk/benchmark/*.apk` before and after this change (or `apkanalyzer
+   files list`): the font adds 257,136 bytes uncompressed, about 106 KB in the APK if the build deflates it.
+
+### States to screenshot for the design review (`docs/ux/reviews/P1-17/`)
+`home-hi-100`, `home-hi-200` (360 dp), `create-sheet-hi-200`, `drafts-empty-hi-200`, `home-en-360`, `catalog-type-hi`.
 
 ## P1-07 · killing the app mid-edit restores the draft
 

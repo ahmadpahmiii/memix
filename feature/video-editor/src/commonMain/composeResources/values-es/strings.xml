@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Machine-drafted until P5-06; English source and budgets: docs/ux/specs/P1-02-gallery-picker.md -> Copy. -->
+    <!-- Machine-drafted until P5-06; English source, budgets and translator notes in docs/ux/specs/: P1-02-gallery-picker.md (import_*), P1-04-editor-and-preview.md (editor_*) and P1-06-clip-edits-and-audio.md (edit_*), each -> Copy. -->
     <plurals name="duration_seconds">
         <item quantity="one">%1$d segundo</item>
         <item quantity="other">%1$d segundos</item>
@@ -48,7 +48,7 @@
     <string name="editor_missing_media">Falta el archivo de un clip, así que se ve en negro. Elimina ese clip para arreglarlo.</string>
     <string name="editor_save_storage_full">Tu teléfono está lleno, así que tus últimos cambios no se guardaron.</string>
     <string name="editor_save_failed">Tus últimos cambios aún no se guardaron. Memix lo intentará con tu próximo cambio.</string>
-    <string name="editor_dismiss">Descartar</string>
+    <string name="editor_dismiss">Cerrar aviso</string>
     <string name="editor_saved_a11y">Cambios guardados</string>
     <string name="editor_unsaved_title">Tus últimos cambios no se guardaron</string>
     <string name="editor_unsaved_body">Tu teléfono está lleno. Libera espacio para conservarlos, o sal y piérdelos.</string>

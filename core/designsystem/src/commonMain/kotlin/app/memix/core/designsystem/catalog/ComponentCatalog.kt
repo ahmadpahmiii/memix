@@ -56,6 +56,7 @@ import app.memix.core.designsystem.component.Toast
 import app.memix.core.designsystem.component.ToastAction
 import app.memix.core.designsystem.component.ToastDismiss
 import app.memix.core.designsystem.component.Toggle
+import app.memix.core.designsystem.usesHindiDisplayFace
 import kotlin.math.roundToInt
 
 // Debug-only screen for the designer's review (P0-04). Labels are developer English, never translated,
@@ -125,10 +126,16 @@ private fun Section(name: String, content: @Composable ColumnScope.() -> Unit) {
 private fun TypeSection() = Section("Type") {
     val type = MemixTheme.type
     listOf<Pair<String, TextStyle>>(
-        "display-xl" to type.displayXl, "display" to type.display, "meme-caption" to type.memeCaption,
-        "title-l" to type.titleL, "title" to type.title, "body" to type.body, "body-strong" to type.bodyStrong,
-        "label" to type.label, "caption" to type.caption, "timecode 0:02.40" to type.timecode,
+        "display-xl" to type.displayXl, "display" to type.display, "Memix (wordmark)" to type.wordmark,
+        "meme-caption" to type.memeCaption, "title-l" to type.titleL, "title" to type.title, "body" to type.body,
+        "body-strong" to type.bodyStrong, "label" to type.label, "caption" to type.caption,
+        "timecode 0:02.40" to type.timecode,
     ).forEach { (name, style) -> Text(name, style) }
+    // In Hindi the two display roles switch to Teko Bold (P1-17); these samples show its Devanagari.
+    if (usesHindiDisplayFace()) {
+        Text("मीम बनाएं (display-xl)", type.displayXl)
+        Text("वीडियो मीम (display)", type.display)
+    }
 }
 
 @Composable
@@ -227,12 +234,13 @@ private fun IconButtonSection() = Section("IconButton") {
 @Composable
 private fun ToastSection() = Section("Toast") {
     Toast("Undo: Split")
-    Toast("To split, move the playhead inside this clip. A longer explanation wraps up to three lines, then stops.")
+    Toast("To split, move the playhead inside this clip. A long message wraps as far as it needs to and is never cut off.")
     var bannerShown by remember { mutableStateOf(true) }
     FadingToast(if (bannerShown) "Your phone is full, so your latest changes aren't saved." else null) { message ->
         Toast(message, action = ToastAction("Free up space") {}, dismiss = ToastDismiss("Dismiss") { bannerShown = false })
     }
     Button("Show the persistent variant again", { bannerShown = true })
+    Toast("Persistent, no action: your latest changes aren't saved yet. Memix tries again with your next change.", dismiss = ToastDismiss("Dismiss") {})
 }
 
 @Composable

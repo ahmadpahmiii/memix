@@ -25,6 +25,8 @@ data class VideoEditorUiState(
     val saveBanner: SaveProblem? = null,
     /** Goes up by one each time saving works again after failing, so a screen reader hears "Changes saved". */
     val savedAgainCount: Int = 0,
+    /** False once the phone's storage screen failed to open: Free up space then hides (never a button that does nothing). */
+    val canFreeUpSpace: Boolean = true,
     val toast: EditorToast? = null,
     /** "Your latest changes aren't saved": leaving while saving fails. */
     val unsavedSheetOpen: Boolean = false,
@@ -32,7 +34,10 @@ data class VideoEditorUiState(
     val isClosing: Boolean = false,
     /** Debug and benchmark builds: a long-press on the timecode makes one test edit, for the P1-07 hand checks. */
     val canMakeDebugEdit: Boolean = false,
-)
+) {
+    /** Play/Pause and a tap on the stage work; disabled when there's nothing to play (empty draft, preview error). */
+    val canPlay: Boolean get() = stage != StageContent.EMPTY && stage != StageContent.ERROR
+}
 
 /** The project's frame: its width-to-height ratio, and the ratio as screen readers hear it ("9:16"). */
 @Immutable
@@ -56,9 +61,13 @@ enum class StageContent {
 /** Why the banner says the latest changes aren't saved. */
 enum class SaveProblem { STORAGE_FULL, OTHER }
 
-/** A toast on the stage; a new [id] restarts its timer, even for the same message. */
+/**
+ * A toast on the stage; a new [id] restarts its timer, even for the same message. [isSpokenOnly] when it arrived
+ * while the save banner was up: it isn't shown (it would be stale once the banner goes), only spoken to screen
+ * readers (spec P1-04 → Saving).
+ */
 @Immutable
-data class EditorToast(val id: Long, val message: ToastMessage)
+data class EditorToast(val id: Long, val message: ToastMessage, val isSpokenOnly: Boolean = false)
 
 sealed interface ToastMessage {
     data class Undone(val edit: VideoEdit) : ToastMessage
@@ -98,6 +107,9 @@ sealed interface VideoEditorIntent {
 
     /** The × on the save banner. */
     data object DismissSaveBanner : VideoEditorIntent
+
+    /** Free up space was tapped, but the phone has no storage screen that opens. */
+    data object FreeUpSpaceUnavailable : VideoEditorIntent
 
     /** "Try again" after the preview stopped. */
     data object RetryPreview : VideoEditorIntent

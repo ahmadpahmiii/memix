@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Machine-drafted until P5-06; English source and budgets: docs/ux/specs/P1-02-gallery-picker.md -> Copy. -->
+    <!-- Machine-drafted until P5-06; English source, budgets and translator notes in docs/ux/specs/: P1-02-gallery-picker.md (import_*), P1-04-editor-and-preview.md (editor_*) and P1-06-clip-edits-and-audio.md (edit_*), each -> Copy. -->
     <plurals name="duration_seconds">
         <item quantity="one">%1$d detik</item>
         <item quantity="other">%1$d detik</item>

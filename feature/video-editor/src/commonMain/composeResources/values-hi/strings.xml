@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Machine-drafted until P5-06; English source and budgets: docs/ux/specs/P1-02-gallery-picker.md -> Copy. -->
+    <!-- Machine-drafted until P5-06; English source, budgets and translator notes in docs/ux/specs/: P1-02-gallery-picker.md (import_*), P1-04-editor-and-preview.md (editor_*) and P1-06-clip-edits-and-audio.md (edit_*), each -> Copy. -->
     <plurals name="duration_seconds">
         <item quantity="one">%1$d सेकंड</item>
         <item quantity="other">%1$d सेकंड</item>
@@ -48,7 +48,7 @@
     <string name="editor_missing_media">एक क्लिप की फ़ाइल नहीं मिली, इसलिए वह काली दिखेगी। ठीक करने के लिए वह क्लिप हटाएं।</string>
     <string name="editor_save_storage_full">आपका फ़ोन भर गया है, इसलिए आपके नए बदलाव सेव नहीं हुए।</string>
     <string name="editor_save_failed">आपके नए बदलाव अभी सेव नहीं हुए। अगले बदलाव पर Memix फिर कोशिश करेगा।</string>
-    <string name="editor_dismiss">खारिज करें</string>
+    <string name="editor_dismiss">संदेश बंद करें</string>
     <string name="editor_saved_a11y">बदलाव सेव हो गए</string>
     <string name="editor_unsaved_title">आपके नए बदलाव सेव नहीं हुए</string>
     <string name="editor_unsaved_body">आपका फ़ोन भर गया है। बदलाव रखने के लिए जगह खाली करें, या छोड़ें और उन्हें खो दें।</string>
