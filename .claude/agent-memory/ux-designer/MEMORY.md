@@ -2,6 +2,14 @@
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: Design decisions and their reasons, patterns that worked or failed, recurring review issues, competitor insights.
 
+- 2026-10-10 · P1-05 review (provisional, from code + the engineer's Skia desktop renders, `scratchpad/render-p1-05/out`; ask for these again, they're a good stand-in when there's no emulator). Pass with fixes. Lessons:
+  - **Check every visual-only state for a spoken twin.** "File missing" was drawn but not spoken (M1), and the P1-04 toast told TalkBack users to delete a clip they couldn't find. My spec missed it.
+  - **Compose drops off-screen semantics nodes**, so "all items from the model" can't work for a virtualized canvas. Use the lazy pattern (on-screen nodes plus a scroll action). Per-row scroll has an order flaw: lane 2 starts where lane 1 ended. The fallback is one scroll node for all rows, read screen by screen.
+  - **Ruler ladder needs rungs up to 1 h** (15 min, 30 min, 1 h, then whole hours): an hour at the whole-video zoom is 0.05 dp per second. Check every scale table at the extreme zoom.
+  - **Fixed playhead over ruler labels is accepted:** the timecode carries the exact time.
+  - **Every long-press that triggers something gets a LongPress haptic.**
+  - **Response-time rule** for the P1-06 preview catching up: nothing up to 1 s, then a quiet static status (Nielsen limits; no spinner, MOTION 2).
+  - **Mirror file:** `design/system/tokens.json` mirrors `design/tokens.json`; update both. Hindi display is now 60/44 (Teko's 1.433 em).
 - 2026-10-09 · P1-10 text spec (`docs/ux/specs/P1-10-text.md`):
   - **Caption fonts:** Classic `anton` (+ Teko Bold for Devanagari clusters), Modern `poppins` (Bold 152 KB), Bubbly `baloo2` (ExtraBold static 348 KB, from yanone/Baloo2-Variable since google/fonts only has the 667 KB variable), Handwritten `kalam` (Bold 450 KB), Serif `rozha` (315 KB). All OFL, no RFN, all with native Devanagari. **Teko is not a tile:** as Anton's Devanagari partner it would draw Hindi identically to Classic. Runners-up: Yatra One (brush, regional), Bangers (no Devanagari). Ids are saved forever.
   - **No schema bump:** base size 8% of the canvas short side, wrap 90%, stroke size ÷ 12 with round joins, center alignment and case-as-typed are fixed rules in `tokens.json` → `caption`. Changing a rule later needs a bump plus a compensating migration. Shadow and background box are PRD v1 features with no ticket: owner decision, recommended a new P2 ticket after P2-03.

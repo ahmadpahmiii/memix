@@ -11,8 +11,8 @@ In Hindi, the loud moments (Home hero, entry cards, sheet heroes, empty-state he
 ## What changes
 | Where | English, id, es, pt | Hindi |
 | --- | --- | --- |
-| `display-xl` (Home hero, empty-state headlines) | Anton 40/44, 400 | Teko 40/52, 700, letter spacing 0 |
-| `display` (entry cards, Create sheet hero) | Anton 28/30, 400 | Teko 28/36, 700, letter spacing 0 |
+| `display-xl` (Home hero, empty-state headlines) | Anton 40/44, 400 | Teko 40/60, 700, letter spacing 0 |
+| `display` (entry cards, Create sheet hero) | Anton 28/30, 400 | Teko 28/44, 700, letter spacing 0 |
 | `wordmark` (new token: "Memix" on Home) | Anton 28/30 | Anton 28/30 (unchanged) |
 | Interface roles | Space Grotesk | Space Grotesk; Devanagari from the system face (unchanged) |
 
@@ -37,7 +37,7 @@ I don't edit code, so these are requests.
 1. **Font file:** bundle `teko_bold.ttf` in `:core:designsystem` `composeResources/font/`. It is `fonts/ttf/Teko-Bold.ttf` from https://github.com/googlefonts/teko (251 KB). Add its `OFL.txt` wherever the other font licenses live.
    - Use the variable `Teko[wght].ttf` from google/fonts (285 KB) instead only if Compose Multiplatform resources can set the weight axis on Android and iOS. Check the current CMP docs; don't trust memory.
 2. **MemixType:** when the app language is `hi`, build `displayXl` and `display` from Teko at weight 700 with the Hindi sizes and line heights above, and letter spacing 0. Every other language keeps today's values. Keep the property names, so no screen changes.
-   - **Line height:** compare 52/36 with Teko's built-in line spacing. If Teko's is taller, use it, rounded up to 4 dp, and tell me the value so I can update the tokens.
+   - **Line height:** compare 52/36 with Teko's built-in line spacing. If Teko's is taller, use it, rounded up to 4 dp, and tell me the value so I can update the tokens. **Done (10 Oct 2026):** Teko's is 1.433 em, so the build uses 60/44, and the tokens and the table above now say 60/44.
 3. **New `wordmark` style** (Anton 28/30, 400, the same as today's `display`), never localized. Point `HomeScreen.kt:104` at `MemixTheme.type.wordmark`, because it uses `type.display` today and would switch to Teko in Hindi.
 4. **Catalog:** in the Type section, show `display-xl` and `display` with a Hindi sample ("मीम बनाएं", "वीडियो मीम") whenever the catalog runs in Hindi.
 5. **P1-10 shares this file:** in captions, Teko Bold draws the Devanagari runs that Anton can't (spec P1-10 → Fonts). Bundle it once, in `:core:designsystem`, where the text engine can reach it as well.

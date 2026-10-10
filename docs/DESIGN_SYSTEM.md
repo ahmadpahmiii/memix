@@ -135,7 +135,7 @@ Map each token to the Memix theme objects, kebab-case to camelCase: `track-meme-
 | `danger-pressed` | `MemixColors.dangerPressed` | `#E04E43` | Pressed state of danger fills. Text on it is on-primary (4.8:1). |
 | `success` | `MemixColors.success` | `#3BCE7B` | Export finished and saved states, always with a word or icon. Text on it is on-primary (9.3:1). |
 | `focus-ring` | `MemixColors.focusRing` | `#FFFFFF` | Keyboard and switch-access focus: a solid 2px ring, 2px outside the control. |
-| `scrim` | `MemixColors.scrim` | `#000000B3` | Behind bottom sheets and dialogs. |
+| `scrim` | `MemixColors.scrim` | `#000000B3` | Behind bottom sheets and dialogs. On the timeline: the wash over the part of an item past the end of the video (its label switches to `text`), and the selected main clip's duration badge (`text` on it is 7.5:1 or more over any thumbnail). |
 
 ### Type
 
@@ -162,8 +162,8 @@ When the app language is Hindi, `MemixType.displayXl` and `MemixType.display` us
 
 | Style (Hindi) | Family | Size / line (sp) | Weight | Letter spacing |
 | --- | --- | --- | --- | --- |
-| `display-xl` | display-hi (Teko) | 40 / 52 | 700 | 0 |
-| `display` | display-hi (Teko) | 28 / 36 | 700 | 0 |
+| `display-xl` | display-hi (Teko) | 40 / 60 | 700 | 0 |
+| `display` | display-hi (Teko) | 28 / 44 | 700 | 0 |
 
 - **Where it applies:** every `display-xl` and `display` use, which means the Home hero, entry-card titles, sheet heroes (Create) and empty-state headlines. The whole string is set in Teko, Latin letters included, so one headline never mixes two display faces.
 - **Where it doesn't:**
@@ -171,7 +171,7 @@ When the app language is Hindi, `MemixType.displayXl` and `MemixType.display` us
   - Interface roles (Space Grotesk, where Devanagari falls back to the system face, Noto Sans Devanagari on Android).
   - `meme-caption`, which is user content. In captions, Teko Bold draws the Devanagari letters Anton lacks (spec P1-10).
 - **Letter spacing 0:** tracking opens gaps in the headline bar (shirorekha) that joins Devanagari letters.
-- **Line height 1.3×:** Devanagari has marks above the headline bar and below the baseline. At build time, compare it with Teko's built-in line spacing; if that is taller, use it, rounded up to the 4 dp grid.
+- **Line height = Teko's own line spacing:** Devanagari has marks above the headline bar and below the baseline. The planned 1.3× (52 / 36) was shorter than Teko's built-in line spacing (1.433 em, which the candrabindu and the vocalic-rr sign reach), so the P1-17 build uses Teko's, rounded up to the 4 dp grid: 40 sp → 60, 28 sp → 44 (tokens updated 10 Oct 2026 to match `MemixType`).
 - **File to bundle:** `teko_bold.ttf`, which is `fonts/ttf/Teko-Bold.ttf` from [googlefonts/teko](https://github.com/googlefonts/teko/tree/master/fonts/ttf) (the 2023 Google Fonts build, 251 KB). Add its `OFL.txt` to the app's font licenses.
   - The variable [`ofl/teko/Teko[wght].ttf`](https://github.com/google/fonts/tree/main/ofl/teko) (285 KB, weights 300–700) is an alternative only if Compose Multiplatform resources can set its weight axis on both Android and iOS. Check at ticket start.
 - **Why Teko** (compared 8 Oct 2026 from the google/fonts metadata and file pages; all four are SIL OFL with Latin, Latin Extended and Devanagari):

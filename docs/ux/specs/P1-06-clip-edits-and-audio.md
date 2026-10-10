@@ -240,9 +240,29 @@ All times are in microseconds. The minimum length of any item is 0.1 s (100,000 
 While trimming, moving or reordering, a finger within `touch-target` of the timeline's left or right edge scrolls the timeline that way. The closer the finger is to the edge, the faster it scrolls; the engineer tunes the top speed, about one screen width a second. The content moving under the fixed playhead is expected here.
 
 ### Preview after an edit (P1-06 Done when)
-- Every committed edit reaches the preview within 100 ms, through `PreviewSession.update`, without rebuilding the player.
-- During a drag only the timeline updates, at 60 fps. The engine gets the change on release (`mobile-performance` skill).
-- Any edit pauses playback first (P1-04).
+Reworded 10 Oct (PM ready check) to say what the user sees, not how the engine works.
+- **The timeline first:** every committed edit (a tap, or a drag on release) shows on the timeline at once (owner, 9 Oct).
+- **Then the preview:** it keeps showing its last frame and switches to the edited result at the playhead as soon as that's ready. It never flashes black or gray in between.
+- **Target:** the preview shows the edit within 100 ms on the owner's phone (TICKETS). P1-06 is built without holding to that number (owner, 9 Oct). It's measured at phase-end QA (risk R1), and a fix ticket follows if edits take longer. How the engine gets there is the engineer's call (TECHNICAL_DESIGN).
+- **During a drag,** only the timeline changes, at 60 fps. The preview shows just what the drag needs (the frame at the moving edge while trimming, Trim above). The edit itself reaches the preview on release (`mobile-performance` skill).
+- **Any edit pauses playback first** (P1-04).
+
+### Preview catching up (after an edit, until the preview shows it)
+- **What stays:** the last frame. Nothing goes black, gray or blank.
+- **What still works:**
+  - Play switches to Pause at once and playback starts as soon as the preview is ready (P1-04's optimistic Play).
+  - Scrubbing moves the timeline, and the preview shows the right frame once it's ready.
+  - Another edit simply replaces the one being prepared.
+- **Up to 1 second: no indicator.** The timeline has already confirmed the edit, and an indicator that blinks on for a few hundred milliseconds after each edit is noise. Between 0.1 and 1 second people notice a delay but keep their train of thought, and no special feedback is needed (Nielsen's response-time limits, Guidance).
+- **After 1 second:** a quiet status, "Updating the preview", in the stage's message slot (P1-04: one slot at the top of the stage).
+  - Toast look: `surface-raised`, `label` in `text`, `shadow-float`. No action, no ×, no spinner or animation (MOTION 2).
+  - It fades in over 120 ms and fades out over 120 ms when the edited frame shows.
+  - The second is counted from the first edit the preview hasn't caught up with, so a quick run of edits doesn't hide a long wait.
+  - If the slot is busy (the save banner, or a toast such as "Undo: Trim"), the status doesn't show. One slot, banner first (P1-04).
+  - Over 1 second is the exception the R1 measurement looks for. If the owner's phone shows it after ordinary edits, that's a QA finding for the R1 fix ticket, not a reason to make the status louder.
+- **If preparing fails:** P1-04's preview error state takes over.
+- **TalkBack:** the status isn't announced. The edit's own announcement has already played ("Delete: Boom"), and the preview is visual.
+- **Reduce motion:** the same; it's a fade.
 
 ## Meme sounds (P1-08)
 1. **Add:** the pill or the tool opens the sheet; the sound's add button places it.
@@ -329,6 +349,7 @@ Not built or checked in P1 (owner, 8 Oct; TICKETS → Later · Improvements, L-0
 | Only one main clip | Delete and Reorder explain on tap | `explain_last_clip`, `explain_reorder_one` |
 | Trimming | Handle follows the finger; value bubble with the duration; snap guide when snapped; a gap or overlap on the main track until release | none |
 | Trim at the footage limit | Handle stops; one tick | none |
+| Preview catching up (after an edit) | The timeline already shows the edit; the preview keeps its last frame, with no black or gray flash. Up to 1 s nothing else shows. After 1 s, a quiet status at the top of the stage until the edited frame shows (Preview catching up). | `editor_preview_updating` |
 | Moving a sound | Lifted item with outline, value bubble with the start time; drop on the add row makes a new lane | none |
 | Reorder mode | Tiles, washed surroundings; tool bar Move earlier · Move later · Done | `reorder_move_earlier`, `reorder_move_later`, `panel_done`, `explain_reorder_first`, `explain_reorder_last` |
 | Volume panel | Title, Done, slider at the current value, the mute-every-clip toggle (video clips) | `volume_title`, `panel_done`, `volume_this_clip` or `volume_this_sound`, `volume_percent`, `volume_mute_all` |
@@ -362,7 +383,7 @@ Haptics, kept rare per Android's guidance (Guidance). They use Compose `HapticFe
 | Event | Type |
 | --- | --- |
 | A meme sound lands | Confirm |
-| Long-press lifts an item or enters reorder | LongPress |
+| Long-press lifts an item or enters reorder; long-press on the ruler opens the zoom menu (P1-05) | LongPress |
 | Snap engages; a trim reaches its footage or neighbor limit; the volume slider snaps to 100% | SegmentTick, once per engagement |
 | Anything else | none |
 
@@ -406,6 +427,7 @@ English source; the engineer machine-drafts id, es, pt and hi until P5. Budgets 
 | `explain_locked` | This track is locked. Unlock it to edit. | 50 | Later (L-02): don't add in P1 |
 | `explain_sound_unreadable` | That sound won't play. Try another one. | 50 | |
 | `explain_replace_too_short` | That video is shorter than this clip (%1$s). Pick a longer one, or trim this clip first. | 110 | P1-16, pending. %1$s = timecode "00:03.20" |
+| `editor_preview_updating` | Updating the preview | 32 | Quiet status at the top of the preview while it catches up with an edit that took over a second. Not a warning; no ellipsis character. |
 | `a11y_sound_added` | %1$s added at %2$s | 70 | %1$s = sound title, %2$s = spoken time (P1-04) |
 | `a11y_edit_on_item` | %1$s: %2$s | 70 | Announced after each edit: %1$s = edit name, %2$s = item label ("Delete: Boom") |
 | `edit_split` | Split | 24 | Edit names: used in "Undo: …" (P1-04) and announcements |
@@ -431,7 +453,7 @@ Translator notes:
 
 ## Accessibility
 - **Tool bar:** every tool's visible label is its accessible name (WCAG 2.2 SC 2.5.3), except Move here, which is spoken "Move to playhead". Close clip tools is icon-only and spoken. Focus order runs left to right. The tool bar comes after the timeline in the editor's focus order (P1-04).
-- **After each edit**, a polite announcement reads `a11y_edit_on_item` ("Delete: Boom") or `a11y_sound_added`. Explanation toasts are announced too. Nothing takes focus (SC 4.1.3).
+- **After each edit**, a polite announcement reads `a11y_edit_on_item` ("Delete: Boom") or `a11y_sound_added`. Explanation toasts are announced too. Nothing takes focus (SC 4.1.3). The "Updating the preview" status isn't announced (Preview catching up).
 - **Accessibility actions on the selected item** (TalkBack's actions menu, Switch Access):
   - Split
   - Delete
@@ -494,11 +516,13 @@ Translator notes:
 4. **Volume panel** on a video clip: slider at 100%, the mute-every-clip toggle; preview and transport visible above.
 5. **Reorder mode** by the Reorder tool: tiles, washed surroundings, Move earlier, Move later and Done.
 6. **Detached audio:** the green "Original audio" clip on its lane under the clip, and the explanation when Detach audio is tapped again.
+7. **Preview catching up:** a screen recording of a delete on the 20-clip project. Every frame between the edit and the edited preview shows the old frame: none black or gray. If an edit takes over 1 s, a still of the "Updating the preview" status.
 
 Measured (note in the QA report):
 - **P1-06 Done when:**
   - Screen-record the emulator or phone at 60 fps.
-  - For each edit (split, trim release, delete, duplicate, reorder drop, volume release), count frames from the commit to the preview change. Pass: 6 frames (100 ms) or fewer.
+  - For each edit (split, trim release, delete, duplicate, reorder drop, volume release), count frames from the commit to the preview change. Pass: 6 frames (100 ms) or fewer. Owner, 9 Oct: P1-06 is accepted without this number; record it for R1, plus how often the "Updating the preview" status appeared.
+  - In the same recordings, note any black or gray frame in the preview. One is a fail (Preview after an edit).
   - Split shows no preview change by design; check that the timeline updates instead.
   - On the owner's phone with a release-type build; emulator numbers are notes only. Pass also needs no visible lag.
 - **Leaks:** a debug build with LeakCanary. Open and close the editor 5 times and make every edit; no leak reported.
@@ -538,6 +562,7 @@ I don't edit code, so these are requests.
 7. **Starter pack:** read the title, duration, credit and catalog id from the bundled pack's metadata (the same fields as the catalog: `credit` comes from the license record). Until licensed sounds exist, release builds bundle none; debug builds may add self-made test tones.
 8. **Haptics:** Compose `HapticFeedbackType.Confirm`, `LongPress` and `SegmentTick`, as in the Motion and haptics table. Verify the names in the current Compose docs.
 9. **Analytics:** as in the table. `sound_add.tab` is `"starter"` (PM, 8 Oct) until P3-05's spec sets the real tab ids.
+10. **Preview catching up:** keep the last shown frame on screen until the edited preview has drawn its first frame, then swap, so nothing black, gray or blank ever shows. However the engine rebuilds, that's the visible rule. Show the status after 1 s, as in Preview catching up, and add `editor_preview_updating` in all five languages.
 
 ## Proposals and questions for the PM
 1. **`sound_add.tab` and `sound_preview.tab` for the starter sheet.** **Decided (PM, 8 Oct):** `"starter"` until P3-05 brings real tabs.
@@ -559,6 +584,7 @@ Open for the owner: only item 4, after trying the P1-06 build.
 | CapCut silences a clip by taking its volume to zero; a clip's "Original sound" setting controls whether its audio exports | Evidence (vendor resource pages, read through search results) | [CapCut: how to mute a video](https://www.capcut.com/resource/how-to-mute-a-video), [CapCut help: keep original sound](https://www.capcut.com/help/keep-original-sound) |
 | Every dragging function needs a single-pointer alternative; the alternative only has to reach the same result, and buttons are the usual answer | Guidance | [WCAG 2.2 SC 2.5.7 Dragging Movements](https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements) |
 | Compose custom accessibility actions are meant to replace complex gestures such as drag and drop | Guidance | [Compose semantics](https://developer.android.com/jetpack/compose/semantics) |
+| Up to 0.1 s feels instant; between 0.1 and 1 s people notice the delay but keep their train of thought, and no special feedback is needed; past 1 s they lose the feeling of working directly on the data; 10 s is the limit for keeping attention | Guidance (Nielsen 1993, still NN/g's reference; read through search results, the article page wasn't reachable here) | [NN/g: the 3 response-time limits](https://www.nngroup.com/videos/3-response-time-limits-interaction-design/), [Nielsen, Time scales of UX](https://www.uxtigers.com/post/time-scales-ux) |
 | Haptics: less is more; prefer clear, system-consistent effects; weigh how often an effect fires. `SEGMENT_TICK` is for stepping through choices, `CONFIRM` for a completed action, `LONG_PRESS` for a long press that triggers an action. | Guidance | [Android haptics design principles](https://developer.android.com/develop/ui/views/haptics/haptics-principles), [Compose HapticFeedbackType](https://developer.android.com/reference/kotlin/androidx/compose/ui/hapticfeedback/HapticFeedbackType) |
 | A visible label must be part of the accessible name | Guidance | [WCAG 2.2 SC 2.5.3 Label in Name](https://www.w3.org/WAI/WCAG22/Understanding/label-in-name.html) |
 | Use undo instead of warnings for reversible actions | Guidance (expert) | [Aza Raskin, "Never use a warning when you mean undo"](https://alistapart.com/article/neveruseawarning/) |

@@ -88,7 +88,7 @@ Board: `design/screens/VideoEditor.dc.html`; component `design/system/components
 
 ### Ruler
 - **Height:** the `timecode` line height plus `space-1` above and below (24 at 100%).
-- **Labels:** `timecode` style in `text-muted`. Each label starts at its tick, as on the board.
+- **Labels:** `timecode` style in `text-muted`. Each label starts `space-1` right of its tick, so the text never touches the tick line (as built; P1-05 review).
   - Whole seconds read `MM:SS` (`H:MM:SS` from one hour).
   - Between whole seconds, only the fraction shows: ".25", ".50", ".75".
 - **Ticks:**
@@ -97,8 +97,9 @@ Board: `design/screens/VideoEditor.dc.html`; component `design/system/components
   - Minor ticks are hidden when they would sit closer than `space-2` to each other.
 - **Range:** no labels before 0:00. After the end, labels continue as normal; the end is shown by where the lane bands stop.
 - **Label step:** the smallest step from this ladder whose spacing on screen is at least the widest label's measured width plus `space-4`:
-  - Ladder: 0.25 · 0.5 · 1 · 2 · 5 · 10 · 15 · 30 s · 1 · 2 · 5 · 10 min.
-  - Minor ticks per step: 5 for 0.25, 0.5, 5, 10 s and 5, 10 min; 4 for 1, 2 s and 1, 2 min; 3 for 15 and 30 s.
+  - Ladder: 0.25 · 0.5 · 1 · 2 · 5 · 10 · 15 · 30 s · 1 · 2 · 5 · 10 · 15 · 30 min · 1 h, then whole multiples of 1 h.
+  - Minor ticks per step: 5 for 0.25, 0.5, 5, 10 s and 5, 10 min; 4 for 1, 2 s, 1, 2 min, 1 h and its multiples; 3 for 15 and 30 s and 15 and 30 min.
+  - **Why the rungs above 10 min (P1-05 review, 10 Oct):** at "Show whole video", an hour-long project fills half of a 360 dp screen (0.05 dp per second). A 10 min step is then 30 dp, narrower than one "0:00:00" label, so labels overlapped (seen in the build's renders). 15 min, 30 min and 1 h follow the seconds pattern. Whole hours past that only matter for projects of about 2.7 hours or more on a 360 dp phone.
 
 | Scale (dp per second) | Labels every | Minor ticks every | Example |
 | --- | --- | --- | --- |
@@ -107,6 +108,7 @@ Board: `design/screens/VideoEditor.dc.html`; component `design/system/components
 | 40 (default, the board's spacing) | 2 s | 0.5 s | 00:00 · 00:02 · 00:04 |
 | 10 | 10 s | 2 s | 00:00 · 00:10 · 00:20 |
 | 2 | 30 s | 10 s | 00:00 · 00:30 · 01:00 |
+| 0.05 (a 1 h project, whole video, 360 dp) | 30 min | 10 min | 00:00 · 30:00 · 1:00:00 |
 
 At 200% font the labels are wider, so the same rule picks a longer step on its own.
 
@@ -126,6 +128,9 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
   - Show whole video (the "most zoomed out" scale)
 
   An item at its limit shows in `text-muted` and does nothing.
+  - Zoom in and Zoom out keep the menu open for repeated taps; Show whole video closes it (Menu README).
+  - Opening it gives one LongPress haptic, as every long-press that triggers something does (P1-06 → Motion and haptics).
+  - Its pane title, spoken when it opens, is `timeline_zoom_menu` ("Zoom").
   - This is the single-pointer alternative to pinching (WCAG 2.2 SC 2.5.1, Guidance). It's also reachable through TalkBack and Switch Access actions, and by keyboard shortcuts later (L-01).
 
 ### Lanes and items
@@ -162,6 +167,7 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
   - The line: `playhead-width` in `selection` white, from the top of the ruler to the bottom of the visible lanes.
   - The head: a `playhead-head-size` circle in `selection` at the top of the ruler, centered on the line (as on the board).
   - Layering: above items, below the "Add a meme sound" pill and any bubble or menu.
+  - Ruler labels pass under the line and the head as time scrolls. At rest on a label's tick (0:00 on every open), the head covers about 2 dp of that label's first digit. That's accepted (P1-05 review): the transport timecode right above shows the exact time, and moving labels away from their ticks would cost more than it gains.
 - **It never moves on screen.** The content scrolls under it. The Timeline component already says so; this spec confirms it. Why:
   - **Nothing to grab.** A 2 dp line is far below `touch-target`. Scrolling the content works anywhere on the timeline, one-handed.
   - **Edits happen where the eye already is.** Split, Add a meme sound and "Move here" all act at the playhead. With the playhead fixed under the play button (P1-04), that point never wanders.
@@ -224,7 +230,8 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
 - **What a selected item looks like:**
   - **Outline:** `stroke-selection` in `selection`, drawn outside the item with a `stroke-hairline` gap. The gap lets the white read against blue sound clips (2.4:1 on the fill itself) by showing the dark background between them (17.2:1 or more).
   - **Trim handles:** at both ends, just outside the outline (P1-06 → Trim).
-  - **Duration badge**, main video clips only. It sits in the top-left corner, `space-1` inside the clip: `scrim` fill, `radius-sm`, the duration in `timecode` style in `text` (P1-04 format, "00:03.20"). It shows only if the clip is wider than the badge plus `space-2`.
+  - **Duration badge**, main video clips only. It sits in the top-left corner, `space-1` inside the clip: `scrim` fill, `radius-sm`, the duration in `timecode` style in `text` (P1-04 format, "00:03.20"). It shows only if the clip's visible part is wider than the badge plus `space-2`.
+    - Like labels, it sticks to the left edge of the clip's visible part when the clip's start is scrolled off screen, so a long selected clip stays measured while the user scrolls through it (P1-05 review).
     - Contrast: `text` on `scrim` stays 7.5:1 or more over any thumbnail, even pure white.
     - Non-video items show their duration only while being trimmed (P1-06).
 - **Selecting never moves the playhead.** Clearing the selection never deletes anything.
@@ -259,7 +266,7 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
 | Very long project (an hour) | Zooms out to the "whole video" scale; ruler steps in minutes; tiles load only near the view | none |
 | Item narrower than its handles' targets | Handle targets reach outward from the item (P1-06), so the item's own body stays tappable. The Edit tool and TalkBack give equal routes. | none |
 | Empty project (defensive, P1-04) | Ruler and an empty main row; no bands, no toggle, no add row | P1-04 |
-| Missing file | The clip shows no thumbnails and the label "File missing" | `clip_missing_file` |
+| Missing file | The clip shows no thumbnails and the label "File missing". TalkBack hears it too, as the clip's first state. | `clip_missing_file` |
 | 200% font, Hindi | See Accessibility | |
 
 ## Motion
@@ -270,8 +277,8 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
 | Pinch | Follows the fingers | Same: the user is driving it |
 | Playback | Content scrolls with playback | Same |
 | Thumbnail arrives | 120 ms fade-in | Same |
-| Selection outline and handles | 120 ms fade | Same |
-| Lane added or removed | Lanes below slide over 200 ms | 120 ms fade |
+| Selection outline and handles | 120 ms fade in; clearing the selection removes them at once | Same |
+| Lane added or removed | Lanes below slide over 200 ms. Built with the first ticket that adds or removes a lane in use (P1-06 delete, P1-08 sound landing, P1-09 detach); nothing in P1-05 does. | 120 ms fade |
 | Menu opens | 120 ms fade | Same |
 
 The bonk and the edit motions are in P1-06.
@@ -289,6 +296,7 @@ English source; machine drafts for id, es, pt and hi until P5. Budgets are in ch
 | `timeline_zoom_fit` | Show whole video | 24 | Same |
 | `clip_missing_file` | File missing | 18 | Inside a 40 dp clip; keep it short |
 | `timeline_a11y` | Timeline | 16 | Container name |
+| `timeline_zoom_menu` | Zoom | 16 | Pane title of the zoom menu, spoken when it opens. A noun naming the menu. Leaving it in English is fine where editors do. |
 | `a11y_playhead` | Playhead | 16 | The playhead control's name |
 | `a11y_forward_1s` | Forward 1 second | 24 | Accessibility action |
 | `a11y_back_1s` | Back 1 second | 24 | Same |
@@ -303,6 +311,7 @@ English source; machine drafts for id, es, pt and hi until P5. Budgets are in ch
 | `track_effect` | Effect | 16 | |
 | `a11y_clip_media` | %1$s, clip %2$d of %3$d, %4$s long, starts at %5$s | 100 | %1$s = `import_item_video` or `import_item_photo` (P1-02); %4$s and %5$s = spoken times (P1-04 `a11y_time_*`) |
 | `a11y_item` | %1$s, %2$s, %3$s long, starts at %4$s | 110 | %1$s = track name, %2$s = the item's label ("Boom", "Original audio") |
+| `a11y_item_unnamed` | %1$s, %2$s long, starts at %3$s | 90 | For an item with no name: a sticker the user made, a sound before P1-08 titles. %1$s = track name; %2$s and %3$s = spoken times. Same order as `a11y_item` without the name. |
 | `a11y_state_locked` | Locked | 16 | State description. Later (L-02): don't add it in P1. |
 | `a11y_state_past_end` | Partly after the end of the video | 44 | |
 | `a11y_state_after_end` | After the end of the video, so it won't play | 56 | |
@@ -324,12 +333,15 @@ Translator notes:
   3. Original audio toggle (when shown): a switch.
   4. Tracks top to bottom. Within each track, items in time order.
      - Main clips read `a11y_clip_media`, for example "Video, clip 2 of 3, 4.5 seconds long, starts at 3.2 seconds".
-     - Other items read `a11y_item`, for example "Meme sound, Boom, 1.4 seconds long, starts at 3.2 seconds".
-     - States are appended: selected (system), muted, sound detached, past the end; locked comes with L-02.
+     - Other items read `a11y_item`, for example "Meme sound, Boom, 1.4 seconds long, starts at 3.2 seconds". An item with no name reads `a11y_item_unnamed`, for example "Sticker, 2 seconds long, starts at 3.2 seconds", never the track name twice.
+     - States are appended: selected (system), file missing (`clip_missing_file`, first), muted, sound detached, past the end; locked comes with L-02.
      - Double-tap selects the item, scrolls it into view and moves the playhead to its start.
   5. When an item is selected, its two handles follow it: "Start of Boom", value "3.2 seconds". Each is adjustable by one frame and has the action "Trim to playhead". Edits announce through P1-06.
   6. The "Add a meme sound" pill, then the Add media tile (P1-16).
-- **Every item is reachable by TalkBack at any scroll position.** Drawing is virtualized, but the item list isn't. Items' semantics come from the model, not from what's on screen (request 6).
+- **Every item is reachable by TalkBack at any scroll position** (revised in the P1-05 review, 10 Oct). Compose leaves nodes that sit off screen out of the accessibility tree, so the nodes can't all be placed at once the way the first draft asked. Instead it works like a lazy list:
+  - Each track row has nodes for the items on screen, placed where they're drawn, so explore-by-touch finds them.
+  - Each row is scrollable for TalkBack. Swiping past its last item on screen scrolls time by one screen; that moves the playhead and the preview, which is expected in a timeline.
+  - Known risk, checked on the device: after the user swipes through track 1 to the end of the video, track 2 starts at the end too, so its early items are reachable only by swiping back. If QA confirms this, the fallback is to read screen by screen: one scrollable node around all rows instead of one per row. TalkBack then reads every track's items on this screen, top to bottom, scrolls one screen, and goes on, so every item comes in forward order (P1-05 review, polish 5).
 - **Single-pointer alternatives (WCAG 2.2 SC 2.5.1 and 2.5.7, Guidance):**
 
   | Gesture | Alternative |
@@ -371,7 +383,7 @@ None fire from looking at or moving through the timeline. The toggle and every e
 1. **One video clip, just opened**, at 360 dp: leading area with the toggle, the playhead over 0:00, thumbnails loaded, the add pill under the playhead, ruler labels every 2 s.
 2. **Many tracks** (debug 6-track sample): track order as specified, lane bands ending at the end of the video, a sound reaching past the end with the wash, lanes scrolled vertically.
 3. **A selected meme sound:** white outline with the gap, handles outside, the rest unchanged. Then a selected main clip with the duration badge.
-4. **Zoomed all the way in and all the way out:** ruler steps of 0.25 s and the "whole video" view. Plus the zoom menu open on a long-press.
+4. **Zoomed all the way in and all the way out:** ruler steps of 0.25 s and the "whole video" view. Plus the zoom menu open on a long-press, and the hour-long project at Show whole video (labels 00:00 · 30:00 · 1:00:00, none overlapping).
 5. **Loading:** a 20-clip project opened cold, `track-video` tiles filling in, no spinners. (The locked-track screenshot waits for L-02.)
 6. **Hindi at 200% font:** taller rows, nothing clipped.
 
@@ -379,7 +391,8 @@ Measured (note in the QA report):
 - **Done when:** a 20-clip, 4-lane debug project with thumbnails loaded, release-type build, the owner's phone. Scripted `adb shell input swipe` flings across the timeline, then `dumpsys gfxinfo` "Janky frames" under 5% (`mobile-performance` skill), and no visible lag. Repeat while thumbnails are still loading, and note the result.
 - **Leaks:** a debug build with LeakCanary. Open and close the editor 5 times, scroll, zoom and select; no leak reported.
 - **Scrub:** preview updates under 100 ms per update (P1-04).
-- **TalkBack:** every item in the 20-clip project is reachable by swiping, at any scroll position.
+- **TalkBack:** every item in the 20-clip project is reachable by swiping, at any scroll position. Then, from Go to start, swipe through all 20 clips and on into the caption lane: note whether "Caption 1" (at 0:00) comes next or only by swiping back (Accessibility → known risk).
+- **Missing file with TalkBack:** the missing clip says "File missing".
 
 ## Requests to the principal mobile engineer
 I don't edit code, so these are requests.
@@ -388,7 +401,7 @@ I don't edit code, so these are requests.
 3. **Icons:** draw `volume_off` to the icon grammar (the `sounds` cone with a cross instead of waves). The toggle's "on" state reuses `sounds`. `lock` (shackle stroke, solid body as the core) waits for L-02.
 4. **Constants:** the zoom values and ruler ladder above are layout math. Keep them as named constants in one place in the timeline component, with a comment pointing to this spec, so the token audit can tell them from hardcoded design values.
 5. **Rendering:** draw the timeline as a few layers (ruler, bands and items, playhead, overlays) that read scroll and zoom inside draw or offset lambdas, so a scroll frame doesn't recompose. Virtualize items and tiles to the visible window plus one screen.
-6. **Semantics:** build item semantics from the model, so TalkBack reaches every item regardless of what's drawn. Add the playhead's adjustable semantics and the container's zoom actions.
+6. **Semantics:** TalkBack must reach every item regardless of what's drawn. Add the playhead's adjustable semantics and the container's zoom actions. *(Revised in the P1-05 review: nodes for the items on screen plus a TalkBack scroll per row, as built; see Accessibility for the device check and the fallback.)*
 7. **Empty tracks:** when an edit leaves a non-main track with no items, remove the track in the same edit (one undo step).
 8. **Thumbnails:** request at strip height, nearest-frame fallback while zooming, cache as in the `mobile-performance` skill.
 9. **Debug samples for QA:**
