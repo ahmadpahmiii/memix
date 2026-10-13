@@ -151,6 +151,9 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
   - A `lock` icon at `icon-small` sits before the label, in the label's color.
   - The item can be selected but shows no trim handles (P1-06 → Locked).
 - **Missing file** (P1-04 state): the clip shows `track-video` with no thumbnails and the label "File missing" in `text`.
+  - **Selected:** the outline and handles show, but **no duration badge** (P1-05 review, polish 8, 13 Oct). The badge and the label both want the top-left, and the badge covered the label's top half. The label wins because it is the clip's only message: P1-04's toast says to find this clip and delete it.
+  - The length is still there: the clip's span against the ruler, TalkBack ("6 seconds long"), and P1-06's value bubble while trimming.
+  - Rejected: the label under the badge (16 + 14 dp of text in a 40 dp clip only fits up to about 107% font size, and WCAG 2.2 SC 1.4.4 needs 200%). Also rejected: the label right of the badge (the badge takes about 70 dp, so on a 3 s clip at the default zoom, about 116 dp, "File missing" is cut to "File…", and at 200% it disappears).
 
 ### Thumbnail strip (main video; overlays later)
 - **Tiles:** square tiles the clip's height (`track-height-video`, 40). The first tile starts at the clip's start. The last is cut at the clip's end, minus the gap.
@@ -233,6 +236,7 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
   - **Duration badge**, main video clips only. It sits in the top-left corner, `space-1` inside the clip: `scrim` fill, `radius-sm`, the duration in `timecode` style in `text` (P1-04 format, "00:03.20"). It shows only if the clip's visible part is wider than the badge plus `space-2`.
     - Like labels, it sticks to the left edge of the clip's visible part when the clip's start is scrolled off screen, so a long selected clip stays measured while the user scrolls through it (P1-05 review).
     - Contrast: `text` on `scrim` stays 7.5:1 or more over any thumbnail, even pure white.
+    - Not on a clip whose file is missing: its "File missing" label takes the place (Lanes and items → Missing file).
     - Non-video items show their duration only while being trimmed (P1-06).
 - **Selecting never moves the playhead.** Clearing the selection never deletes anything.
 - **The selection is kept** through playback, scrolling, zooming and undo, if the item still exists (P1-04).
@@ -260,13 +264,13 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
 | Loading thumbnails | `track-video` tiles, image fades in per tile | none |
 | Playing | Content scrolls under the fixed playhead. The selection is kept. | none |
 | At end | The end sits under the playhead. The right half shows the trailing area and lanes with no bands. | none |
-| Item selected | Outline, handles, badge (main video) | none |
+| Item selected | Outline, handles, badge (main video, unless its file is missing) | none |
 | Item locked: **Later (L-02)** | Lock icon before the label; when selected, outline and no handles | `a11y_state_locked` (L-02) |
 | Item past the end | `scrim` wash on the part past the end; label in `text` | `a11y_state_past_end`, `a11y_state_after_end` |
 | Very long project (an hour) | Zooms out to the "whole video" scale; ruler steps in minutes; tiles load only near the view | none |
 | Item narrower than its handles' targets | Handle targets reach outward from the item (P1-06), so the item's own body stays tappable. The Edit tool and TalkBack give equal routes. | none |
 | Empty project (defensive, P1-04) | Ruler and an empty main row; no bands, no toggle, no add row | P1-04 |
-| Missing file | The clip shows no thumbnails and the label "File missing". TalkBack hears it too, as the clip's first state. | `clip_missing_file` |
+| Missing file | The clip shows no thumbnails and the label "File missing". TalkBack hears it too, as the clip's first state. Selected: outline and handles, no badge, the label whole. | `clip_missing_file` |
 | 200% font, Hindi | See Accessibility | |
 
 ## Motion
@@ -382,7 +386,7 @@ None fire from looking at or moving through the timeline. The toggle and every e
 ## QA compares
 1. **One video clip, just opened**, at 360 dp: leading area with the toggle, the playhead over 0:00, thumbnails loaded, the add pill under the playhead, ruler labels every 2 s.
 2. **Many tracks** (debug 6-track sample): track order as specified, lane bands ending at the end of the video, a sound reaching past the end with the wash, lanes scrolled vertically.
-3. **A selected meme sound:** white outline with the gap, handles outside, the rest unchanged. Then a selected main clip with the duration badge.
+3. **A selected meme sound:** white outline with the gap, handles outside, the rest unchanged. Then a selected main clip with the duration badge. Then a selected missing clip: outline and handles, "File missing" whole, no badge.
 4. **Zoomed all the way in and all the way out:** ruler steps of 0.25 s and the "whole video" view. Plus the zoom menu open on a long-press, and the hour-long project at Show whole video (labels 00:00 · 30:00 · 1:00:00, none overlapping).
 5. **Loading:** a 20-clip project opened cold, `track-video` tiles filling in, no spinners. (The locked-track screenshot waits for L-02.)
 6. **Hindi at 200% font:** taller rows, nothing clipped.
@@ -419,6 +423,8 @@ I don't edit code, so these are requests.
 | Anything done by dragging needs a single-pointer way to reach the same result; reordering isn't "essential" dragging | Guidance | [WCAG 2.2 SC 2.5.7 Dragging Movements](https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements) |
 | Targets of at least 24 × 24 CSS px, with spacing and "equivalent control" exceptions | Guidance | [WCAG 2.2 SC 2.5.8 Target Size (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html) |
 | Color can't be the only visual means of conveying information | Guidance | [WCAG 2.2 SC 1.4.1 Use of Color](https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html) |
+| Text must resize to 200% without losing content (rules out stacking the missing-file label under the badge) | Guidance | [WCAG 2.2 SC 1.4.4 Resize Text](https://www.w3.org/WAI/WCAG22/Understanding/resize-text.html) |
+| Errors should state the problem plainly and help the user recover, so the message beats secondary detail (the missing-file label beats the badge) | Guidance | [NN/g: 10 usability heuristics, #9](https://www.nngroup.com/articles/ten-usability-heuristics/) |
 | Compose custom accessibility actions are the intended replacement for complex gestures such as drag and drop | Guidance | [Compose semantics](https://developer.android.com/jetpack/compose/semantics) |
 | About half of observed phone users tap one-handed with the thumb; one-handed reach favors the lower-middle of the screen | Evidence (field observation of 1,300+ people, 2013; not a controlled study) | [Hoober, UXmatters](https://www.uxmatters.com/mt/archives/2013/02/how-do-users-really-hold-mobile-devices.php) |
 | CapCut keeps its playhead fixed in the center, zooms around it, shows an "Add audio" row under the main track and a mute control at the track's start | Assumption (product knowledge; CapCut's help pages weren't reachable here, and third-party guides disagree on details) | — |
