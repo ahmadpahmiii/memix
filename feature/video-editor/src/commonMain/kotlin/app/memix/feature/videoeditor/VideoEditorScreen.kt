@@ -84,6 +84,7 @@ import app.memix.core.domain.video.PreviewSession
 import app.memix.core.ui.formatTimecode
 import app.memix.core.ui.spokenTimeOf
 import app.memix.feature.videoeditor.timeline.Timeline
+import app.memix.feature.videoeditor.timeline.spokenName
 import app.memix.feature.videoeditor.timeline.timelineMinHeight
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -91,6 +92,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import memix.feature.video_editor.generated.resources.Res
+import memix.feature.video_editor.generated.resources.a11y_edit_on_item
+import memix.feature.video_editor.generated.resources.a11y_reorder_position
+import memix.feature.video_editor.generated.resources.edit_delete
+import memix.feature.video_editor.generated.resources.edit_duplicate
+import memix.feature.video_editor.generated.resources.edit_reorder
+import memix.feature.video_editor.generated.resources.edit_split
 import memix.feature.video_editor.generated.resources.edit_trim
 import memix.feature.video_editor.generated.resources.editor_close
 import memix.feature.video_editor.generated.resources.editor_dismiss
@@ -103,6 +110,7 @@ import memix.feature.video_editor.generated.resources.editor_play
 import memix.feature.video_editor.generated.resources.editor_preview_a11y
 import memix.feature.video_editor.generated.resources.editor_preview_error_body
 import memix.feature.video_editor.generated.resources.editor_preview_retry
+import memix.feature.video_editor.generated.resources.editor_preview_updating
 import memix.feature.video_editor.generated.resources.editor_redo
 import memix.feature.video_editor.generated.resources.editor_redo_toast
 import memix.feature.video_editor.generated.resources.editor_save_failed
@@ -112,13 +120,18 @@ import memix.feature.video_editor.generated.resources.editor_undo
 import memix.feature.video_editor.generated.resources.editor_undo_toast
 import memix.feature.video_editor.generated.resources.editor_unsaved_body
 import memix.feature.video_editor.generated.resources.editor_unsaved_title
+import memix.feature.video_editor.generated.resources.explain_last_clip
+import memix.feature.video_editor.generated.resources.explain_reorder_first
+import memix.feature.video_editor.generated.resources.explain_reorder_last
+import memix.feature.video_editor.generated.resources.explain_reorder_one
+import memix.feature.video_editor.generated.resources.explain_split
 import memix.feature.video_editor.generated.resources.import_free_up_space
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The video editor frame (spec P1-04 → Layout): top bar, preview stage, transport row, and the regions the timeline
- * (P1-05) and the tool bar (P1-06) fill. The stage and timeline split their shared space 60/40 by window size only,
- * so the preview never jumps while editing.
+ * The video editor frame (spec P1-04 → Layout): top bar, preview stage, transport row, the timeline (P1-05) and the
+ * tool bar (P1-06). The stage and timeline split their shared space 60/40 by window size only, so the preview never
+ * jumps while editing.
  *
  * [previewSurface] draws a preview session's picture: the composition root passes the engine's surface, which a
  * feature can't depend on. [onFreeUpSpace] opens the phone's storage manager.
@@ -131,12 +144,13 @@ fun VideoEditorScreen(
     onFreeUpSpace: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // System back closes the editor through the app's own navigation, which saves on the way out. Only while
-    // saving fails does the editor take back itself, to ask first; the open sheet then handles back.
+    // System back closes the editor through the app's own navigation, which saves on the way out. The editor takes
+    // back itself while something inside it comes first (a selection clears before the editor closes, spec P1-04 →
+    // System back order) or while saving fails, to ask first; an open sheet handles its own back.
     NavigationBackHandler(
         rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled = state.isSaveFailing && !state.unsavedSheetOpen,
-        onBackCompleted = { onIntent(VideoEditorIntent.Close) },
+        isBackEnabled = !state.unsavedSheetOpen && (state.reorder != null || state.selectedItemId != null || state.isSaveFailing),
+        onBackCompleted = { onIntent(VideoEditorIntent.Back) },
     )
     LifecycleEventEffect(Lifecycle.Event.ON_START) { onIntent(VideoEditorIntent.AppStarted) }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { onIntent(VideoEditorIntent.AppStopped) }
@@ -147,9 +161,9 @@ fun VideoEditorScreen(
             .background(MemixColors.canvas)
             // Escape does what system back does (spec P1-04 → Interactions); the open sheet handles its own.
             .onPreviewKeyEvent { event ->
-                val closes = event.key == Key.Escape && !state.unsavedSheetOpen
-                if (closes && event.type == KeyEventType.KeyUp) onIntent(VideoEditorIntent.Close)
-                closes
+                val goesBack = event.key == Key.Escape && !state.unsavedSheetOpen
+                if (goesBack && event.type == KeyEventType.KeyUp) onIntent(VideoEditorIntent.Back)
+                goesBack
             },
     ) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
@@ -157,11 +171,13 @@ fun VideoEditorScreen(
             StageTransportAndTimeline(
                 stage = { PreviewStage(state, onIntent, previewSurface, onFreeUpSpace) },
                 transport = { TransportRow(state, onIntent) },
-                timeline = { Timeline(state.timeline, state.selectedItemId, state.preview, state.thumbnails, onIntent) },
+                timeline = {
+                    Timeline(state.timeline, state.selectedItemId, state.trimRanges, state.reorder, state.landed, state.preview, state.thumbnails, onIntent)
+                },
                 timelineMinHeight = timelineMinHeight(),
                 modifier = Modifier.weight(1f),
             )
-            ToolBarRegion()
+            ToolBarRegion(state.clipTools, state.reorder != null, onIntent)
         }
         UnsavedChangesSheet(state.unsavedSheetOpen, onIntent, onFreeUpSpace.takeIf { state.canFreeUpSpace })
     }
@@ -307,6 +323,8 @@ private fun StageMessages(
     if (toast != null) ToastTimer(toast, onTimedOut = { onIntent(VideoEditorIntent.ToastTimedOut(it)) })
     val banner = state.saveBanner
     val shownToast = toast?.takeIf { banner == null && !it.isSpokenOnly }
+    // The quietest message: only when nothing else is in the slot, and never announced (spec P1-06 → Preview catching up).
+    val updatingShown = state.previewUpdating && banner == null && shownToast == null
     Box(modifier.padding(top = MemixSpacing.space2, start = MemixSpacing.space4, end = MemixSpacing.space4)) {
         // Scrolls rather than cutting a message off when a large font makes it taller than a small stage.
         Box(Modifier.verticalScroll(rememberScrollState())) {
@@ -318,6 +336,7 @@ private fun StageMessages(
                 )
             }
             FadingToast(shownToast) { shown -> Toast(toastText(shown.message)) }
+            FadingToast(if (updatingShown) PreviewUpdating else null) { Toast(stringResource(Res.string.editor_preview_updating), announce = false) }
         }
         // A new node per toast, so the same text twice ("Undo: Trim") is announced twice.
         if (toast != null && toast.isSpokenOnly) key(toast.id) { SpokenOnly(toastText(toast.message)) }
@@ -334,8 +353,8 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
     val accessibilityManager = LocalAccessibilityManager.current
     LaunchedEffect(toast.id) {
         val baseMillis = when (toast.message) {
-            is ToastMessage.Undone, is ToastMessage.Redone -> WHAT_HAPPENED_TOAST_MILLIS
-            ToastMessage.MissingMedia -> EXPLANATION_TOAST_MILLIS
+            is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition -> WHAT_HAPPENED_TOAST_MILLIS
+            ToastMessage.MissingMedia, is ToastMessage.Explain -> EXPLANATION_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
         onTimedOut(toast.id)
@@ -347,12 +366,30 @@ private fun toastText(message: ToastMessage): String = when (message) {
     is ToastMessage.Undone -> stringResource(Res.string.editor_undo_toast, editName(message.edit))
     is ToastMessage.Redone -> stringResource(Res.string.editor_redo_toast, editName(message.edit))
     ToastMessage.MissingMedia -> stringResource(Res.string.editor_missing_media)
+    is ToastMessage.Explain -> explanationText(message.explanation)
+    is ToastMessage.Edited -> stringResource(Res.string.a11y_edit_on_item, editName(message.edit), spokenName(message.item))
+    is ToastMessage.ReorderPosition -> stringResource(Res.string.a11y_reorder_position, message.position, message.count)
 }
 
 @Composable
 private fun editName(edit: VideoEdit): String = stringResource(
     when (edit) {
+        VideoEdit.SPLIT -> Res.string.edit_split
         VideoEdit.TRIM -> Res.string.edit_trim
+        VideoEdit.DELETE -> Res.string.edit_delete
+        VideoEdit.DUPLICATE -> Res.string.edit_duplicate
+        VideoEdit.REORDER -> Res.string.edit_reorder
+    },
+)
+
+@Composable
+private fun explanationText(explanation: Explanation): String = stringResource(
+    when (explanation) {
+        Explanation.SPLIT_OUTSIDE -> Res.string.explain_split
+        Explanation.LAST_CLIP -> Res.string.explain_last_clip
+        Explanation.REORDER_ONE_CLIP -> Res.string.explain_reorder_one
+        Explanation.ALREADY_FIRST -> Res.string.explain_reorder_first
+        Explanation.ALREADY_LAST -> Res.string.explain_reorder_last
     },
 )
 
@@ -499,18 +536,6 @@ private fun CurrentTime(position: State<Long>) {
     Text(formatTimecode(position.value), MemixTheme.type.timecode)
 }
 
-/** P1-06 puts the tools here; until then the bar is empty, in `surface`, over the navigation bar's space. */
-@Composable
-private fun ToolBarRegion() {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .background(MemixColors.surface)
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
-            .height(MemixSize.toolbarHeight),
-    )
-}
-
 /** [onFreeUpSpace] is null when the phone's storage screen can't open; Leave anyway is then the only button. */
 @Composable
 private fun UnsavedChangesSheet(visible: Boolean, onIntent: (VideoEditorIntent) -> Unit, onFreeUpSpace: (() -> Unit)?) {
@@ -525,6 +550,9 @@ private fun UnsavedChangesSheet(visible: Boolean, onIntent: (VideoEditorIntent) 
 }
 
 private val NoPosition: StateFlow<Long> = MutableStateFlow(0L)
+
+/** The key FadingToast keeps while "Updating the preview" fades out. */
+private object PreviewUpdating
 
 /** The timeline's share of the space it splits with the stage (spec P1-04 → Layout). */
 private const val TIMELINE_SHARE = 0.4f

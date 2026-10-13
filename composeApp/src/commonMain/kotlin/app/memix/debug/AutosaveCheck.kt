@@ -1,5 +1,6 @@
 package app.memix.debug
 
+import app.memix.core.domain.EditorTool
 import app.memix.core.domain.Logger
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.project.GetProjectUseCase
@@ -98,10 +99,10 @@ class AutosaveCheck(
     }
 
     private suspend fun runScript(session: ProjectEditSession) {
-        for (step in 1..FIRST_EDITS) change { session.commit(SCRIPTED_EDIT) { it.edited(step) } }
+        for (step in 1..FIRST_EDITS) change { session.commit(SCRIPTED_TOOL) { it.edited(step) } }
         log("$RUN: $FIRST_EDITS edits ${STEP_INTERVAL.inWholeMilliseconds} ms apart, then a pause")
         delay(PAUSE)
-        for (step in FIRST_EDITS + 1..ALL_EDITS) change { session.commit(SCRIPTED_EDIT) { it.edited(step) } }
+        for (step in FIRST_EDITS + 1..ALL_EDITS) change { session.commit(SCRIPTED_TOOL) { it.edited(step) } }
         log("$RUN: $ALL_EDITS edits in all")
         var undos = 0
         while (session.state.value.canUndo) change { session.undo().also { undos++ } }
@@ -122,7 +123,7 @@ class AutosaveCheck(
             delay(FRAME_INTERVAL)
         }
         val beforeDrag = session.state.value.project
-        change { session.commit(SCRIPTED_DRAG) { it.dragged(stickerCenterX) } }
+        change { session.commit(SCRIPTED_TOOL) { it.dragged(stickerCenterX) } }
         change { session.undo() }
         val undoneToBefore = session.state.value.project == beforeDrag
         change { session.redo() }
@@ -169,9 +170,9 @@ class AutosaveCheck(
         const val VERIFY = "autosave-verify"
         private const val PROJECT_ID = "autosave-check"
         private const val NAME_PREFIX = "Autosave check: "
-        // Edit names for ProjectEditSession.commit (the tool_use id an undo or redo reports); debug-only values.
-        private const val SCRIPTED_EDIT = "debug_edit"
-        private const val SCRIPTED_DRAG = "debug_drag"
+        // Every scripted step needs a tool to name it; the check never reads the name, and in debug builds the steps
+        // log tool_use like any edit.
+        private val SCRIPTED_TOOL = EditorTool.TRIM
         private const val FIRST_EDITS = 60
         private const val ALL_EDITS = 110
         private const val REDOS = 3

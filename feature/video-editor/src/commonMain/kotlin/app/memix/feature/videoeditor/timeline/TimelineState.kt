@@ -28,6 +28,12 @@ internal class TimelineState {
     /** True while a tap on the ruler or an accessibility action animates the playhead to a time. */
     var isSeekAnimating by mutableStateOf(false)
 
+    /** The trim handle being dragged, or null (P1-06). Its edge moves at frame rate; only draw and gesture code read it. */
+    var trim by mutableStateOf<TrimDrag?>(null)
+
+    /** Reorder mode's tiles, from entering until they've expanded back after it ended; null otherwise (P1-06). */
+    var reorder by mutableStateOf<ReorderStrip?>(null)
+
     /**
      * True from a finger touching the timeline until it lifts. While true the preview's own position reports are
      * ignored, so a report still on its way after the touch paused playback can't pull the playhead back.

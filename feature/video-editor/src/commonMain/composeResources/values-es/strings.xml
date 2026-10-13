@@ -56,6 +56,10 @@
     <string name="editor_empty_title">Este borrador no tiene clips</string>
     <string name="editor_empty_body">Ciérralo y crea un nuevo meme en video.</string>
     <string name="edit_trim">Recortar</string>
+    <string name="edit_split">Dividir</string>
+    <string name="edit_delete">Eliminar</string>
+    <string name="edit_duplicate">Duplicar</string>
+    <string name="edit_reorder">Reordenar</string>
     <string name="import_row_a11y">%1$s, %2$s. %3$s</string>
     <string name="import_row_a11y_no_name">%1$s. %2$s</string>
     <!-- Timeline (P1-05): machine draft until P5-06. Budgets and translator notes: docs/ux/specs/P1-05-timeline.md -> Copy. Spoken times come from a11y_time_* (core:ui); never put timecode digits in spoken strings. -->
@@ -85,4 +89,27 @@
     <string name="a11y_state_after_end">Después del final del video, así que no se reproduce</string>
     <string name="a11y_state_original_muted">Audio original silenciado</string>
     <string name="a11y_state_sound_detached">Sonido separado</string>
+    <!-- Clip tools and edits (P1-06): machine draft until P5-06. Budgets and translator notes: docs/ux/specs/P1-06-clip-edits-and-audio.md -> Copy; a11y_trim_* in docs/ux/specs/P1-05-timeline.md -> Copy. -->
+    <string name="tool_edit">Editar</string>
+    <string name="tool_split">Dividir</string>
+    <string name="tool_delete">Eliminar</string>
+    <string name="tool_duplicate">Duplicar</string>
+    <string name="tool_reorder">Reordenar</string>
+    <string name="clip_tools_close">Cerrar herramientas</string>
+    <string name="reorder_move_earlier">Mover antes</string>
+    <string name="reorder_move_later">Mover después</string>
+    <string name="panel_done">Listo</string>
+    <string name="explain_split">Para dividir, mueve el cabezal dentro de este clip.</string>
+    <string name="explain_last_clip">Tu video necesita al menos un clip.</string>
+    <string name="explain_reorder_one">Para reordenar, necesitas al menos dos clips.</string>
+    <string name="explain_reorder_first">Este clip ya es el primero.</string>
+    <string name="explain_reorder_last">Este clip ya es el último.</string>
+    <string name="editor_preview_updating">Actualizando la vista previa</string>
+    <string name="a11y_edit_on_item">%1$s: %2$s</string>
+    <string name="a11y_trim_start">Inicio de %1$s</string>
+    <string name="a11y_trim_end">Final de %1$s</string>
+    <string name="a11y_trim_to_playhead">Recortar hasta el cabezal</string>
+    <string name="a11y_clip_label">clip %1$d</string>
+    <string name="a11y_reorder_tile">%1$s, clip %2$d de %3$d</string>
+    <string name="a11y_reorder_position">Clip %1$d de %2$d</string>
 </resources>

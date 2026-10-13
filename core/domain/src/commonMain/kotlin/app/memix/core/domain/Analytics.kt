@@ -33,11 +33,16 @@ sealed interface AnalyticsEvent {
 
 /**
  * `tool_use.tool`: lowercase ids, the same id for the same action in both editors (PM acceptance log, 8 Oct
- * 2026). Each editor ticket adds the tools it builds (P1-06: split, trim, delete, ...).
+ * 2026). Each editor ticket adds the tools it builds (P1-08: move, P1-09: volume, mute_original, ...).
  */
 enum class EditorTool(val eventValue: String) {
     UNDO("undo"),
     REDO("redo"),
+    SPLIT("split"),
+    TRIM("trim"),
+    DELETE("delete"),
+    DUPLICATE("duplicate"),
+    REORDER("reorder"),
 }
 
 /** Where a new project came from (`project_create.source`). */

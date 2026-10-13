@@ -3,7 +3,13 @@ package app.memix.feature.videoeditor.timeline
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import app.memix.core.designsystem.MemixMotion
+import app.memix.core.domain.project.TrimEdge
+import app.memix.core.domain.project.TrimRange
+import app.memix.core.model.project.TrackKind
 import app.memix.feature.videoeditor.VideoEditorIntent
 import kotlin.math.roundToLong
 import kotlinx.coroutines.CoroutineScope
@@ -18,12 +24,35 @@ import kotlinx.coroutines.launch
 @Stable
 internal class TimelineController(val state: TimelineState, private val scope: CoroutineScope) {
     var timeline: TimelineUi = TimelineUi.Empty
+        set(value) {
+            // A released trim keeps its drawn place until the edited timeline arrives, so nothing jumps back for a frame.
+            if (field !== value && state.trim?.isReleased == true) state.trim = null
+            field = value
+        }
     var onIntent: (VideoEditorIntent) -> Unit = {}
     var reduceMotion = false
     var density = 1f
+    var haptics: HapticFeedback? = null
+
+    /** A trimmed edge snaps to a target closer than this on screen (`space-2`). */
+    var snapDistancePx = 0f
+
+    /** A finger this close to a side of the timeline scrolls it while trimming (`touch-target`). */
+    var edgeZonePx = 0f
 
     private var seekAnimation: Job? = null
     private var zoomAnimation: Job? = null
+    private var edgeScroll: Job? = null
+    private var trimFingerX = 0f
+
+    /** Reorder tiles: `track-height-video` squares, a `space-1` gap apart. Set from the composition. */
+    var reorderTileSizePx = 0f
+    var reorderPitchPx = 0f
+    private var reorderFingerX = 0f
+    private var lastReorderPlace = -1
+
+    /** True in reorder mode (not while its tiles expand back after it ended). */
+    val isReordering: Boolean get() = state.reorder?.isEnding == false
 
     /** The most zoomed-out scale for this video and screen: the whole video fits in half the width. */
     val minDpPerSecond: Float get() = minDpPerSecond(timeline.lengthUs, state.widthPx / density)
@@ -54,8 +83,9 @@ internal class TimelineController(val state: TimelineState, private val scope: C
         return consumedPx
     }
 
-    /** One pinch step: the scale follows the fingers; the time under the playhead stays put. */
+    /** One pinch step: the scale follows the fingers; the time under the playhead stays put. Not while reordering. */
     fun zoomBy(zoomChange: Float) {
+        if (isReordering) return
         state.dpPerSecond = clampDpPerSecond(state.dpPerSecond * zoomChange, minDpPerSecond)
     }
 
@@ -96,6 +126,151 @@ internal class TimelineController(val state: TimelineState, private val scope: C
         onIntent(VideoEditorIntent.SeekTo(targetUs))
     }
 
+    /**
+     * A finger landed on [edge]'s handle of the selected [item] in [row]: the drag starts at once (spec P1-06 → Trim).
+     * [range] is where the edge may go; [fingerX] is where the finger is on screen.
+     */
+    fun startTrim(item: ItemUi, row: LaneRow, edge: TrimEdge, range: TrimRange, fingerX: Float) {
+        val pxPerUs = pxPerUs(state.dpPerSecond, density)
+        if (pxPerUs <= 0f) return
+        val edgeUs = if (edge == TrimEdge.START) item.startUs else item.endUs
+        val edgeX = xOf(edgeUs, state.playheadUs, state.widthPx / 2f, pxPerUs)
+        state.trim = TrimDrag(item, row, edge, range, snapTargetsFor(timeline, item.id), grabOffsetPx = edgeX - fingerX)
+        trimFingerX = fingerX
+        onIntent(VideoEditorIntent.TrimStarted(item.id, edge))
+        edgeScroll = scope.launch { scrollAtEdgesWhileTrimming() }
+    }
+
+    /** The finger moved to [fingerX]: the edge follows it, snapping and stopping at its limits. */
+    fun dragTrim(fingerX: Float) {
+        trimFingerX = fingerX
+        followTrimFinger()
+    }
+
+    /** The finger lifted: the trim is committed as one step. */
+    fun endTrim() {
+        val drag = state.trim?.takeUnless { it.isReleased } ?: return
+        edgeScroll?.cancel()
+        drag.isReleased = true
+        onIntent(VideoEditorIntent.TrimEnded(drag.item.id, drag.edge, drag.edgeUs, state.playheadUs))
+        // A trim released where it started changes nothing and brings no new timeline; let it go after two frames.
+        scope.launch {
+            repeat(FRAMES_TO_WAIT_FOR_EDIT) { withFrameNanos { } }
+            if (state.trim === drag) state.trim = null
+        }
+    }
+
+    /** System back or a lost gesture: the item goes back as it was and nothing is committed. */
+    fun cancelTrim() {
+        state.trim?.takeUnless { it.isReleased } ?: return
+        edgeScroll?.cancel()
+        state.trim = null
+        onIntent(VideoEditorIntent.TrimCancelled(state.playheadUs))
+    }
+
+    private fun followTrimFinger() {
+        val drag = state.trim?.takeUnless { it.isReleased } ?: return
+        val pxPerUs = pxPerUs(state.dpPerSecond, density)
+        if (pxPerUs <= 0f) return
+        val fingerTimeUs = timeAt(trimFingerX + drag.grabOffsetPx, state.playheadUs, state.widthPx / 2f, pxPerUs)
+        val edgeBeforeUs = drag.edgeUs
+        val engaged = drag.moveTo(fingerTimeUs, state.playheadUs, snapRangeUs = (snapDistancePx / pxPerUs).roundToLong())
+        // One tick per snap and per limit reached (spec P1-06 → Motion and haptics).
+        if (engaged) haptics?.performHapticFeedback(HapticFeedbackType.SegmentTick)
+        if (drag.edgeUs != edgeBeforeUs) onIntent(VideoEditorIntent.TrimMoved(drag.edgeUs))
+    }
+
+    /**
+     * While the finger is within [edgeZonePx] of a side, time scrolls that way, faster the closer it gets, up to one
+     * screen width a second (spec P1-06 → Edge auto-scroll); the edge keeps following the finger as time moves.
+     */
+    private suspend fun scrollAtEdgesWhileTrimming() {
+        var previousFrameNanos = withFrameNanos { it }
+        while (true) {
+            val frameNanos = withFrameNanos { it }
+            val seconds = (frameNanos - previousFrameNanos) / NANOS_PER_SECOND
+            previousFrameNanos = frameNanos
+            val speedPxPerSecond = edgeScrollSpeed(trimFingerX, state.widthPx.toFloat(), edgeZonePx)
+            if (speedPxPerSecond != 0f && state.scrollBy(speedPxPerSecond * seconds, timeline.lengthUs, density) != 0f) {
+                followTrimFinger()
+            }
+        }
+    }
+
+    /**
+     * A long-press on main [clip] lifts it (spec P1-06 → Reorder → By drag): reorder mode starts with its tile under
+     * the finger at [fingerX], and the same finger drags it. False when there's only one clip (the editor explains).
+     */
+    fun liftForReorder(clip: ItemUi, fingerX: Float): Boolean {
+        val mainClips = timeline.tracks.firstOrNull { it.kind == TrackKind.MAIN_VIDEO }?.items ?: return false
+        onIntent(VideoEditorIntent.StartReorder(clip.id, byDrag = true))
+        if (mainClips.size < 2) return false
+        haptics?.performHapticFeedback(HapticFeedbackType.LongPress)
+        val strip = ReorderStrip(mainClips.map { it.id }, clip.id, fingerX - reorderTileSizePx / 2, reorderTileSizePx, reorderPitchPx, scope)
+        strip.clips = mainClips.associateBy { it.id }
+        state.reorder = strip
+        startReorderDrag(strip, fingerX, grabOffsetPx = reorderTileSizePx / 2)
+        return true
+    }
+
+    /** In reorder mode, a press at [fingerX] on the moving tile picks it up; false when it's elsewhere. */
+    fun grabMovingTile(fingerX: Float): Boolean {
+        val strip = state.reorder?.takeUnless { it.isEnding } ?: return false
+        val left = strip.tileLeftPx(strip.movingId)
+        if (fingerX < left || fingerX > left + strip.tileSizePx) return false
+        startReorderDrag(strip, fingerX, grabOffsetPx = fingerX - left)
+        return true
+    }
+
+    /** The dragged tile follows the finger; passing a neighbor's center moves it to that place. */
+    fun dragReorder(fingerX: Float) {
+        val strip = state.reorder?.takeIf { it.isDragging } ?: return
+        reorderFingerX = fingerX
+        strip.dragLeftPx = fingerX - strip.grabOffsetPx
+        val place = strip.placeUnderDraggedTile()
+        if (place == lastReorderPlace) return
+        lastReorderPlace = place
+        onIntent(VideoEditorIntent.ReorderMoveTo(place))
+    }
+
+    /** The drop applies the new order, as Done does. */
+    fun dropReorder() {
+        edgeScroll?.cancel()
+        val strip = state.reorder?.takeIf { it.isDragging } ?: return
+        strip.dragLeftPx = Float.NaN
+        onIntent(VideoEditorIntent.ReorderDone)
+    }
+
+    /** A tap on another tile moves the clip to that tile's place. */
+    fun tapReorderTile(x: Float) {
+        val strip = state.reorder?.takeUnless { it.isEnding } ?: return
+        val id = strip.tileAt(x) ?: return
+        if (id != strip.movingId) onIntent(VideoEditorIntent.ReorderMoveTo(strip.order.indexOf(id)))
+    }
+
+    private fun startReorderDrag(strip: ReorderStrip, fingerX: Float, grabOffsetPx: Float) {
+        strip.grabOffsetPx = grabOffsetPx
+        strip.dragLeftPx = fingerX - grabOffsetPx
+        reorderFingerX = fingerX
+        lastReorderPlace = strip.order.indexOf(strip.movingId)
+        edgeScroll?.cancel()
+        edgeScroll = scope.launch { scrollStripAtEdges(strip) }
+    }
+
+    // As for trims: near a side the strip scrolls, up to a screen width a second, and the tile stays under the finger.
+    private suspend fun scrollStripAtEdges(strip: ReorderStrip) {
+        var previousFrameNanos = withFrameNanos { it }
+        while (strip.isDragging) {
+            val frameNanos = withFrameNanos { it }
+            val seconds = (frameNanos - previousFrameNanos) / NANOS_PER_SECOND
+            previousFrameNanos = frameNanos
+            val speedPxPerSecond = edgeScrollSpeed(reorderFingerX, state.widthPx.toFloat(), edgeZonePx)
+            if (speedPxPerSecond == 0f) continue
+            strip.scrollBy(speedPxPerSecond * seconds, state.widthPx.toFloat())
+            dragReorder(reorderFingerX)
+        }
+    }
+
     private fun zoomTo(dpPerSecond: Float) {
         zoomAnimation?.cancel()
         if (reduceMotion) {
@@ -109,3 +284,21 @@ internal class TimelineController(val state: TimelineState, private val scope: C
         }
     }
 }
+
+/**
+ * The edge auto-scroll speed in px per second for a finger at [fingerX]: positive (towards earlier time) within
+ * [zonePx] of the left side, negative near the right, 0 elsewhere; one screen width a second at the very edge.
+ */
+internal fun edgeScrollSpeed(fingerX: Float, widthPx: Float, zonePx: Float): Float {
+    if (zonePx <= 0f || widthPx <= 0f) return 0f
+    return when {
+        fingerX < zonePx -> widthPx * (1f - fingerX.coerceAtLeast(0f) / zonePx)
+        fingerX > widthPx - zonePx -> -widthPx * (1f - (widthPx - fingerX).coerceAtLeast(0f) / zonePx)
+        else -> 0f
+    }
+}
+
+private const val NANOS_PER_SECOND = 1_000_000_000f
+
+/** Long enough for the editor to commit a trim and hand back the edited timeline. */
+private const val FRAMES_TO_WAIT_FOR_EDIT = 2

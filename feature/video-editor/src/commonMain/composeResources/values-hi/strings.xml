@@ -56,6 +56,10 @@
     <string name="editor_empty_title">इस ड्राफ़्ट में क्लिप नहीं है</string>
     <string name="editor_empty_body">इसे बंद करें और नया वीडियो मीम बनाएं।</string>
     <string name="edit_trim">ट्रिम</string>
+    <string name="edit_split">स्प्लिट</string>
+    <string name="edit_delete">डिलीट</string>
+    <string name="edit_duplicate">डुप्लिकेट</string>
+    <string name="edit_reorder">क्रम बदलें</string>
     <string name="import_row_a11y">%1$s, %2$s। %3$s</string>
     <string name="import_row_a11y_no_name">%1$s। %2$s</string>
     <!-- Timeline (P1-05): machine draft until P5-06. Budgets and translator notes: docs/ux/specs/P1-05-timeline.md -> Copy. Spoken times come from a11y_time_* (core:ui); never put timecode digits in spoken strings. -->
@@ -85,4 +89,27 @@
     <string name="a11y_state_after_end">वीडियो के अंत के बाद, इसलिए नहीं चलेगा</string>
     <string name="a11y_state_original_muted">मूल ऑडियो म्यूट है</string>
     <string name="a11y_state_sound_detached">साउंड अलग किया गया</string>
+    <!-- Clip tools and edits (P1-06): machine draft until P5-06. Budgets and translator notes: docs/ux/specs/P1-06-clip-edits-and-audio.md -> Copy; a11y_trim_* in docs/ux/specs/P1-05-timeline.md -> Copy. -->
+    <string name="tool_edit">एडिट</string>
+    <string name="tool_split">स्प्लिट</string>
+    <string name="tool_delete">डिलीट</string>
+    <string name="tool_duplicate">डुप्लिकेट</string>
+    <string name="tool_reorder">क्रम बदलें</string>
+    <string name="clip_tools_close">क्लिप टूल बंद करें</string>
+    <string name="reorder_move_earlier">पहले ले जाएं</string>
+    <string name="reorder_move_later">बाद में ले जाएं</string>
+    <string name="panel_done">हो गया</string>
+    <string name="explain_split">स्प्लिट करने के लिए, प्लेहेड को इस क्लिप के अंदर ले जाएं।</string>
+    <string name="explain_last_clip">आपके वीडियो में कम से कम एक क्लिप होनी चाहिए।</string>
+    <string name="explain_reorder_one">क्रम बदलने के लिए कम से कम दो क्लिप चाहिए।</string>
+    <string name="explain_reorder_first">यह क्लिप पहले से सबसे पहली है।</string>
+    <string name="explain_reorder_last">यह क्लिप पहले से सबसे आखिरी है।</string>
+    <string name="editor_preview_updating">प्रीव्यू अपडेट हो रहा है</string>
+    <string name="a11y_edit_on_item">%1$s: %2$s</string>
+    <string name="a11y_trim_start">%1$s की शुरुआत</string>
+    <string name="a11y_trim_end">%1$s का अंत</string>
+    <string name="a11y_trim_to_playhead">प्लेहेड तक ट्रिम करें</string>
+    <string name="a11y_clip_label">क्लिप %1$d</string>
+    <string name="a11y_reorder_tile">%1$s, %3$d में से क्लिप %2$d</string>
+    <string name="a11y_reorder_position">%2$d में से क्लिप %1$d</string>
 </resources>

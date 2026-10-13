@@ -41,15 +41,17 @@ class ProjectEditSession internal constructor(
      * built with new lists, never by changing the one it got. A result equal to the current project adds no
      * step. If [edit] throws, nothing changes.
      *
-     * [editName] is a stable id the editor picks for the action (its `tool_use` id, such as "split"); the editor
-     * turns it back into words for "Undo: Split" through [ProjectEditState.undoEditName] and
-     * [ProjectEditState.redoEditName]. It is never shown as it is.
+     * [tool] names the step: the editor turns it into words for "Undo: Split" through [ProjectEditState.undoTool]
+     * and [ProjectEditState.redoTool]. A recorded step logs `tool_use` for [tool] once; an edit that changes
+     * nothing logs nothing (PRD analytics, PM 8 Oct 2026). Returns whether a step was recorded.
      *
      * A drag, trim or pinch is one step: keep its in-between positions in UI state and commit once, when the
      * finger lifts (mobile-performance skill), so 60 frames of dragging are one undo, not 60.
      */
-    fun commit(editName: String, edit: (Project) -> Project) {
-        changeHistory { history -> history.record(editName, edit(history.current)) }
+    fun commit(tool: EditorTool, edit: (Project) -> Project): Boolean {
+        val recorded = changeHistory { history -> history.record(tool, edit(history.current)) }
+        if (recorded) logToolUse(tool)
+        return recorded
     }
 
     /** Goes back one step. Does nothing when [ProjectEditState.canUndo] is false. */
@@ -90,7 +92,7 @@ class ProjectEditSession internal constructor(
         return true
     }
 
-    // PRD tool_use: undo and redo count only when they change the project (PM, 8 Oct 2026).
+    // PRD tool_use: every tool, undo and redo included, counts only when it changes the project (PM, 8 Oct 2026).
     private fun logToolUse(tool: EditorTool) {
         analytics.log(AnalyticsEvent.ToolUse(editor = mutableState.value.project.type, tool = tool))
     }

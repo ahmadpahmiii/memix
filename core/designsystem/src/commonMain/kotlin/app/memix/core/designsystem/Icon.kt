@@ -13,7 +13,10 @@ import memix.core.designsystem.generated.resources.ic_arrow_back
 import memix.core.designsystem.generated.resources.ic_chevron_right
 import memix.core.designsystem.generated.resources.ic_close
 import memix.core.designsystem.generated.resources.ic_create
+import memix.core.designsystem.generated.resources.ic_delete
 import memix.core.designsystem.generated.resources.ic_drafts
+import memix.core.designsystem.generated.resources.ic_duplicate
+import memix.core.designsystem.generated.resources.ic_edit
 import memix.core.designsystem.generated.resources.ic_globe
 import memix.core.designsystem.generated.resources.ic_heart
 import memix.core.designsystem.generated.resources.ic_heart_filled
@@ -22,7 +25,9 @@ import memix.core.designsystem.generated.resources.ic_pause
 import memix.core.designsystem.generated.resources.ic_photo
 import memix.core.designsystem.generated.resources.ic_play
 import memix.core.designsystem.generated.resources.ic_redo
+import memix.core.designsystem.generated.resources.ic_reorder
 import memix.core.designsystem.generated.resources.ic_sounds
+import memix.core.designsystem.generated.resources.ic_split
 import memix.core.designsystem.generated.resources.ic_templates
 import memix.core.designsystem.generated.resources.ic_undo
 import memix.core.designsystem.generated.resources.ic_video
@@ -35,7 +40,10 @@ object MemixIcons {
     val ChevronRight = Res.drawable.ic_chevron_right
     val Close = Res.drawable.ic_close
     val Create = Res.drawable.ic_create
+    val Delete = Res.drawable.ic_delete
     val Drafts = Res.drawable.ic_drafts
+    val Duplicate = Res.drawable.ic_duplicate
+    val Edit = Res.drawable.ic_edit
     val Globe = Res.drawable.ic_globe
     val Heart = Res.drawable.ic_heart
     val HeartFilled = Res.drawable.ic_heart_filled
@@ -44,7 +52,9 @@ object MemixIcons {
     val Photo = Res.drawable.ic_photo
     val Play = Res.drawable.ic_play
     val Redo = Res.drawable.ic_redo
+    val Reorder = Res.drawable.ic_reorder
     val Sounds = Res.drawable.ic_sounds
+    val Split = Res.drawable.ic_split
     val Templates = Res.drawable.ic_templates
     val Undo = Res.drawable.ic_undo
     val Video = Res.drawable.ic_video

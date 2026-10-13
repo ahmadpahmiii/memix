@@ -1,6 +1,7 @@
 package app.memix.core.domain.project
 
 import app.memix.core.domain.AppError
+import app.memix.core.domain.EditorTool
 import app.memix.core.model.project.Project
 
 /** What an editor shows from its [ProjectEditSession]. Immutable; each change is a new state. */
@@ -16,11 +17,11 @@ class ProjectEditState internal constructor(
     val canUndo: Boolean get() = history.canUndo
     val canRedo: Boolean get() = history.canRedo
 
-    /** The name given to [ProjectEditSession.commit] for the edit [ProjectEditSession.undo] would take back. */
-    val undoEditName: String? get() = history.undoEditName
+    /** The tool given to [ProjectEditSession.commit] for the edit [ProjectEditSession.undo] would take back. */
+    val undoTool: EditorTool? get() = history.undoTool
 
-    /** The name of the edit [ProjectEditSession.redo] would put back. */
-    val redoEditName: String? get() = history.redoEditName
+    /** The tool of the edit [ProjectEditSession.redo] would put back. */
+    val redoTool: EditorTool? get() = history.redoTool
 
     internal fun withHistory(history: ProjectHistory) = ProjectEditState(history, saveFailure)
 

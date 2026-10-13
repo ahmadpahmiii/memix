@@ -10,6 +10,7 @@ import app.memix.core.domain.video.PreviewStatus
 import app.memix.core.domain.video.Thumbnail
 import app.memix.core.domain.video.ThumbnailReader
 import app.memix.core.domain.video.VideoEngine
+import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.Project
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +45,8 @@ private class UnavailablePreviewSession : PreviewSession {
     override fun seekTo(positionUs: Long) = Unit
     override fun setScrubbing(scrubbing: Boolean) = Unit
     override fun update(project: Project) = Unit
+    override fun showTrimFrame(clip: MediaClip, sourceTimeUs: Long) = Unit
+    override fun endTrimFrames() = Unit
     override fun close() = Unit
 }
 

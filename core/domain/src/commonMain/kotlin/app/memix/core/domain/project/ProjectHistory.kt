@@ -1,10 +1,11 @@
 package app.memix.core.domain.project
 
+import app.memix.core.domain.EditorTool
 import app.memix.core.model.project.Project
 
 /**
  * Undo and redo for one editing session: the [current] project plus up to [MAX_UNDO_STEPS] earlier and
- * later versions, each with the name of the edit that made it. Immutable like [Project], so every change
+ * later versions, each with the tool whose edit made it. Immutable like [Project], so every change
  * returns a new history.
  *
  * Versions share every part an edit didn't touch, so 100 steps cost roughly what the edits changed, not
@@ -17,26 +18,26 @@ internal class ProjectHistory private constructor(
     /** Oldest first; the last entry is where one redo goes forward to. */
     private val redoSteps: List<Version>,
 ) {
-    constructor(initial: Project) : this(Version(initial, editName = null), undoSteps = emptyList(), redoSteps = emptyList())
+    constructor(initial: Project) : this(Version(initial, tool = null), undoSteps = emptyList(), redoSteps = emptyList())
 
     val current: Project get() = now.project
     val canUndo: Boolean get() = undoSteps.isNotEmpty()
     val canRedo: Boolean get() = redoSteps.isNotEmpty()
 
-    /** The edit one undo takes back: the one that made [current]. Null when there is nothing to undo. */
-    val undoEditName: String? get() = if (canUndo) now.editName else null
+    /** The tool whose edit one undo takes back: the one that made [current]. Null when there is nothing to undo. */
+    val undoTool: EditorTool? get() = if (canUndo) now.tool else null
 
-    /** The edit one redo puts back. Null when there is nothing to redo. */
-    val redoEditName: String? get() = redoSteps.lastOrNull()?.editName
+    /** The tool whose edit one redo puts back. Null when there is nothing to redo. */
+    val redoTool: EditorTool? get() = redoSteps.lastOrNull()?.tool
 
     /**
-     * Makes [next] the current project as one new undo step named [editName] and clears redo. Past
+     * Makes [next] the current project as one new undo step made by [tool] and clears redo. Past
      * [MAX_UNDO_STEPS] the oldest step is forgotten. A project equal to the current one adds no step and
      * returns this history.
      */
-    fun record(editName: String, next: Project): ProjectHistory {
+    fun record(tool: EditorTool, next: Project): ProjectHistory {
         if (next == current) return this
-        return ProjectHistory(Version(next, editName), (undoSteps + now).takeLast(MAX_UNDO_STEPS), redoSteps = emptyList())
+        return ProjectHistory(Version(next, tool), (undoSteps + now).takeLast(MAX_UNDO_STEPS), redoSteps = emptyList())
     }
 
     /** Goes back one step, or returns this history when there is nothing to undo. */
@@ -52,8 +53,8 @@ internal class ProjectHistory private constructor(
         return ProjectHistory(next, undoSteps + now, redoSteps.dropLast(1))
     }
 
-    /** One version of the project, and the edit that produced it (null for the version the session opened with). */
-    private class Version(val project: Project, val editName: String?)
+    /** One version of the project, and the tool that produced it (null for the version the session opened with). */
+    private class Version(val project: Project, val tool: EditorTool?)
 
     companion object {
         /** CLAUDE.md rule 6. */

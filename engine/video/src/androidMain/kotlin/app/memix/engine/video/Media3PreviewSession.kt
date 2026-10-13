@@ -19,8 +19,12 @@ import app.memix.core.domain.video.ExportSettings
 import app.memix.core.domain.video.PreviewPlayback
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.domain.video.PreviewStatus
+import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.Project
+import app.memix.core.model.project.Track
+import app.memix.core.model.project.TrackKind
+import app.memix.core.model.project.VideoTimeline
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +36,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -43,6 +48,14 @@ import kotlinx.coroutines.withContext
  *
  * Planning, file checks and building run on [ioDispatcher]; only `setComposition` runs on the main thread. A newer
  * [update] cancels a build that is still running, so quick edits only render the last project.
+ *
+ * An edit never blanks the picture: from the second composition on, CompositionPlayer keeps its video graph and
+ * output surface and only rebuilds the sequence players, so the surface keeps its last frame until the edited
+ * project's first frame replaces it (Media3 1.11.1; TECHNICAL_DESIGN → Preview → Edits).
+ *
+ * While a trim handle is dragged ([showTrimFrame]) the player shows a one-clip composition of that clip's whole
+ * source instead, built once per drag; each drag frame is a scrubbing seek in it. [positionUs] keeps the project's
+ * time throughout, and seeks and play meant for the project wait until its composition is back on the player.
  */
 @OptIn(UnstableApi::class, ExperimentalApi::class)
 internal class Media3PreviewSession(
@@ -55,6 +68,16 @@ internal class Media3PreviewSession(
     // CompositionPlayer must be used from the thread that created it: the main thread.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val projects = MutableStateFlow(project)
+
+    // The clip whose source a trim drag shows instead of the project: null when no drag is on. Normalized to its
+    // whole source, so it stays equal for the whole drag and the composition is built once.
+    private val trimClip = MutableStateFlow<MediaClip?>(null)
+    private var trimSourceUs = 0L
+    private var playerShowsTrim = false
+
+    // isCatchingUp clears only on the first frame of the newest update, not of an older one still on its way.
+    private var updateCount = 0
+    private var shownUpdate = 0
 
     private val mutablePlayback = MutableStateFlow(PreviewPlayback.Preparing)
     override val playback: StateFlow<PreviewPlayback> = mutablePlayback.asStateFlow()
@@ -99,9 +122,11 @@ internal class Media3PreviewSession(
         }
 
         override fun onRenderedFirstFrame() {
+            if (playerShowsTrim) return
             firstFrameWatch?.cancel()
             showTiming.firstFrameShown()
-            publish { it.copy(firstFrameShown = true) }
+            val caughtUp = shownUpdate == updateCount
+            publish { it.copy(firstFrameShown = true, isCatchingUp = it.isCatchingUp && !caughtUp) }
         }
 
         override fun onPlayerError(error: PlaybackException) = fail("playback error ${error.errorCodeName}", error)
@@ -110,14 +135,22 @@ internal class Media3PreviewSession(
     init {
         showTiming.start(ShowTimingLog.Change.OPEN)
         scope.launch {
-            projects.collectLatest { next -> show(withContext(ioDispatcher) { prepare(next) }) }
+            combine(projects, trimClip, ::Pair).collectLatest { (next, clip) ->
+                if (clip != null) {
+                    showTrimComposition(withContext(ioDispatcher) { prepare(trimProjectOf(next, clip)) })
+                } else {
+                    val update = updateCount
+                    show(withContext(ioDispatcher) { prepare(next) }, update)
+                }
+            }
         }
     }
 
     override fun play() {
         if (closed) return
         publish { it.copy(isPlaying = true) }
-        mutablePlayer.value?.play()
+        // During a trim drag the player holds the trim composition; the project plays once it's back.
+        if (!playerShowsTrim) mutablePlayer.value?.play()
     }
 
     override fun pause() {
@@ -130,8 +163,9 @@ internal class Media3PreviewSession(
         if (closed) return
         val clampedUs = positionUs.coerceIn(0, lengthUs)
         mutablePosition.value = clampedUs
-        // Before the first composition there is nothing to seek in; it starts at this position instead.
-        mutablePlayer.value?.seekTo(clampedUs / MICROS_PER_MILLI)
+        // Before the first composition (or while the trim composition is on) there is nothing of the project to seek
+        // in; its composition starts at this position instead.
+        if (!playerShowsTrim) mutablePlayer.value?.seekTo(clampedUs / MICROS_PER_MILLI)
     }
 
     // Media3's scrubbing mode keeps decoders warm and may show the nearest fast frame while many seeks arrive.
@@ -146,7 +180,28 @@ internal class Media3PreviewSession(
         if (closed || project == projects.value) return
         showTiming.start(ShowTimingLog.Change.EDIT)
         lengthUs = project.videoLengthUs()
+        updateCount++
+        publish { it.copy(isCatchingUp = true) }
         projects.value = project
+    }
+
+    override fun showTrimFrame(clip: MediaClip, sourceTimeUs: Long) {
+        if (closed) return
+        val wholeSource = wholeSourceOf(clip)
+        trimSourceUs = sourceTimeUs.coerceIn(0, lastFrameUs(wholeSource))
+        if (trimClip.value != wholeSource) {
+            // The first frame of a drag: build the clip's composition; it starts at the newest time asked for.
+            playerShowsTrim = false
+            trimClip.value = wholeSource
+            return
+        }
+        if (playerShowsTrim) mutablePlayer.value?.seekTo(trimSourceUs / MICROS_PER_MILLI)
+    }
+
+    override fun endTrimFrames() {
+        if (closed || trimClip.value == null) return
+        // The project's composition is rebuilt at positionUs; the trim's commit right after replaces that build.
+        trimClip.value = null
     }
 
     override fun close() {
@@ -178,15 +233,15 @@ internal class Media3PreviewSession(
         }
     }
 
-    private fun show(prepared: PreparedPreview) {
+    private fun show(prepared: PreparedPreview, update: Int) {
         if (closed) return
         when (prepared) {
             is PreparedPreview.Failed -> fail(prepared.reason, prepared.cause)
-            is PreparedPreview.Ready -> showComposition(prepared)
+            is PreparedPreview.Ready -> showComposition(prepared, update)
         }
     }
 
-    private fun showComposition(prepared: PreparedPreview.Ready) {
+    private fun showComposition(prepared: PreparedPreview.Ready, update: Int) {
         lengthUs = prepared.lengthUs
         val startUs = mutablePosition.value.coerceIn(0, lengthUs)
         val player = mutablePlayer.value ?: newPlayer().also { mutablePlayer.value = it }
@@ -198,9 +253,34 @@ internal class Media3PreviewSession(
         } catch (e: RuntimeException) {
             return fail("the player refused the composition", e)
         }
+        if (playerShowsTrim) {
+            playerShowsTrim = false
+            player.setScrubbingModeEnabled(scrubbing)
+            // A Play pressed during the drag starts now.
+            player.playWhenReady = mutablePlayback.value.isPlaying
+        }
+        shownUpdate = update
         mutablePosition.value = startUs
         publish { it.copy(missingMedia = prepared.missingMedia) }
         timeFirstFrame()
+    }
+
+    // A trim preview that can't be built leaves the last frame on screen: the drag and the project still work.
+    private fun showTrimComposition(prepared: PreparedPreview) {
+        if (closed) return
+        val ready = when (prepared) {
+            is PreparedPreview.Failed -> return logger.error(TAG, "Trim preview unavailable: ${prepared.reason}", prepared.cause)
+            is PreparedPreview.Ready -> prepared
+        }
+        val player = mutablePlayer.value ?: return
+        try {
+            player.setScrubbingModeEnabled(true)
+            player.setComposition(ready.composition, trimSourceUs / MICROS_PER_MILLI)
+            if (player.playbackState == Player.STATE_IDLE) player.prepare()
+        } catch (e: RuntimeException) {
+            return logger.error(TAG, "Trim preview refused by the player", e)
+        }
+        playerShowsTrim = true
     }
 
     // P1-04 review R1: how long each edit takes to show. A player that never reports a frame is logged too, so a
@@ -211,6 +291,8 @@ internal class Media3PreviewSession(
         firstFrameWatch = scope.launch {
             delay(FIRST_FRAME_TIMEOUT_MS)
             showTiming.firstFrameMissing()
+            // Never leave the editor saying the preview is updating when the player simply didn't report.
+            publish { it.copy(isCatchingUp = false) }
         }
     }
 
@@ -229,7 +311,7 @@ internal class Media3PreviewSession(
     private fun fail(reason: String, cause: Throwable?) {
         logger.error(TAG, "Preview stopped: $reason", cause)
         mutablePlayer.value?.pause()
-        publish { it.copy(status = PreviewStatus.FAILED, isPlaying = false) }
+        publish { it.copy(status = PreviewStatus.FAILED, isPlaying = false, isCatchingUp = false) }
     }
 
     // The end isn't a loop: playback stops with the last frame on screen and the time showing the full length.
@@ -240,6 +322,8 @@ internal class Media3PreviewSession(
     }
 
     private fun publishPlayerPosition() {
+        // The trim composition's time is a time in the clip's source, not in the project.
+        if (playerShowsTrim) return
         val player = mutablePlayer.value ?: return
         // At the end Media3 reports whole milliseconds, which can fall short of the project's length.
         val playerUs = if (player.playbackState == Player.STATE_ENDED) lengthUs else player.currentPosition * MICROS_PER_MILLI
@@ -279,6 +363,32 @@ internal class Media3PreviewSession(
 }
 
 private const val TAG = "MemixPreview"
+
+private const val TRIM_TRACK_ID = "trim-preview"
+
+/** A photo shows the same picture at every time; one second is enough to hold it. */
+private const val PHOTO_TRIM_PREVIEW_US = 1_000_000L
+
+/** One frame at the export frame rate: the last frame of a source starts this long before its end. */
+private const val FRAME_US = 1_000_000L / ExportSettings.DEFAULT_FRAME_RATE
+
+/**
+ * [clip] over its whole source, from 0:00, silent: the composition a trim drag seeks in. A video of unknown length
+ * can only get shorter, so its current end is the limit.
+ */
+private fun wholeSourceOf(clip: MediaClip): MediaClip {
+    val lengthUs = when (clip.source.kind) {
+        MediaKind.IMAGE -> PHOTO_TRIM_PREVIEW_US
+        MediaKind.VIDEO, MediaKind.AUDIO -> clip.source.durationUs ?: clip.trimOutUs
+    }
+    return clip.copy(startUs = 0, trimInUs = 0, trimOutUs = lengthUs, audioDetached = true)
+}
+
+private fun lastFrameUs(wholeSource: MediaClip): Long = (wholeSource.trimOutUs - FRAME_US).coerceAtLeast(0)
+
+/** The project with only [wholeSource] on its main track: same canvas and frame, nothing else to decode. */
+private fun trimProjectOf(project: Project, wholeSource: MediaClip): Project =
+    project.copy(video = VideoTimeline(listOf(Track(TRIM_TRACK_ID, TrackKind.MAIN_VIDEO, listOf(wholeSource)))))
 
 /** CompositionPlayer needs each file's length up front; P1-02 measures it at import and the editor fills older drafts. */
 private fun CompositionPlan.itemsWithoutLength(): Set<String> =

@@ -1,23 +1,29 @@
 package app.memix.feature.videoeditor
 
+import app.memix.core.domain.EditorTool
 import app.memix.core.model.project.Project
 
 /**
- * The video editor's edits, each one undo step. [id] is the name the edit session keeps for the step (and the
- * `tool_use` id), turned back into words for "Undo: Trim". P1-06 adds split, delete, duplicate, reorder and the rest.
+ * The video editor's edits, each one undo step named by its [tool] (the `tool_use` id), turned back into words for
+ * "Undo: Split" and "Delete: clip 2". P1-08 adds move and add sound, P1-09 volume and detach.
  */
-enum class VideoEdit(val id: String) {
-    TRIM("trim"),
+enum class VideoEdit(val tool: EditorTool) {
+    SPLIT(EditorTool.SPLIT),
+    TRIM(EditorTool.TRIM),
+    DELETE(EditorTool.DELETE),
+    DUPLICATE(EditorTool.DUPLICATE),
+    REORDER(EditorTool.REORDER),
     ;
 
     companion object {
-        fun fromId(id: String?): VideoEdit? = entries.firstOrNull { it.id == id }
+        /** The edit [tool] names, or null for tools that aren't edits of this editor (undo, redo). */
+        fun of(tool: EditorTool?): VideoEdit? = entries.firstOrNull { it.tool == tool }
     }
 }
 
 /**
  * A test edit the composition root gives debug and benchmark builds, so undo, redo, their toasts and the save banner
- * can be checked by hand before P1-06 brings real edits. Release builds pass none.
+ * can be checked by hand with a long-press on the timecode. Release builds pass none.
  */
 fun interface EditorDebugEdit {
     fun apply(project: Project): Project

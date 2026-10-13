@@ -415,6 +415,92 @@ labels), `zoom-whole` (Show whole video), `zoom-menu` (above the finger, over th
 Not screenshots, but in the QA notes: the TalkBack lane order (A12), "File missing" spoken (A9) and the buzz when the
 zoom menu opens (A5).
 
+## P1-06 · clip edits: each edit reaches the preview, never a black frame, no leaks
+
+Spec `docs/ux/specs/P1-06-clip-edits-and-audio.md`. Media and hand-check projects as in P1-04 and P1-05 (`timeline-check`,
+`timeline-tracks`, `export-check`, `missing-media`); their files' lengths are measured when the editor opens them. For a
+one-clip project, import one clip from the gallery. Not in P1-06, so not on screen: the Meme sounds tool, the sounds sheet
+and Move (P1-08), Volume, Detach audio and the original-audio toggle (P1-09), the text tools (P1-10), Replace (P1-16).
+
+```sh
+./gradlew :androidApp:installDebug
+adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor timeline-check
+adb logcat -s MemixPreview:* MemixAnalytics:*      # second terminal
+```
+
+**A. Hand checks (debug build).**
+1. **Tool bars:** nothing selected: one tool, Edit (scissors). Edit with the playhead inside a clip selects that clip, and
+   the bar fades (about 0.1 s) to ← | Split · Delete (red) · Duplicate · Reorder; at the very end Edit picks the last clip.
+   A caption: Delete · Split · Duplicate. A meme sound or "Original audio": Split · Delete · Duplicate. ←, a tap on empty
+   timeline or system back returns to Edit; with nothing selected, back closes the editor.
+2. **Split:** playhead inside a clip, at least 0.1 s from its edges: Split gives two pieces meeting at the playhead, the
+   right one selected; the preview doesn't change. Undo says "Undo: Split". At a clip's edge Split says "To split, move the
+   playhead inside this clip." Split a caption and a sound too.
+3. **Trim:** select a clip and drag its end handle left: only that edge moves, a bubble above shows the new length, a gap
+   opens before the next clip, and the preview shows the new last frame while you drag. Release: the clips close up, the
+   preview goes back to the playhead's frame, "Undo: Trim" works. Then:
+   - Clip 2 (`clip-b.mp4` from 1 s): drag its start handle left: it stops after 1 s with one buzz (no more footage).
+   - Drag an edge near the playhead, a clip boundary or a caption's edge: it snaps with one buzz and a thin gray line
+     across the lanes (no line at the playhead, which is already one).
+   - Keep the finger at the screen's edge: time scrolls that way, faster nearer the edge.
+   - A caption's end stops at the next caption. A photo can be made longer without limit.
+   - A drag that starts on a handle never scrolls the timeline. System back during a drag cancels it (nothing changes).
+4. **Delete:** later clips close up, the selection clears, Edit returns. In a one-clip project: "Your video needs at least
+   one clip." Deleting "Original audio" (its lane's only item) removes the lane.
+5. **Duplicate:** a main clip's copy lands right after it, later clips move right, the copy is selected. A caption's copy
+   goes right after it on the same lane, or on a new lane when that time is taken.
+6. **Reorder:**
+   - Long-press a main clip: a buzz, the clips become square tiles showing their first frames, everything else is
+     darkened, the held tile follows the finger and neighbors slide out of its way. Drop: the new order, the playhead at
+     the moved clip, "Undo: Reorder".
+   - Reorder tool: the tiles with the selected clip under the playhead; Move earlier and Move later move it one place;
+     at either end they say "This clip is already first." / "…last."; a tap on another tile moves it there; Done applies.
+   - Back cancels: the order stays as it was and there is nothing new to undo. A drop where it started records nothing.
+   - In a one-clip project the tool says "Reorder needs at least two clips."
+7. **Preview catching up:** after every edit the stage keeps the old picture until the new one shows: never black, never
+   gray. If an edit takes over a second, "Updating the preview" shows at the top of the stage and fades when the picture
+   updates; TalkBack doesn't read it.
+8. **TalkBack:**
+   - Double-tap a clip to select it; its actions (TalkBack menu → Actions): Split, Delete, Duplicate, Move earlier, Move
+     later. A caption or sound: Split, Delete, Duplicate. After each edit TalkBack says what happened, e.g. "Delete: clip 2",
+     "Split: clip 4", "Trim: Caption 1". Explanations are spoken.
+   - Right after the selected item come its handles: "Start of clip 3", "9.0 seconds". Swipe up or down: one frame each
+     (one Trim step each). Action: Trim to playhead.
+   - Reorder mode: the tiles read "Video, clip 2 of 20", the moving one "selected"; double-tap another tile moves the clip
+     there and TalkBack says "Clip 1 of 20"; Move earlier, Move later and Done are buttons.
+9. **`tool_use`:** `MemixAnalytics` shows one `tool_use` per edit, tool `split`, `trim`, `delete`, `duplicate` or
+   `reorder`, and none for a trim released where it started, a reorder dropped in place or a tool that only explains.
+10. **Hindi at 200% font, 360 dp wide:** the clip tool bar's labels are whole (two lines at most; a word that can't break
+    widens its tool), and the bar grows taller rather than cutting anything.
+
+**B. Edit timing with real edits, R1 (benchmark build; measured here at phase-end QA).** As P1-04 block D, step 1, but
+with real edits on `timeline-check`: a trim release, a delete, a duplicate, a reorder drop and an undo, each 3 times, 2 s
+apart, then `adb logcat -d -s MemixPreview:* | grep "Edit shown"`. Report the median and worst N with R and F per kind of
+edit. Split changes only the timeline, so it logs nothing. Over 100 ms: note it in the QA report; a fix ticket follows.
+
+**C. 60 fps recording: no black frame, frames to the edit (benchmark build, the owner's phone).** Record the screen at
+60 fps (the phone's own screen recorder at 60 fps, or `scrcpy --record p106.mp4` from a computer). Make each edit once:
+split, trim release, delete, duplicate, reorder drop, undo. In the recording, step frame by frame:
+- From the frame where the finger lifts (or the tool is tapped) to the first frame where the preview changes: pass is 6
+  frames (100 ms) or fewer. Split shows no preview change by design; check that the timeline changed at once.
+- Any black or gray frame in the preview between the edit and the new picture is a fail.
+- Note how often "Updating the preview" appeared.
+
+**D. Leaks (debug build, LeakCanary 2.14).** Open and close the editor 5 times on `timeline-check`, each time making every
+edit (split, trim on both ends, delete, duplicate, reorder by drag and by the tool, undo, redo); wait 10 s on Home. Pass:
+no LeakCanary notification and `adb logcat -d -s LeakCanary:*` reports no leak.
+
+**E. Sound drift trial (owner decision, 8 Oct).** On `timeline-check` the first meme sound starts at 0:02. Trim clip 1's
+start by about 1 s: the video after it moves 1 s earlier while the sound stays at 0:02, so it now plays over a different
+moment. Note whether that drift would bother you; it decides whether "keep sounds with their clip" is worth proposing.
+
+### States to screenshot for the design review (`docs/ux/reviews/P1-06/`)
+At 360 dp wide if possible, English unless noted: `main-tools`, `clip-tools` (a video clip selected: Split, Delete,
+Duplicate visible without scrolling), `clip-tools-hi-200` (Hindi at 200% font), `text-tools`, `trim-in-progress`
+(handle, value bubble, the gap before the next clip), `trim-closed-up` (after the release), `trim-snap-guide`,
+`reorder-tool` (tiles, darkened surroundings, Move earlier, Move later, Done), `reorder-drag` (a tile held between two
+others), `explain-split` (the toast) and `preview-updating` (only if an edit took over a second).
+
 ## P1-17 · Hindi display face: hero and entry cards in Teko, nothing clipped, other languages unchanged
 
 ```sh

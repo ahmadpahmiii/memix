@@ -46,6 +46,9 @@ class ToastDismiss(val label: String, val onClick: () -> Unit)
  * The persistent variant (save failures) adds a [dismiss] × beside the message and an [action] on its own row below,
  * aligned to the end, so the message keeps almost the full width in every language. It stays until the caller hides
  * it. Place it yourself: centered, `space-2` below the top of the editor's stage, `space-4` from the screen edges.
+ *
+ * Set [announce] to false for a quiet status that screen readers shouldn't hear (the editor's "Updating the preview",
+ * which repeats what the last announcement already said).
  */
 @Composable
 fun Toast(
@@ -53,13 +56,14 @@ fun Toast(
     modifier: Modifier = Modifier,
     action: ToastAction? = null,
     dismiss: ToastDismiss? = null,
+    announce: Boolean = true,
 ) {
     Column(
         modifier
             .dropShadow(MemixShapes.radiusMd, MemixElevation.shadowFloat)
             .clip(MemixShapes.radiusMd)
             .background(MemixColors.surfaceRaised)
-            .semantics { liveRegion = LiveRegionMode.Polite }
+            .semantics { if (announce) liveRegion = LiveRegionMode.Polite }
             .padding(start = MemixSpacing.space3),
     ) {
         // The buttons bring their own 48 dp targets, so next to one the gap to the edge shrinks to space-1.

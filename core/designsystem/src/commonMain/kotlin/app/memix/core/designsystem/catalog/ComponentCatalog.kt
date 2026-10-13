@@ -59,8 +59,13 @@ import app.memix.core.designsystem.component.Toast
 import app.memix.core.designsystem.component.ToastAction
 import app.memix.core.designsystem.component.ToastDismiss
 import app.memix.core.designsystem.component.Toggle
+import app.memix.core.designsystem.component.ToolBar
+import app.memix.core.designsystem.component.ToolBarClose
+import app.memix.core.designsystem.component.ToolBarItem
+import app.memix.core.designsystem.component.ToolTone
 import app.memix.core.designsystem.usesHindiDisplayFace
 import kotlin.math.roundToInt
+import kotlinx.collections.immutable.persistentListOf
 
 // Debug-only screen for the designer's review (P0-04). Labels are developer English, never translated,
 // and every name or number here is a placeholder, not catalog data.
@@ -99,6 +104,7 @@ fun ComponentCatalog(onClose: () -> Unit, appSections: @Composable ColumnScope.(
             IconButtonSection()
             ToastSection()
             MenuSection()
+            ToolBarSection()
             IconSection()
             appSections()
         }
@@ -270,6 +276,30 @@ private fun MenuSection() = Section("Menu") {
     }
 }
 
+// The editor's tool bar (P1-06): nothing selected, then a video clip selected (clip mode, Delete in danger), then the
+// meme-sound and active looks P1-08 and P1-09 use.
+@Composable
+private fun ToolBarSection() = Section("ToolBar") {
+    ToolBar(persistentListOf(ToolBarItem("Edit", MemixIcons.Edit, {})))
+    ToolBar(
+        persistentListOf(
+            ToolBarItem("Split", MemixIcons.Split, {}),
+            ToolBarItem("Delete", MemixIcons.Delete, {}, ToolTone.Danger),
+            ToolBarItem("Duplicate", MemixIcons.Duplicate, {}),
+            ToolBarItem("Reorder", MemixIcons.Reorder, {}),
+            ToolBarItem("A long label that wraps", MemixIcons.Edit, {}),
+        ),
+        close = ToolBarClose("Close clip tools") {},
+    )
+    ToolBar(
+        persistentListOf(
+            ToolBarItem("Edit", MemixIcons.Edit, {}),
+            ToolBarItem("Meme sounds", MemixIcons.Sounds, {}, ToolTone.MemeSound),
+            ToolBarItem("Active", MemixIcons.Sounds, {}, ToolTone.Active),
+        ),
+    )
+}
+
 @Composable
 private fun IconSection() = Section("Icons") {
     val icons = listOf(
@@ -278,7 +308,8 @@ private fun IconSection() = Section("Icons") {
         "photo" to MemixIcons.Photo, "close" to MemixIcons.Close, "chevron_right" to MemixIcons.ChevronRight,
         "arrow_back" to MemixIcons.ArrowBack, "globe" to MemixIcons.Globe, "play" to MemixIcons.Play,
         "pause" to MemixIcons.Pause, "heart" to MemixIcons.Heart, "heart_filled" to MemixIcons.HeartFilled,
-        "undo" to MemixIcons.Undo, "redo" to MemixIcons.Redo,
+        "undo" to MemixIcons.Undo, "redo" to MemixIcons.Redo, "edit" to MemixIcons.Edit, "split" to MemixIcons.Split,
+        "delete" to MemixIcons.Delete, "duplicate" to MemixIcons.Duplicate, "reorder" to MemixIcons.Reorder,
     )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space4), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4)) {
         icons.forEach { (name, icon) ->

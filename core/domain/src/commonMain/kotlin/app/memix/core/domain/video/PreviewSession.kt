@@ -1,5 +1,6 @@
 package app.memix.core.domain.video
 
+import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.Project
 import kotlinx.coroutines.flow.StateFlow
 
@@ -41,9 +42,21 @@ interface PreviewSession : AutoCloseable {
 
     /**
      * Renders [project] from now on, keeping the position (clamped to the new length) and play or pause. Call it
-     * after every committed edit, undo or redo. Several quick calls only render the last project.
+     * after every committed edit, undo or redo. Several quick calls only render the last project. Until the new
+     * project's first frame shows, the last frame stays on screen and [PreviewPlayback.isCatchingUp] is true.
      */
     fun update(project: Project)
+
+    /**
+     * While a trim handle of a video or photo clip is dragged (P1-06): shows [clip]'s source at [sourceTimeUs]
+     * (µs in the source file, not the project) instead of the project, framed and fitted as the project shows it,
+     * silent. Many quick calls follow: the first one takes about as long as an edit, later ones are fast seeks.
+     * [positionUs] and play or pause don't change. Call [endTrimFrames] when the finger lifts.
+     */
+    fun showTrimFrame(clip: MediaClip, sourceTimeUs: Long)
+
+    /** Shows the project at [positionUs] again after [showTrimFrame]; does nothing otherwise. Commit the trim after it. */
+    fun endTrimFrames()
 
     /** Stops playback and frees the decoders and the surface. Further calls do nothing. */
     override fun close()
@@ -62,6 +75,11 @@ data class PreviewPlayback(
     val firstFrameShown: Boolean,
     /** True when at least one clip's media file is missing or unreadable; such clips play as black and silence. */
     val missingMedia: Boolean,
+    /**
+     * True from an [PreviewSession.update] that changed the project until the changed project's first frame shows
+     * (or the preview fails). Meanwhile the picture is the last frame before the edit (P1-06 → Preview catching up).
+     */
+    val isCatchingUp: Boolean = false,
 ) {
     companion object {
         val Preparing = PreviewPlayback(PreviewStatus.PREPARING, isPlaying = false, firstFrameShown = false, missingMedia = false)

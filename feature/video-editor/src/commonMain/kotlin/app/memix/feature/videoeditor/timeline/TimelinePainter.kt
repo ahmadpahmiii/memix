@@ -3,14 +3,17 @@ package app.memix.feature.videoeditor.timeline
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -26,6 +29,7 @@ import app.memix.core.designsystem.MemixShapes
 import app.memix.core.designsystem.MemixSize
 import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.MemixStroke
+import app.memix.core.domain.project.TrimEdge
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.TrackKind
 import kotlin.math.ceil
@@ -66,11 +70,14 @@ internal class TimelinePainter(
     private val playheadHeadPx = with(density) { MemixSize.playheadHeadSize.toPx() }
     private val badgeInsetPx = with(density) { MemixSpacing.space1.toPx() }
     private val badgeMinMarginPx = with(density) { MemixSpacing.space2.toPx() }
+    private val handleTargetPx = with(density) { MemixSize.touchTarget.toPx() }
 
     /** Thumbnail tiles are squares the main clip's height. */
     val tileSizePx: Int = with(density) { MemixSize.trackHeightVideo.roundToPx() }
 
     private val itemPath = Path()
+    private val place = ItemPlace()
+    private val layerPaint = Paint()
     private val outlineStroke = Stroke(outlineWidthPx)
     private val itemLabels = HashMap<String, CachedLabel>()
     private val rulerLabels = HashMap<Long, TextLayoutResult>()
@@ -112,7 +119,11 @@ internal class TimelinePainter(
 
     // ---- Lanes --------------------------------------------------------------------------------------------------
 
-    /** Bands, items, strips, washes and labels of every row, for the time on screen plus one tile on each side. */
+    /**
+     * Bands, items, strips, washes and labels of every row, for the time on screen plus one tile on each side. An item
+     * being trimmed ([trim]) is drawn last, at its dragged size, so on the main track it covers a neighbor it overlaps.
+     * In reorder mode ([hideMainClips]) the main clips are left to [drawReorder].
+     */
     fun DrawScope.drawLanes(
         timeline: TimelineUi,
         lanes: LaneLayout,
@@ -120,6 +131,9 @@ internal class TimelinePainter(
         pxPerUs: Float,
         thumbnails: TimelineThumbnails?,
         missingSources: Set<MediaRef>,
+        trim: TrimDrag?,
+        motion: EditMotion,
+        hideMainClips: Boolean,
     ) {
         if (pxPerUs <= 0f) return
         val centerPx = size.width / 2
@@ -127,25 +141,74 @@ internal class TimelinePainter(
         val windowEndUs = timeAt(size.width + tileSizePx, playheadUs, centerPx, pxPerUs)
         val zeroX = xOf(0, playheadUs, centerPx, pxPerUs)
         val endX = xOf(timeline.lengthUs, playheadUs, centerPx, pxPerUs)
+        place.set(playheadUs, centerPx, pxPerUs, endX, timeline.lengthUs, thumbnails, missingSources)
         for (rowIndex in lanes.rows.indices) {
             val row = lanes.rows[rowIndex]
             if (row.track.kind != TrackKind.MAIN_VIDEO && timeline.lengthUs > 0) drawBand(row, zeroX, endX)
+            if (hideMainClips && row.track.kind == TrackKind.MAIN_VIDEO) continue
+            val isMain = row.track.kind == TrackKind.MAIN_VIDEO
             row.track.forEachItemBetween(windowStartUs, windowEndUs) { item ->
-                val left = xOf(item.startUs, playheadUs, centerPx, pxPerUs)
-                val right = left + itemWidthPx(item, pxPerUs)
-                when (row.track.kind) {
-                    TrackKind.MAIN_VIDEO -> drawStrip(item, row, left, right, pxPerUs, thumbnails, missingSources)
-                    // Overlays get their thumbnails and their label rules with P4-01.
-                    TrackKind.OVERLAY -> {
-                        drawItemBody(row, left, right, MemixColors.trackVideo)
-                        if (item.endUs > timeline.lengthUs) drawPastEndWash(row, left, right, endX)
-                    }
-                    TrackKind.TEXT, TrackKind.STICKER, TrackKind.MEME_SOUND, TrackKind.AUDIO, TrackKind.EFFECT -> {
-                        drawItemBody(row, left, right, trackColorOf(row.track.kind))
-                        if (item.endUs > timeline.lengthUs) drawPastEndWash(row, left, right, endX)
-                        labelOf(item)?.let { drawItemLabel(item.id, it, row, left, right, endX, MemixColors.onTrack) }
-                    }
-                }
+                if (item.id == trim?.item?.id) return@forEachItemBetween
+                val startUs = if (isMain) motion.startUsOf(item) else item.startUs
+                drawLandingItem(row, item, startUs, startUs + item.durationUs, place, motion)
+            }
+        }
+        if (trim != null) drawItem(trim.row, trim.item, trim.startUs, trim.endUs, trim.trimInUs, trim.trimOutUs, place)
+    }
+
+    /** What every item of this frame is drawn against; one holder, refilled each frame, so drawing allocates nothing. */
+    private class ItemPlace {
+        var playheadUs = 0L
+        var centerPx = 0f
+        var pxPerUs = 0f
+        var endX = 0f
+        var lengthUs = 0L
+        var thumbnails: TimelineThumbnails? = null
+        var missingSources: Set<MediaRef> = emptySet()
+
+        fun set(playheadUs: Long, centerPx: Float, pxPerUs: Float, endX: Float, lengthUs: Long, thumbnails: TimelineThumbnails?, missing: Set<MediaRef>) {
+            this.playheadUs = playheadUs
+            this.centerPx = centerPx
+            this.pxPerUs = pxPerUs
+            this.endX = endX
+            this.lengthUs = lengthUs
+            this.thumbnails = thumbnails
+            this.missingSources = missing
+        }
+    }
+
+    /** An item at [startUs]..[endUs]; the one that just landed bonks (or fades in, with reduce motion) around its center. */
+    private fun DrawScope.drawLandingItem(row: LaneRow, item: ItemUi, startUs: Long, endUs: Long, place: ItemPlace, motion: EditMotion) {
+        if (item.id != motion.landedItemId) return drawItem(row, item, startUs, endUs, item.trimInUs, item.trimOutUs, place)
+        val left = xOf(startUs, place.playheadUs, place.centerPx, place.pxPerUs)
+        val right = left + widthPx(endUs - startUs, place.pxPerUs)
+        val scale = motion.bonkScale.value
+        val alpha = motion.bonkAlpha.value
+        withTransform({ scale(scale, scale, Offset((left + right) / 2, row.itemTopPx + row.itemHeightPx / 2)) }) {
+            if (alpha >= 1f) return@withTransform drawItem(row, item, startUs, endUs, item.trimInUs, item.trimOutUs, place)
+            layerPaint.alpha = alpha
+            drawContext.canvas.saveLayer(Rect(left, row.itemTopPx, right, row.itemTopPx + row.itemHeightPx), layerPaint)
+            drawItem(row, item, startUs, endUs, item.trimInUs, item.trimOutUs, place)
+            drawContext.canvas.restore()
+        }
+    }
+
+    /** One item from [startUs] to [endUs] (its own times, or a trim's), showing its source from [trimInUs]. */
+    private fun DrawScope.drawItem(row: LaneRow, item: ItemUi, startUs: Long, endUs: Long, trimInUs: Long, trimOutUs: Long, place: ItemPlace) {
+        val left = xOf(startUs, place.playheadUs, place.centerPx, place.pxPerUs)
+        val right = left + widthPx(endUs - startUs, place.pxPerUs)
+        val pastEnd = endUs > place.lengthUs
+        when (row.track.kind) {
+            TrackKind.MAIN_VIDEO -> drawStrip(item, row, left, right, trimInUs, trimOutUs, place)
+            // Overlays get their thumbnails and their label rules with P4-01.
+            TrackKind.OVERLAY -> {
+                drawItemBody(row, left, right, MemixColors.trackVideo)
+                if (pastEnd) drawPastEndWash(row, left, right, place.endX)
+            }
+            TrackKind.TEXT, TrackKind.STICKER, TrackKind.MEME_SOUND, TrackKind.AUDIO, TrackKind.EFFECT -> {
+                drawItemBody(row, left, right, trackColorOf(row.track.kind))
+                if (pastEnd) drawPastEndWash(row, left, right, place.endX)
+                labelOf(item)?.let { drawItemLabel(item.id, it, row, left, right, place.endX, MemixColors.onTrack) }
             }
         }
     }
@@ -158,7 +221,31 @@ internal class TimelinePainter(
     }
 
     /** Duration × scale minus the `space-1` gap at its end, but never thinner than the playhead. */
-    fun itemWidthPx(item: ItemUi, pxPerUs: Float): Float = max(item.durationUs * pxPerUs - gapPx, minItemWidthPx)
+    fun itemWidthPx(item: ItemUi, pxPerUs: Float): Float = widthPx(item.durationUs, pxPerUs)
+
+    private fun widthPx(durationUs: Long, pxPerUs: Float): Float = max(durationUs * pxPerUs - gapPx, minItemWidthPx)
+
+    /**
+     * The trim handle of the selected item ([startUs]..[endUs]) under [x] on screen, or null. Each target is
+     * `touch-target` wide and reaches outward from its edge, so even a thin item keeps its body free to tap; only
+     * where the screen edge cuts the outward side off does the target move inward (spec P1-06 → Trim → Targets).
+     * The caller checks that the touch is in the item's row.
+     */
+    fun trimHandleAt(startUs: Long, endUs: Long, x: Float, playheadUs: Long, pxPerUs: Float, widthPx: Float): TrimEdge? {
+        if (pxPerUs <= 0f) return null
+        val left = xOf(startUs, playheadUs, widthPx / 2, pxPerUs)
+        val right = left + widthPx(endUs - startUs, pxPerUs)
+        val startTargetLeft = (left - handleTargetPx).coerceAtLeast(0f)
+        val endTargetLeft = right.coerceAtMost(widthPx - handleTargetPx)
+        val onStart = x >= startTargetLeft && x <= startTargetLeft + handleTargetPx
+        val onEnd = x >= endTargetLeft && x <= endTargetLeft + handleTargetPx
+        return when {
+            onStart && onEnd -> if (x - left < right - x) TrimEdge.START else TrimEdge.END
+            onStart -> TrimEdge.START
+            onEnd -> TrimEdge.END
+            else -> null
+        }
+    }
 
     /** The item drawn under [x] in [row] (the later one where two overlap, as it's drawn on top), or null. */
     fun itemAt(row: LaneRow, x: Float, playheadUs: Long, centerPx: Float, pxPerUs: Float): ItemUi? {
@@ -192,18 +279,12 @@ internal class TimelinePainter(
      * the frame at its own start (see [tileSourceTimeUs]); until it arrives, the nearest tile already in memory
      * stands in, and the exact one fades in over it in 120 ms.
      */
-    private fun DrawScope.drawStrip(
-        item: ItemUi,
-        row: LaneRow,
-        left: Float,
-        right: Float,
-        pxPerUs: Float,
-        thumbnails: TimelineThumbnails?,
-        missingSources: Set<MediaRef>,
-    ) {
+    private fun DrawScope.drawStrip(item: ItemUi, row: LaneRow, left: Float, right: Float, trimInUs: Long, trimOutUs: Long, place: ItemPlace) {
         val top = row.itemTopPx
         val media = item.media
-        if (media != null && media in missingSources) {
+        val thumbnails = place.thumbnails
+        val pxPerUs = place.pxPerUs
+        if (media != null && media in place.missingSources) {
             drawItemBody(row, left, right, MemixColors.trackVideo)
             drawItemLabel(item.id, missingFileLabel, row, left, right, endX = Float.MAX_VALUE, MemixColors.text)
             return
@@ -216,7 +297,7 @@ internal class TimelinePainter(
             val firstTile = max(0, floor(-left / tilePx).toInt())
             val lastTile = min(ceil((right - left) / tilePx).toInt() - 1, floor((size.width - left) / tilePx).toInt())
             for (tileIndex in firstTile..lastTile) {
-                val timeUs = if (item.isPhoto) 0L else tileSourceTimeUs(item.trimInUs, item.trimOutUs, tileIndex, tileDurationUs)
+                val timeUs = if (item.isPhoto) 0L else tileSourceTimeUs(trimInUs, trimOutUs, tileIndex, tileDurationUs)
                 val tile = thumbnails.tileAt(media, timeUs) ?: continue
                 val x = left + tileIndex * tilePx
                 val alpha = if (tile.timeUs == timeUs) fadeInAlpha(tile) else 1f
@@ -293,14 +374,15 @@ internal class TimelinePainter(
     // ---- Selection ----------------------------------------------------------------------------------------------
 
     /**
-     * The selected item's outline (`stroke-selection`, a `stroke-hairline` gap outside the item), its two handles
-     * outside the outline, and for a main clip the duration [badge]. [alpha] runs the 120 ms fade-in.
+     * The selected item's outline (`stroke-selection`, a `stroke-hairline` gap outside the item from [startUs] to
+     * [endUs]), its two handles outside the outline, and for a main clip the duration [badge]. [alpha] runs the 120 ms
+     * fade-in.
      */
-    fun DrawScope.drawSelection(item: ItemUi, row: LaneRow, playheadUs: Long, pxPerUs: Float, badge: TextLayoutResult?, alpha: Float) {
+    fun DrawScope.drawSelection(startUs: Long, endUs: Long, row: LaneRow, playheadUs: Long, pxPerUs: Float, badge: TextLayoutResult?, alpha: Float) {
         if (pxPerUs <= 0f || alpha <= 0f) return
         val centerPx = size.width / 2
-        val left = xOf(item.startUs, playheadUs, centerPx, pxPerUs)
-        val right = left + itemWidthPx(item, pxPerUs)
+        val left = xOf(startUs, playheadUs, centerPx, pxPerUs)
+        val right = left + widthPx(endUs - startUs, pxPerUs)
         val top = row.itemTopPx
         val bottom = top + row.itemHeightPx
         if (right < -handleWidthPx * 2 || left > size.width + handleWidthPx * 2) return
@@ -353,6 +435,62 @@ internal class TimelinePainter(
         val topLeft = Offset(visibleLeft + badgeInsetPx, top + badgeInsetPx)
         drawRoundRect(MemixColors.scrim, topLeft, Size(badgeWidth, badge.size.height.toFloat()), CornerRadius(cornerPx), alpha = alpha)
         drawText(badge, color = MemixColors.text, topLeft = Offset(topLeft.x + badgeInsetPx, topLeft.y), alpha = alpha)
+    }
+
+    /**
+     * Reorder mode (spec P1-06 → Reorder): a `scrim` wash over the whole timeline, then each main clip on its way
+     * between its place in time and its tile ([ReorderStrip.collapse] 0 → 1), showing its first frame, with the moving
+     * one drawn last and outlined in `selection`. [itemTopPx] is the main clips' top in this layer.
+     */
+    fun DrawScope.drawReorder(strip: ReorderStrip, itemTopPx: Float, playheadUs: Long, pxPerUs: Float, thumbnails: TimelineThumbnails?, missingSources: Set<MediaRef>) {
+        if (pxPerUs <= 0f) return
+        val progress = strip.collapse.value
+        drawRect(MemixColors.scrim, alpha = progress)
+        val centerPx = size.width / 2
+        for (index in strip.order.indices) {
+            val id = strip.order[index]
+            if (id != strip.movingId) drawReorderClip(strip, id, itemTopPx, playheadUs, centerPx, pxPerUs, progress, thumbnails, missingSources)
+        }
+        drawReorderClip(strip, strip.movingId, itemTopPx, playheadUs, centerPx, pxPerUs, progress, thumbnails, missingSources)
+    }
+
+    private fun DrawScope.drawReorderClip(
+        strip: ReorderStrip,
+        id: String,
+        top: Float,
+        playheadUs: Long,
+        centerPx: Float,
+        pxPerUs: Float,
+        progress: Float,
+        thumbnails: TimelineThumbnails?,
+        missingSources: Set<MediaRef>,
+    ) {
+        val clip = strip.clips[id] ?: return
+        val timeLeft = xOf(clip.startUs, playheadUs, centerPx, pxPerUs)
+        val left = timeLeft + (strip.tileLeftPx(id) - timeLeft) * progress
+        val width = itemWidthPx(clip, pxPerUs).let { it + (strip.tileSizePx - it) * progress }
+        val bottom = top + tileSizePx
+        val media = clip.media
+        clipPath(itemShape(left, top, left + width, bottom)) {
+            drawRect(MemixColors.trackVideo, Offset(left, top), Size(width, tileSizePx.toFloat()))
+            if (media != null && media !in missingSources) {
+                thumbnails?.tileAt(media, if (clip.isPhoto) 0L else clip.trimInUs)?.let { drawTile(it, left, top, alpha = 1f) }
+            }
+        }
+        if (id != strip.movingId) return
+        val outlineInset = outlineGapPx + outlineWidthPx / 2
+        drawRoundRect(
+            MemixColors.selection,
+            Offset(left - outlineInset, top - outlineInset),
+            Size(width + 2 * outlineInset, bottom - top + 2 * outlineInset),
+            CornerRadius(cornerPx + outlineInset),
+            style = outlineStroke,
+        )
+    }
+
+    /** While a trim is snapped: a `stroke-hairline` line in `text-secondary` across the lanes at [x], [top] to [bottom]. */
+    fun DrawScope.drawSnapGuide(x: Float, top: Float, bottom: Float) {
+        drawLine(MemixColors.textSecondary, Offset(x, top), Offset(x, bottom), tickWidthPx)
     }
 
     // ---- Playhead -----------------------------------------------------------------------------------------------
