@@ -59,7 +59,7 @@
     <string name="edit_split">Pisahkan</string>
     <string name="edit_delete">Hapus</string>
     <string name="edit_duplicate">Duplikat</string>
-    <string name="edit_reorder">Urutkan</string>
+    <string name="edit_reorder">Atur urutan</string>
     <string name="import_row_a11y">%1$s, %2$s. %3$s</string>
     <string name="import_row_a11y_no_name">%1$s. %2$s</string>
     <!-- Timeline (P1-05): machine draft until P5-06. Budgets and translator notes: docs/ux/specs/P1-05-timeline.md -> Copy. Spoken times come from a11y_time_* (core:ui); never put timecode digits in spoken strings. -->
@@ -94,14 +94,14 @@
     <string name="tool_split">Pisahkan</string>
     <string name="tool_delete">Hapus</string>
     <string name="tool_duplicate">Duplikat</string>
-    <string name="tool_reorder">Urutkan</string>
+    <string name="tool_reorder">Atur urutan</string>
     <string name="clip_tools_close">Tutup alat klip</string>
     <string name="reorder_move_earlier">Pindah lebih awal</string>
     <string name="reorder_move_later">Pindah lebih akhir</string>
     <string name="panel_done">Selesai</string>
     <string name="explain_split">Untuk memisahkan, pindahkan playhead ke dalam klip ini.</string>
     <string name="explain_last_clip">Videomu perlu setidaknya satu klip.</string>
-    <string name="explain_reorder_one">Mengurutkan perlu setidaknya dua klip.</string>
+    <string name="explain_reorder_one">Mengatur urutan perlu setidaknya dua klip.</string>
     <string name="explain_reorder_first">Klip ini sudah yang pertama.</string>
     <string name="explain_reorder_last">Klip ini sudah yang terakhir.</string>
     <string name="editor_preview_updating">Memperbarui pratinjau</string>

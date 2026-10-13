@@ -495,11 +495,15 @@ internal class TimelinePainter(
 
     // ---- Playhead -----------------------------------------------------------------------------------------------
 
-    /** The fixed playhead: a white line down the center to [bottomPx], with its round head at the top of the ruler. */
-    fun DrawScope.drawPlayhead(bottomPx: Float) {
+    /**
+     * The fixed playhead: a white line down the center to [bottomPx], with its round head at the top of the ruler.
+     * [alpha] fades it out in reorder mode, where tiles aren't laid out in time.
+     */
+    fun DrawScope.drawPlayhead(bottomPx: Float, alpha: Float) {
+        if (alpha <= 0f) return
         val x = size.width / 2
-        drawRect(MemixColors.selection, Offset(x - playheadWidthPx / 2, 0f), Size(playheadWidthPx, bottomPx))
-        drawCircle(MemixColors.selection, radius = playheadHeadPx / 2, center = Offset(x, playheadHeadPx / 2))
+        drawRect(MemixColors.selection, Offset(x - playheadWidthPx / 2, 0f), Size(playheadWidthPx, bottomPx), alpha = alpha)
+        drawCircle(MemixColors.selection, radius = playheadHeadPx / 2, center = Offset(x, playheadHeadPx / 2), alpha = alpha)
     }
 
     private fun itemShape(left: Float, top: Float, right: Float, bottom: Float): Path {

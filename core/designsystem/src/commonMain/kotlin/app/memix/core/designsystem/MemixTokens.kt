@@ -65,6 +65,7 @@ object MemixSize {
     val touchTarget = 48.dp
     val navHeight = 64.dp
     val toolbarHeight = 72.dp
+    val toolItemWidth = 64.dp
     val trackHeightVideo = 40.dp
     val trackHeight = 28.dp
     val playheadWidth = 2.dp

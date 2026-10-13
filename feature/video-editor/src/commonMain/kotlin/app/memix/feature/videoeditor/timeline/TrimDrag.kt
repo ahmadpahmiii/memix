@@ -16,7 +16,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
@@ -25,7 +24,6 @@ import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import app.memix.core.designsystem.MemixColors
-import app.memix.core.designsystem.MemixElevation
 import app.memix.core.designsystem.MemixMotion
 import app.memix.core.designsystem.MemixShapes
 import app.memix.core.designsystem.MemixSpacing
@@ -172,8 +170,9 @@ internal fun CancelTrimOnBack(controller: TimelineController) {
 }
 
 /**
- * The trim's value bubble (spec P1-06 → Bubbles and guides): the new length on a `surface-raised` pill with the
- * floating shadow, `space-1` above the dragged item's row, centered on the moving edge and kept inside the timeline.
+ * The trim's value bubble (spec P1-06 → Bubbles and guides): the new length on a `surface-raised` pill (no shadow: the
+ * value step sets it apart), `space-1` above the dragged item's row, centered on the moving edge and kept inside the
+ * timeline on both axes.
  * Only its text recomposes (when the shown hundredths change); where it sits is read at placement.
  */
 @Composable
@@ -191,7 +190,6 @@ internal fun TrimValueBubble(controller: TimelineController, rulerHeightPx: Floa
                 MemixTheme.type.timecode,
                 Modifier
                     .graphicsLayer { alpha = fadeIn.value }
-                    .dropShadow(MemixShapes.radiusFull, MemixElevation.shadowFloat)
                     .clip(MemixShapes.radiusFull)
                     .background(MemixColors.surfaceRaised)
                     .padding(horizontal = MemixSpacing.space2, vertical = MemixSpacing.space1),
@@ -203,7 +201,8 @@ internal fun TrimValueBubble(controller: TimelineController, rulerHeightPx: Floa
             val pxPerUs = pxPerUs(state.dpPerSecond, controller.density)
             val edgeX = xOf(drag.edgeUs, state.playheadUs, constraints.maxWidth / 2f, pxPerUs)
             val x = (edgeX - bubble.width / 2f).roundToInt().coerceIn(0, max(0, constraints.maxWidth - bubble.width))
-            val y = (rulerHeightPx + drag.row.topPx - laneScroll.value - gapPx - bubble.height).roundToInt()
+            // Inside the timeline's top edge: on the main row it sits over the ruler, never over the transport row.
+            val y = (rulerHeightPx + drag.row.topPx - laneScroll.value - gapPx - bubble.height).roundToInt().coerceAtLeast(0)
             bubble.place(x, y)
         }
     }

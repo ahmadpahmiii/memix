@@ -101,7 +101,7 @@
     <string name="panel_done">Concluído</string>
     <string name="explain_split">Para dividir, mova o cursor para dentro deste clipe.</string>
     <string name="explain_last_clip">Seu vídeo precisa de pelo menos um clipe.</string>
-    <string name="explain_reorder_one">Para reordenar, você precisa de pelo menos dois clipes.</string>
+    <string name="explain_reorder_one">Reordenar exige pelo menos dois clipes.</string>
     <string name="explain_reorder_first">Este clipe já é o primeiro.</string>
     <string name="explain_reorder_last">Este clipe já é o último.</string>
     <string name="editor_preview_updating">Atualizando a prévia</string>

@@ -437,8 +437,9 @@ adb logcat -s MemixPreview:* MemixAnalytics:*      # second terminal
    right one selected; the preview doesn't change. Undo says "Undo: Split". At a clip's edge Split says "To split, move the
    playhead inside this clip." Split a caption and a sound too.
 3. **Trim:** select a clip and drag its end handle left: only that edge moves, a bubble above shows the new length, a gap
-   opens before the next clip, and the preview shows the new last frame while you drag. Release: the clips close up, the
-   preview goes back to the playhead's frame, "Undo: Trim" works. Then:
+   opens before the next clip, and the preview shows the new last frame while you drag. The bubble has no shadow, sits
+   whole inside the timeline (never cut at the top, never over the transport row) and goes at once on release (review
+   P1, P2). Release: the clips close up, the preview goes back to the playhead's frame, "Undo: Trim" works. Then:
    - Clip 2 (`clip-b.mp4` from 1 s): drag its start handle left: it stops after 1 s with one buzz (no more footage).
    - Drag an edge near the playhead, a clip boundary or a caption's edge: it snaps with one buzz and a thin gray line
      across the lanes (no line at the playhead, which is already one).
@@ -455,6 +456,16 @@ adb logcat -s MemixPreview:* MemixAnalytics:*      # second terminal
      the moved clip, "Undo: Reorder".
    - Reorder tool: the tiles with the selected clip under the playhead; Move earlier and Move later move it one place;
      at either end they say "This clip is already first." / "…last."; a tap on another tile moves it there; Done applies.
+   - The playhead fades out with the wash and comes back when the mode ends (review P4); the reorder bar has a thin
+     gray line along its top edge (P3).
+   - **Only the strip takes touches (review M1):** in reorder mode, tap and long-press the washed ruler, a washed lane
+     (a caption, a sound) and the empty area below the lanes, including straight above or below the moving tile and
+     above another tile: nothing happens. The clip doesn't move, nothing is grabbed, the timeline doesn't scroll and the
+     mode stays open.
+   - **The moving tile stays in view (review M2):** on `timeline-check` (20 clips), select clip 10, tap Reorder and tap
+     Move later six times: the strip slides along with the tile in one movement, and the moving tile stays on screen at
+     least a finger's width from each side. Keep going to the end ("This clip is already last."), then Move earlier all
+     the way to the start: the same.
    - Back cancels: the order stays as it was and there is nothing new to undo. A drop where it started records nothing.
    - In a one-clip project the tool says "Reorder needs at least two clips."
 7. **Preview catching up:** after every edit the stage keeps the old picture until the new one shows: never black, never
@@ -466,12 +477,22 @@ adb logcat -s MemixPreview:* MemixAnalytics:*      # second terminal
      "Split: clip 4", "Trim: Caption 1". Explanations are spoken.
    - Right after the selected item come its handles: "Start of clip 3", "9.0 seconds". Swipe up or down: one frame each
      (one Trim step each). Action: Trim to playhead.
-   - Reorder mode: the tiles read "Video, clip 2 of 20", the moving one "selected"; double-tap another tile moves the clip
-     there and TalkBack says "Clip 1 of 20"; Move earlier, Move later and Done are buttons.
+   - Reorder mode: the tiles read as a list, "Video, clip 2 of 20", the moving one "selected"; double-tap another tile
+     moves the clip there and TalkBack says "Clip 1 of 20" (after each Move earlier or Move later too); Move earlier,
+     Move later and Done are buttons.
+   - **Focus (review P6):** select a clip, focus the Reorder tool and double-tap it: TalkBack's focus lands on Move
+     earlier, not nowhere. Done or back: focus comes back to the Reorder tool. A long-press lift leaves focus alone.
 9. **`tool_use`:** `MemixAnalytics` shows one `tool_use` per edit, tool `split`, `trim`, `delete`, `duplicate` or
    `reorder`, and none for a trim released where it started, a reorder dropped in place or a tool that only explains.
-10. **Hindi at 200% font, 360 dp wide:** the clip tool bar's labels are whole (two lines at most; a word that can't break
-    widens its tool), and the bar grows taller rather than cutting anything.
+10. **Hindi at 200% font, 360 dp wide:** the clip tool bar's labels are whole (never cut: two lines is the copy budget,
+    and at 200% a label may take a third; a word that can't break widens its tool, at least 64 dp), and the bar grows
+    taller rather than cutting anything. Split and Delete are in view without scrolling. Delete reads "हटाएं"; in
+    Indonesian, Reorder reads "Atur urutan" (review P7).
+11. **Haptics** (keep the phone's touch vibration on): a SegmentTick when a trim snaps and when it stops at the footage
+    limit; a LongPress buzz when a long-press lifts a clip into reorder mode.
+12. **Remove animations** (Settings → Accessibility → Remove animations, or `adb shell settings put global
+    animator_duration_scale 0`; back with 1): every edit changes at once, the tool bars switch at once, nothing slides
+    (the ripple, the reorder morph, the tiles and the strip following the tile all jump).
 
 **B. Edit timing with real edits, R1 (benchmark build; measured here at phase-end QA).** As P1-04 block D, step 1, but
 with real edits on `timeline-check`: a trim release, a delete, a duplicate, a reorder drop and an undo, each 3 times, 2 s
@@ -495,11 +516,39 @@ start by about 1 s: the video after it moves 1 s earlier while the sound stays a
 moment. Note whether that drift would bother you; it decides whether "keep sounds with their clip" is worth proposing.
 
 ### States to screenshot for the design review (`docs/ux/reviews/P1-06/`)
-At 360 dp wide if possible, English unless noted: `main-tools`, `clip-tools` (a video clip selected: Split, Delete,
-Duplicate visible without scrolling), `clip-tools-hi-200` (Hindi at 200% font), `text-tools`, `trim-in-progress`
-(handle, value bubble, the gap before the next clip), `trim-closed-up` (after the release), `trim-snap-guide`,
-`reorder-tool` (tiles, darkened surroundings, Move earlier, Move later, Done), `reorder-drag` (a tile held between two
-others), `explain-split` (the toast) and `preview-updating` (only if an edit took over a second).
+Take these after the review fixes, at 360 dp wide if possible, in English unless noted (the list from
+`docs/ux/reviews/P1-06.md` → Device screenshots):
+1. `main-tools`: nothing selected; Edit only.
+2. `clip-tools-video`: a video clip selected: outline and handles on the clip; Close, divider, Split · Delete (red) ·
+   Duplicate · Reorder.
+3. `clip-tools-photo`
+4. `clip-tools-text`: Delete · Split · Duplicate.
+5. `clip-tools-sound`: Split · Delete · Duplicate.
+6. `clip-tools-hi-200`: Hindi at 200% font, a video clip selected.
+7. `explain-split`: the toast after Split with the playhead outside the clip.
+8. `explain-last-clip`: a one-clip project, Delete tapped.
+9. `trim-end-mid`: a main clip's end handle dragged inward: the gap on the near side, the bubble whole at the top of the
+   timeline with no shadow.
+10. `trim-start-overlap`: the start handle dragged outward over the previous clip.
+11. `trim-snap-guide`: snapped to a caption's edge, with the guide line.
+12. `trim-footage-limit`: the handle stopped at the source's end.
+13. `trim-released`: the closed-up result.
+14. `split-result`: two pieces meeting at the playhead, the right one selected.
+15. `delete-after`: later clips closed up, the main tool bar back.
+16. `duplicate-landed`: the copy right after the original, with the outline on the copy.
+17. `reorder-tool`: entered from the Reorder tool: tiles, wash, the playhead faded out, the reorder bar with its hairline.
+18. `reorder-moved-far`: `timeline-check` after six taps of Move later; the moving tile still on screen.
+19. `reorder-drag`: a long-press lift, mid-drag.
+20. `reorder-hi-200`: Hindi at 200% font.
+21. `updating-preview`: only if the status appeared during the R1 run (block B).
+
+**For QA to confirm on screen (end of phase):**
+- `trim-end-mid`: the bubble doesn't overlap the transport row and isn't cut.
+- `clip-tools-video`: Delete's red reads clearly next to the gray tools, and the pressed state is still legible.
+- `clip-tools-hi-200`: Split and Delete in view without scrolling; no label cut.
+- `reorder-moved-far`: the strip moves along with the tile, and the slide and the scroll read as one movement.
+- In the QA notes, not screenshots: A6 (M1, washed areas do nothing), A8 (TalkBack, focus on Move earlier), A11
+  (haptics), A12 (Remove animations).
 
 ## P1-17 · Hindi display face: hero and entry cards in Teko, nothing clipped, other languages unchanged
 

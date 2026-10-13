@@ -177,7 +177,7 @@ fun VideoEditorScreen(
                 timelineMinHeight = timelineMinHeight(),
                 modifier = Modifier.weight(1f),
             )
-            ToolBarRegion(state.clipTools, state.reorder != null, onIntent)
+            ToolBarRegion(state.clipTools, state.reorder, onIntent)
         }
         UnsavedChangesSheet(state.unsavedSheetOpen, onIntent, onFreeUpSpace.takeIf { state.canFreeUpSpace })
     }

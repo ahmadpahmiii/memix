@@ -205,6 +205,7 @@ private fun TimelineContent(
             .pointerInput(controller, painter, lanes, rulerHeightPx) {
                 detectReorderGestures(
                     isReordering = { controller.isReordering },
+                    isOnStrip = { offset -> isOnMainRow(lanes, TimelineHit(rulerHeightPx, laneScroll.value, offset)) },
                     mainClipAt = { offset -> mainClipUnder(controller, painter, lanes, TimelineHit(rulerHeightPx, laneScroll.value, offset)) },
                     onLift = controller::liftForReorder,
                     onGrab = controller::grabMovingTile,
@@ -294,7 +295,8 @@ private fun TimelineContent(
                 val lanesBottomPx = max(rulerHeightPx, min(size.height, rulerHeightPx + lanes.heightPx - laneScroll.value))
                 with(painter) {
                     snapGuideX(state, density.density, size.width)?.let { drawSnapGuide(it, rulerHeightPx, lanesBottomPx) }
-                    drawPlayhead(bottomPx = lanesBottomPx)
+                    // Fades out with reorder mode's wash and back in as the tiles expand (spec P1-06 → Reorder).
+                    drawPlayhead(bottomPx = lanesBottomPx, alpha = 1f - (state.reorder?.collapse?.value ?: 0f))
                 }
             },
         )
@@ -303,6 +305,13 @@ private fun TimelineContent(
         ZoomMenu(controller, zoomMenuOpen, zoomMenuAt, onDismiss = { zoomMenuOpen = false })
     }
     CancelTrimOnBack(controller)
+}
+
+/** True when [hit] is in the main video row's band (48 dp: the reorder tiles' targets), below the ruler. */
+private fun isOnMainRow(lanes: LaneLayout, hit: TimelineHit): Boolean {
+    val mainRow = lanes.rows.firstOrNull { it.track.kind == TrackKind.MAIN_VIDEO } ?: return false
+    val laneY = hit.offset.y - hit.rulerHeightPx + hit.laneScrollPx
+    return hit.offset.y >= hit.rulerHeightPx && laneY >= mainRow.topPx && laneY < mainRow.topPx + mainRow.heightPx
 }
 
 /** The main clip under [hit] (not on the ruler), for a long-press lift; null elsewhere. */

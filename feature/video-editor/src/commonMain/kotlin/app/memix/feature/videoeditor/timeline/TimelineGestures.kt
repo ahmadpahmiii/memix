@@ -92,11 +92,14 @@ internal suspend fun PointerInputScope.detectTrimDrag(
 /**
  * Reorder mode's touches (spec P1-06 → Reorder). Outside it, a long-press on a main clip ([mainClipAt]) lifts it
  * ([onLift]; false when there's nothing to reorder) and the same finger then drags it; until the press is long
- * enough nothing is consumed, so taps and scrolling work as usual. In reorder mode every touch is taken: a press on
- * the moving tile ([onGrab]) drags it and the release drops it ([onDrop]); a tap anywhere else goes to [onTap].
+ * enough nothing is consumed, so taps and scrolling work as usual. In reorder mode every touch is taken, but only the
+ * strip's row ([isOnStrip]) responds: a press on the moving tile ([onGrab]) drags it and the release drops it
+ * ([onDrop]); a tap on another tile goes to [onTap]. Anywhere else (the washed ruler and lanes) a touch does nothing
+ * (spec P1-06 → Reorder: the washed areas don't respond).
  */
 internal suspend fun PointerInputScope.detectReorderGestures(
     isReordering: () -> Boolean,
+    isOnStrip: (Offset) -> Boolean,
     mainClipAt: (Offset) -> ItemUi?,
     onLift: (clip: ItemUi, x: Float) -> Boolean,
     onGrab: (x: Float) -> Boolean,
@@ -109,7 +112,12 @@ internal suspend fun PointerInputScope.detectReorderGestures(
     if (down.isConsumed) return@awaitEachGesture
     if (isReordering()) {
         down.consume()
-        if (onGrab(down.position.x)) dragUntilUp(down.id, onDrag, onDrop) else tapUntilUp(down, onTap)
+        when {
+            // Taken, so nothing below scrolls or taps, and ignored: tapping the wash is how people try to get out.
+            !isOnStrip(down.position) -> tapUntilUp(down, onTap = {})
+            onGrab(down.position.x) -> dragUntilUp(down.id, onDrag, onDrop)
+            else -> tapUntilUp(down, onTap)
+        }
         return@awaitEachGesture
     }
     val clip = mainClipAt(down.position) ?: return@awaitEachGesture

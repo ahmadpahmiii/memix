@@ -57,7 +57,7 @@
     <string name="editor_empty_body">इसे बंद करें और नया वीडियो मीम बनाएं।</string>
     <string name="edit_trim">ट्रिम</string>
     <string name="edit_split">स्प्लिट</string>
-    <string name="edit_delete">डिलीट</string>
+    <string name="edit_delete">हटाएं</string>
     <string name="edit_duplicate">डुप्लिकेट</string>
     <string name="edit_reorder">क्रम बदलें</string>
     <string name="import_row_a11y">%1$s, %2$s। %3$s</string>
@@ -92,7 +92,7 @@
     <!-- Clip tools and edits (P1-06): machine draft until P5-06. Budgets and translator notes: docs/ux/specs/P1-06-clip-edits-and-audio.md -> Copy; a11y_trim_* in docs/ux/specs/P1-05-timeline.md -> Copy. -->
     <string name="tool_edit">एडिट</string>
     <string name="tool_split">स्प्लिट</string>
-    <string name="tool_delete">डिलीट</string>
+    <string name="tool_delete">हटाएं</string>
     <string name="tool_duplicate">डुप्लिकेट</string>
     <string name="tool_reorder">क्रम बदलें</string>
     <string name="clip_tools_close">क्लिप टूल बंद करें</string>

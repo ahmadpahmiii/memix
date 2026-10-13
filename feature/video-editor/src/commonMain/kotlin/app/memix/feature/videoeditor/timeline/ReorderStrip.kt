@@ -2,6 +2,7 @@ package app.memix.feature.videoeditor.timeline
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,6 +21,7 @@ import app.memix.core.model.project.TrackKind
 import app.memix.feature.videoeditor.ReorderUi
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -64,6 +66,9 @@ internal class ReorderStrip(
     /** The main clips by id, from the newest timeline (the expansion runs against the reordered one). */
     var clips: Map<String, ItemUi> = emptyMap()
 
+    // Moves originPx with a slide that would take the moving tile out of view.
+    private var originScroll: Job? = null
+
     // Each tile's place, in tiles from the first, sliding when the order changes.
     private val places = HashMap<String, Animatable<Float, AnimationVector1D>>().apply {
         order.forEachIndexed { index, id -> put(id, Animatable(index.toFloat())) }
@@ -81,8 +86,13 @@ internal class ReorderStrip(
     /** The place the dragged tile's center is nearest to. */
     fun placeUnderDraggedTile(): Int = ((dragLeftPx - originPx) / pitchPx).roundToInt().coerceIn(0, order.lastIndex)
 
-    /** Follows the editor's [newOrder]: tiles whose place changed slide there in 200 ms, or jump with reduce motion. */
-    fun showOrder(newOrder: List<String>, reduceMotion: Boolean) {
+    /**
+     * Follows the editor's [newOrder]: tiles whose place changed slide there in 200 ms, or jump with reduce motion.
+     * Without a finger on it, the moving tile also stays in view: when its new place is closer than [edgeZonePx] to
+     * either side of a timeline [widthPx] wide, the strip scrolls with the slide to keep it that far in (spec P1-06 →
+     * Reorder: the moving tile always stays in view).
+     */
+    fun showOrder(newOrder: List<String>, reduceMotion: Boolean, widthPx: Float, edgeZonePx: Float) {
         order = newOrder
         newOrder.forEachIndexed { index, id ->
             val place = places.getOrPut(id) { Animatable(index.toFloat()) }
@@ -90,13 +100,34 @@ internal class ReorderStrip(
             if (place.targetValue == target) return@forEachIndexed
             scope.launch { if (reduceMotion) place.snapTo(target) else place.animateTo(target, tween(MemixMotion.durationSheet)) }
         }
+        if (!isDragging) keepMovingTileInView(widthPx, edgeZonePx, reduceMotion)
     }
 
     /** Scrolls the strip by [deltaPx], keeping at least one tile's width of it on a screen [widthPx] wide. */
     fun scrollBy(deltaPx: Float, widthPx: Float) {
-        val stripWidth = order.size * pitchPx
-        originPx = (originPx + deltaPx).coerceIn(tileSizePx - stripWidth, widthPx - tileSizePx)
+        originScroll?.cancel()
+        originPx = clampedOrigin(originPx + deltaPx, widthPx)
     }
+
+    private fun keepMovingTileInView(widthPx: Float, edgeZonePx: Float, reduceMotion: Boolean) {
+        val newLeftPx = originPx + order.indexOf(movingId) * pitchPx
+        val shiftPx = when {
+            newLeftPx < edgeZonePx -> edgeZonePx - newLeftPx
+            newLeftPx + tileSizePx > widthPx - edgeZonePx -> widthPx - edgeZonePx - (newLeftPx + tileSizePx)
+            else -> return
+        }
+        val targetPx = clampedOrigin(originPx + shiftPx, widthPx)
+        originScroll?.cancel()
+        if (reduceMotion) {
+            originPx = targetPx
+            return
+        }
+        originScroll = scope.launch {
+            animate(originPx, targetPx, animationSpec = tween(MemixMotion.durationSheet)) { value, _ -> originPx = value }
+        }
+    }
+
+    private fun clampedOrigin(candidatePx: Float, widthPx: Float): Float = candidatePx.coerceIn(tileSizePx - order.size * pitchPx, widthPx - tileSizePx)
 }
 
 /**
@@ -135,7 +166,7 @@ internal fun FollowReorderMode(controller: TimelineController, reorder: ReorderU
             state.reorder = it
         }
         strip.movingId = reorder.movingId
-        strip.showOrder(reorder.order, reduceMotion)
+        strip.showOrder(reorder.order, reduceMotion, state.widthPx.toFloat(), controller.edgeZonePx)
         if (strip.collapse.value != 1f) strip.collapse.animateTo(1f, tween(durationMillis))
     }
 }

@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -32,7 +34,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import app.memix.core.designsystem.Icon
 import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixIcons
@@ -65,7 +66,7 @@ enum class ToolTone {
 /**
  * One tool: an icon over its label. The label is also its spoken name, unless [contentDescription] says it
  * differently (Move here is spoken "Move to playhead"). A tool that can't act right now keeps its look; its
- * [onClick] explains why.
+ * [onClick] explains why. [focusRequester] lets the caller move focus to it after the bar swaps.
  */
 @Immutable
 class ToolBarItem(
@@ -74,6 +75,7 @@ class ToolBarItem(
     val onClick: () -> Unit,
     val tone: ToolTone = ToolTone.Default,
     val contentDescription: String? = null,
+    val focusRequester: FocusRequester? = null,
 )
 
 /** The clip mode's leading button, which closes the clip tools; icon only, so it has a spoken name. */
@@ -85,8 +87,8 @@ class ToolBarClose(val contentDescription: String, val onClick: () -> Unit)
  * `toolbar-height` tall under a `hairline`, with [tools] left-aligned in a row that scrolls sideways when they
  * overflow. With [close] it's in clip mode: a 48 dp back button and a divider lead the tools.
  *
- * Each tool is 64 dp wide with its label in `caption`, up to two lines; at large font sizes a tool widens only when
- * a word can't break, and the bar grows taller instead of cutting labels.
+ * Each tool is `tool-item-width` wide with its label in `caption`, never cut; at large font sizes a tool widens only
+ * when a word can't break, and the bar grows taller instead of cutting labels.
  */
 @Composable
 fun ToolBar(tools: ImmutableList<ToolBarItem>, modifier: Modifier = Modifier, close: ToolBarClose? = null) {
@@ -118,9 +120,10 @@ private fun ToolButton(tool: ToolBarItem) {
     val spokenName = tool.contentDescription ?: tool.label
     Column(
         Modifier
+            .then(tool.focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
             .focusRing(interactionSource, MemixShapes.radiusMd)
-            // 64 dp, wider only when a word of the label can't break at large font sizes.
-            .widthIn(min = ToolItemWidth)
+            // `tool-item-width`, wider only when a word of the label can't break at large font sizes.
+            .widthIn(min = MemixSize.toolItemWidth)
             .width(IntrinsicSize.Min)
             .heightIn(min = MemixSize.touchTarget)
             .clip(MemixShapes.radiusMd)
@@ -139,7 +142,8 @@ private fun ToolButton(tool: ToolBarItem) {
         verticalArrangement = Arrangement.spacedBy(MemixSpacing.space1),
     ) {
         Icon(tool.icon, contentDescription = null, tint = tint)
-        Text(tool.label, MemixTheme.type.caption, Modifier.fillMaxWidth(), color = tint, textAlign = TextAlign.Center, maxLines = MAX_LABEL_LINES)
+        // Never cut: two lines is the copy budget, not a cap (a three-word label at 200% takes three).
+        Text(tool.label, MemixTheme.type.caption, Modifier.fillMaxWidth(), color = tint, textAlign = TextAlign.Center)
     }
 }
 
@@ -149,7 +153,3 @@ private fun toneColor(tone: ToolTone): Color = when (tone) {
     ToolTone.MemeSound, ToolTone.Active -> MemixColors.primary
 }
 
-/** A tool item is 64 dp wide (ToolBar README): a touch target plus `space-2` on each side. */
-private val ToolItemWidth: Dp = MemixSize.touchTarget + MemixSpacing.space2 * 2
-
-private const val MAX_LABEL_LINES = 2
