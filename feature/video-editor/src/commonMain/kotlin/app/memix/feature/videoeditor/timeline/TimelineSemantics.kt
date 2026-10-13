@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import app.memix.core.designsystem.MemixSize
+import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.TrackKind
 import app.memix.core.ui.spokenTime
 import app.memix.core.ui.spokenTimeOf
@@ -46,11 +47,13 @@ import memix.feature.video_editor.generated.resources.a11y_forward_1s
 import memix.feature.video_editor.generated.resources.a11y_go_end
 import memix.feature.video_editor.generated.resources.a11y_go_start
 import memix.feature.video_editor.generated.resources.a11y_item
+import memix.feature.video_editor.generated.resources.a11y_item_unnamed
 import memix.feature.video_editor.generated.resources.a11y_playhead
 import memix.feature.video_editor.generated.resources.a11y_state_after_end
 import memix.feature.video_editor.generated.resources.a11y_state_original_muted
 import memix.feature.video_editor.generated.resources.a11y_state_past_end
 import memix.feature.video_editor.generated.resources.a11y_state_sound_detached
+import memix.feature.video_editor.generated.resources.clip_missing_file
 import memix.feature.video_editor.generated.resources.import_item_photo
 import memix.feature.video_editor.generated.resources.import_item_video
 import memix.feature.video_editor.generated.resources.timeline_original_audio
@@ -69,9 +72,9 @@ import org.jetbrains.compose.resources.stringResource
 
 /*
  * What screen readers get from the timeline (spec P1-05 → Accessibility): the container with its zoom actions, the
- * playhead as an adjustable control, then each track's items in time order. Items get their nodes from the model,
- * not from the drawing; the ones on screen are placed where they're drawn, and each track can be scrolled by the
- * screen reader to reach the rest.
+ * playhead as an adjustable control, then each track's items in time order. It works like a lazy list: Compose
+ * leaves nodes that sit off screen out of the tree, so each track has nodes for its items on screen, placed where
+ * they're drawn, and the screen reader scrolls the track to reach the rest.
  */
 
 /** The zoom actions of the timeline container ("Timeline": Zoom in, Zoom out, Show whole video). */
@@ -158,19 +161,30 @@ private fun rememberPlayheadActions(controller: TimelineController): List<Custom
     }
 }
 
-/** One node per track row, each holding nodes for its items on screen, in time order. */
+/**
+ * One node per track row, each holding nodes for its items on screen, in time order. [missingSources] are the files
+ * the thumbnail reader couldn't find: their clips say "File missing", as they show it.
+ */
 @Composable
-internal fun TrackSemantics(controller: TimelineController, painter: TimelinePainter, timeline: TimelineUi, lanes: LaneLayout, selectedItemId: String?) {
+internal fun TrackSemantics(
+    controller: TimelineController,
+    painter: TimelinePainter,
+    timeline: TimelineUi,
+    lanes: LaneLayout,
+    selectedItemId: String?,
+    missingSources: Set<MediaRef>,
+) {
     val clipCount = timeline.tracks.firstOrNull { it.kind == TrackKind.MAIN_VIDEO }?.items?.size ?: 0
+    val facts = ItemFacts(timeline.lengthUs, clipCount, selectedItemId, missingSources)
     lanes.rows.forEach { row ->
         key(row.track.id) {
-            TrackRowSemantics(controller, painter, row, ItemFacts(timeline.lengthUs, clipCount, selectedItemId))
+            TrackRowSemantics(controller, painter, row, facts)
         }
     }
 }
 
 /** What every item node of a timeline needs to describe itself. */
-private class ItemFacts(val lengthUs: Long, val clipCount: Int, val selectedItemId: String?)
+private class ItemFacts(val lengthUs: Long, val clipCount: Int, val selectedItemId: String?, val missingSources: Set<MediaRef>)
 
 /**
  * A track's row: scrollable for screen readers (forward and back move the playhead a screen), with a node for each
@@ -240,7 +254,7 @@ private fun itemsOnScreen(row: LaneRow, painter: TimelinePainter, playheadUs: Lo
 @Composable
 private fun ItemSemantics(controller: TimelineController, track: TrackUi, item: ItemUi, facts: ItemFacts) {
     val description = itemDescription(track, item, facts.clipCount)
-    val states = itemStates(track, item, facts.lengthUs)
+    val states = itemStates(track, item, facts)
     val isSelected = item.id == facts.selectedItemId
     Box(
         Modifier.semantics {
@@ -265,28 +279,35 @@ private fun itemDescription(track: TrackUi, item: ItemUi, clipCount: Int): Strin
         return stringResource(Res.string.a11y_clip_media, kind, item.clipNumber, clipCount, duration, start)
     }
     val trackName = stringResource(trackNameOf(track.kind))
-    // TODO(P1-08): a meme sound says its title. Until then, and for stickers (P4-12) and effects (P4-06), an item
-    // without a name in the model says its track's name in that place.
-    val label = when (val itemLabel = item.label) {
-        is ItemLabel.Written -> itemLabel.text
-        ItemLabel.OriginalAudio -> stringResource(Res.string.timeline_original_audio)
-        ItemLabel.None -> trackName
+    return when (val label = item.label) {
+        is ItemLabel.Written -> stringResource(Res.string.a11y_item, trackName, label.text, duration, start)
+        ItemLabel.OriginalAudio -> {
+            val originalAudio = stringResource(Res.string.timeline_original_audio)
+            stringResource(Res.string.a11y_item, trackName, originalAudio, duration, start)
+        }
+        // A sound before P1-08 gives it a title, or a sticker the user cut out (P2-07), has no name to say; saying
+        // the track's name twice would sound like a glitch.
+        ItemLabel.None -> stringResource(Res.string.a11y_item_unnamed, trackName, duration, start)
     }
-    return stringResource(Res.string.a11y_item, trackName, label, duration, start)
 }
 
-/** Muted, sound detached and past the end, in that order, joined for the screen reader. */
+/** File missing, muted, sound detached and past the end, in that order, joined for the screen reader. */
 @Composable
-private fun itemStates(track: TrackUi, item: ItemUi, lengthUs: Long): String {
-    val hasOwnSound = track.kind == TrackKind.MAIN_VIDEO && !item.isPhoto && item.media?.hasAudio != false
+private fun itemStates(track: TrackUi, item: ItemUi, facts: ItemFacts): String {
+    val isMainClip = track.kind == TrackKind.MAIN_VIDEO
+    val media = item.media
+    // First, because it explains the rest: the clip plays black, and the editor's message says to delete it.
+    val isMissing = isMainClip && media != null && media in facts.missingSources
+    val missing = if (isMissing) stringResource(Res.string.clip_missing_file) else null
+    val hasOwnSound = isMainClip && !item.isPhoto && media?.hasAudio != false
     val muted = if (hasOwnSound && (track.muted || item.silenced)) stringResource(Res.string.a11y_state_original_muted) else null
     val detached = if (item.soundDetached) stringResource(Res.string.a11y_state_sound_detached) else null
     val pastEnd = when {
-        item.startUs >= lengthUs -> stringResource(Res.string.a11y_state_after_end)
-        item.endUs > lengthUs -> stringResource(Res.string.a11y_state_past_end)
+        item.startUs >= facts.lengthUs -> stringResource(Res.string.a11y_state_after_end)
+        item.endUs > facts.lengthUs -> stringResource(Res.string.a11y_state_past_end)
         else -> null
     }
-    return listOfNotNull(muted, detached, pastEnd).joinToString(STATE_SEPARATOR)
+    return listOfNotNull(missing, muted, detached, pastEnd).joinToString(STATE_SEPARATOR)
 }
 
 private fun trackNameOf(kind: TrackKind): StringResource = when (kind) {

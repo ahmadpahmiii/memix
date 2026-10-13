@@ -58,8 +58,9 @@
     <string name="edit_trim">Cortar</string>
     <string name="import_row_a11y">%1$s, %2$s. %3$s</string>
     <string name="import_row_a11y_no_name">%1$s. %2$s</string>
-    <!-- Timeline (P1-05): machine draft until P5. -->
+    <!-- Timeline (P1-05): machine draft until P5-06. Budgets and translator notes: docs/ux/specs/P1-05-timeline.md -> Copy. Spoken times come from a11y_time_* (core:ui); never put timecode digits in spoken strings. -->
     <string name="timeline_a11y">Linha do tempo</string>
+    <string name="timeline_zoom_menu">Zoom</string>
     <string name="timeline_original_audio">Áudio original</string>
     <string name="clip_missing_file">Arquivo ausente</string>
     <string name="timeline_zoom_in">Aproximar</string>
@@ -79,8 +80,9 @@
     <string name="track_effect">Efeito</string>
     <string name="a11y_clip_media">%1$s, clipe %2$d de %3$d, dura %4$s, começa em %5$s</string>
     <string name="a11y_item">%1$s, %2$s, dura %3$s, começa em %4$s</string>
-    <string name="a11y_state_past_end">Parte depois do fim do vídeo</string>
+    <string name="a11y_item_unnamed">%1$s, dura %2$s, começa em %3$s</string>
+    <string name="a11y_state_past_end">Em parte depois do fim do vídeo</string>
     <string name="a11y_state_after_end">Depois do fim do vídeo, então não toca</string>
-    <string name="a11y_state_original_muted">Áudio original sem som</string>
+    <string name="a11y_state_original_muted">Áudio original silenciado</string>
     <string name="a11y_state_sound_detached">Som separado</string>
 </resources>

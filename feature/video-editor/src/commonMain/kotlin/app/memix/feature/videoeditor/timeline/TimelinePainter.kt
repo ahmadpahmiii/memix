@@ -341,11 +341,16 @@ internal class TimelinePainter(
         drawLine(MemixColors.onPrimary, Offset(gripX, middle - gripHalfHeight), Offset(gripX, middle + gripHalfHeight), outlineWidthPx, alpha = alpha)
     }
 
-    /** "00:03.20" on `scrim`, `space-1` inside the clip's top-left corner, only when the clip has room for it. */
+    /**
+     * "00:03.20" on `scrim`, `space-1` inside the top-left corner of the clip's visible part, only when that part has
+     * room for it. Like labels, it sticks to the screen's left edge while the clip's start is scrolled off, so a long
+     * selected clip stays measured, and it slides off the right edge with the clip.
+     */
     private fun DrawScope.drawDurationBadge(badge: TextLayoutResult, left: Float, right: Float, top: Float, alpha: Float) {
         val badgeWidth = badge.size.width + 2 * badgeInsetPx
-        if (right - left < badgeWidth + badgeMinMarginPx) return
-        val topLeft = Offset(left + badgeInsetPx, top + badgeInsetPx)
+        val visibleLeft = max(left, 0f)
+        if (right - visibleLeft < badgeWidth + badgeMinMarginPx) return
+        val topLeft = Offset(visibleLeft + badgeInsetPx, top + badgeInsetPx)
         drawRoundRect(MemixColors.scrim, topLeft, Size(badgeWidth, badge.size.height.toFloat()), CornerRadius(cornerPx), alpha = alpha)
         drawText(badge, color = MemixColors.text, topLeft = Offset(topLeft.x + badgeInsetPx, topLeft.y), alpha = alpha)
     }

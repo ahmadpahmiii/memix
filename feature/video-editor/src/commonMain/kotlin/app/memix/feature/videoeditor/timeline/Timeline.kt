@@ -32,9 +32,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
@@ -66,6 +68,7 @@ import memix.feature.video_editor.generated.resources.timeline_a11y
 import memix.feature.video_editor.generated.resources.timeline_original_audio
 import memix.feature.video_editor.generated.resources.timeline_zoom_fit
 import memix.feature.video_editor.generated.resources.timeline_zoom_in
+import memix.feature.video_editor.generated.resources.timeline_zoom_menu
 import memix.feature.video_editor.generated.resources.timeline_zoom_out
 import org.jetbrains.compose.resources.stringResource
 
@@ -140,6 +143,7 @@ private fun TimelineContent(
     var zoomMenuOpen by remember { mutableStateOf(false) }
     // Kept after closing, so the menu fades out where it was.
     var zoomMenuAt by remember { mutableStateOf(IntOffset.Zero) }
+    val haptics = LocalHapticFeedback.current
 
     FollowPreview(controller, preview, scrollable::isScrollInProgress)
     ReportScrubbing(controller, scrollable::isScrollInProgress)
@@ -154,7 +158,7 @@ private fun TimelineContent(
             .pointerInput(controller) { detectTouchAndPinch(controller::onTouchDown, controller::zoomBy, controller::onTouchUp) }
             // No overscroll stretch: time stops exactly at 0:00 and at the end.
             .scrollable(scrollable, Orientation.Horizontal, overscrollEffect = null)
-            .pointerInput(controller, painter, lanes, rulerHeightPx) {
+            .pointerInput(controller, painter, lanes, rulerHeightPx, haptics) {
                 detectTapGestures(
                     onTap = { offset ->
                         val hit = TimelineHit(rulerHeightPx, laneScroll.value, offset)
@@ -162,6 +166,8 @@ private fun TimelineContent(
                     },
                     onLongPress = { offset ->
                         if (offset.y < rulerHeightPx) {
+                            // The buzz says the long-press worked before the menu has faded in (spec → Zoom).
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             zoomMenuAt = offset.round()
                             zoomMenuOpen = true
                         }
@@ -200,7 +206,7 @@ private fun TimelineContent(
                             }
                         },
                 )
-                TrackSemantics(controller, painter, timeline, lanes, selection.selected?.item?.id)
+                TrackSemantics(controller, painter, timeline, lanes, selection.selected?.item?.id, thumbnails?.missingSources.orEmpty())
             }
         }
         PlayheadSemantics(controller, timeline.lengthUs, rulerHeight)
@@ -357,7 +363,7 @@ private fun onTap(controller: TimelineController, painter: TimelinePainter, lane
 /** The zoom menu, opened by a long-press on the ruler; zoom steps keep it open for repeated taps (spec → Zoom). */
 @Composable
 private fun ZoomMenu(controller: TimelineController, open: Boolean, pressPoint: IntOffset, onDismiss: () -> Unit) {
-    val title = stringResource(Res.string.timeline_a11y)
+    val title = stringResource(Res.string.timeline_zoom_menu)
     val zoomIn = stringResource(Res.string.timeline_zoom_in)
     val zoomOut = stringResource(Res.string.timeline_zoom_out)
     val wholeVideo = stringResource(Res.string.timeline_zoom_fit)

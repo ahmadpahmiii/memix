@@ -236,7 +236,7 @@ adb logcat -d | grep droppedFrames            # Media3's own counts, if any
 
 **D. Added 9 Oct (PM gaps): edit timing, P1-02 N2, `project_create` once, open-editor time.**
 
-1. **Edit timing, P1-04 review R1 (benchmark build; P1-06 starts from this number).** Media3 1.11.1 rebuilds every
+1. **Edit timing, P1-04 review R1 (benchmark build; measured at phase-end QA).** Media3 1.11.1 rebuilds every
    player on each edit, and P1-06's bar is "each edit shows in the preview within 100 ms". Since 9 Oct the preview logs
    one line per edit under `MemixPreview`: `Edit shown in N ms (rebuild R ms, first frame F ms)`, from the edit to the
    first picture of the edited project (rebuild = planning, file checks, building and the player's setup; first frame =
@@ -254,7 +254,9 @@ adb logcat -d | grep droppedFrames            # Media3's own counts, if any
    - Undo and redo are edits as well: each logs its own line.
    - A line `Edit shown: no first frame reported N ms after the composition was set (rebuild R ms)` means the player
      didn't report a picture within 5 s: note it, and whether the picture on the stage changed.
-   - If N is over 100 ms, tell the PM before P1-06 starts (it's P1-06's main risk).
+   - Owner's rule (9 Oct): P1-06 is built without this number (the timeline shows each edit at once and the preview
+     catches up). R1 is measured here at phase-end QA; if N is over 100 ms, note it in the QA report and a fix ticket
+     follows.
 2. **P1-02 N2: the first save fails after copying (debug build).** A real phone can't be filled in the milliseconds
    between the end of the copy and the save, so a hand-check switch makes that one save fail as if the phone were full.
    ```sh
@@ -336,28 +338,44 @@ adb logcat -s MemixThumbnails:* MemixPreview:* MemixEditorCheck:*      # second 
    (`00:03`, `.25`, `.50`, `.75`). All the way out: the whole 80 s in the right half of the timeline. Thumbnails
    stretch, then the exact frames fade in; no gray flash for frames already seen.
 5. **Ruler:** tap it: that time slides under the playhead in about 0.2 s, the preview shows it, a selected item stays
-   selected. Long-press it: a small menu (Zoom in, Zoom out, Show whole video) above your finger. Zoom steps keep it open;
-   the step at its limit is gray and does nothing; Show whole video closes it; a tap outside or Back closes it.
+   selected. Long-press it: one short buzz as a small menu (Zoom in, Zoom out, Show whole video) opens above your finger
+   (review fix P4; the buzz follows the phone's touch-vibration setting, so keep it on for this check). Zoom steps keep it
+   open; the step at its limit is gray and does nothing; Show whole video closes it; a tap outside or Back closes it.
 6. **Selection:** tap a main clip: white outline with a thin dark gap, a white handle at each end, and its length
    (`00:06.00`) on a dark badge in its top-left corner. Tap it again: nothing changes. Tap a caption: the selection moves
    there (no badge). Tap an empty part of a lane, or below the lanes: cleared. Selecting never moves the playhead; scroll,
    zoom and Play keep the selection; a test edit (long-press the timecode) and Undo keep it while the item exists.
+   Badge while scrolling (review fix P6): zoom in until one selected clip is wider than the screen, then drag so its start
+   goes off the left edge: the badge stays at the left edge of the part you can see, and goes only when that part is
+   narrower than the badge.
 7. **Past the end:** scroll to the end: the last blue sound continues past the end of the video, that part is darkened,
    and the bands stop at the end.
 8. **Many lanes:** `--es memix.openEditor timeline-tracks`: eight lanes in this order: video, overlay (gray), text,
    sticker (yellow), meme sound, meme sound, audio (green), effect (violet). The lanes scroll up and down under the
    ruler; the playhead reaches the bottom of the visible lanes; a diagonal drag moves one way only (the first that
    moves far enough).
-9. **Missing file:** `missing-media`: the middle clip is gray with "File missing" and no thumbnails.
+9. **Missing file:** `missing-media`: the middle clip is gray with "File missing" and no thumbnails. With TalkBack on
+   (review fix M1), that clip says "File missing" too: "Video, clip 2 of 3, 3.0 seconds long, starts at 3.0 seconds" plus the
+   state "File missing" (before any other state). Clips 1 and 3 don't say it.
 10. **Empty:** `empty`: the ruler and an empty main row, no bands.
 11. **An hour:** `hour-long`: open, long-press the ruler, Show whole video: the hour fits in the right half, ruler labels
     are minutes or hours and never overlap, thumbnails load only around the playhead, nothing stutters while you fling.
 12. **TalkBack:** swipe right from the top of the timeline: "Timeline" (actions: Zoom in, Zoom out, Show whole video);
-    "Playhead, 0 seconds of 1 minute 20 seconds" (swipe up or down steps one frame; actions Forward 1 second, Back 1
-    second, Go to start, Go to end); then the items in each lane, e.g. "Video, clip 1 of 20, 6 seconds long, starts at 0
-    seconds, Sound detached", "Text, Caption 1, 3 seconds long, starts at 0 seconds". Past the last item on screen,
-    swiping on scrolls the lane and reaches the next one; double-tap selects the item and brings its start under the
-    playhead. All 20 clips can be reached this way. A sound past the end says "Partly after the end of the video".
+    "Playhead, 0.0 seconds of 1 minute 20.0 seconds" (swipe up or down steps one frame; actions Forward 1 second, Back 1
+    second, Go to start, Go to end); then the items in each lane, e.g. "Video, clip 1 of 20, 6.0 seconds long, starts at
+    0.0 seconds, Sound detached", "Text, Caption 1, 3.0 seconds long, starts at 0.0 seconds", "Meme sound, 1.0 seconds
+    long, starts at 2.0 seconds" (no title until P1-08, and the track name is said once; review polish P3). Past the
+    last item on screen, swiping on scrolls the lane and reaches the next one; double-tap selects the item and brings its
+    start under the playhead. All 20 clips can be reached this way. A sound past the end says "Partly after the end of
+    the video". (TalkBack may say the states before the description; that depends on its element-description-order
+    setting, not on Memix.)
+    - **Lane order (review polish P5, the known risk):** on the Playhead, use its action Go to start, then swipe right
+      through all 20 clips and keep going into the caption lane. Note which comes next: "Text, Caption 1, 3.0 seconds long,
+      starts at 0.0 seconds" (pass), or a later caption with "Caption 1" reachable only by swiping back (the known risk:
+      report it; the fix is one screen-reader scroll container around all lanes).
+    - **Zoom menu title (review polish P2):** if double-tap-and-hold on the focused Playhead opens the zoom menu,
+      TalkBack says "Zoom" as it opens. If it doesn't open that way, note it; the zoom actions on "Timeline" are the
+      TalkBack route.
 13. **Hindi at 200% font** (Settings → Display → Font size largest, app language Hindi): taller rows, bigger ruler with
     longer steps, "मूल ऑडियो" not cut off; the main row keeps its height and the badge still fits.
 14. `MemixThumbnails` shows no "No thumbnail" line for the good files (one per tile of `missing.mp4` is expected: it isn't
@@ -388,10 +406,14 @@ adb shell dumpsys gfxinfo app.memix | grep -E "Total frames|Janky frames|percent
 ### States to screenshot for the design review (`docs/ux/reviews/P1-05/`)
 At 360 dp wide if possible, English unless noted: `open-one-clip` (export-check just opened: playhead over 00:00, ruler
 every 2 s, thumbnails loaded), `open-timeline-check`, `loading` (timeline-check right after opening, tiles filling in),
-`many-tracks` (timeline-tracks scrolled down a little), `past-end` (timeline-check at the end, the washed sound),
-`selected-sound` (outline, gap, handles) and `selected-clip-badge`, `zoom-max` (0.25 s labels), `zoom-whole`
-(Show whole video), `zoom-menu`, `hour-long-whole`, `missing-file`, `empty`, `hi-200` (Hindi at 200% font, a clip
-selected).
+`many-tracks` (timeline-tracks scrolled down a little, with the bottom lane cut by the edge; if a lane boundary lines
+up with the edge instead, say so in the QA notes), `past-end` (timeline-check at the end, the washed sound),
+`selected-sound` (outline, gap, handles) and `selected-clip-badge`, `selected-clip-badge-scrolled` (the same clip with
+its start scrolled off the left edge, the badge still showing at the left edge; review fix P6), `zoom-max` (0.25 s
+labels), `zoom-whole` (Show whole video), `zoom-menu` (above the finger, over the preview), `hour-long-whole`
+(00:00 · 30:00 · 1:00:00), `missing-file`, `empty`, `hi-200` (Hindi at 200% font, a clip selected).
+Not screenshots, but in the QA notes: the TalkBack lane order (A12), "File missing" spoken (A9) and the buzz when the
+zoom menu opens (A5).
 
 ## P1-17 · Hindi display face: hero and entry cards in Teko, nothing clipped, other languages unchanged
 
