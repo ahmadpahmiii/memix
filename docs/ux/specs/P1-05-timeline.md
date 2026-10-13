@@ -187,10 +187,13 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
 - **The same control lives in the Volume panel** of any video clip (P1-06), so it can be reached without scrolling back to the start.
 - **Precedent:** Microsoft Clipchamp mutes a clip from a speaker icon at the left of its timeline clip (Guidance).
 
-### Trailing area: Add media (P1-16, approved by the owner on 8 Oct)
-- **Where:** in the main video row, `space-2` after the end of the video.
-- **Look:** a `track-height-video` square in `surface-raised` with `radius-sm`, holding `MemixIcons.Create` in `text`, inside a 48 dp target. Spoken "Add videos or photos".
-- **What it does:** opens the P1-02 picker; items land as P1-02 → "Add media" describes.
+### Trailing area: Add media (P1-16, approved by the owner on 8 Oct; final 13 Oct)
+- **Where:** in the main video row, `space-2` after the end of the video. It scrolls with the content, so it shows whenever the end of the video is in view.
+- **Look:** a `track-height-video` square in `surface-raised` with `radius-sm`, holding `MemixIcons.Create` in `text`, inside a 48 dp target. Spoken "Add videos or photos". Pressed: `hairline`.
+- **What it does:** opens the P1-02 picker. The items are **always added at the end of the video**, whatever the playhead: the tile sits at the end, so that's where its items go. Full behavior: P1-06 spec → Add media.
+- **Adding mid-video** is the main tool bar's **Add media** tool (P1-06 → Main tool bar, place 4), which adds after the clip under the playhead. "Zoom out first" isn't a route: at the default zoom this tile is on screen only within about 4.5 s of the end, and even "Show whole video" hides it until the playhead is past about a quarter of the video.
+- **Empty project** (P1-04 defensive state): the tile sits `space-2` right of the playhead at 0:00 and is the state's action, with Add media as the only tool.
+- **Hidden** in reorder mode and while a trim or move is held.
 - **Until P1-16 is built,** leave it out entirely. Don't show it disabled.
 
 ### "Add a meme sound" row (P1-08)

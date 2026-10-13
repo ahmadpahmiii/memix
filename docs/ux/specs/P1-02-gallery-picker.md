@@ -154,8 +154,8 @@ The editor is still the P0-05 placeholder; P1-04 and P1-05 replace it. So the "D
 
 No haptics: the haptic tick belongs to sounds landing on the timeline.
 
-### "Add media" from inside the editor (later ticket; P1-05 places the button)
-- **Entry:** an "Add media" button at the end of the main video track; the P1-05 spec gives its exact position. One tap opens the same picker with the same settings and the same limit (35 per pick, no project limit).
+### "Add media" from inside the editor (P1-16; final rules in `P1-06-clip-edits-and-audio.md` → Add media)
+- **Entries (final, 13 Oct):** the Add media tile at the end of the main video track (P1-05), which always adds at the end, and the Add media tool in the main tool bar (P1-06), which adds after the clip under the playhead. One tap opens the same picker with the same settings and the same limit (35 per pick, no project limit). Where this section and P1-06 differ, P1-06 wins.
 - **While copying:** the same import sheet, over the editor.
 - **Where items land:**
   - After the clip under the playhead. If the playhead sits exactly between two clips, they land there. If it's at the end, they're added at the end.
@@ -163,7 +163,7 @@ No haptics: the haptic tick belongs to sounds landing on the timeline.
   - Later clips move right by the added length (placed by time, not by index).
 - **After landing:** the playhead moves to the start of the first new clip, the new clips bonk once (`duration-bonk`), and the selection doesn't change.
 - **Undo** is one step that removes the whole pick. Cancelled, or nothing went in: the editor is unchanged.
-- **Gap:** no ticket covers this, or the PRD's "replace a clip", yet (proposal below).
+- **Ticket:** P1-16 covers this and the PRD's "replace a clip" (owner, 8 Oct).
 
 ## Motion
 | What | Motion | Reduce motion |

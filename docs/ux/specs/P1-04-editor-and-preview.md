@@ -173,10 +173,10 @@ Board sample content and what replaces it:
 | One clip, many tracks | No difference in this region; see P1-05 | |
 | Tool panel open | Preview and transport row stay; panel covers the timeline and tool bar (P1-06) | |
 | Preview error (the engine can't build or play the composition) | The frame shows `surface` (not `surface-raised`: a secondary button on `surface-raised` loses its shape) with a centered line in `body` `text-secondary` and a secondary **Try again** button. Play/Pause is disabled. Edits keep working and saving. Try again rebuilds the preview session. | `editor_preview_error_body`, `editor_preview_retry` |
-| A clip's file is missing (defensive: the app's copy is gone) | That clip plays as the canvas background. Its timeline clip shows no thumbnails (P1-05). A toast shows once per open. | `editor_missing_media` |
+| A clip's file is missing (defensive: the app's copy is gone) | That clip plays as the canvas background. Its timeline clip shows no thumbnails (P1-05). A toast shows once per open. With P1-16 the toast names Replace as well as Delete, and Replace comes first in that clip's tool bar (P1-06 → Replace). | `editor_missing_media` |
 | Save failing | Banner at the top of the stage (Saving) | `editor_save_storage_full` or `editor_save_failed`, `editor_free_up_space`, `editor_dismiss` |
 | Leaving while a save is failing | Sheet (Saving) | `editor_unsaved_title`, `editor_unsaved_body`, `editor_free_up_space`, `editor_leave_anyway` |
-| Empty project (defensive: P1-02 never creates one, and P1-06 won't delete the last clip) | The frame shows the canvas background with a centered title in `title` and a body in `body` `text-secondary`. The timeline shows the ruler and an empty main row. The tool bar has no tools. Play/Pause is disabled. Close is the way out. Once P1-16 ships, the body changes and the Add media tile (P1-05) is the action. | `editor_empty_title`, `editor_empty_body` (`editor_empty_body_add` with P1-16) |
+| Empty project (defensive: P1-02 never creates one, and P1-06 won't delete the last clip) | The frame shows the canvas background with a centered title in `title` and a body in `body` `text-secondary`. The timeline shows the ruler and an empty main row. The tool bar has no tools. Play/Pause is disabled. Close is the way out. Once P1-16 ships, the body changes, the Add media tile (P1-05) is the action, and the tool bar shows Add media as its only tool (P1-06 → Main tool bar). | `editor_empty_title`, `editor_empty_body` (`editor_empty_body_add` with P1-16) |
 | Offline | No difference. Everything here is on the phone. | none |
 | Permission | None needed | none |
 | Long content | Hour-long project: the timecode wraps. 200% font: see Accessibility. | |
@@ -225,7 +225,8 @@ English source. The engineer machine-drafts id, es, pt and hi (allowed until P5)
 | `editor_preview_a11y` | Preview, %1$s | 30 | %1$s = the ratio, e.g. "9:16" |
 | `editor_preview_error_body` | The preview stopped. Your edits are safe. | 60 | |
 | `editor_preview_retry` | Try again | 18 | |
-| `editor_missing_media` | A clip's file is missing, so it plays black. Delete that clip to fix it. | 90 | |
+| `editor_missing_media` | A clip's file is missing, so it plays black. Delete that clip to fix it. | 90 | Until P1-16 |
+| `editor_missing_media` (P1-16 on) | A clip's file is missing, so it plays black. Replace or delete that clip to fix it. | 90 | Same key, new text in all five languages with P1-16 (83 characters in English). Replace comes first because it keeps the clip's place and length |
 | `editor_save_storage_full` | Your phone is full, so your latest changes aren't saved. | 80 | |
 | `editor_save_failed` | Your latest changes aren't saved yet. Memix tries again with your next change. | 100 | "Memix" never translates |
 | `editor_free_up_space` | Free up space | 22 | Same text as `import_free_up_space` (P1-02): reuse that resource |

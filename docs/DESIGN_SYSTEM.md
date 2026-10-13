@@ -49,7 +49,7 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 | Effects and filters | `track-effect` (violet) |
 
   Labels on every colored fill use `on-track`.
-- `danger` and `success` always come with a word or an icon; never rely on hue.
+- `danger` and `success` always come with a word or an icon; never rely on hue. They are status colors, not a second accent: `danger` marks only destructive actions (the Delete tool, Discard) and recording, never a main action, so blue stays the one accent.
 
 **Type.**
 - Anton (`display-xl`, `display`) only for the wordmark, the Home hero and entry cards; `meme-caption` is the default caption look (white fill, black stroke at font size ÷ 12) for interface samples. Inside the editors, captions are content: five caption fonts, sized by the canvas (see Tokens → Captions).
@@ -81,6 +81,8 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 - Durations: 120 ms for presses and toggles, 200 ms for sheets and tab changes, 320 ms for screen transitions.
 - The "bonk": a sound or sticker landing on the timeline scales 1 → 1.12 → 1 over 240 ms with a slight overshoot. Use it only for placing content.
 - Respect the system's reduce-motion setting: replace movement with a 120 ms fade.
+  - **On Android the fade shows as an instant change.** Memix reads reduce motion as "Remove animations" (animator duration scale 0), and Compose scales every animation by that same setting, so at 0 each one ends on the next frame (Compose `MotionDurationScale`; Guidance). Nothing moves, which is the point; the 120 ms fade itself is never seen. Accepted (P1-06 review).
+  - **On iOS (P7) the fade is real:** the system's Reduce Motion doesn't shorten animations, so there every movement must actually become the 120 ms fade, as the specs say.
 
 **Dials.** ENERGY 2 / RHYTHM 2 / MOTION 2.
 - ENERGY 2: the chrome recedes, and Anton carries the loud moments (Home hero, entry cards, empty-state headlines, sheet heroes) so the app still says hello like a meme tool.
@@ -259,6 +261,7 @@ Fixed sizes used across screens (dp on Android).
 | `touch-target` | `MemixSize.touchTarget` | `48px` | Minimum tappable size for every control. |
 | `nav-height` | `MemixSize.navHeight` | `64px` | Bottom navigation bar. |
 | `toolbar-height` | `MemixSize.toolbarHeight` | `72px` | Editor tool bar. |
+| `tool-item-width` | `MemixSize.toolItemWidth` | `64px` | Minimum width of one tool in the editors' tool bars (icon over a `caption` label, at least `touch-target` tall). A tool widens only when one word of its label can't fit at large font sizes. About five and a half tools show at 360 dp, so the first tools never need a scroll (P1-06). |
 | `track-height-video` | `MemixSize.trackHeightVideo` | `40px` | Main video track clips. |
 | `track-height` | `MemixSize.trackHeight` | `28px` | Every other track's clips. |
 | `playhead-width` | `MemixSize.playheadWidth` | `2px` | Timeline playhead line, in selection white. |
@@ -290,6 +293,7 @@ Fixed sizes used across screens (dp on Android).
 - Editor tool panels (Volume, Style and Position for text, later Canvas) use the ToolPanel component; font choices use FontTile and color choices use Swatch; floating menus use Menu; short messages use Toast (with `FadingToast` for its fade, one at a time); icon-only controls with no fill (Close, Play/Pause, Undo, Redo, a toast's ×) use IconButton (`design/system/components/`). An IconButton on `surface-raised` presses to `hairline`.
 - Pressed states: `primary` → `primary-pressed`; neutral controls go one value step lighter (`surface-raised` → `hairline`). No translate/scale on press; the 240 ms "bonk" scale is only for content landing on the timeline.
 - Icons: Memix-drawn vector drawables in `composeResources/drawable/` (see Iconography), 24 dp, 2 dp flat-cap stroke, tinted per state.
+- Tool bars: each tool is at least `toolItemWidth` wide and `touchTarget` tall. Its label is never cut: two lines is the copy budget, not a line cap, so at 200% font a long translation takes a third line and the bar grows (WCAG 2.2 SC 1.4.4).
 - Build a component catalog screen (debug builds only) showing every component in every state; the UX designer reviews it from screenshots. No automated screenshot tests in this project.
 
 ## Screens in the design canvas

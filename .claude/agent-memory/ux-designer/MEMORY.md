@@ -2,6 +2,19 @@
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: Design decisions and their reasons, patterns that worked or failed, recurring review issues, competitor insights.
 
+- 2026-10-13 · P1-06 review (provisional, code + Skia renders 40–63 in `scratchpad/render-p1-05/out`). Changes requested: M1 reorder taps and grabs used x only, so washed areas moved clips; M2 the moving tile left the screen in tap mode (my spec had no keep-in-view rule). Lessons:
+  - **In any modal state, check hit-tests use both axes** (gesture code that passes only `position.x`).
+  - **Any mode that moves things by buttons needs a keep-in-view rule.**
+  - **Android reduce motion = animator scale 0, and Compose ends every animation on the next frame at 0** (MotionDurationScale). The "120 ms fade" cells are instant on Android and real only on iOS. Don't make reduce-motion morph-vs-fade a must-fix on Android.
+  - **No soft shadow on small floating chips over the timeline:** invisible on `canvas`, dirt on clips and handles. The value bubble dropped `shadow-float`.
+  - **`IntrinsicSize.Min` + `maxLines` cuts multi-word labels at 200%.** Labels get no line cap; two lines is a budget.
+  - **The token mirror drifted** (`design/system/tokens.json` missed all of P1-10). Compare both files' top-level line numbers every time.
+  - **A toast that names a tool must use the tool's exact label in every language** (hi डिलीट vs हटाएं).
+  - Renders 50–57 were state-only (no selection). Ask for the semantics dump to see what's really selected.
+- 2026-10-13 · P1-16 spec finalized (in the P1-06, P1-05, P1-04 and P1-02 specs):
+  - Add media has two entries: a main tool bar tool (place 4, `create` icon), which adds after the clip under the playhead, and the end tile, which always appends. "Zoom out first" was rejected: the tile only shows within about 4.5 s of the end at the default zoom.
+  - Replace keeps the clip's id, start, length and volume ("keeps the slot's mix"). On a clip whose sound is detached, the new sound is attached at 0%, the detached clip stays, and a toast explains.
+  - On a missing-file clip, Replace comes first in the tool bar, and P1-04's toast now says "Replace or delete".
 - 2026-10-10 · P1-05 review (provisional, from code + the engineer's Skia desktop renders, `scratchpad/render-p1-05/out`; ask for these again, they're a good stand-in when there's no emulator). Pass with fixes. Lessons:
   - **Check every visual-only state for a spoken twin.** "File missing" was drawn but not spoken (M1), and the P1-04 toast told TalkBack users to delete a clip they couldn't find. My spec missed it.
   - **Compose drops off-screen semantics nodes**, so "all items from the model" can't work for a virtualized canvas. Use the lazy pattern (on-screen nodes plus a scroll action). Per-row scroll has an order flaw: lane 2 starts where lane 1 ended. The fallback is one scroll node for all rows, read screen by screen.
