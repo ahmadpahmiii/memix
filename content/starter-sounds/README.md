@@ -16,4 +16,4 @@ These are the 10 CC0 meme sounds the owner approved on 8 Oct 2026 (`docs/content
 - **Loudness:** each sound is normalized to −16 LUFS with no limiter, and the gain is capped so true peak stays at or below −1 dBTP. Three sounds end up quieter because of that cap: `sitcom-laugh` and `whoosh` at −18.5 LUFS, and `drum-roll` at −23.7 LUFS (its rimshot limits the gain).
 - **Titles** in id, es, pt and hi are machine drafts until P5.
 - **No credit is required** (CC0). `courtesyCredit` is for the Credits screen (P5-07). qubodup's page asks for credit with the URL, and that request is honoured.
-- **Still open:** nobody has listened to these files yet (checklist column 4). P1-08's hand check covers it.
+- **Listening (checklist column 4):** the owner listens to all 10 in the app at the end-of-Phase-1 QA (owner, 14 Oct 2026, option B). P1-08 doesn't wait for it; a sound that fails is swapped then.

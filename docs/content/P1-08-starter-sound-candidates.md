@@ -5,7 +5,7 @@ Prepared by the backend engineer on 8 Oct 2026. The owner approves each sound be
 
 > **Owner decision, 8 Oct 2026:** approved 1–3 and 5–11 (10 sounds); rejected 4 (air horn) and 12 (crowd "ooh").
 >
-> **Fetched 9 Oct 2026 (backend engineer):** the owner opened freesound.org and cdn.freesound.org to cloud sessions. All 10 approved pages still read "Creative Commons 0" (read 09:17–09:18 UTC). License proof is a text snapshot per sound (owner's choice: no web.archive.org). The files are the pages' public HQ previews, because originals need a login. They are trimmed, normalized and staged in `content/starter-sounds/` (10 × `.m4a`, 27.2 s, 450 KB total, plus `manifest.json`, `README.md` and `licenses/<slug>.md`). Checklist columns 1, 2, 3 and 5 are done. **Column 4 (listen) is still open:** an agent can't listen, so only objective checks were run (see "Findings, 9 Oct" and "Owner decision needed").
+> **Fetched 9 Oct 2026 (backend engineer):** the owner opened freesound.org and cdn.freesound.org to cloud sessions. All 10 approved pages still read "Creative Commons 0" (read 09:17–09:18 UTC). License proof is a text snapshot per sound (owner's choice: no web.archive.org). The files are the pages' public HQ previews, because originals need a login. They are trimmed, normalized and staged in `content/starter-sounds/` (10 × `.m4a`, 27.2 s, 450 KB total, plus `manifest.json`, `README.md` and `licenses/<slug>.md`). Checklist columns 1, 2, 3 and 5 are done. **Column 4 (listen) happens at phase-end QA (owner, 14 Oct, option B):** an agent can't listen, so only objective checks were run (see "Findings, 9 Oct" and "Owner decision needed").
 
 ## Summary
 
@@ -245,6 +245,8 @@ All ten are at or under −1.7 dBTP and within −16 ± 0.2 LUFS, except the thr
 - **Nothing failed:** no license changed, no page is gone, no audio is unusable, so no bench replacement is proposed.
 
 ### Owner decision needed: who listens (checklist column 4)
+
+> **Decided 14 Oct 2026: B.** Owner: "skip listen just keep going, i will check it after phase 1 finished". The owner listens to all 10 in the app at the end-of-Phase-1 QA; P1-08 doesn't wait for it.
 
 - **Problem:** step 4 says a person listens to each sound to confirm it isn't a famous film, TV, game or meme recording and has no voice. I can only measure the audio, not hear it. The checks above found nothing wrong, but the doc's risk notes for #1 and #2 ask for an ear check.
 - **Considerations:** all 10 files together run 27 seconds, and they're in `content/starter-sounds/`. Skipping the ear check saves a minute but leaves the one check that matches recognizability untested.

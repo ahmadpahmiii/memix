@@ -122,7 +122,7 @@ The ML Kit API is in beta and may change, so it sits behind our own interface wi
 The sound library is the main reason to choose Memix: **500 licensed sounds at launch, about 100 added each month**, served from the backend so the list changes without an app update.
 
 - **Tabs:** Trending (monthly, per region plus global), Local (the phone's region), Global, Favorites, My sounds.
-- **Regions:** the phone's region picks the Local tab. Launch with trending lists for 5 to 10 countries (see open items).
+- **Regions:** the phone's region picks the Local tab. Launch with trending lists for 5 countries, one per app language: Indonesia, United States, India, Brazil and Mexico (owner, 14 Oct 2026). More countries, such as the Philippines and Spain, are added later in the catalog with no app change.
 - **Categories:** Reactions, Impacts and hits, Fails, Suspense, Cartoon, Voice lines (recreated), Animals, Gaming, Local, Trending.
 - **Search:** by name, tag and category, tolerant of typos.
 - **Preview:** tap to play, with waveform and duration. Sound details show the source credit.
@@ -307,7 +307,7 @@ Each phase ends with a build in internal testing and a manual QA pass, so proble
 
 **Open items**
 
-- [ ] Pick the 5 to 10 launch countries for trending lists (proposed: Indonesia, United States, India, Brazil, Mexico, Philippines, Spain)
+- [x] Pick the launch countries for trending lists: 5 to start, one per app language: Indonesia, United States, India, Brazil, Mexico (owner, 14 Oct 2026). The Philippines and Spain can come later as new `trending` rows, with no app change
 - [ ] Trademark search for "Memix" and buy the domain
 - [x] Confirm watermark position: top-left, 3% margin (owner, 8 Oct 2026)
 - [ ] Verify WhatsApp sticker spec during the photo export ticket
