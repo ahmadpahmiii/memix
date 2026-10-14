@@ -124,8 +124,13 @@ Settled by the owner on 8 Oct 2026 (decision log):
 - Performance bar: **no visible lag and no memory leaks, on Android and iOS**. There is no named reference phone; the numbers in the tickets (30 fps preview, 60 fps timeline, 100 ms edits, export time) are measured on the owner's own phone.
 - Hindi uses a Devanagari display font (the designer picks an OFL face, e.g. Teko) where Anton has no glyphs.
 
+Settled by the owner on 14 Oct 2026:
+- Trending lists start with 5 countries, one per app language: Indonesia, United States, India, Brazil, Mexico. More can be added later without an app change.
+- The owner listens to the 10 starter sounds at phase-end QA, in the app; P1-08 doesn't wait for it.
+- P1-08 (meme sounds) is built before P1-16 (add media and replace).
+
 Still open:
-- WhatsApp sticker-pack spec must be checked at P2-09. Launch countries for trending lists are not final.
+- WhatsApp sticker-pack spec must be checked at P2-09.
 
 ## Skills in this repo (`.claude/skills/`)
 
