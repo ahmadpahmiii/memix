@@ -40,12 +40,15 @@ import app.memix.core.designsystem.MemixTheme
 import app.memix.core.designsystem.Text
 import app.memix.core.designsystem.focusRing
 import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.floor
 
 private val ThumbDiameter = 22.dp
 
 /**
  * Labeled slider with a live readout. Drag or tap the track to set; double-tap the thumb to reset to [defaultValue].
- * [step] is the keyboard and screen-reader increment. [onValueChangeFinished] runs when a change is complete: a drag
+ * [step] is the keyboard and screen-reader increment, and those steps land on its grid: from a dragged 147% with 10%
+ * steps, up is 150% and down 140%, so a round level like 100% can always be reached without a pointer. [onValueChangeFinished] runs when a change is complete: a drag
  * lets go, a tap, a reset, a key or a screen-reader step; editors commit one undo step there.
  *
  * With [snapValue], a value within [snapDistance] of it becomes exactly [snapValue], with one `SegmentTick` haptic each
@@ -93,12 +96,12 @@ fun Slider(
                 .focusable(interactionSource = interactionSource)
                 .onKeyEvent { event ->
                     if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
-                    val delta = when (event.key) {
-                        Key.DirectionRight, Key.DirectionUp -> step
-                        Key.DirectionLeft, Key.DirectionDown -> -step
+                    val up = when (event.key) {
+                        Key.DirectionRight, Key.DirectionUp -> true
+                        Key.DirectionLeft, Key.DirectionDown -> false
                         else -> return@onKeyEvent false
                     }
-                    currentOnValueChange((currentValue + delta).coerceIn(valueRange))
+                    currentOnValueChange(nextOnStepGrid(currentValue, step, up, valueRange))
                     currentOnValueChangeFinished()
                     true
                 }
@@ -106,8 +109,9 @@ fun Slider(
                     contentDescription = label
                     stateDescription = valueText
                     progressBarRangeInfo = ProgressBarRangeInfo(value, valueRange)
+                    // A screen reader asks for a step up or down; it lands on the grid like a key.
                     setProgress { target ->
-                        currentOnValueChange(target.coerceIn(valueRange))
+                        currentOnValueChange(nextOnStepGrid(currentValue, step, up = target > currentValue, valueRange))
                         currentOnValueChangeFinished()
                         true
                     }
@@ -148,3 +152,17 @@ fun Slider(
         ) {}
     }
 }
+
+/**
+ * The next value on the [step] grid (counted from the range's start) above or below [value], within [range]. A value
+ * already on the grid moves a whole step; float error within [GRID_TOLERANCE] of a step counts as on it.
+ */
+internal fun nextOnStepGrid(value: Float, step: Float, up: Boolean, range: ClosedFloatingPointRange<Float>): Float {
+    if (step <= 0f) return value.coerceIn(range)
+    val stepsFromStart = (value - range.start) / step
+    val next = if (up) floor(stepsFromStart + GRID_TOLERANCE) + 1 else ceil(stepsFromStart - GRID_TOLERANCE) - 1
+    return (range.start + next * step).coerceIn(range)
+}
+
+/** In steps: how close to a grid line a value counts as on it (1.0 after float maths can be 0.99999994). */
+private const val GRID_TOLERANCE = 1e-3f

@@ -136,7 +136,7 @@
     <string name="edit_add_media">Tambah media</string>
     <string name="edit_replace">Ganti</string>
     <string name="explain_replace_too_short">Video itu lebih pendek dari klip ini (%1$s). Pilih yang lebih panjang, atau pangkas klip ini dulu.</string>
-    <string name="explain_replace_detached">Suara yang dilepas tetap ada, jadi suara asli klip ini mulai dari 0%.</string>
+    <string name="explain_replace_detached">Suara yang dipisahkan tetap ada, jadi suara asli klip ini mulai dari 0%.</string>
     <plurals name="a11y_media_added">
         <item quantity="one">%1$d klip ditambahkan</item>
         <item quantity="other">%1$d klip ditambahkan</item>

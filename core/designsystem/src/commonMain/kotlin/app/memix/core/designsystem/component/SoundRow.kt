@@ -44,6 +44,9 @@ import org.jetbrains.compose.resources.stringResource
  * One meme sound. Sound controls are Memix blue everywhere, so this row may carry blue next to a screen's main action.
  * The title takes up to two lines; the meta line is never cut, because it can hold a license's credit. Without
  * [onFavoriteChange] the favorite heart isn't shown (the editor's sounds sheet has no Favorites list, P1-08).
+ *
+ * While playing, the row sits one value step above its container: `surface` on `canvas`, or `surface-raised` when
+ * it's [onSurface] (inside a sheet), where a `surface` band wouldn't show.
  */
 @Composable
 fun SoundRow(
@@ -55,12 +58,14 @@ fun SoundRow(
     onFavoriteChange: ((Boolean) -> Unit)?,
     onAdd: () -> Unit,
     modifier: Modifier = Modifier,
+    onSurface: Boolean = false,
 ) {
+    val playingBand = if (onSurface) MemixColors.surfaceRaised else MemixColors.surface
     Row(
         modifier
             .fillMaxWidth()
             .clip(MemixShapes.radiusMd)
-            .background(if (isPlaying) MemixColors.surface else Color.Transparent)
+            .background(if (isPlaying) playingBand else Color.Transparent)
             .padding(horizontal = MemixSpacing.space2),
         horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space2),
         verticalAlignment = Alignment.CenterVertically,

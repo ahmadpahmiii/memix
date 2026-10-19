@@ -54,7 +54,10 @@ data class VideoEditorUiState(
     val isImporting: Boolean = false,
     /** The picker the app should open now; the app opens it and sends [VideoEditorIntent.PickerOpened]. */
     val mediaPicker: MediaPickRequest? = null,
-    /** After a pick ends, focus goes back to the control that opened the picker (spec P1-06 → Accessibility). */
+    /**
+     * Where focus goes after a surface closes: the control that opened a pick, the sheet or the panel, or the new
+     * sound's Volume tool (spec P1-06 → Accessibility).
+     */
     val returnFocus: ReturnFocus? = null,
     /** The thumbnail tiles of the timeline's strips, once the draft has opened. Compared by identity. */
     val thumbnails: TimelineThumbnails? = null,
@@ -182,12 +185,12 @@ sealed interface MediaPickRequest {
     data class Replace(val itemId: String) : MediaPickRequest
 }
 
-/** Which control gets focus back after a pick; a new [serial] moves it again. */
+/** Which control gets focus; a new [serial] moves it there again. */
 @Immutable
-data class ReturnFocus(val opener: PickOpener, val serial: Long)
+data class ReturnFocus(val target: FocusTarget, val serial: Long)
 
-/** The controls that open the picker. */
-enum class PickOpener {
+/** The controls focus can be sent back to. */
+enum class FocusTarget {
     /** The Add media tool on the main tool bar. */
     ADD_MEDIA_TOOL,
 
@@ -196,6 +199,15 @@ enum class PickOpener {
 
     /** The Replace tool of the selected clip. */
     REPLACE_TOOL,
+
+    /** The Meme sounds tool on the main tool bar. */
+    MEME_SOUNDS_TOOL,
+
+    /** The "Add a meme sound" pill on the timeline. */
+    ADD_SOUND_PILL,
+
+    /** The Volume tool of the selected sound. */
+    VOLUME_TOOL,
 }
 
 /** Why a tool explains instead of acting (spec P1-06 → Clip tool bar: tools stay enabled and explain on tap). */

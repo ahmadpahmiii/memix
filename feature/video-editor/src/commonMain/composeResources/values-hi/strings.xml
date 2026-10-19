@@ -121,7 +121,7 @@
     <string name="volume_this_sound">यह साउंड</string>
     <string name="volume_percent">%1$d%</string>
     <string name="sound_meta">%1$s · %2$s</string>
-    <string name="explain_sound_unreadable">यह साउंड नहीं चल रहा। कोई और आज़माएं।</string>
+    <string name="explain_sound_unreadable">यह साउंड नहीं चलेगा। कोई और आज़माएं।</string>
     <string name="a11y_sound_added">%1$s, %2$s पर जोड़ा गया</string>
     <string name="edit_move">ले जाएं</string>
     <string name="edit_volume">वॉल्यूम</string>

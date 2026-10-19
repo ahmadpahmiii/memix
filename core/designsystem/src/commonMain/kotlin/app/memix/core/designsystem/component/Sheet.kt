@@ -128,7 +128,7 @@ fun Sheet(
             enter = if (reduceMotion) fadeIn(tween(MemixMotion.durationPress)) else slideInVertically(tween(MemixMotion.durationSheet)) { it },
             exit = if (reduceMotion) fadeOut(tween(MemixMotion.durationPress)) else slideOutVertically(tween(MemixMotion.durationSheet)) { it },
         ) {
-            SheetSurface(title, heroTitle, blocking, opensAtHalfHeight, onDismiss, content)
+            SheetSurface(visible, title, heroTitle, blocking, opensAtHalfHeight, onDismiss, content)
         }
     }
 }
@@ -164,6 +164,7 @@ fun Scrim(visible: Boolean, onDismiss: (() -> Unit)?, modifier: Modifier = Modif
 
 @Composable
 private fun SheetSurface(
+    visible: Boolean,
     title: String,
     heroTitle: Boolean,
     blocking: Boolean,
@@ -209,7 +210,8 @@ private fun SheetSurface(
             // The title doubles as the pane title, so a screen reader announces the sheet and each change of its title.
             .semantics { paneTitle = title }
             .focusRequester(focusRequester)
-            .focusProperties { onExit = { cancelFocusChange() } }
+            // Focus stays in the sheet while it's shown; during its exit it may leave, so it can go back to the opener.
+            .focusProperties { onExit = { if (visible) cancelFocusChange() } }
             .focusable()
             // The sheet holds focus, so a Back key would otherwise go to the focus system and never close it.
             .onPreviewKeyEvent { event ->

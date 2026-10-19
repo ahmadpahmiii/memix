@@ -566,39 +566,49 @@ adb logcat -s MemixPreview:* MemixAnalytics:* MemixSounds:* MemixExportCheck:*  
 
 **A. Hand checks (debug build).**
 1. **Listen to all 10 sounds** (owner, 14 Oct): Meme sounds tool → play each row in turn. Only one plays at a time, the
-   row shows Pause while it plays and goes back to Play at its end. Press Home while one plays: it stops, and it
+   row shows Pause and a lighter band (`surface-raised`) while it plays and goes back to Play at its end. Press Home while one plays: it stops, and it
    doesn't play again when you come back. Note any sound that's too quiet (Drum roll was
    normalized to −23.7 LUFS because of its rimshot) or that sounds like a famous recording; either goes to the PM.
 2. **Two taps:** with nothing selected, Meme sounds (blue, place 2) → the sheet opens at about half the screen with the
    top of the preview above it; a drag up on its header grows it. Add on a row: the sheet closes and the sound lands. With a
    clip selected, the "Add a meme sound" pill (blue, centered on the playhead line and drawn over it, in its row under the
    sound lanes) → the selection clears and the sheet opens → Add. The pill stays at the playhead while time scrolls and
-   moves with the lanes' vertical scroll.
+   moves with the lanes' vertical scroll. Pressed, the pill turns gray (`surface-raised`); a tap just above or below the
+   drawn pill, inside its row, still opens the sheet (the whole 48 dp row is its target). Close the sheet without adding:
+   TalkBack's focus goes back to the tool or the pill that opened it.
 3. **Sheet rows:** the title (two lines at most), "0:05 · CC0" (length rounded up, the credit never cut), no heart, a
    blue add button. In id, es, pt and hi the titles are translated (`adb shell cmd locale set-app-locales app.memix
    --locales hi`). ×, a scrim tap, a drag down, back and Escape close it and add nothing.
 4. **Landing:** at the playhead, the whole sound at 100%; it bonks, the phone gives one Confirm vibration, it's selected
-   with its tools (Volume · Split · Delete · Move here · Duplicate), and TalkBack says "Boing added at 3.2 seconds". Where a
-   sound already plays (`timeline-check` at 0:30), it goes on a new lane under the last sound lane and the lanes below
-   slide down; if that lane is out of view, the lanes scroll to it. At the very end (scroll to the end), it's placed so it
+   with its tools (Volume · Split · Delete · Move here · Duplicate), TalkBack says "Boing added at 3.2 seconds" and its
+   focus lands on the Volume tool. Where a sound already plays (`timeline-check` at 0:30), it goes on a new lane under the
+   last sound lane and the lanes below slide down while the pill disappears, then fades in under the new lane (never over
+   the new sound); if that lane is out of view, the lanes scroll to it. At the very end (scroll to the end), it's placed so it
    ends at the end. Undo says "Undo: Add sound". Adding the same sound twice works.
 5. **Move by drag:** long-press a sound: a buzz, a white outline, and it follows the finger with a bubble showing its new
    start. Either end snaps (one tick and a thin line) to the playhead, 0:00, the end, clip boundaries and other items'
-   edges. Over another sound lane it changes lane; over the "Add a meme sound" row it shows on a new lane there; dropped
+   edges. Over another sound lane it changes lane; over the "Add a meme sound" row it shows on a new lane there, with a
+   lane band from 0:00 to the end under it; dropped
    where it would overlap, it goes to the next free lane or a new one. It can't start before 0:00, and the part past the end
    is washed. Near a side of the screen, time scrolls. Back during the drag cancels. Undo says "Undo: Move". A caption
    moves the same way (text lanes only); a long-press on a main clip still starts reorder.
 6. **Move here:** the playhead inside the video: the sound starts there. At the very end: it ends at the end.
 7. **Trim a sound:** its handles stop at the sound's own start and end, with one tick. With TalkBack, a selected sound's
-   or caption's actions add "Move to playhead" (Move here's single-pointer route).
+   or caption's actions add "Move to playhead" (Move here's single-pointer route). The Move here tool reads "Move here,
+   button, double-tap to move to playhead" (its name is its label), and Voice Access "Tap Move here" works.
 8. **Volume:** Volume tool → the panel covers the timeline and tool bar; the preview and transport row stay. Press Play and
    drag the slider: the change is heard while dragging. It snaps to 100% with one tick; a double-tap on the thumb goes
    back to 100%; 0% is silent, 200% louder (clipped, not distorted into noise). Each release: "Undo: Volume". Done, back
-   and Escape close it and the sound stays selected. With TalkBack the slider steps 10%. Undo past the landing closes it.
+   and Escape close it, the sound stays selected and focus goes back to the Volume tool. With TalkBack the slider steps
+   10% on the grid: drag to 147%, then a step up gives 150% and steps down reach 100% exactly (arrow keys the same). With
+   the panel open, swiping back from its title "Volume" reaches Redo, never a sound tool or a timeline item, and Shift+Tab
+   on a keyboard doesn't reach them either. Undo past the landing closes it.
 9. **Analytics** (`MemixAnalytics`): `sound_add {sound_id, tab=starter, editor=video}` once per landing, never for a
    duplicate; `sound_preview {sound_id, tab=starter}` per play; `tool_use` `move` and `volume` once per step; nothing for
    opening the sheet or the panel, a drop where it was, or a release at the same volume.
 10. **Hindi at 200% font, 360 dp:** the sheet rows, the pill and the sound tool labels are whole; the pill row grows.
+    In es and pt at 200% the pill's label wraps to two centered lines, the pill keeps `space-4` from each side of the
+    timeline and its row grows (renders 100 and 101 show it).
 11. **Drift trial** (owner, 8 Oct; P1-06 block E): on `timeline-check`, land a sound on a clip boundary, then trim clip 1's
     start by about 1 s. The video after it moves 1 s earlier and the sound keeps its time, so it now plays 1 s off that
     boundary. Note whether that would bother you.
@@ -640,8 +650,10 @@ uncompressed). The license proofs aren't in the APK.
 At 360 dp wide if possible, English unless noted: `main-tools` (Edit, Meme sounds in blue), `sounds-sheet` (half height,
 one row playing), `sounds-sheet-expanded` (after a drag up), `sound-landed` (selected, sound tools), `sound-new-lane` (a
 sound landed on a new lane), `add-row-pill` (a clip selected, the pill at the playhead), `move-drag` (a carried sound with
-its bubble and snap line), `move-to-add-row` (over the add row), `volume-panel` (100%), `volume-panel-200`,
-`sounds-sheet-hi-200`, `sound-tools-hi-200` and `add-row-hi-200` (Hindi at 200% font).
+its bubble and snap line), `move-to-add-row` (over the add row, with the new-lane band), `volume-panel` (100%),
+`volume-panel-200`, `sounds-sheet-hi-200`, `sound-tools-hi-200` and `add-row-hi-200` (Hindi at 200% font), `add-row-es-200`
+and `add-row-pt-200` (the label on two lines), plus a short screen recording of a sound landing on a new lane (the pill
+sits out the slide). Take them after the P1-08 review fixes.
 
 ## P1-16 · Add media lands after the clip under the playhead as one step; Replace keeps the clip's start and length
 
@@ -663,21 +675,25 @@ adb logcat -s MemixAnalytics:* MemixEditorCheck:* MediaImport:*      # second te
 2. **Inside a clip:** playhead at about 11 s (inside clip 3), Add media, pick a photo and a video. They land right after
    clip 3, in pick order; clip 3 isn't cut; clip 4 and everything after it move right by the added length (they slide);
    the meme sounds, captions and "Original audio" don't move. The playhead jumps to the first new clip (14.0 s) and the
-   new clips bonk together. The selection and tool bar don't change. TalkBack: "2 clips added". Undo: "Undo: Add media"
+   new clips bonk together: they grow a little taller and only a few dp wider, never over their neighbors. The selection
+   and tool bar don't change. TalkBack: "2 clips added". Undo: "Undo: Add media"
    removes both; Redo brings both back.
 3. **On a boundary:** with TalkBack on, double-tap clip 3 (the playhead goes to exactly 9.0 s), TalkBack off, Add media,
    one photo: it lands at 9.0 s, between clips 2 and 3 (before clip 3, not after it).
 4. **At the end:** scroll to the very end, Add media: appended after the last clip.
 5. **The tile:** at the end of the video, the plus tile sits just right of the last clip (a dark square, pressed: lighter).
    With the playhead a little before the end (inside the last clip), tap the tile, pick one: appended at the end, not after
-   the clip under the playhead. The tile hides in reorder mode, while a trim handle or a carried sound is held, and while the
-   last clip is selected (its end handle takes that place). TalkBack reads it as "Add videos or photos", after the "Add a
-   meme sound" pill.
+   the clip under the playhead. The tile hides in reorder mode, while a trim handle or a carried sound is held, and while a
+   selected clip ends close to the end (the last clip always; pinch out with the next-to-last clip selected and it hides
+   once that clip's end handle would reach it). Pressed, it turns lighter in a short fade. TalkBack reads it as "Add
+   videos or photos", after the "Add a meme sound" pill.
 6. **Empty project:** `--es memix.openEditor empty`: "This draft has no clips · Add a video or photo to start.", the tool
    bar shows only Add media, and the tile sits just right of the playhead at 0:00. Add from either: the clips start at
    0:00, the preview comes up, Play works, and Edit and Meme sounds appear.
 7. **Nothing happens when nothing is picked:** open the picker and press back, or close it, or confirm with nothing
    selected: no change, no "Undo", no `tool_use` line. Focus (TalkBack) goes back to the tool or tile that opened it.
+   With a keyboard: Add media, pick a long video, Tab to Cancel and let the copy finish: the focus ring lands on Add
+   media (the same after Continue on "1 of 2 added", and after the Meme sounds sheet's ×).
 8. **Import sheet:** pick a long video (over 300 ms to copy): P1-02's "Adding your media" sheet over the editor, with its
    own scrim, "1 of 1" and the bar; Cancel or back cancels (nothing added, no copy left: `adb shell run-as app.memix ls
    files/media/<project id>/`). Pick a damaged file with a good one: "1 of 2 added" with the row; Continue returns to the

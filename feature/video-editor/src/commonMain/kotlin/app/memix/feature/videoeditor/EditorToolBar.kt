@@ -67,8 +67,8 @@ import org.jetbrains.compose.resources.stringResource
  *
  * The focused Reorder tool disappears in the cross-fade, so when reorder mode opens from it, focus moves to Move
  * earlier, and when the mode ends it comes back to the Reorder tool (spec P1-06 → Accessibility → Reorder focus). A
- * long-press lift leaves focus alone. [pickFocus] holds the Add media and Replace tools' requesters, so focus can go
- * back to them after a pick. [selectedIsMissing]: the selected main clip's file is gone, so Replace comes first.
+ * long-press lift leaves focus alone. [focusTargets] holds the requesters of the tools focus goes back to after a pick,
+ * the sounds sheet or the Volume panel. [selectedIsMissing]: the selected main clip's file is gone, so Replace comes first.
  */
 @Composable
 internal fun ToolBarRegion(
@@ -76,7 +76,7 @@ internal fun ToolBarRegion(
     reorder: ReorderUi?,
     isEmpty: Boolean,
     selectedIsMissing: Boolean,
-    pickFocus: PickOpenerFocus,
+    focusTargets: EditorFocusTargets,
     onIntent: (VideoEditorIntent) -> Unit,
 ) {
     val moveEarlierFocus = remember { FocusRequester() }
@@ -106,11 +106,11 @@ internal fun ToolBarRegion(
         val mode = if (reordering) ToolBarMode.Reorder else clipTools?.let(ToolBarMode::Clip) ?: ToolBarMode.Main
         Crossfade(mode, animationSpec = tween(MemixMotion.durationPress), label = "tool bar") { shown ->
             when (shown) {
-                ToolBarMode.Main -> ToolBar(rememberMainTools(isEmpty, pickFocus.addMediaTool, onIntent))
+                ToolBarMode.Main -> ToolBar(rememberMainTools(isEmpty, focusTargets, onIntent))
                 is ToolBarMode.Clip -> {
                     val closeLabel = stringResource(Res.string.clip_tools_close)
                     ToolBar(
-                        rememberClipTools(shown.tools, selectedIsMissing, onIntent, reorderToolFocus, pickFocus.replaceTool),
+                        rememberClipTools(shown.tools, selectedIsMissing, onIntent, reorderToolFocus, focusTargets),
                         close = ToolBarClose(closeLabel) { onIntent(VideoEditorIntent.ClearSelection) },
                     )
                     FocusOnce(focusAfterSwap == FocusAfterSwap.REORDER_TOOL, reorderToolFocus) { focusAfterSwap = FocusAfterSwap.NONE }
@@ -174,16 +174,16 @@ private fun ReorderBar(onIntent: (VideoEditorIntent) -> Unit, moveEarlierFocus: 
  * bar). An empty project has only Add media: nothing to select, nothing to play a sound over.
  */
 @Composable
-private fun rememberMainTools(isEmpty: Boolean, addMediaFocus: FocusRequester, onIntent: (VideoEditorIntent) -> Unit): ImmutableList<ToolBarItem> {
+private fun rememberMainTools(isEmpty: Boolean, focus: EditorFocusTargets, onIntent: (VideoEditorIntent) -> Unit): ImmutableList<ToolBarItem> {
     val edit = stringResource(Res.string.tool_edit)
     val memeSounds = stringResource(Res.string.tool_meme_sounds)
     val addMedia = stringResource(Res.string.tool_add_media)
-    return remember(isEmpty, edit, memeSounds, addMedia, addMediaFocus, onIntent) {
-        val addMediaTool = ToolBarItem(addMedia, MemixIcons.Create, { onIntent(VideoEditorIntent.AddMediaTool) }, focusRequester = addMediaFocus)
+    return remember(isEmpty, edit, memeSounds, addMedia, focus, onIntent) {
+        val addMediaTool = ToolBarItem(addMedia, MemixIcons.Create, { onIntent(VideoEditorIntent.AddMediaTool) }, focusRequester = focus.addMediaTool)
         if (isEmpty) return@remember persistentListOf(addMediaTool)
         persistentListOf(
             ToolBarItem(edit, MemixIcons.Edit, { onIntent(VideoEditorIntent.EditTool) }),
-            ToolBarItem(memeSounds, MemixIcons.Sounds, { onIntent(VideoEditorIntent.MemeSoundsTool) }, ToolTone.MemeSound),
+            ToolBarItem(memeSounds, MemixIcons.Sounds, { onIntent(VideoEditorIntent.MemeSoundsTool) }, ToolTone.MemeSound, focusRequester = focus.memeSoundsTool),
             addMediaTool,
         )
     }
@@ -201,7 +201,7 @@ private fun rememberClipTools(
     isMissing: Boolean,
     onIntent: (VideoEditorIntent) -> Unit,
     reorderFocus: FocusRequester,
-    replaceFocus: FocusRequester,
+    focus: EditorFocusTargets,
 ): ImmutableList<ToolBarItem> {
     val split = stringResource(Res.string.tool_split)
     val delete = stringResource(Res.string.tool_delete)
@@ -209,17 +209,18 @@ private fun rememberClipTools(
     val reorder = stringResource(Res.string.tool_reorder)
     val volume = stringResource(Res.string.tool_volume)
     val moveHere = stringResource(Res.string.tool_move_here)
-    val moveHereSpoken = stringResource(Res.string.tool_move_here_a11y)
+    val moveHereClickLabel = stringResource(Res.string.tool_move_here_a11y)
     val replace = stringResource(Res.string.tool_replace)
-    return remember(clipTools, isMissing, split, delete, duplicate, reorder, volume, moveHere, moveHereSpoken, replace, onIntent, reorderFocus, replaceFocus) {
+    return remember(clipTools, isMissing, split, delete, duplicate, reorder, volume, moveHere, moveHereClickLabel, replace, onIntent, reorderFocus, focus) {
         val splitTool = ToolBarItem(split, MemixIcons.Split, { onIntent(VideoEditorIntent.SplitSelected) })
         val deleteTool = ToolBarItem(delete, MemixIcons.Delete, { onIntent(VideoEditorIntent.DeleteSelected) }, ToolTone.Danger)
         val duplicateTool = ToolBarItem(duplicate, MemixIcons.Duplicate, { onIntent(VideoEditorIntent.DuplicateSelected) })
-        // Spoken "Move to playhead": "here" means the playhead (spec P1-06 → Accessibility).
-        val moveHereTool = ToolBarItem(moveHere, MemixIcons.MoveHere, { onIntent(VideoEditorIntent.MoveHereSelected) }, contentDescription = moveHereSpoken)
+        // Its name is its label; "move to playhead" follows as the click label, since "here" means the playhead (spec
+        // P1-06 → Accessibility).
+        val moveHereTool = ToolBarItem(moveHere, MemixIcons.MoveHere, { onIntent(VideoEditorIntent.MoveHereSelected) }, clickLabel = moveHereClickLabel)
         when (clipTools) {
             ClipTools.MAIN_CLIP -> {
-                val replaceTool = ToolBarItem(replace, MemixIcons.Replace, { onIntent(VideoEditorIntent.ReplaceSelected) }, focusRequester = replaceFocus)
+                val replaceTool = ToolBarItem(replace, MemixIcons.Replace, { onIntent(VideoEditorIntent.ReplaceSelected) }, focusRequester = focus.replaceTool)
                 val reorderTool = ToolBarItem(reorder, MemixIcons.Reorder, { onIntent(VideoEditorIntent.StartReorderSelected) }, focusRequester = reorderFocus)
                 if (isMissing) {
                     persistentListOf(replaceTool, splitTool, deleteTool, duplicateTool, reorderTool)
@@ -228,7 +229,7 @@ private fun rememberClipTools(
                 }
             }
             ClipTools.SOUND -> persistentListOf(
-                ToolBarItem(volume, MemixIcons.Volume, { onIntent(VideoEditorIntent.VolumeTool) }),
+                ToolBarItem(volume, MemixIcons.Volume, { onIntent(VideoEditorIntent.VolumeTool) }, focusRequester = focus.volumeTool),
                 splitTool,
                 deleteTool,
                 moveHereTool,
@@ -241,21 +242,27 @@ private fun rememberClipTools(
 }
 
 /**
- * The focus targets of the controls that open the picker (spec P1-06 → Accessibility: focus returns to the opener
- * after a pick). Remembered once per editor screen.
+ * The controls focus goes back to after a surface closes (spec P1-06 → Accessibility): the opener of a pick, the sounds
+ * sheet or the Volume panel, or the Volume tool of a sound that just landed. Remembered once per editor screen.
  */
 @Stable
-internal class PickOpenerFocus {
+internal class EditorFocusTargets {
     val addMediaTool = FocusRequester()
     val addMediaTile = FocusRequester()
     val replaceTool = FocusRequester()
+    val memeSoundsTool = FocusRequester()
+    val addSoundPill = FocusRequester()
+    val volumeTool = FocusRequester()
 
-    /** Moves focus to [opener]'s control; nothing happens when it isn't on screen. */
-    fun returnTo(opener: PickOpener) {
-        when (opener) {
-            PickOpener.ADD_MEDIA_TOOL -> addMediaTool
-            PickOpener.ADD_MEDIA_TILE -> addMediaTile
-            PickOpener.REPLACE_TOOL -> replaceTool
+    /** Moves focus to [target]'s control; nothing happens when it isn't on screen. */
+    fun moveTo(target: FocusTarget) {
+        when (target) {
+            FocusTarget.ADD_MEDIA_TOOL -> addMediaTool
+            FocusTarget.ADD_MEDIA_TILE -> addMediaTile
+            FocusTarget.REPLACE_TOOL -> replaceTool
+            FocusTarget.MEME_SOUNDS_TOOL -> memeSoundsTool
+            FocusTarget.ADD_SOUND_PILL -> addSoundPill
+            FocusTarget.VOLUME_TOOL -> volumeTool
         }.requestFocus()
     }
 }

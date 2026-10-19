@@ -30,6 +30,7 @@ import app.memix.core.designsystem.MemixShapes
 import app.memix.core.designsystem.MemixSize
 import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.MemixStroke
+import app.memix.core.domain.project.LaneTarget
 import app.memix.core.domain.project.TrimEdge
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.TrackKind
@@ -159,6 +160,8 @@ internal class TimelinePainter(
         }
         if (trim != null) drawItem(trim.row, trim.item, trim.startUs, trim.endUs, trim.trimInUs, trim.trimOutUs, place)
         if (move != null) {
+            // Over the add row, the lane the drop will make shows under the carried sound (spec P1-05 → Add a meme sound).
+            if (move.laneTarget == LaneTarget.NewLane && timeline.lengthUs > 0) drawBand(move.row, zeroX, endX)
             drawItem(move.row, move.item, move.startUs, move.endUs, move.item.trimInUs, move.item.trimOutUs, place)
             drawSelection(move.startUs, move.endUs, move.row, playheadUs, pxPerUs, badge = null, alpha = 1f, withHandles = false)
         }
@@ -198,14 +201,19 @@ internal class TimelinePainter(
         }
     }
 
-    /** An item at [startUs]..[endUs]; one that just landed bonks (or fades in, with reduce motion) around its center. */
+    /**
+     * An item at [startUs]..[endUs]; one that just landed bonks (or fades in, with reduce motion) around its center. Its
+     * height scales by the bonk and its width grows by the same pixels (never by more than the bonk's own scale), so a
+     * long clip swells a few dp at each end instead of 12% of its width over its neighbors.
+     */
     private fun DrawScope.drawLandingItem(row: LaneRow, item: ItemUi, startUs: Long, endUs: Long, place: ItemPlace, motion: EditMotion) {
         if (item.id !in motion.landedItemIds) return drawItem(row, item, startUs, endUs, item.trimInUs, item.trimOutUs, place)
         val left = xOf(startUs, place.playheadUs, place.centerPx, place.pxPerUs)
         val right = left + widthPx(endUs - startUs, place.pxPerUs)
         val scale = motion.bonkScale.value
+        val scaleX = min(scale, 1f + (scale - 1f) * row.itemHeightPx / max(right - left, 1f))
         val alpha = motion.bonkAlpha.value
-        withTransform({ scale(scale, scale, Offset((left + right) / 2, row.itemTopPx + row.itemHeightPx / 2)) }) {
+        withTransform({ scale(scaleX, scale, Offset((left + right) / 2, row.itemTopPx + row.itemHeightPx / 2)) }) {
             if (alpha >= 1f) return@withTransform drawItem(row, item, startUs, endUs, item.trimInUs, item.trimOutUs, place)
             layerPaint.alpha = alpha
             drawContext.canvas.saveLayer(Rect(left, row.itemTopPx, right, row.itemTopPx + row.itemHeightPx), layerPaint)

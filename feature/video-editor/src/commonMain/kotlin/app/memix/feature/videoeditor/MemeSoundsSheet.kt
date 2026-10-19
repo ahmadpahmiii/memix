@@ -56,6 +56,8 @@ internal fun MemeSoundsSheet(sounds: SoundsSheetUi, onIntent: (VideoEditorIntent
                     // No Favorites list in P1, so no heart (spec P1-06 → request 4).
                     onFavoriteChange = null,
                     onAdd = { onIntent(VideoEditorIntent.AddSound(sound.id)) },
+                    // The sheet is `surface`, so the playing row's band is `surface-raised` (P1-08 review, P1).
+                    onSurface = true,
                 )
             }
         }

@@ -201,6 +201,19 @@ private fun SoundRowSection() = Section("SoundRow") {
         onFavoriteChange = null,
         onAdd = {},
     )
+    // Playing inside a sheet: on `surface`, its band is `surface-raised` (P1-08 review, P1).
+    Box(Modifier.background(MemixColors.surface)) {
+        SoundRow(
+            name = "Playing in the sheet",
+            meta = "0:02 · CC0",
+            isPlaying = true,
+            isFavorite = false,
+            onPlayToggle = {},
+            onFavoriteChange = null,
+            onAdd = {},
+            onSurface = true,
+        )
+    }
 }
 
 @Composable
@@ -335,7 +348,7 @@ private fun ToolBarSection() = Section("ToolBar") {
             ToolBarItem("Volume", MemixIcons.Volume, {}),
             ToolBarItem("Split", MemixIcons.Split, {}),
             ToolBarItem("Delete", MemixIcons.Delete, {}, ToolTone.Danger),
-            ToolBarItem("Move here", MemixIcons.MoveHere, {}, contentDescription = "Move to playhead"),
+            ToolBarItem("Move here", MemixIcons.MoveHere, {}, clickLabel = "Move to playhead"),
             ToolBarItem("Duplicate", MemixIcons.Duplicate, {}),
         ),
         close = ToolBarClose("Close clip tools") {},

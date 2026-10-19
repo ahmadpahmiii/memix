@@ -35,6 +35,8 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -175,8 +177,9 @@ fun VideoEditorScreen(
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { onIntent(VideoEditorIntent.AppStopped) }
     // A save needs little room; ask for the import's headroom, so the next import fits too (spec P1-04 → Saving).
     val freeUpSpaceForSave = remember(onFreeUpSpace) { { onFreeUpSpace(ImportMediaUseCase.HEADROOM_BYTES) } }
-    val pickFocus = remember { PickOpenerFocus() }
-    ReturnFocusAfterPick(state.returnFocus, pickFocus)
+    val focusTargets = remember { EditorFocusTargets() }
+    val panelOpen = state.volumePanel != null
+    ReturnFocus(state.returnFocus, focusTargets)
 
     Box(
         modifier
@@ -195,20 +198,25 @@ fun VideoEditorScreen(
                 stage = { PreviewStage(state, onIntent, previewSurface, freeUpSpaceForSave) },
                 transport = { TransportRow(state, onIntent) },
                 timeline = {
-                    Timeline(
-                        state.timeline,
-                        state.selectedItemId,
-                        state.trimRanges,
-                        state.reorder,
-                        state.landed,
-                        state.preview,
-                        state.thumbnails,
-                        pickFocus.addMediaTile,
-                        onIntent,
-                    )
+                    Box(Modifier.coveredByPanel(panelOpen), propagateMinConstraints = true) {
+                        Timeline(
+                            state.timeline,
+                            state.selectedItemId,
+                            state.trimRanges,
+                            state.reorder,
+                            state.landed,
+                            state.preview,
+                            state.thumbnails,
+                            focusTargets.addSoundPill,
+                            focusTargets.addMediaTile,
+                            onIntent,
+                        )
+                    }
                 },
                 tools = {
-                    ToolBarRegion(state.clipTools, state.reorder, state.timeline.isEmpty, selectedIsMissing(state), pickFocus, onIntent)
+                    Box(Modifier.coveredByPanel(panelOpen), propagateMinConstraints = true) {
+                        ToolBarRegion(state.clipTools, state.reorder, state.timeline.isEmpty, selectedIsMissing(state), focusTargets, onIntent)
+                    }
                 },
                 panel = { VolumePanel(state.volumePanel, onIntent, Modifier.fillMaxSize()) },
                 timelineMinHeight = timelineMinHeight(),
@@ -237,14 +245,26 @@ private fun EditorImportSheet(mediaImport: EditorMediaImportUi, onIntent: (Video
     )
 }
 
-/** Focus goes back to the control that opened the picker once the pick is over (spec P1-06 → Accessibility). */
+/**
+ * What an open ToolPanel covers (the timeline and the tool bar) is out of reach too: no screen-reader nodes and no
+ * keyboard focus, so nothing hidden can be focused or run (spec P1-06 → Volume panel; WCAG 2.2 SC 2.4.11). The stage
+ * and transport row stay reachable.
+ */
+private fun Modifier.coveredByPanel(covered: Boolean): Modifier =
+    if (!covered) this else clearAndSetSemantics { }.focusProperties { onEnter = { cancelFocusChange() } }.focusGroup()
+
+/**
+ * Moves focus where [returnFocus] says once a surface has closed: back to the opener of a pick, the sheet or the panel,
+ * or to a landed sound's Volume tool (spec P1-06 → Accessibility).
+ */
 @Composable
-private fun ReturnFocusAfterPick(returnFocus: ReturnFocus?, pickFocus: PickOpenerFocus) {
+private fun ReturnFocus(returnFocus: ReturnFocus?, focusTargets: EditorFocusTargets) {
     LaunchedEffect(returnFocus) {
         val target = returnFocus ?: return@LaunchedEffect
-        // One frame, so the tool bar or tile the picker covered is laid out again.
+        // One frame, so the control the surface covered, or a tool bar that just swapped in, is laid out. A closing
+        // sheet lets focus leave during its exit.
         withFrameNanos { }
-        pickFocus.returnTo(target.opener)
+        focusTargets.moveTo(target.target)
     }
 }
 
@@ -356,7 +376,9 @@ private fun CanvasFrame(aspectRatio: Float, content: @Composable BoxScope.() -> 
 private fun FrameMessage(stage: StageContent, aspectRatio: Float, onRetry: () -> Unit) {
     when (stage) {
         StageContent.ERROR -> CanvasFrame(aspectRatio) { PreviewError(onRetry) }
-        StageContent.EMPTY -> CanvasFrame(aspectRatio) { EmptyDraft() }
+        // The frame has no picture and the canvas is black like the stage, so the message takes the stage's whole width
+        // (P1-16 review, P6): Hindi at 200% isn't cut.
+        StageContent.EMPTY -> Box(Modifier.fillMaxSize().padding(MemixSpacing.space2)) { EmptyDraft() }
         StageContent.OPENING, StageContent.VIDEO -> Unit
     }
 }

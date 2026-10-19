@@ -136,7 +136,7 @@
     <string name="edit_add_media">Añadir multimedia</string>
     <string name="edit_replace">Reemplazar</string>
     <string name="explain_replace_too_short">Ese video es más corto que este clip (%1$s). Elige uno más largo o recorta primero este clip.</string>
-    <string name="explain_replace_detached">El sonido separado se queda, así que el sonido propio de este clip empieza en 0\u00A0%.</string>
+    <string name="explain_replace_detached">El sonido separado se queda, así que el de este clip empieza en 0\u00A0%.</string>
     <plurals name="a11y_media_added">
         <item quantity="one">%1$d clip añadido</item>
         <item quantity="other">%1$d clips añadidos</item>

@@ -64,9 +64,10 @@ enum class ToolTone {
 }
 
 /**
- * One tool: an icon over its label. The label is also its spoken name, unless [contentDescription] says it
- * differently (Move here is spoken "Move to playhead"). A tool that can't act right now keeps its look; its
- * [onClick] explains why. [focusRequester] lets the caller move focus to it after the bar swaps.
+ * One tool: an icon over its label. The label is always its spoken name, so voice control finds it by what's on screen
+ * (WCAG 2.2 SC 2.5.3). [clickLabel] adds context after it ("Move here, button, double-tap to move to playhead"). A tool
+ * that can't act right now keeps its look; its [onClick] explains why. [focusRequester] lets the caller move focus to
+ * it after the bar swaps.
  */
 @Immutable
 class ToolBarItem(
@@ -74,7 +75,7 @@ class ToolBarItem(
     val icon: DrawableResource,
     val onClick: () -> Unit,
     val tone: ToolTone = ToolTone.Default,
-    val contentDescription: String? = null,
+    val clickLabel: String? = null,
     val focusRequester: FocusRequester? = null,
 )
 
@@ -117,7 +118,6 @@ private fun ToolButton(tool: ToolBarItem) {
     // Pressed fills fade in from a see-through copy of the same gray, so the press never passes through black.
     val pressed = pressedColor(interactionSource, MemixColors.surfaceRaised.copy(alpha = 0f), MemixColors.surfaceRaised)
     val tint = toneColor(tool.tone)
-    val spokenName = tool.contentDescription ?: tool.label
     Column(
         Modifier
             .then(tool.focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
@@ -133,9 +133,9 @@ private fun ToolButton(tool: ToolBarItem) {
             }
             .clickable(interactionSource, indication = null, role = Role.Button, onClick = tool.onClick)
             .clearAndSetSemantics {
-                contentDescription = spokenName
+                contentDescription = tool.label
                 role = Role.Button
-                onClick { tool.onClick(); true }
+                onClick(label = tool.clickLabel) { tool.onClick(); true }
             }
             .padding(horizontal = MemixSpacing.space1, vertical = MemixSpacing.space2),
         horizontalAlignment = Alignment.CenterHorizontally,

@@ -40,13 +40,18 @@ internal class LaneRow(
     val itemHeightPx: Float,
 )
 
-internal fun laneLayoutOf(timeline: TimelineUi, density: Density, labelLineHeightPx: Float): LaneLayout = with(density) {
+/**
+ * Where each lane and the "Add a meme sound" row sit, top to bottom. [labelLineHeightPx] is one item label's line;
+ * [addPillLabelHeightPx] is the pill label's height, one or two lines ([rememberAddPillLabelHeightPx]).
+ */
+internal fun laneLayoutOf(timeline: TimelineUi, density: Density, labelLineHeightPx: Float, addPillLabelHeightPx: Float): LaneLayout = with(density) {
     val itemHeightPx = max(MemixSize.trackHeight.toPx(), labelLineHeightPx + 2 * MemixSpacing.space1.toPx())
     val rowHeightPx = itemHeightPx + MemixSpacing.space1.toPx()
     val mainRowHeightPx = MemixSize.touchTarget.toPx()
     val mainItemHeightPx = MemixSize.trackHeightVideo.toPx()
-    // Grows with the text size, so the pill's label is never cut.
-    val addRowHeightPx = max(MemixSize.touchTarget.toPx(), labelLineHeightPx + 4 * MemixSpacing.space1.toPx())
+    // Grows with the pill's label (one or two lines, at any text size), so it's never cut: `space-1` inside the pill
+    // above and below it, and the row's `space-1` margins.
+    val addRowHeightPx = max(MemixSize.touchTarget.toPx(), addPillLabelHeightPx + 4 * MemixSpacing.space1.toPx())
     val addRowGoesBefore = addSoundRowPosition(timeline)
     var topPx = 0f
     var addSoundRow: AddSoundRow? = null

@@ -4,7 +4,6 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.offset
@@ -33,6 +32,7 @@ import app.memix.core.designsystem.MemixShapes
 import app.memix.core.designsystem.MemixSize
 import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.focusRing
+import app.memix.core.designsystem.pressedColor
 import app.memix.core.model.project.TrackKind
 import kotlin.math.roundToInt
 import memix.feature.video_editor.generated.resources.Res
@@ -43,7 +43,8 @@ import org.jetbrains.compose.resources.stringResource
  * The Add media tile (spec P1-05 → Trailing area, P1-16): a `track-height-video` square in `surface-raised` with
  * `radius-sm` and the plus in `text`, inside a 48 dp target, `space-2` after the end of the video in the main row. It
  * moves with time and with the lanes' vertical scroll, clipped below the ruler; in an empty project it sits just right
- * of the playhead at 0:00. Pressed: `hairline`. Hidden in reorder mode and while a trim or move is held. Screen readers
+ * of the playhead at 0:00. Pressed: `hairline`, in 120 ms like every press. Hidden in reorder mode and while a trim or
+ * move is held (and, by its caller, while a selected main clip's end handle reaches it). Screen readers
  * reach it after the "Add a meme sound" pill; [focusRequester] brings focus back to it after its pick.
  */
 @Composable
@@ -61,7 +62,7 @@ internal fun BoxScope.AddMediaTile(
     val mainRow = lanes.rows.firstOrNull { it.track.kind == TrackKind.MAIN_VIDEO } ?: return
     val label = stringResource(Res.string.timeline_add_media)
     val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
+    val fill by pressedColor(interactionSource, MemixColors.surfaceRaised, MemixColors.hairline)
     val density = LocalDensity.current
     val targetPx = with(density) { MemixSize.touchTarget.toPx() }
     val tilePx = with(density) { MemixSize.trackHeightVideo.toPx() }
@@ -90,7 +91,7 @@ internal fun BoxScope.AddMediaTile(
                     .size(MemixSize.trackHeightVideo)
                     .focusRing(interactionSource, MemixShapes.radiusSm)
                     .clip(MemixShapes.radiusSm)
-                    .background(if (pressed) MemixColors.hairline else MemixColors.surfaceRaised),
+                    .background(fill),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(MemixIcons.Create, contentDescription = null, tint = MemixColors.text)

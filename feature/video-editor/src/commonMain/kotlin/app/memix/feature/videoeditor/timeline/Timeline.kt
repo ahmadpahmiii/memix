@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -96,8 +97,8 @@ import org.jetbrains.compose.resources.stringResource
  *
  * Items on every lane but the main track move by a long-press drag (spec P1-06 → Move): the same finger carries the
  * item in time and across lanes of its kind, and the drop commits once. The "Add a meme sound" pill sits on its row at
- * the playhead (P1-08), and the Add media tile after the end of the video (P1-16; [addMediaTileFocus] brings focus back
- * to it after its pick).
+ * the playhead (P1-08), and the Add media tile after the end of the video (P1-16). [addSoundPillFocus] and
+ * [addMediaTileFocus] let the editor bring focus back to them after the sheet or picker they opened closes.
  *
  * The original-audio toggle (P1-09) arrives with its ticket; until then it isn't drawn, never shown disabled.
  */
@@ -110,13 +111,14 @@ internal fun Timeline(
     landed: LandedItems?,
     preview: EditorPreview?,
     thumbnails: TimelineThumbnails?,
+    addSoundPillFocus: FocusRequester,
     addMediaTileFocus: FocusRequester,
     onIntent: (VideoEditorIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Time always runs left to right, whatever the language (spec → Structure).
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        TimelineContent(timeline, selectedItemId, trimRanges, reorder, landed, preview, thumbnails, addMediaTileFocus, onIntent, modifier)
+        TimelineContent(timeline, selectedItemId, trimRanges, reorder, landed, preview, thumbnails, addSoundPillFocus, addMediaTileFocus, onIntent, modifier)
     }
 }
 
@@ -137,6 +139,7 @@ private fun TimelineContent(
     landed: LandedItems?,
     preview: EditorPreview?,
     thumbnails: TimelineThumbnails?,
+    addSoundPillFocus: FocusRequester,
     addMediaTileFocus: FocusRequester,
     onIntent: (VideoEditorIntent) -> Unit,
     modifier: Modifier,
@@ -162,7 +165,11 @@ private fun TimelineContent(
     val textMeasurer = rememberTextMeasurer()
     val painter = rememberTimelinePainter(textMeasurer)
     val labelLineHeightPx = with(density) { MemixTheme.type.caption.lineHeight.toPx() }
-    val lanes = remember(timeline, density, labelLineHeightPx) { laneLayoutOf(timeline, density, labelLineHeightPx) }
+    // Read in composition: it changes only when the timeline is laid out at a new width.
+    val addPillLabelHeightPx = rememberAddPillLabelHeightPx(textMeasurer, state.widthPx)
+    val lanes = remember(timeline, density, labelLineHeightPx, addPillLabelHeightPx) {
+        laneLayoutOf(timeline, density, labelLineHeightPx, addPillLabelHeightPx)
+    }
     val rulerHeight = rulerHeight()
     val rulerHeightPx = with(density) { rulerHeight.toPx() }
     val labelSpacingPx = rememberRulerLabelSpacing(textMeasurer, timeline.lengthUs)
@@ -332,11 +339,19 @@ private fun TimelineContent(
         )
         PlayheadSemantics(controller, timeline.lengthUs, rulerHeight)
         lanes.addSoundRow?.let { addRow ->
-            AddMemeSoundPill(controller, addRow, motion, laneScroll, rulerHeight, onClick = { onIntent(VideoEditorIntent.AddMemeSoundRow) })
+            AddMemeSoundPill(controller, addRow, motion, laneScroll, rulerHeight, addSoundPillFocus, onClick = { onIntent(VideoEditorIntent.AddMemeSoundRow) })
         }
-        // The last clip's end handle and its 48 dp target take the same place, so the tile waits while that clip is selected.
-        val lastClipSelected = selectedItemId != null && selectedItemId == timeline.lastMainClipId
-        if (!lastClipSelected) {
+        // A selected main clip's end handle reaches `touch-target` past its end, where the tile sits when the clip ends
+        // near the end of the video (always for the last clip): the tile steps aside meanwhile. The zoom is read in
+        // derivedStateOf, so a pinch recomposes only when the answer flips.
+        val touchTargetPx = with(density) { MemixSize.touchTarget.toPx() }
+        val selectedEndUs = remember(timeline, selectedItemId) { timeline.mainClipEndUs(selectedItemId) }
+        val endHandleOnTile by remember(selectedEndUs, timeline.lengthUs, touchTargetPx) {
+            derivedStateOf {
+                selectedEndUs != null && (timeline.lengthUs - selectedEndUs) * pxPerUs(state.dpPerSecond, density.density) < touchTargetPx
+            }
+        }
+        if (!endHandleOnTile) {
             AddMediaTile(controller, lanes, timeline.lengthUs, laneScroll, rulerHeight, addMediaTileFocus, onClick = { onIntent(VideoEditorIntent.AddMediaTile) })
         }
         EditValueBubble(controller, rulerHeightPx, laneScroll)

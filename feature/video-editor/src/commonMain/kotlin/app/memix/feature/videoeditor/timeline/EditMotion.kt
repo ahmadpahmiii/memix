@@ -45,7 +45,10 @@ internal class EditMotion {
     private var laneShiftFromPx: Map<String, Float> = emptyMap()
     private val laneSlide = Animatable(1f)
 
-    /** How far row [key] (a track id, or [ADD_SOUND_ROW_KEY]) is drawn from its place now, px, while lanes slide. */
+    /** True while rows slide to new places; the "Add a meme sound" pill sits the slide out (spec P1-05 → While lanes slide). */
+    val isLaneSliding: Boolean get() = laneSlide.isRunning
+
+    /** How far the row of track [key] is drawn from its place now, px, while lanes slide. */
     fun laneShiftPx(key: String): Float {
         val fromPx = laneShiftFromPx[key] ?: return 0f
         val progress = laneSlide.value
@@ -92,15 +95,13 @@ internal class EditMotion {
     companion object {
         /** The bonk's largest scale (spec P1-06 → Motion: 1 → 1.12 → 1). */
         private const val BONK_PEAK = 1.12f
-
-        /** [laneShiftPx]'s key for the "Add a meme sound" row, which has no track. */
-        const val ADD_SOUND_ROW_KEY = "add-sound-row"
     }
 }
 
 /**
  * Slides the rows that changed place when [lanes] gets a lane more or less (spec P1-05 → Motion: 200 ms, nothing with
- * reduce motion). A new lane itself just appears; its sound bonks.
+ * reduce motion). A new lane itself just appears; its sound bonks. The "Add a meme sound" pill doesn't slide: it sits
+ * the slide out, also when only its own row moved, and fades in at its new place ([EditMotion.isLaneSliding]).
  */
 @Composable
 internal fun AnimateLanes(motion: EditMotion, lanes: LaneLayout) {
@@ -114,12 +115,8 @@ internal fun AnimateLanes(motion: EditMotion, lanes: LaneLayout) {
             val old = before.rows.firstOrNull { it.track.id == row.track.id } ?: continue
             if (old.topPx != row.topPx) shifts[row.track.id] = old.topPx - row.topPx
         }
-        val oldAddRow = before.addSoundRow
-        val newAddRow = lanes.addSoundRow
-        if (oldAddRow != null && newAddRow != null && oldAddRow.topPx != newAddRow.topPx) {
-            shifts[EditMotion.ADD_SOUND_ROW_KEY] = oldAddRow.topPx - newAddRow.topPx
-        }
-        if (shifts.isNotEmpty()) motion.slideLanes(shifts)
+        val addRowMoved = before.addSoundRow?.topPx != lanes.addSoundRow?.topPx
+        if (shifts.isNotEmpty() || addRowMoved) motion.slideLanes(shifts)
     }
 }
 
