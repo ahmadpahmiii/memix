@@ -13,4 +13,5 @@ A bottom sheet for choices that sit above the current screen: Create, Export, th
   - A drag up on the grabber or the title row grows it to the full long-content height (200 ms, at once with reduce motion); a drag down closes it as usual. A drag on the list scrolls the list.
   - The last visible row is cut by the sheet's edge, which shows there's more.
 - **Focus:** opening moves focus to the sheet; its title is the pane title. Closing returns focus to the control that opened it, unless the sheet's action moves it somewhere more useful (the editor's sheet after adding a sound: the new sound's first tool).
+  - Keyboard focus is trapped inside the sheet only while it's shown, not during its 200 ms exit. Otherwise a return requested as it starts to leave is cancelled when focus sat on one of its buttons (Cancel, Continue), and focus ends nowhere (P1-16 review).
 - **Don't:** stack sheets; open a second one only after the first closes.

@@ -80,6 +80,7 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 **Motion.**
 - Durations: 120 ms for presses and toggles, 200 ms for sheets and tab changes, 320 ms for screen transitions.
 - The "bonk": a sound or sticker landing on the timeline scales 1 → 1.12 → 1 over 240 ms with a slight overshoot. Use it only for placing content.
+  - On the timeline the item's height scales by 1.12, and its width grows by the same number of dp, or by 12% if that's less (a very narrow item). A square-ish item (a 1 s sound) looks the same either way; a 10 s clip swells about 2.4 dp at each end instead of 24 dp sweeping over its neighbors (P1-16 review).
 - Respect the system's reduce-motion setting: replace movement with a 120 ms fade.
   - **On Android the fade shows as an instant change.** Memix reads reduce motion as "Remove animations" (animator duration scale 0), and Compose scales every animation by that same setting, so at 0 each one ends on the next frame (Compose `MotionDurationScale`; Guidance). Nothing moves, which is the point; the 120 ms fade itself is never seen. Accepted (P1-06 review).
   - **On iOS (P7) the fade is real:** the system's Reduce Motion doesn't shorten animations, so there every movement must actually become the 120 ms fade, as the specs say.
@@ -98,17 +99,20 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
 - **Grid:** 24px canvas, 2px padding, so shapes live in the central 20px.
 - **Stroke:** 2px with flat (butt) caps and mitred joins; rectangles get a 1px corner radius. The flat ends echo Anton's blunt terminals and keep small shapes crisp on dark gray.
 - **One solid core:** where the metaphor has a natural mass, that one part is filled: the door of Home, the cone of Sounds, the lens of Video, the hill of Photo, the tab of Drafts. Play and pause are all core. This is the set's signature, the same move as the solid blue Create block.
+- **Arrowheads are always solid** (`undo`, `redo`, `reorder`, `move_here`, `replace`) and don't count as the core. Keep at least 1.4px of air between an arrowhead and any other solid part, so they stay apart at 2× density (P1-16 review).
 - **Color:** a single color per icon, applied as a tint: `text-secondary` (inactive), `text` (current nav item), `primary` (active tool), `on-primary` on blue fills. No two-tone icons.
 - **Meaning first:** every icon names a real action or place and always comes with a visible label or a screen-reader label. No sparkle, magic or robot glyphs.
 
-**The set so far** (`MemixIcons`, 24 icons after P1-08):
+**The set so far** (`MemixIcons`, 25 icons after P1-16):
 - Navigation and chrome: `home`, `templates`, `create` (plus; also Add media and every "add"), `sounds`, `drafts`, `arrow_back`, `chevron_right`, `close`, `globe`.
 - Media and playback: `video`, `photo`, `play`, `pause`, `undo`, `redo`, `heart`, `heart_filled`.
 - Editor tools (P1-06): `edit` (scissor blades, finger loops as the core), `split` (two outlined clips around a solid bar), `delete` (lid and handle strokes over a solid can), `duplicate` (open back outline behind a solid front clip), `reorder` (an arc with two solid arrowheads over two outlined clips).
 - Sound tools (P1-08, approved in the P1-08 review):
   - `volume`: two stroked bars rising left to right (5 and 10px tall) and a solid block with 1px corners as the tallest (16px), with even 3.5px gaps. Distinct from `sounds` (the speaker cone with waves): `sounds` means "meme sounds", `volume` means "how loud".
   - `move_here`: a horizontal shaft with a solid arrowhead pointing right into a full-height vertical bar (the playhead), 2.5px apart. The bar is the destination, the same white line the user sees on the timeline.
-- Later, drawn with their tickets: `volume_off` and `detach_audio` (P1-09), `replace` (P1-16), `lock` (L-02).
+- Clip tool (P1-16, approved in the P1-16 review):
+  - `replace`: a solid clip in the center (7 × 4px, 1px corners) between two curved strokes. The upper one runs left to right into a solid arrowhead pointing down; the lower one runs right to left into a solid arrowhead pointing up. It's exactly 180° symmetric, a swap cycle around one clip, so it doesn't read as `reorder` (one arc over two outlined clips) or as `undo`/`redo` (one hooked arrow).
+- Later, drawn with their tickets: `volume_off` and `detach_audio` (P1-09), `lock` (L-02).
 
 Source files are Android vector drawables in `:core:designsystem` `composeResources/drawable/` (`ic_<name>.xml`), path-only so Compose Multiplatform renders them the same on Android and iOS. There is no Memix logo yet: until one exists, write the name "Memix" in Anton; the launcher icon is a plain placeholder built from that wordmark, not a logo.
 
@@ -288,7 +292,7 @@ Fixed sizes used across screens (dp on Android).
 | `duration-press` | `MemixMotion.durationPress` | `120ms` | Presses, toggles, nav item color changes, and the reduce-motion fade that replaces every movement. |
 | `duration-sheet` | `MemixMotion.durationSheet` | `200ms` | Bottom sheets sliding in and out, tab content changes. |
 | `duration-screen` | `MemixMotion.durationScreen` | `320ms` | Screen pushes and pops. |
-| `duration-bonk` | `MemixMotion.durationBonk` | `240ms` | The bonk: content landing on the timeline scales 1 → 1.12 → 1 with a slight overshoot. Only for placing content. |
+| `duration-bonk` | `MemixMotion.durationBonk` | `240ms` | The bonk: content landing on the timeline scales 1 → 1.12 → 1 with a slight overshoot; on the timeline the width grows by the same dp as the height, so long clips don't sweep over their neighbors. Only for placing content. |
 
 ## Compose implementation notes
 

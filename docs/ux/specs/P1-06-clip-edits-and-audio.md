@@ -15,7 +15,7 @@ Make the cuts a meme needs (split, trim, delete, duplicate, reorder) and control
 | P1-06 | Each edit shows in the preview within 100 ms on the owner's phone; LeakCanary shows no leaks |
 | P1-08 | The sound stays in sync within 1 frame in preview and export |
 | P1-09 | Detached audio becomes its own audio-track clip |
-| P1-16 | Media added from the editor lands after the clip under the playhead as one undo step, and a replaced clip keeps its start and length so sounds and text stay in sync |
+| P1-16 | Media added with the Add media tool lands after the clip under the playhead (the Add media tile at the end of the video appends) as one undo step, and a replaced clip keeps its start and length so sounds and text stay in sync |
 
 **Performance bar (owner, 8 Oct):** there is no named reference phone. The bar is no visible lag and no memory leaks, on Android and iOS. The ticket numbers are measured on the owner's own phone with a release-type build.
 
@@ -352,7 +352,7 @@ Not built or checked in P1 (owner, 8 Oct; TICKETS → Later · Improvements, L-0
 - **Locked main track:** ripple edits from other main clips are refused with the same explanation.
 
 ## Add media (P1-16, final 13 Oct)
-P1-16's Done when: "Media added from the editor lands after the clip under the playhead as one undo step." Two entries, each placing items where it says.
+P1-16's Done when (TICKETS, worded by the PM on 13 Oct): "Media added with the Add media tool lands after the clip under the playhead (the Add media tile at the end of the video appends) as one undo step." Two entries, each placing items where it says.
 
 **Entries:**
 1. **The Add media tool** (main tool bar, place 4, icon `create`). The items land **after the clip under the playhead**. This is the route to anywhere in the video, and the one the Done when describes.
@@ -376,7 +376,7 @@ P1-16's Done when: "Media added from the editor lands after the clip under the p
 **After landing:**
 - The playhead moves to the start of the first new clip, and the new clips bonk once (`duration-bonk`).
 - The selection and the tool bar don't change.
-- TalkBack hears "3 clips added" (`a11y_media_added`). Focus returns to the tool or tile that opened the picker.
+- TalkBack hears "3 clips added" (`a11y_media_added`). Focus returns to the tool or tile that opened the picker, once the import sheet (if it showed) has gone (Accessibility → Add media and Replace).
 - **Undo** is one step ("Add media") that removes the whole pick. `tool_use` `add_media` fires once, when the items land, never per item. No `project_create`.
 - A save failure afterwards uses P1-07's save banner (P1-02 → Ran out of space).
 
@@ -408,7 +408,7 @@ P1-16's Done when: "Media added from the editor lands after the clip under the p
 **Afterwards:**
 - The clip stays selected, and the new media bonks once: it's content landing.
 - The playhead doesn't move. The preview catches up as after any edit (Preview catching up).
-- A missing clip is fixed: its "File missing" label and state go, because the new copy exists.
+- A missing clip is fixed: its "File missing" label and state go, because the new copy exists. Its tool bar returns to the usual order, with Replace last again; that change confirms the fix, and keyboard focus follows Replace to its place (P1-16 review).
 - **Undo** is one step ("Replace", `edit_replace`). TalkBack hears "Replace: clip 2" (`a11y_edit_on_item`). It fires `tool_use` `replace_clip`. The old copy stays on disk while undo can still bring it back.
 
 **Meme sounds: no Replace (owner, 8 Oct).** In P1, swapping a sound is Delete plus add at the playhead; revisit with the P3-05 picker spec. The board shows Replace on a selected sound; that's dropped. Text and overlays (P4-01) have no Replace either.
@@ -453,7 +453,7 @@ P1-16's Done when: "Media added from the editor lands after the clip under the p
 | Main ↔ clip tool bar ↔ reorder bar | 120 ms cross-fade | same |
 | Volume panel opens or closes | 200 ms slide up or down over the timeline region | 120 ms fade |
 | Meme sounds sheet | 200 ms slide over a fading scrim; a drag up grows it from half height (200 ms) | 120 ms fade; grows at once |
-| Sound lands, duplicate lands, detached audio appears, media added or replaced (P1-16) | The bonk: 1 → 1.12 → 1 over 240 ms (`duration-bonk`) | 120 ms fade-in |
+| Sound lands, duplicate lands, detached audio appears, media added or replaced (P1-16) | The bonk: the height 1 → 1.12 → 1 over 240 ms (`duration-bonk`); the width grows by the same number of dp, so a long clip swells a few dp at each end instead of sweeping over its neighbors (P1-16 review, P5) | 120 ms fade-in |
 | Ripple after trim, delete, duplicate or add media on the main track | Clips slide 200 ms | 120 ms cross-fade to the new layout |
 | Reorder: collapse, make room, expand; the playhead fades with the wash | 200 ms each | 120 ms fades |
 | Reorder: the strip scrolls to keep the moving tile in view | 200 ms, with the slide | at once |
@@ -490,7 +490,7 @@ English source; the engineer machine-drafts id, es, pt and hi until P5. Budgets 
 | `tool_move_here` | Move here | 20 | "Here" = the playhead; the spoken label says so |
 | `tool_move_here_a11y` | Move to playhead | 24 | Not the tool's name (that's `tool_move_here`, the visible label). It's the tool's click label, which TalkBack reads as "Double-tap to move to playhead", and the name of the "Move to playhead" action on a selected item (P1-08 review, M1). Keep it a verb phrase that reads naturally after TalkBack's "Double-tap to" |
 | `tool_unlock` | Unlock | 20 | Later (L-02): don't add in P1 |
-| `tool_replace` | Replace | 20 | P1-16. Swap this clip's video or photo for another, keeping its place and length |
+| `tool_replace` | Replace | 20 | P1-16. Swap this clip's video or photo for another, keeping its place and length. It sits next to Reorder, so prefer a word that differs from `tool_reorder`'s (P1-16 review, F2: the hi draft "बदलें" sits beside "क्रम बदलें"; P5-06 decides). `edit_replace` and `editor_missing_media` use the same word |
 | `tool_add_media` | Add media | 20 | P1-16. Main tool bar: adds videos or photos at the playhead. "Media" = videos and photos; use the word your language's editing apps use |
 | `clip_tools_close` | Close clip tools | 24 | Screen reader only |
 | `reorder_move_earlier` | Move earlier | 20 | |
@@ -513,7 +513,7 @@ English source; the engineer machine-drafts id, es, pt and hi until P5. Budgets 
 | `explain_locked` | This track is locked. Unlock it to edit. | 50 | Later (L-02): don't add in P1 |
 | `explain_sound_unreadable` | That sound won't play. Try another one. | 50 | |
 | `explain_replace_too_short` | That video is shorter than this clip (%1$s). Pick a longer one, or trim this clip first. | 110 | P1-16. %1$s = the clip's length as a timecode, "00:03.20" (never translated) |
-| `explain_replace_detached` | The detached sound stays, so this clip's own sound starts at 0%. | 70 | P1-16. After replacing a clip whose sound was detached, when the new media is a video with sound. Write a single %: Compose resources don't double it |
+| `explain_replace_detached` | The detached sound stays, so this clip's own sound starts at 0%. | 70 | P1-16. After replacing a clip whose sound was detached, when the new media is a video with sound. "Detached" is the same word as the clip's state (`a11y_state_sound_detached`) and the Detach audio tool (P1-09). Write a single %: Compose resources don't double it |
 | `editor_preview_updating` | Updating the preview | 32 | Quiet status at the top of the preview while it catches up with an edit that took over a second. Not a warning; no ellipsis character. |
 | `a11y_sound_added` | %1$s added at %2$s | 70 | %1$s = sound title, %2$s = spoken time (P1-04) |
 | `a11y_edit_on_item` | %1$s: %2$s | 70 | Announced after each edit: %1$s = edit name, %2$s = item label ("Delete: Boom") |
@@ -547,6 +547,8 @@ Translator notes:
 ## Accessibility
 - **Tool bar:** every tool's visible label is its accessible name, with no exception (WCAG 2.2 SC 2.5.3 Label in Name, Level A). Move here is named "Move here"; "Move to playhead" is its click label, so TalkBack says "Move here, button, double-tap to move to playhead" and a voice-control user can still say "Tap Move here" (P1-08 review, M1: the first version of this spec replaced the name, which fails 2.5.3). Close clip tools is icon-only and spoken. Focus order runs left to right. The tool bar comes after the timeline in the editor's focus order (P1-04).
 - **Add media and Replace** (P1-16): when the picker or the import sheet closes, focus returns to the tool (or the timeline tile) that opened it. Replace keeps the clip selected, so its tool is still there.
+  - Also when keyboard focus was on a button inside the import sheet (Cancel while copying, Continue after "1 of 2 added"): a sheet traps focus only while it's shown, not during its 200 ms exit, so the return isn't cancelled (P1-16 review, P1; Sheet README → Focus).
+  - In touch mode, TalkBack included, `clickable` controls don't take input focus, so the request moves only keyboard focus. Where TalkBack's focus lands after the picker and after the sheet is a phone check (P1-16 review, F1; the same as reorder mode's P6 and the Meme sounds sheet).
 - **After each edit**, a polite announcement reads `a11y_edit_on_item` ("Delete: Boom") or `a11y_sound_added`. Explanation toasts are announced too. Nothing takes focus (SC 4.1.3). The "Updating the preview" status isn't announced (Preview catching up).
 - **Accessibility actions on the selected item** (TalkBack's actions menu, Switch Access):
   - Split
@@ -616,7 +618,7 @@ Translator notes:
 3. **A meme sound just landed:** bonk end state, the sound selected with sound tools, the sheet closed. Plus the sheet itself with the starter pack's sounds, one row playing (its `surface-raised` band visible against the sheet), and with the empty state (a build with no pack, if one can be made). Plus a sound landing on a new lane: the pill reappears below it and never covers it.
 4. **Volume panel** on a meme sound (P1-08) and on a video clip (P1-09): slider at 100%, the mute-every-clip toggle on clips; preview and transport visible above. With TalkBack, swiping back from the panel's title never reaches a sound tool or a timeline item.
 5. **Reorder mode** by the Reorder tool: tiles, washed surroundings, the playhead faded out, the reorder bar (Move earlier, Move later, Done in blue text) with its hairline top border. Then, on the 20-clip project, the moving tile still on screen after six taps of Move later.
-8. **Add media and Replace (P1-16):** the main tool bar with Add media in place 4; clips added mid-video with the tool (after the clip under the playhead) and at the end with the tile; a replaced clip with the same start and length; the "too short" toast; a missing-file clip's tool bar with Replace first.
+8. **Add media and Replace (P1-16):** the main tool bar with Add media in place 4; clips added mid-video with the tool (after the clip under the playhead) and at the end with the tile; the end of the video with the last clip selected (its end handle, no tile); a replaced clip with the same start and length; the "too short" toast; a missing-file clip's tool bar with Replace first, then the same clip fixed (Replace back at the end). Plus a screen recording of adding a 10 s video: its bonk stays in place.
 6. **Detached audio:** the green "Original audio" clip on its lane under the clip, and the explanation when Detach audio is tapped again.
 7. **Preview catching up:** a screen recording of a delete on the 20-clip project. Every frame between the edit and the edited preview shows the old frame: none black or gray. If an edit takes over 1 s, a still of the "Updating the preview" status.
 
@@ -646,7 +648,7 @@ I don't edit code, so these are requests.
    - `detach_audio`: a rectangle above a short wave line, with a gap between them.
    - `reorder`: two rectangles under a curved two-way arrow.
    - `move_here`: an arrow pointing right into a vertical line.
-   - `replace` (P1-16): one solid rectangle in the middle (the clip, the core) between two curved strokes, one above it running left to right and ending in a solid arrowhead pointing down, one below it running right to left and ending in a solid arrowhead pointing up. A swap cycle around a single clip, so it can't be mistaken for `reorder` (two clips under one arc) or for undo and redo.
+   - `replace` (P1-16): one solid rectangle in the middle (the clip, the core) between two curved strokes, one above it running left to right and ending in a solid arrowhead pointing down, one below it running right to left and ending in a solid arrowhead pointing up. A swap cycle around a single clip, so it can't be mistaken for `reorder` (two clips under one arc) or for undo and redo. **Built** (69bffee; P1-16 review: passes the grammar). The core is 7 × 4 px (x 8.5–15.5, y 10–14, 1 px corners), so each arrowhead clears it by at least 1.4 px; the first build's 8 × 5 core left 0.7 px (P4).
    - Add media (P1-16) reuses `create`; no new icon.
    - `lock` waits for L-02.
 2. **Components:**
@@ -672,7 +674,7 @@ I don't edit code, so these are requests.
 ## Proposals and questions for the PM
 1. **`sound_add.tab` and `sound_preview.tab` for the starter sheet.** **Decided (PM, 8 Oct):** `"starter"` until P3-05 brings real tabs.
 2. **`tool_use` values.** **Decided (PM, 8 Oct):** ids as in the Analytics table, with one id per direction for mute (`mute_original`, `unmute_original`). `unlock` waits for L-02.
-3. **P1-16. Decided (owner, 8 Oct):** approved. Replace covers video and photo clips only; in P1, swapping a meme sound is Delete plus add at the playhead. The Replace slot and the Add media tile (P1-05) stay hidden until P1-16 is built. **Finalized 13 Oct** (PM ready check items a–d): Add media and Replace sections above, with a second entry (the Add media tool) inside P1-16's scope. **For the PM's ticket check:** the Done when's "after the clip under the playhead" describes the tool; the tile at the end of the track always appends (its place is its meaning). Replace keeps the clip's volume, so the "only media and trim changed" JSON check holds, except that a clip whose sound was detached also gets `audioDetached` false and volume 0%.
+3. **P1-16. Decided (owner, 8 Oct):** approved. Replace covers video and photo clips only; in P1, swapping a meme sound is Delete plus add at the playhead. The Replace slot and the Add media tile (P1-05) stay hidden until P1-16 is built. **Finalized 13 Oct** (PM ready check items a–d): Add media and Replace sections above, with a second entry (the Add media tool) inside P1-16's scope. **For the PM's ticket check:** the Done when's "after the clip under the playhead" describes the tool; the tile at the end of the track always appends (its place is its meaning). The PM's 13 Oct wording of the Done when names both entries. Replace keeps the clip's volume, so the "only media and trim changed" JSON check holds, except that a clip whose sound was detached also gets `audioDetached` false and volume 0%.
 4. **Sounds don't follow their clip.** In v1, items on other tracks keep their times when main clips ripple. That's simple and predictable, but a sound placed on a frame drifts if earlier clips are trimmed later.
    - **Stays as specified (owner, 8 Oct).** The owner tries it on the P1-06 build before deciding. QA's P1 plan and the usability script include "add a sound on a moment, then trim the first clip's start".
    - A "keep sounds with their clip" option would be a proposal before P4 planning, if the trial shows drift hurts.
@@ -697,3 +699,5 @@ Open for the owner: only item 4, after trying the P1-06 build.
 | Use undo instead of warnings for reversible actions | Guidance (expert) | [Aza Raskin, "Never use a warning when you mean undo"](https://alistapart.com/article/neveruseawarning/) |
 | Compose scales its animations by the system animator duration scale (from Compose 1.2); at 0 an animation ends on the next frame | Guidance (API reference; the scale-setting behavior confirmed by a Compose maintainer in the Kotlin Slack, read through search results) | [Compose MotionDurationScale](https://developer.android.com/reference/kotlin/androidx/compose/ui/MotionDurationScale), [Kotlin Slack thread](https://slack-chats.kotlinlang.org/t/505584/in-latest-compose-the-animation-duration-scale-now-affects-t) |
 | CapCut swaps its bottom tool bar to clip tools on selection and shrinks clips to tiles while reordering | Assumption (product knowledge; not confirmed from CapCut's help this session) | — |
+| When a modal dialog closes, focus returns to the element that opened it | Guidance | [WAI-ARIA APG: Dialog (Modal) pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/) |
+| Compose `clickable` controls take focus only from keyboard or D-pad input, not from touch (`Focusability.SystemDefined`) | Guidance | [Compose Focusability](https://developer.android.com/reference/kotlin/androidx/compose/ui/focus/Focusability) |

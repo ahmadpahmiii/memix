@@ -189,11 +189,16 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
 
 ### Trailing area: Add media (P1-16, approved by the owner on 8 Oct; final 13 Oct)
 - **Where:** in the main video row, `space-2` after the end of the video. It scrolls with the content, so it shows whenever the end of the video is in view.
-- **Look:** a `track-height-video` square in `surface-raised` with `radius-sm`, holding `MemixIcons.Create` in `text`, inside a 48 dp target. Spoken "Add videos or photos". Pressed: `hairline`.
+- **Look:** a `track-height-video` square in `surface-raised` with `radius-sm`, holding `MemixIcons.Create` in `text`, inside a 48 dp target. Spoken "Add videos or photos". Pressed: `hairline`, over 120 ms like every press (P1-16 review, P3).
 - **What it does:** opens the P1-02 picker. The items are **always added at the end of the video**, whatever the playhead: the tile sits at the end, so that's where its items go. Full behavior: P1-06 spec → Add media.
 - **Adding mid-video** is the main tool bar's **Add media** tool (P1-06 → Main tool bar, place 4), which adds after the clip under the playhead. "Zoom out first" isn't a route: at the default zoom this tile is on screen only within about 4.5 s of the end, and even "Show whole video" hides it until the playhead is past about a quarter of the video.
 - **Empty project** (P1-04 defensive state): the tile sits `space-2` right of the playhead at 0:00 and is the state's action, with Add media as the only tool.
-- **Hidden** in reorder mode and while a trim or move is held.
+- **Hidden:**
+  - in reorder mode
+  - while a trim or move is held
+  - while the selected main clip ends less than `touch-target` before the end of the video (P1-16 review, P2). That clip's end handle and its 48 dp target take the tile's place, so a tile there would look tappable and do nothing. It's always the case for the last clip. At zoomed-out scales it's also the case for the clip before a last clip narrower than the handle's target.
+  - It comes back as soon as the selection clears (the clip tool bar's back button, or a tap on empty timeline).
+  - Not shifted right instead: a target that jumps sideways right after the tap that selected the clip invites mis-taps, and the gap would cut the tile off from the end it stands for. Hiding matches the rule above: the tile steps aside whenever the end of the video is being worked on.
 - **Until P1-16 is built,** leave it out entirely. Don't show it disabled.
 
 ### "Add a meme sound" row (P1-08)
@@ -234,6 +239,7 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
 | Drag | a handle of the selected item | Trims (P1-06) |
 | Tap | original audio toggle | Mutes or unmutes original audio (P1-06) |
 | Tap | "Add a meme sound" pill | Opens the Meme sounds sheet (P1-06) |
+| Tap | Add media tile | Opens the picker; the items land at the end of the video (P1-06 → Add media). The selection stays. |
 
 - **No snapping while scrubbing.** Moving and trimming snap (P1-06), but the playhead doesn't. The perfect frame for a reaction is often one or two frames after a cut, and a playhead that jumps to clip edges fights that (Assumption).
 - **During playback** the content scrolls under the playhead at playback speed. Any touch pauses first, then the gesture applies.
@@ -279,7 +285,8 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
 | Item past the end | `scrim` wash on the part past the end; label in `text` | `a11y_state_past_end`, `a11y_state_after_end` |
 | Very long project (an hour) | Zooms out to the "whole video" scale; ruler steps in minutes; tiles load only near the view | none |
 | Item narrower than its handles' targets | Handle targets reach outward from the item (P1-06), so the item's own body stays tappable. The Edit tool and TalkBack give equal routes. | none |
-| Empty project (defensive, P1-04) | Ruler and an empty main row; no bands, no toggle, no add row | P1-04 |
+| Empty project (defensive, P1-04) | Ruler and an empty main row with the Add media tile `space-2` right of the playhead (P1-16); no bands, no toggle, no add row | P1-04, `timeline_add_media` |
+| Last main clip selected (P1-16) | Its outline and handles; no Add media tile (Trailing area → Hidden) | none |
 | Missing file | The clip shows no thumbnails and the label "File missing". TalkBack hears it too, as the clip's first state. Selected: outline and handles, no badge, the label whole. | `clip_missing_file` |
 | 200% font, Hindi | See Accessibility | |
 
@@ -366,7 +373,7 @@ Translator notes:
   | Drag to trim | Split, then Delete; or the handle's "Trim to playhead" action |
   | Drag to move or reorder | "Move here" and Reorder's "Move earlier" / "Move later" (P1-06) |
 
-- **Keyboard in P1** (basic access, not shortcuts): Tab reaches the timeline's controls (the original-audio toggle and the "Add a meme sound" pill), Enter activates them, and Escape does the same as system back (P1-04). Known gap until L-01: a keyboard-only user can't move the playhead or step between items. TalkBack and Switch Access reach both through the playhead's and items' accessibility actions.
+- **Keyboard in P1** (basic access, not shortcuts): Tab reaches the timeline's controls (the original-audio toggle, the "Add a meme sound" pill and, when shown, the Add media tile), Enter activates them, and Escape does the same as system back (P1-04). Known gap until L-01: a keyboard-only user can't move the playhead or step between items. TalkBack and Switch Access reach both through the playhead's and items' accessibility actions.
 - **Keyboard shortcuts: Later (L-01)**, not built or checked in P1. Draft for L-01: the P1-04 transport keys, plus:
   - Ctrl+Plus / Ctrl+Minus zoom in and out.
   - Ctrl+0 shows the whole video.

@@ -2,6 +2,14 @@
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: Design decisions and their reasons, patterns that worked or failed, recurring review issues, competitor insights.
 
+- 2026-10-19 · P1-16 review (provisional, code + renders 85–99). Approved with polish, no must-fix. Decisions and lessons:
+  - **A control under another control's touch target hides; it doesn't shift.** Add media tile hides while the selected main clip ends < `touch-target` before the video end (always the last clip; also the clip before a narrow last clip when zoomed out). Shifting = a target jumping right after a selection tap (mis-taps) and a gap that breaks proximity. Check every overlay against handle targets at zoomed-out scales too.
+  - **Sheet focus trap must end when the sheet starts leaving.** `onExit` cancel during the 200 ms exit swallows focus-return requests when focus sat on a sheet button. Rule now in the Sheet README. Compose: an unattached FocusRequester's requestFocus just warns and returns false (no crash); clickables take no focus in touch mode, so TalkBack focus return is always a device check.
+  - **Uniform scale animations on wide timeline items sweep over neighbors.** Bonk = height ×1.12, width grows by the same dp. Check any scale motion on long items.
+  - **Icon gaps:** measure the gap between solid parts in the vector paths; ≥ 1.4px or it fuses at 2×. Arrowheads are always solid and aren't the core.
+  - **Defensive states with an instruction need room at 200% Hindi:** a message inside a 9:16 frame gets ~155 dp; use the stage.
+  - **Copy consistency checks:** a toast's term for a state must match the state's spoken word (id "dilepas" vs "dipisahkan"); two adjacent tools mustn't share a verb (hi "बदलें" vs "क्रम बदलें").
+  - Renders 94b etc. are state-only (selection/toasts forced); don't read model state from them.
 - 2026-10-19 · P1-08 review (provisional, code + renders 70–84). Changes requested: M1 Move here spoken "Move to playhead" fails WCAG 2.5.3 (my spec's error); M2 timeline + tool bar under the ToolPanel stayed in the a11y tree/focus (2.4.11); M3 pill label cut at 200% es/pt (computed ~372 dp vs 360). Lessons:
   - **Never replace a visible label with a different spoken name.** Extra context goes in the click label (TalkBack "Double-tap to …"); custom actions with no visible label may say anything.
   - **Anything drawn over other UI must also hide it from TalkBack and focus** (`clearAndSetSemantics {}` + focus group with `onEnter` cancel). Sheets still have this gap everywhere (F1).

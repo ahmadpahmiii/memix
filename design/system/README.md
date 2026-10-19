@@ -71,7 +71,7 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 
 **Motion.**
 - Durations: 120 ms for presses and toggles, 200 ms for sheets and tab changes, 320 ms for screen transitions.
-- The "bonk": a sound or sticker landing on the timeline scales 1 → 1.12 → 1 over 240 ms with a slight overshoot. Use it only for placing content.
+- The "bonk": a sound or sticker landing on the timeline scales 1 → 1.12 → 1 over 240 ms with a slight overshoot. Use it only for placing content. On the timeline the width grows by the same dp as the height (or 12% if that's less), so a long clip swells a little at each end instead of sweeping over its neighbors.
 - Respect the system's reduce-motion setting: replace movement with a 120 ms fade.
 
 **Imagery.** The user's content is the imagery. Template thumbnails are 9:16 in `radius-lg` frames. No stock illustrations or mascots.
