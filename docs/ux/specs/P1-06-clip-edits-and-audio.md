@@ -53,7 +53,7 @@ Component ToolBar (`design/system/components/ToolBar/README.md`, updated with th
 | # | Tool | Icon | Ticket | Does |
 | --- | --- | --- | --- | --- |
 | 1 | Edit | `edit` (new; the board's scissors) | P1-06 | Selects the main clip under the playhead (at the very end: the last clip) and shows its tools. It's the tap route to clip tools for clips too thin to hit. |
-| 2 | Meme sounds | `sounds` | P1-08 | Opens the Meme sounds sheet. Always `primary` icon and label, because it's meme-sound UI. On `primary-subtle` while the sheet is open (the board's active look). |
+| 2 | Meme sounds | `sounds` | P1-08 | Opens the Meme sounds sheet. Always `primary` icon and label, because it's meme-sound UI. (The board's active look while the sheet is open is never seen: the half-height sheet covers the tool bar. Nothing to build; P1-08 review.) |
 | 3 | Text | `text` | P1-10 | Opens typing for a new caption at the playhead (`P1-10-text.md`). Not shown before P1-10. |
 | 4 | Add media | `create` (existing plus) | P1-16 | Opens the P1-02 picker; the items land after the clip under the playhead (Add media below). The route for adding anywhere but the end. |
 | later | Audio (P3), Stickers (P4-12), Effects (P4-06), Filters, Overlay (P4-01), Remove BG (P4-13), Speed (P4-09) | | | Each appears with its own ticket, never as a disabled placeholder |
@@ -100,16 +100,17 @@ The tools stay in thumb reach, at the bottom where the main tools were. This rep
 - **Look:**
   - Tools: `text-secondary` icon and label.
   - Delete: icon and label in `danger`, 5.2:1 on `surface`, always with its word. `danger` is a status color, not a second accent (DESIGN_SYSTEM → Color). While pressed, on the `surface-raised` press fill, it's 4.3:1: accepted, because it lasts only while the finger is down (P1-06 review).
-  - Volume while its panel is open: `primary` on `primary-subtle`, the active-tool look.
+  - Volume while its panel is open: no special look is needed, because the panel covers the tool bar (P1-08 review).
 - **A tool that can't act right now keeps its normal look and explains on tap** with a toast (design system: "prefer keeping controls enabled and explaining on tap"). Dimming to `text-muted` would be almost invisible next to `text-secondary`, and the explanation teaches the rule. Examples: Split when the playhead isn't inside the clip; Delete on the only clip.
 - **Main tool bar ↔ clip tool bar:** a 120 ms cross-fade, no slide.
 
 ### Volume panel (ToolPanel)
 Component `design/system/components/ToolPanel/README.md` (new). The panel covers exactly the timeline and tool bar region (P1-04), so the preview and the transport row stay visible and working. Playback keeps going, so changes are heard live.
+- **What it covers is out of reach too** (P1-08 review, M2): while the panel is open, the timeline and the tool bar under it leave the accessibility tree and can't take keyboard focus. TalkBack and Shift+Tab must not land on the hidden sound tools or timeline items (in the P1-08 build they did, and a double-tap would act on them).
 - **Top row:** "Volume" in `title` on the left (`space-4` gutter); **Done** (Ghost button) on the right.
 - **Slider** (component Slider), `space-4` side padding:
   - Label: "This clip" or "This sound". The readout is the percent in `timecode` style.
-  - Range 0% to 200%. Default and reset value 100%. Keyboard and TalkBack step 10%.
+  - Range 0% to 200%. Default and reset value 100%. Keyboard and TalkBack step 10%, landing on multiples of 10% (from 147%: 150% up, 140% down), so 100% can be reached without a drag or the double-tap (P1-08 review, P5).
   - While dragging, it snaps to 100% within ±3% with one SegmentTick haptic, so the original level is easy to find again.
   - Double-tap on the thumb resets to 100% (component behavior).
 - **Video clips only:** `space-4` below the slider, a Toggle row: "Mute original audio of every clip". It's the same state as the timeline's original-audio toggle (P1-05).
@@ -128,6 +129,8 @@ The standard Sheet (grabber, close button, `title` heading "Meme sounds"). It re
   - The blue add button.
 - **Board sample content** (`Sounds.dc.html`: "Boom hit", "Bruh (recreated)", "0:01 · CC0", …): the bundled pack's own metadata replaces it. The starter pack is `content/starter-sounds/manifest.json`: 10 CC0 sounds, each license approved by the owner on 8 Oct (updated 13 Oct; this line used to say release builds bundle none). Debug builds may add self-made test tones titled "Test tone 1…". The empty state stays as the defensive case.
 - **Play:** plays that sound alone (the editor stays paused). Only one plays at a time. At its end, the row returns to idle. Fires `sound_preview`.
+  - **The playing row** (P1-08 review, P1): its play disc fills `primary` with a pause icon, and the row gets a `surface-raised` band (`radius-md`), one value step above the sheet's `surface`. SoundRow's default band is `surface`, made for rows on `canvas`; on the sheet it was invisible. Not `primary-subtle`: the row would become a large blue area next to the blue disc and add button.
+  - Leaving the app (Home) stops a preview; it doesn't resume on return (as built).
 - **Add:** the sound lands (below), the sheet closes over 200 ms, and `sound_add` fires.
 - **Close** (×, scrim, drag down, back, Escape): nothing is added and nothing changes.
 - **Long-press on a row:** nothing in P1. P3 adds details, credit and Report.
@@ -235,7 +238,7 @@ All times are in microseconds. The minimum length of any item is 0.1 s (100,000 
 ### Move (every lane except the main track)
 - **By drag:** long-press an item (LongPress haptic). It lifts with the white outline and follows the finger.
   - Horizontally, it sets the item's start (snapping). The start can't go before 0:00.
-  - Vertically, it can change to another lane of the same kind. A meme sound can also be dropped on the "Add a meme sound" row, which creates a new lane. Lanes of other kinds are skipped.
+  - Vertically, it can change to another lane of the same kind. A meme sound can also be dropped on the "Add a meme sound" row, which creates a new lane; while it's over that row, a `surface` lane band is drawn there under it, previewing the new lane (P1-08 review, P6). Lanes of other kinds are skipped.
   - The value bubble shows the new start time. The preview stays on the playhead's frame.
   - Dropped where it would overlap another item on that lane, it lands on the next lane of its kind that's free, or a new one. Items never overlap within a lane.
   - The item may reach past the end of the video. That part shows the wash and won't play (P1-05).
@@ -432,7 +435,7 @@ P1-16's Done when: "Media added from the editor lands after the clip under the p
 | Replaced a clip whose sound was detached | Detached audio unchanged; new sound at 0%; toast (video with sound only) | `explain_replace_detached` |
 | Volume panel | Title, Done, slider at the current value, the mute-every-clip toggle (video clips) | `volume_title`, `panel_done`, `volume_this_clip` or `volume_this_sound`, `volume_percent`, `volume_mute_all` |
 | Meme sounds sheet, default | Rows with play and add | `sounds_title` (P0-05), `sound_meta` |
-| Meme sounds sheet, previewing | That row in its playing state (SoundRow) | none |
+| Meme sounds sheet, previewing | That row in its playing state: `primary` disc with pause, `surface-raised` band (P1-08 review) | none |
 | Meme sounds sheet, empty | P0-05 empty state | `sounds_empty_title`, `sounds_empty_body` |
 | Sound landed | Bonk, haptic, new sound selected, sound tools | `a11y_sound_added` |
 | Sound landed at the end | Placed so it ends at the end of the video | none |
@@ -449,7 +452,7 @@ P1-16's Done when: "Media added from the editor lands after the clip under the p
 | --- | --- | --- |
 | Main ↔ clip tool bar ↔ reorder bar | 120 ms cross-fade | same |
 | Volume panel opens or closes | 200 ms slide up or down over the timeline region | 120 ms fade |
-| Meme sounds sheet | 200 ms slide over a fading scrim | 120 ms fade |
+| Meme sounds sheet | 200 ms slide over a fading scrim; a drag up grows it from half height (200 ms) | 120 ms fade; grows at once |
 | Sound lands, duplicate lands, detached audio appears, media added or replaced (P1-16) | The bonk: 1 → 1.12 → 1 over 240 ms (`duration-bonk`) | 120 ms fade-in |
 | Ripple after trim, delete, duplicate or add media on the main track | Clips slide 200 ms | 120 ms cross-fade to the new layout |
 | Reorder: collapse, make room, expand; the playhead fades with the wash | 200 ms each | 120 ms fades |
@@ -485,7 +488,7 @@ English source; the engineer machine-drafts id, es, pt and hi until P5. Budgets 
 | `tool_detach_audio` | Detach audio | 20 | Moves a clip's own sound to its own track. CapCut's local wording is a good guide. |
 | `tool_reorder` | Reorder | 20 | Change the order of clips |
 | `tool_move_here` | Move here | 20 | "Here" = the playhead; the spoken label says so |
-| `tool_move_here_a11y` | Move to playhead | 24 | Screen reader label for Move here |
+| `tool_move_here_a11y` | Move to playhead | 24 | Not the tool's name (that's `tool_move_here`, the visible label). It's the tool's click label, which TalkBack reads as "Double-tap to move to playhead", and the name of the "Move to playhead" action on a selected item (P1-08 review, M1). Keep it a verb phrase that reads naturally after TalkBack's "Double-tap to" |
 | `tool_unlock` | Unlock | 20 | Later (L-02): don't add in P1 |
 | `tool_replace` | Replace | 20 | P1-16. Swap this clip's video or photo for another, keeping its place and length |
 | `tool_add_media` | Add media | 20 | P1-16. Main tool bar: adds videos or photos at the playhead. "Media" = videos and photos; use the word your language's editing apps use |
@@ -542,7 +545,7 @@ Translator notes:
 - **"Meme"** stays as is if your language uses the loanword.
 
 ## Accessibility
-- **Tool bar:** every tool's visible label is its accessible name (WCAG 2.2 SC 2.5.3), except Move here, which is spoken "Move to playhead". Close clip tools is icon-only and spoken. Focus order runs left to right. The tool bar comes after the timeline in the editor's focus order (P1-04).
+- **Tool bar:** every tool's visible label is its accessible name, with no exception (WCAG 2.2 SC 2.5.3 Label in Name, Level A). Move here is named "Move here"; "Move to playhead" is its click label, so TalkBack says "Move here, button, double-tap to move to playhead" and a voice-control user can still say "Tap Move here" (P1-08 review, M1: the first version of this spec replaced the name, which fails 2.5.3). Close clip tools is icon-only and spoken. Focus order runs left to right. The tool bar comes after the timeline in the editor's focus order (P1-04).
 - **Add media and Replace** (P1-16): when the picker or the import sheet closes, focus returns to the tool (or the timeline tile) that opened it. Replace keeps the clip selected, so its tool is still there.
 - **After each edit**, a polite announcement reads `a11y_edit_on_item` ("Delete: Boom") or `a11y_sound_added`. Explanation toasts are announced too. Nothing takes focus (SC 4.1.3). The "Updating the preview" status isn't announced (Preview catching up).
 - **Accessibility actions on the selected item** (TalkBack's actions menu, Switch Access):
@@ -562,13 +565,16 @@ Translator notes:
   - Only the tiles on screen are in the list (Compose leaves off-screen nodes out; P1-05). That's enough: Move earlier and Move later reach every place, the announcement says where the clip is, and the moving tile stays in view (M2).
   - TalkBack users don't need reorder mode at all: the item actions Move earlier and Move later on a selected main clip commit at once.
 - **Volume panel:**
-  - Opening it moves focus to its title. Done returns focus to the Volume tool.
-  - The slider follows the Slider component: adjustable, with the readout as its state.
+  - Opening it moves focus to its title. Done, back and Escape return focus to the Volume tool (P1-08 review, P4: not in the P1-08 build).
+  - While it's open, the timeline and tool bar under it are out of the accessibility tree and keyboard focus (M2).
+  - The slider follows the Slider component: adjustable, with the readout as its state; steps land on multiples of 10%.
   - The toggle is a switch.
 - **Meme sounds sheet:**
   - Focus moves to the sheet, and its title is the pane title.
-  - Each row's play and add buttons are labeled with the sound's name (SoundRow's existing strings).
-  - When the sheet closes after adding, focus goes to the new sound on the timeline, and its announcement plays.
+  - Each row's play and add buttons are labeled with the sound's name (SoundRow's existing strings): "Play Boing", "Pause Boing", "Add Boing to video".
+  - **After adding** (corrected in the P1-08 review, P4): the announcement "Boing added at 3.2 seconds" plays, and focus moves to the first tool of the new sound's tool bar, Volume. The first version said "the new sound on the timeline", but timeline items aren't focusable (P1-05 → Keyboard), so input focus can't go there; Volume is the next likely step and sits where the Meme sounds tool was.
+  - **After closing without adding:** focus returns to the control that opened the sheet (the Meme sounds tool or the "Add a meme sound" pill).
+  - Check on the phone that TalkBack's focus follows these moves, as for reorder mode's P6.
 - **Keyboard in P1** (basic access, not shortcuts): Tab reaches every tool, panel control and sheet button, and Enter activates it. **Escape** does the same as system back: it closes the panel or sheet, cancels reorder, or clears the selection (P1-04 back order).
 - **Keyboard shortcuts: Later (L-01)**, not built or checked in P1. Draft for L-01, alongside the P1-04 and P1-05 drafts:
 
@@ -607,8 +613,8 @@ Translator notes:
 ## QA compares
 1. **Video clip selected:** the clip tool bar at 360 dp, with Split, Volume and Delete visible without scrolling. Then the same in Hindi at 200% font.
 2. **Trim in progress** on a main clip: handle, value bubble, the gap left on the near side. Then the closed-up result.
-3. **A meme sound just landed:** bonk end state, the sound selected with sound tools, the sheet closed. Plus the sheet itself with the starter pack's sounds and with the empty state (a build with no pack, if one can be made).
-4. **Volume panel** on a video clip: slider at 100%, the mute-every-clip toggle; preview and transport visible above.
+3. **A meme sound just landed:** bonk end state, the sound selected with sound tools, the sheet closed. Plus the sheet itself with the starter pack's sounds, one row playing (its `surface-raised` band visible against the sheet), and with the empty state (a build with no pack, if one can be made). Plus a sound landing on a new lane: the pill reappears below it and never covers it.
+4. **Volume panel** on a meme sound (P1-08) and on a video clip (P1-09): slider at 100%, the mute-every-clip toggle on clips; preview and transport visible above. With TalkBack, swiping back from the panel's title never reaches a sound tool or a timeline item.
 5. **Reorder mode** by the Reorder tool: tiles, washed surroundings, the playhead faded out, the reorder bar (Move earlier, Move later, Done in blue text) with its hairline top border. Then, on the 20-clip project, the moving tile still on screen after six taps of Move later.
 8. **Add media and Replace (P1-16):** the main tool bar with Add media in place 4; clips added mid-video with the tool (after the clip under the playhead) and at the end with the tile; a replaced clip with the same start and length; the "too short" toast; a missing-file clip's tool bar with Replace first.
 6. **Detached audio:** the green "Original audio" clip on its lane under the clip, and the explanation when Detach audio is tapped again.
@@ -649,8 +655,9 @@ I don't edit code, so these are requests.
    - ToolBar (P1-06 review): the item width reads the new token `MemixSize.toolItemWidth` (64), and labels have no line cap.
 3. **Import metadata:** P1-06 needs each video source's full duration (trim limits) and whether it has a sound track (Volume and Detach audio). P1-02 already asks for the duration; add "has audio". If an older draft has neither, read them from the copy when the editor opens.
 4. **SoundRow:**
-   - A variant without the favorite heart (P1-08 has no Favorites list to show it in).
-   - Let the meta line wrap to two lines (CC-BY credits must never be cut).
+   - A variant without the favorite heart (P1-08 has no Favorites list to show it in). Built.
+   - Let the meta line wrap to two lines (CC-BY credits must never be cut). Built.
+   - On a sheet, the playing band is `surface-raised` (P1-08 review, P1).
 5. **Edits:**
    - As specified, each one an immutable `Project` change and one undo step committed on gesture end.
    - Main-track ripple keeps the track gap-free from 0:00.
@@ -684,7 +691,9 @@ Open for the owner: only item 4, after trying the P1-06 build.
 | Compose custom accessibility actions are meant to replace complex gestures such as drag and drop | Guidance | [Compose semantics](https://developer.android.com/jetpack/compose/semantics) |
 | Up to 0.1 s feels instant; between 0.1 and 1 s people notice the delay but keep their train of thought, and no special feedback is needed; past 1 s they lose the feeling of working directly on the data; 10 s is the limit for keeping attention | Guidance (Nielsen 1993, still NN/g's reference; read through search results, the article page wasn't reachable here) | [NN/g: the 3 response-time limits](https://www.nngroup.com/videos/3-response-time-limits-interaction-design/), [Nielsen, Time scales of UX](https://www.uxtigers.com/post/time-scales-ux) |
 | Haptics: less is more; prefer clear, system-consistent effects; weigh how often an effect fires. `SEGMENT_TICK` is for stepping through choices, `CONFIRM` for a completed action, `LONG_PRESS` for a long press that triggers an action. | Guidance | [Android haptics design principles](https://developer.android.com/develop/ui/views/haptics/haptics-principles), [Compose HapticFeedbackType](https://developer.android.com/reference/kotlin/androidx/compose/ui/hapticfeedback/HapticFeedbackType) |
-| A visible label must be part of the accessible name | Guidance | [WCAG 2.2 SC 2.5.3 Label in Name](https://www.w3.org/WAI/WCAG22/Understanding/label-in-name.html) |
+| A visible label must be part of the accessible name; best practice is that the name starts with it (so "Move to playhead" as the name of a tool labeled "Move here" fails) | Guidance | [WCAG 2.2 SC 2.5.3 Label in Name](https://www.w3.org/WAI/WCAG22/Understanding/label-in-name.html) |
+| In Compose, a click label (`onClickLabel`, or `onClick(label = …)` in semantics) is read by TalkBack after the name as "Double tap to …", the place for extra context such as "to playhead" | Guidance | [Android codelab: Accessibility in Jetpack Compose](https://developer.android.com/codelabs/jetpack-compose-accessibility?hl=en) |
+| A component that receives keyboard focus must not be entirely hidden by author-created content (Level AA) | Guidance | [WCAG 2.2 SC 2.4.11 Focus Not Obscured (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum.html) |
 | Use undo instead of warnings for reversible actions | Guidance (expert) | [Aza Raskin, "Never use a warning when you mean undo"](https://alistapart.com/article/neveruseawarning/) |
 | Compose scales its animations by the system animator duration scale (from Compose 1.2); at 0 an animation ends on the next frame | Guidance (API reference; the scale-setting behavior confirmed by a Compose maintainer in the Kotlin Slack, read through search results) | [Compose MotionDurationScale](https://developer.android.com/reference/kotlin/androidx/compose/ui/MotionDurationScale), [Kotlin Slack thread](https://slack-chats.kotlinlang.org/t/505584/in-latest-compose-the-animation-duration-scale-now-affects-t) |
 | CapCut swaps its bottom tool bar to clip tools on selection and shrinks clips to tiles while reordering | Assumption (product knowledge; not confirmed from CapCut's help this session) | — |

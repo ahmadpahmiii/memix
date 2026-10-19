@@ -18,8 +18,10 @@ The bottom tool bar in both editors: a horizontally scrolling row of icon-plus-l
 - **Reorder mode** (video editor): the bar shows Move earlier and Move later (Secondary buttons) and Done (Quiet button) in a row that wraps at large font sizes, on the same `surface` with the same `hairline` top border (P1-06 → Reorder bar).
 - **Photo editor tools:** Formats, Text, Stickers, Draw, Adjust, Filters, Remove BG, Censor, Crop.
 - **Meme sounds tool:** always `primary` icon and label, because it's meme-sound UI.
-- **Active tool** (its panel or sheet is open): `primary` icon and label on a `primary-subtle` `radius-md` highlight.
+- **Sound clip tools** (P1-08): Volume · Split · Delete · Move here · Duplicate. Icons `volume` (three rising bars, the tallest solid) and `move_here` (an arrow into the playhead bar).
+- **Active tool** (its panel or sheet is open): `primary` icon and label on a `primary-subtle` `radius-md` highlight, where it can be seen. In the video editor the Volume panel and the half-height Meme sounds sheet both cover the bar, so the look never shows there.
 - **Other tools:** `text-secondary`. A tool that can't act right now keeps its look and explains on tap with a Toast. It never shows as a disabled placeholder.
+- **Spoken names:** a tool's accessible name is its visible label, in every language (WCAG 2.2 SC 2.5.3 Label in Name, Level A). When the label needs more context, add it as the click label, which TalkBack reads as "Double-tap to …": Move here is named "Move here" and its click label is "Move to playhead" (P1-08 review). Never replace the name with different words.
 - **Layout:**
   - `surface` bar, `toolbar-height`, `hairline` top border.
   - Items at least `tool-item-width` wide and at least `touch-target` tall; labels in `caption`. Two lines is the copy budget, not a line cap: labels are never cut.

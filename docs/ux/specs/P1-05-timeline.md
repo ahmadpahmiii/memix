@@ -52,7 +52,7 @@ Board: `design/screens/VideoEditor.dc.html`; component `design/system/components
 | "clip_01.mp4", "clip_02.mp4" | Thumbnails. The duration badge shows only when the clip is selected (below). |
 | "When the build…" (text) | The text item's own text, first line (P1-10) |
 | "Skull" (sticker) | The sticker's name from its pack (P4-12) |
-| "Boom", "Bruh" (meme sounds) | The bundled starter pack's titles (P1-08). Until licensed sounds exist, release builds have no sounds, and debug builds use self-made test tones titled "Test tone 1", "Test tone 2"… (never shipped). |
+| "Boom", "Bruh" (meme sounds) | The bundled starter pack's titles in the app language (P1-08): 10 CC0 sounds, `content/starter-sounds/manifest.json`. Debug projects may also hold self-made test tones titled "Test tone 1", "Test tone 2"… (never shipped). (Updated in the P1-08 review; this line used to say release builds have no sounds.) |
 | "Original audio" | Real copy: the label of a detached audio clip (P1-09) |
 | "Zoom punch" (effect) | The effect's name (P4-06) |
 
@@ -203,12 +203,19 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
   - Size: the full row height minus `space-1` top and bottom; `space-4` side padding.
   - Content: `MemixIcons.Create` (24) and the label "Add a meme sound" in `label`, both `primary`, with a `space-1` gap.
   - It's blue because it is meme-sound UI.
+  - `primary-subtle` is a 16% wash, so the pill sits on a `canvas` base: that's what lets it cover the playhead line (as built).
   - The pill stays fixed in screen space while the timeline scrolls, because it marks where a sound will land: at the playhead.
+  - **Pressed** (P1-08 review): the fill turns `surface-raised`, as a sound's play disc does; the plus and the label stay `primary` (5.9:1). 120 ms.
+  - **Touch target:** the whole row height (48 dp or more) across the pill's width, not just the drawn pill (40 dp tall), so the `space-1` margins above and below it count (P1-08 review: the build's target was the 40 dp pill).
+  - **Long labels** (P1-08 review, M3): the pill is never wider than the timeline minus `space-4` on each side. When the label doesn't fit one line there, it wraps to two lines, centered, and the row grows to fit (two `label` lines plus `space-1` above and below inside the pill, plus the row's `space-1` margins). Spanish and Portuguese at 200% need this on a 360 dp phone ("Añadir sonido de meme" measures about 372 dp with the plus and padding). The label is never cut.
 - **Tap:** clears any selection and opens the Meme sounds sheet (P1-06 → Meme sounds). Choosing a sound there is the second tap, and the sound lands at the playhead.
   - That makes any sound two taps from the timeline, even while a clip is selected and the tool bar shows clip tools. Without this row, that case takes three taps (deselect, Meme sounds, add).
   - CapCut shows a similar "Add audio" row under its main track (Assumption: product knowledge).
-- **While a meme sound is being moved,** the pill hides but the row stays. It's a drop target: a sound dropped there gets a new lane (P1-06 → Move).
-- **Hidden entirely** while any other item is being moved, in reorder mode, and in the empty-project state.
+- **While any item is being moved,** the pill hides but the row keeps its place and height, so the lanes below never jump under the finger (corrected in the P1-08 review: this used to hide the whole row for items other than meme sounds).
+  - Only a meme sound can be dropped there; it gets a new lane (P1-06 → Move). While a carried meme sound is over the row, a `surface` lane band from 0:00 to the end of the video is drawn in the row under it, the lane it will make (P1-08 review, P6).
+  - Other items carried over the row stay on their own lane.
+- **While lanes slide** (a lane added or removed, 200 ms): the pill isn't drawn, then fades in at its new place over 120 ms (P1-08 review, P2). Otherwise it slides through the new lane and covers the sound that just landed there, at the moment of its bonk. With reduce motion nothing slides, so the pill simply stays.
+- **Hidden entirely** (row and pill) in reorder mode and in the empty-project state.
 
 ## Scroll, zoom and scrub
 
@@ -254,7 +261,7 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
   - The source video clip looks the same; TalkBack adds "sound detached".
 - **Meme sounds** (P1-08) are blue clips on the meme-sound lanes, labeled with the sound title.
   - When a sound lands, P1-06 picks the lane (the first one free for the sound's whole length, otherwise a new lane under the last one).
-  - A new lane slides in and pushes the lanes below it down over 200 ms (reduce motion: 120 ms fade).
+  - A new lane slides in and pushes the lanes below it down over 200 ms (reduce motion: 120 ms fade). The new lane itself just appears, and its sound bonks; the "Add a meme sound" pill sits the slide out and fades in at its new place (P1-08 review).
   - If the landing lane is scrolled out of view vertically, the lanes scroll to show it.
 
 ## States
@@ -285,7 +292,8 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
 | Playback | Content scrolls with playback | Same |
 | Thumbnail arrives | 120 ms fade-in | Same |
 | Selection outline and handles | 120 ms fade in; clearing the selection removes them at once | Same |
-| Lane added or removed | Lanes below slide over 200 ms. Built with the first ticket that adds or removes a lane in use (P1-06 delete, P1-08 sound landing, P1-09 detach); nothing in P1-05 does. | 120 ms fade |
+| Lane added or removed | Lanes below slide over 200 ms. Built with the first ticket that adds or removes a lane in use (P1-06 delete, P1-08 sound landing, P1-09 detach); nothing in P1-05 does. The "Add a meme sound" pill isn't drawn during the slide, then fades in over 120 ms at its new place (P1-08 review). | 120 ms fade (on Android: at once) |
+| "Add a meme sound" pill pressed | Fill to `surface-raised`, 120 ms | Same |
 | Menu opens | 120 ms fade | Same |
 
 The bonk and the edit motions are in P1-06.
@@ -379,7 +387,7 @@ Translator notes:
 - **200% font scale:**
   - Labels and the ruler grow. A clip's height grows to fit its label's line height plus `space-1` above and below, so rows get taller and fewer fit; the lanes scroll.
   - The main video row keeps its height; the badge grows inside it.
-  - The pill grows. The ruler picks longer label steps.
+  - The pill grows, and its row with it. Where the label won't fit one line within the timeline width minus `space-4` on each side, it wraps to two lines and the row grows again (P1-08 review, M3); it's never cut. The ruler picks longer label steps.
   - Devanagari labels use the same rule, so marks above and below the letters are never clipped.
 - **Reduce motion:** see Motion. Playback scrolling remains, because it shows position.
 

@@ -36,7 +36,7 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 **Color.**
 - Backgrounds: `canvas` for screens, `surface` for cards, sheets, nav and tool bar, `surface-raised` for controls on top of `surface`.
 - Text: `text` first, `text-secondary` for supporting copy, `text-muted` for hints and timecodes. All three pass 4.5:1 on `canvas`, `surface` and `surface-raised`.
-- `primary-subtle` (16% sky) backs the active tool, the playing sound row and sound play buttons; icons on it use `primary`.
+- `primary-subtle` (16% sky) backs the active tool, sound play buttons and the "Add a meme sound" pill; icons and text on it use `primary`. It never fills a whole row: a playing sound row steps one value up instead (`surface` on `canvas`, `surface-raised` on `surface`), so the large area stays neutral and the filled blue play disc carries the state (P1-08 review).
 - Track colors encode clip type on the timeline and in the layers panel, and nowhere else:
 
 | Track | Token |
@@ -69,7 +69,7 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 - Bottom sheets use `shadow-sheet` over `scrim`; floating menus and toasts use `shadow-float`.
 
 **States.**
-- Pressed: `primary` fills switch to `primary-pressed`; neutral controls go one value step lighter (`surface-raised` → `hairline`). Nothing moves.
+- Pressed: `primary` fills switch to `primary-pressed`; neutral controls go one value step lighter (`surface-raised` → `hairline`); `primary-subtle` fills (a sound's play disc, the "Add a meme sound" pill) turn `surface-raised`, with their `primary` icon and label staying (5.9:1). Nothing moves.
 - Selected clip or layer: `stroke-selection` outline in `selection` plus white trim handles.
 - Selected chip: `selection` fill with `on-primary` text. Selected tab: `text` label with a 2px `selection` underline. Selected segment: `surface-raised` pill with `text`.
 - Active tool: `primary` icon and label on `primary-subtle`.
@@ -101,6 +101,15 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
 - **Color:** a single color per icon, applied as a tint: `text-secondary` (inactive), `text` (current nav item), `primary` (active tool), `on-primary` on blue fills. No two-tone icons.
 - **Meaning first:** every icon names a real action or place and always comes with a visible label or a screen-reader label. No sparkle, magic or robot glyphs.
 
+**The set so far** (`MemixIcons`, 24 icons after P1-08):
+- Navigation and chrome: `home`, `templates`, `create` (plus; also Add media and every "add"), `sounds`, `drafts`, `arrow_back`, `chevron_right`, `close`, `globe`.
+- Media and playback: `video`, `photo`, `play`, `pause`, `undo`, `redo`, `heart`, `heart_filled`.
+- Editor tools (P1-06): `edit` (scissor blades, finger loops as the core), `split` (two outlined clips around a solid bar), `delete` (lid and handle strokes over a solid can), `duplicate` (open back outline behind a solid front clip), `reorder` (an arc with two solid arrowheads over two outlined clips).
+- Sound tools (P1-08, approved in the P1-08 review):
+  - `volume`: two stroked bars rising left to right (5 and 10px tall) and a solid block with 1px corners as the tallest (16px), with even 3.5px gaps. Distinct from `sounds` (the speaker cone with waves): `sounds` means "meme sounds", `volume` means "how loud".
+  - `move_here`: a horizontal shaft with a solid arrowhead pointing right into a full-height vertical bar (the playhead), 2.5px apart. The bar is the destination, the same white line the user sees on the timeline.
+- Later, drawn with their tickets: `volume_off` and `detach_audio` (P1-09), `replace` (P1-16), `lock` (L-02).
+
 Source files are Android vector drawables in `:core:designsystem` `composeResources/drawable/` (`ic_<name>.xml`), path-only so Compose Multiplatform renders them the same on Android and iOS. There is no Memix logo yet: until one exists, write the name "Memix" in Anton; the launcher icon is a plain placeholder built from that wordmark, not a logo.
 
 ## In Compose
@@ -123,7 +132,7 @@ Map each token to the Memix theme objects, kebab-case to camelCase: `track-meme-
 | `text-muted` | `MemixColors.textMuted` | `#949494` | Hints, placeholders, timecodes and ruler labels. 4.6:1 or more on canvas, surface and surface-raised. |
 | `primary` | `MemixColors.primary` | `#2BB3F3` | Memix sky blue: CapCut's cyan moved 9° toward Spectrum blue. The one primary action per screen (Create, Export, Apply), the active tool, links, progress, and everything that is a meme sound. Text on it is on-primary (7.9:1). |
 | `primary-pressed` | `MemixColors.primaryPressed` | `#189BD8` | Pressed state of primary fills. Text on it is on-primary (6.0:1). |
-| `primary-subtle` | `MemixColors.primarySubtle` | `#2BB3F329` | 16% sky wash behind the active tool, the playing sound row and sound play buttons. Icons on it use primary. |
+| `primary-subtle` | `MemixColors.primarySubtle` | `#2BB3F329` | 16% sky wash behind the active tool, sound play buttons and the "Add a meme sound" pill (over a `canvas` base). Icons and text on it use primary (6.2:1 over canvas). Never a whole row: a playing sound row steps one value up instead. Pressed, these fills turn `surface-raised`. |
 | `on-primary` | `MemixColors.onPrimary` | `#111111` | Text and icons on primary, primary-pressed, selection-white fills and danger. Also the 1px dark edge beside white selection marks drawn over the user's content (text frame, handle, snap guides on the preview), so they read on any video: white plus this edge is 4.3:1 or more against any color. |
 | `selection` | `MemixColors.selection` | `#FFFFFF` | Selected clip or layer outline, trim handles, playhead, selected chip fill: white, as in CapCut, so selection never competes with clip colors. |
 | `track-video` | `MemixColors.trackVideo` | `#3D3D3D` | Main video and overlay clips (they show thumbnails). Labels on it are text. |
@@ -290,7 +299,7 @@ Fixed sizes used across screens (dp on Android).
 - `primary` sky blue: one main action per screen (+ the global Create button), active tool (on `primary-subtle`), links, progress, and all meme-sound UI.
 - `meme-caption` is Anton, white fill with a 3 dp black stroke: draw the text twice (stroke pass with `TextStyle(drawStyle = Stroke(width, join = StrokeJoin.Round))`, then fill). This is user content styling, not chrome. Editor captions use the same two passes with the stroke at font size ÷ 12, through the one caption renderer (P1-10); their fonts, palette and geometry are caption constants, not `MemixTheme` tokens.
 - Timeline: clips are positioned by time (µs → px via the zoom scale), never by index. Track heights from `trackHeightVideo` / `trackHeight`; playhead `playheadWidth` in `selection` with a `playheadHeadSize` circular head, fixed in the center while the content scrolls; trim handles `trimHandleWidth` in `selection`. Zoom scales and ruler steps are layout math kept as named constants in the timeline component (spec `docs/ux/specs/P1-05-timeline.md`), not tokens.
-- Editor tool panels (Volume, Style and Position for text, later Canvas) use the ToolPanel component; font choices use FontTile and color choices use Swatch; floating menus use Menu; short messages use Toast (with `FadingToast` for its fade, one at a time); icon-only controls with no fill (Close, Play/Pause, Undo, Redo, a toast's ×) use IconButton (`design/system/components/`). An IconButton on `surface-raised` presses to `hairline`.
+- Editor tool panels (Volume, Style and Position for text, later Canvas) use the ToolPanel component. While a panel is open, the region it covers (timeline and tool bar) leaves the accessibility tree and can't take keyboard focus, so nothing hidden can be reached (P1-08 review). Long lists in a sheet (the editor's Meme sounds sheet, later the P3-05 picker) use the Sheet's half-height opening (`opensAtHalfHeight`); a SoundRow on a sheet uses `surface-raised` for its playing band. Sliders that have a level worth finding again snap to it (`snapValue`, one SegmentTick), and commit one undo step in `onValueChangeFinished`. Font choices use FontTile and color choices use Swatch; floating menus use Menu; short messages use Toast (with `FadingToast` for its fade, one at a time); icon-only controls with no fill (Close, Play/Pause, Undo, Redo, a toast's ×) use IconButton (`design/system/components/`). An IconButton on `surface-raised` presses to `hairline`.
 - Pressed states: `primary` → `primary-pressed`; neutral controls go one value step lighter (`surface-raised` → `hairline`). No translate/scale on press; the 240 ms "bonk" scale is only for content landing on the timeline.
 - Icons: Memix-drawn vector drawables in `composeResources/drawable/` (see Iconography), 24 dp, 2 dp flat-cap stroke, tinted per state.
 - Tool bars: each tool is at least `toolItemWidth` wide and `touchTarget` tall. Its label is never cut: two lines is the copy budget, not a line cap, so at 200% font a long translation takes a third line and the bar grows (WCAG 2.2 SC 1.4.4).

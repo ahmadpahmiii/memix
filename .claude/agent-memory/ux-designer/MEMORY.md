@@ -2,6 +2,16 @@
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: Design decisions and their reasons, patterns that worked or failed, recurring review issues, competitor insights.
 
+- 2026-10-19 · P1-08 review (provisional, code + renders 70–84). Changes requested: M1 Move here spoken "Move to playhead" fails WCAG 2.5.3 (my spec's error); M2 timeline + tool bar under the ToolPanel stayed in the a11y tree/focus (2.4.11); M3 pill label cut at 200% es/pt (computed ~372 dp vs 360). Lessons:
+  - **Never replace a visible label with a different spoken name.** Extra context goes in the click label (TalkBack "Double-tap to …"); custom actions with no visible label may say anything.
+  - **Anything drawn over other UI must also hide it from TalkBack and focus** (`clearAndSetSemantics {}` + focus group with `onEnter` cancel). Sheets still have this gap everywhere (F1).
+  - **Every single-line label in chrome: compute es/pt at 200% against 360 dp** (label 13 sp ≈ 7.4 dp/char at 100%). The harness renders Hindi only; Hindi is short, es/pt are long.
+  - **Check pressed state and true target size on every custom clickable** (padding before `clickable` shrinks the target; `indication = null` with no fill change = no feedback).
+  - **Docs drift between tokens.json usage text and component READMEs:** `primary-subtle` "backs the playing row" vs README/board `surface`. Rule settled: playing row = one value step above its container; `primary-subtle` never fills a row; `primary-subtle` fills press to `surface-raised`.
+  - **Covered UI states (active tool under a sheet/panel) are moot:** don't spec looks nobody can see.
+  - **Slider: keyboard/TalkBack steps must land on the grid**, or the default is unreachable without a pointer.
+  - **Moving markers vs new content:** a fixed marker (the pill) hides during a lane slide instead of passing over a landing item.
+  - Semantics dump prints only content descriptions; ask for text nodes too.
 - 2026-10-13 · P1-06 review (provisional, code + Skia renders 40–63 in `scratchpad/render-p1-05/out`). Changes requested: M1 reorder taps and grabs used x only, so washed areas moved clips; M2 the moving tile left the screen in tap mode (my spec had no keep-in-view rule). Lessons:
   - **In any modal state, check hit-tests use both axes** (gesture code that passes only `position.x`).
   - **Any mode that moves things by buttons needs a keep-in-view rule.**

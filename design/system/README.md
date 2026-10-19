@@ -30,7 +30,7 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 **Color.**
 - Backgrounds: `canvas` for screens, `surface` for cards, sheets, nav and tool bar, `surface-raised` for controls on top of `surface`.
 - Text: `text` first, `text-secondary` for supporting copy, `text-muted` for hints and timecodes. All three pass 4.5:1 on `canvas`, `surface` and `surface-raised`.
-- `primary-subtle` (16% sky) backs the active tool, the playing sound row and sound play buttons; icons on it use `primary`.
+- `primary-subtle` (16% sky) backs the active tool, sound play buttons and the "Add a meme sound" pill; icons and text on it use `primary`. It never fills a whole row: a playing sound row steps one value up instead (`surface` on `canvas`, `surface-raised` on `surface`).
 - Track colors encode clip type on the timeline and in the layers panel, and nowhere else:
 
 | Track | Token |

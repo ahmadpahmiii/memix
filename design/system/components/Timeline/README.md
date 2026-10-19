@@ -12,7 +12,7 @@ The video editor's multi-track timeline: ruler, colored items on lanes, a fixed 
   - One token per track type (`track-video`, `track-text`, `track-sticker`, `track-meme-sound`, `track-audio`, `track-effect`).
   - Labels in `caption` `on-track` (`text` on video).
   - Main video and overlay items show a thumbnail strip, square tiles at the item's height, `track-video` while loading.
-- **Meme sound items** use `track-meme-sound`, the brand blue: the one place the timeline shows Memix's own color. The "Add a meme sound" row under the sound lanes holds a `primary-subtle` pill fixed at the playhead.
+- **Meme sound items** use `track-meme-sound`, the brand blue: the one place the timeline shows Memix's own color. The "Add a meme sound" row under the sound lanes holds a `primary-subtle` pill (on a `canvas` base, so it covers the playhead line) fixed at the playhead. Pressed, the pill turns `surface-raised`. Its label wraps to a second line rather than being cut at large font sizes, and the row grows. It hides while lanes slide and fades back in at its new place, so it never covers a sound that just landed on a new lane. While a meme sound is carried over the row, a `surface` lane band previews the new lane it will make (P1-08 review; spec `docs/ux/specs/P1-05-timeline.md`).
 - **Lanes:** non-video lanes draw a `surface` band from 0:00 to the end of the video. The part of an item past the end gets a `scrim` wash, and its label switches to `text`.
 - **Selected item:**
   - A `stroke-selection` white outline, drawn outside the item with a `stroke-hairline` gap.
