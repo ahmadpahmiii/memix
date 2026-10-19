@@ -34,6 +34,9 @@ internal class TimelineState {
     /** Reorder mode's tiles, from entering until they've expanded back after it ended; null otherwise (P1-06). */
     var reorder by mutableStateOf<ReorderStrip?>(null)
 
+    /** The item being moved by a long-press drag, or null (P1-08). Only draw and gesture code read where it is. */
+    var move by mutableStateOf<MoveDrag?>(null)
+
     /**
      * True from a finger touching the timeline until it lifts. While true the preview's own position reports are
      * ignored, so a report still on its way after the touch paused playback can't pull the playhead back.

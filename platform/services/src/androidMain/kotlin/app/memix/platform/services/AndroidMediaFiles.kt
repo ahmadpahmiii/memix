@@ -86,6 +86,25 @@ internal class AndroidMediaFiles(
             }
         }
 
+    override suspend fun write(bytes: ByteArray, destination: String): CopyResult = withContext(ioDispatcher) {
+        val target = File(filesDir, destination)
+        val unfinished = File(target.path + UNFINISHED_SUFFIX)
+        try {
+            target.parentFile?.mkdirs()
+            FileOutputStream(unfinished).use { sink ->
+                sink.write(bytes)
+                sink.fd.sync()
+            }
+            if (!unfinished.renameTo(target)) throw IOException("Couldn't rename the finished file")
+            CopyResult.COPIED
+        } catch (e: IOException) {
+            unfinished.delete()
+            if (e.isOutOfSpace()) return@withContext CopyResult.STORAGE_FULL
+            logger.error(TAG, "Writing a file failed: ${e::class.simpleName}")
+            CopyResult.UNREADABLE
+        }
+    }
+
     override suspend fun delete(paths: List<String>) = withContext(ioDispatcher) {
         for (path in paths) {
             val file = File(filesDir, path)

@@ -112,4 +112,22 @@
     <string name="a11y_clip_label">clip %1$d</string>
     <string name="a11y_reorder_tile">%1$s, clip %2$d de %3$d</string>
     <string name="a11y_reorder_position">Clip %1$d de %2$d</string>
+    <!-- Meme sounds (P1-08): machine drafts until P5. Notes in values/strings.xml. -->
+    <string name="tool_meme_sounds">Sonidos de memes</string>
+    <string name="tool_volume">Volumen</string>
+    <string name="tool_move_here">Mover aquí</string>
+    <string name="tool_move_here_a11y">Mover al cabezal</string>
+    <string name="volume_title">Volumen</string>
+    <string name="volume_this_sound">Este sonido</string>
+    <string name="volume_percent">%1$d\u00A0%</string>
+    <string name="sound_meta">%1$s · %2$s</string>
+    <string name="explain_sound_unreadable">Ese sonido no se puede reproducir. Prueba otro.</string>
+    <string name="a11y_sound_added">%1$s añadido en %2$s</string>
+    <string name="edit_move">Mover</string>
+    <string name="edit_volume">Volumen</string>
+    <string name="edit_add_sound">Añadir sonido</string>
+    <string name="timeline_add_meme_sound">Añadir sonido de meme</string>
+    <string name="sounds_title">Sonidos de memes</string>
+    <string name="sounds_empty_title">Aún no hay sonidos</string>
+    <string name="sounds_empty_body">La biblioteca de sonidos llega en una versión posterior.</string>
 </resources>

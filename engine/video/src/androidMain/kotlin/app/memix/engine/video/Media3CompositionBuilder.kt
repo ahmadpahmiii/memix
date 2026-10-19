@@ -30,14 +30,19 @@ internal class Media3CompositionBuilder(
     private val plan: CompositionPlan,
     private val uriByMedia: Map<MediaRef, Uri>,
     private val frameRate: Int,
+    /** Processors for the whole mix, after the sequences are mixed; only the preview's hand-check measure uses one. */
+    private val mixProcessors: List<AudioProcessor> = emptyList(),
+    /** The preview's live volume per sound item (see [LiveGainProcessor]); empty for exports. */
+    private val liveGains: Map<String, LiveGainProcessor> = emptyMap(),
 ) {
     fun build(): Composition {
         val sequences = listOf(mainVideoSequence()) + plan.audioLanes.map(::audioSequence)
-        return Composition.Builder(sequences)
+        val composition = Composition.Builder(sequences)
             // Exports are SDR: every chat app shows SDR right, and Media3 refuses SDR clips or photos
             // after an HDR video in one sequence. OpenGL tone mapping works from API 29, our minSdk.
             .setHdrMode(Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)
-            .build()
+        if (mixProcessors.isNotEmpty()) composition.setEffects(Effects(mixProcessors, emptyList()))
+        return composition.build()
     }
 
     private fun mainVideoSequence(): EditedMediaItemSequence {
@@ -90,9 +95,10 @@ internal class Media3CompositionBuilder(
             .setClippingConfiguration(clipping(clip.trimInUs, clip.trimOutUs))
             .build()
         // Detached audio points at the original video file; its picture isn't decoded again here.
+        val processors = volumeProcessors(clip.volume) + listOfNotNull(liveGains[clip.itemId])
         return EditedMediaItem.Builder(mediaItem)
             .setRemoveVideo(true)
-            .setEffects(Effects(volumeProcessors(clip.volume), emptyList()))
+            .setEffects(Effects(processors, emptyList()))
             .setSourceDuration(clip.source, clip.trimOutUs)
             .build()
     }

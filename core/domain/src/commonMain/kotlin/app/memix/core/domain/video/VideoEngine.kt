@@ -2,6 +2,7 @@ package app.memix.core.domain.video
 
 import app.memix.core.domain.AppError
 import app.memix.core.domain.Outcome
+import app.memix.core.domain.sound.SoundPlayer
 import app.memix.core.model.project.Project
 
 /**
@@ -13,8 +14,8 @@ import app.memix.core.model.project.Project
  * Overlay, text, sticker and effect tracks and the canvas background are skipped with a log line
  * until their tickets add them (P4-01, P1-10, P4-12, P4-06, P1-11).
  *
- * Waveforms (P1-08 / P3-09) and device capabilities (P1-12) join this interface with the tickets
- * that first use them.
+ * Waveforms (P3-09) and device capabilities (P1-12) join this interface with the tickets that first use
+ * them.
  */
 interface VideoEngine {
     /**
@@ -46,4 +47,10 @@ interface VideoEngine {
      * the first [ThumbnailReader.thumbnail]. The caller closes it.
      */
     fun openThumbnails(): ThumbnailReader
+
+    /**
+     * Opens a [SoundPlayer] for playing single sounds outside a project, such as the sounds sheet's previews (P1-08).
+     * Returns at once; nothing loads until the first [SoundPlayer.play]. Main thread only. The caller closes it.
+     */
+    fun openSoundPlayer(): SoundPlayer
 }

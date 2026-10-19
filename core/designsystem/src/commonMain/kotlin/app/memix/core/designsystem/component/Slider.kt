@@ -18,12 +18,14 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -43,7 +45,11 @@ private val ThumbDiameter = 22.dp
 
 /**
  * Labeled slider with a live readout. Drag or tap the track to set; double-tap the thumb to reset to [defaultValue].
- * [step] is the keyboard and screen-reader increment.
+ * [step] is the keyboard and screen-reader increment. [onValueChangeFinished] runs when a change is complete: a drag
+ * lets go, a tap, a reset, a key or a screen-reader step; editors commit one undo step there.
+ *
+ * With [snapValue], a value within [snapDistance] of it becomes exactly [snapValue], with one `SegmentTick` haptic each
+ * time it snaps (the Volume panel's 100%, spec P1-06), so a level that matters is easy to find again.
  */
 @Composable
 fun Slider(
@@ -55,13 +61,24 @@ fun Slider(
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
     defaultValue: Float = valueRange.start,
     step: Float = (valueRange.endInclusive - valueRange.start) / 20f,
+    onValueChangeFinished: () -> Unit = {},
+    snapValue: Float? = null,
+    snapDistance: Float = 0f,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val currentValue by rememberUpdatedState(value)
     val currentOnValueChange by rememberUpdatedState(onValueChange)
+    val currentOnValueChangeFinished by rememberUpdatedState(onValueChangeFinished)
+    val haptics = LocalHapticFeedback.current
     val span = valueRange.endInclusive - valueRange.start
     fun fractionOf(v: Float) = ((v - valueRange.start) / span).coerceIn(0f, 1f)
-    fun setFromX(x: Float, width: Float) = currentOnValueChange(valueRange.start + (x / width).coerceIn(0f, 1f) * span)
+    fun change(raw: Float) {
+        val snapped = snapValue?.takeIf { abs(raw - it) <= snapDistance } ?: raw
+        // One tick as it snaps, not on every move while it stays snapped.
+        if (snapValue != null && snapped == snapValue && currentValue != snapValue) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+        currentOnValueChange(snapped)
+    }
+    fun setFromX(x: Float, width: Float) = change(valueRange.start + (x / width).coerceIn(0f, 1f) * span)
 
     Column(modifier) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -82,6 +99,7 @@ fun Slider(
                         else -> return@onKeyEvent false
                     }
                     currentOnValueChange((currentValue + delta).coerceIn(valueRange))
+                    currentOnValueChangeFinished()
                     true
                 }
                 .semantics {
@@ -90,21 +108,30 @@ fun Slider(
                     progressBarRangeInfo = ProgressBarRangeInfo(value, valueRange)
                     setProgress { target ->
                         currentOnValueChange(target.coerceIn(valueRange))
+                        currentOnValueChangeFinished()
                         true
                     }
                 }
                 .pointerInput(valueRange) {
                     detectTapGestures(
-                        onTap = { setFromX(it.x, size.width.toFloat()) },
+                        onTap = {
+                            setFromX(it.x, size.width.toFloat())
+                            currentOnValueChangeFinished()
+                        },
                         onDoubleTap = { offset ->
                             val thumbX = fractionOf(currentValue) * size.width
-                            if (abs(offset.x - thumbX) <= ThumbDiameter.toPx()) currentOnValueChange(defaultValue)
+                            if (abs(offset.x - thumbX) <= ThumbDiameter.toPx()) {
+                                currentOnValueChange(defaultValue)
+                                currentOnValueChangeFinished()
+                            }
                         },
                     )
                 }
                 .pointerInput(valueRange) {
                     detectHorizontalDragGestures(
                         onDragStart = { setFromX(it.x, size.width.toFloat()) },
+                        onDragEnd = { currentOnValueChangeFinished() },
+                        onDragCancel = { currentOnValueChangeFinished() },
                         onHorizontalDrag = { change, _ -> setFromX(change.position.x, size.width.toFloat()) },
                     )
                 }

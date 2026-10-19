@@ -22,6 +22,13 @@ interface MediaFiles {
      */
     suspend fun copy(origin: MediaOrigin, destination: String, onBytesCopied: (Long) -> Unit): CopyResult
 
+    /**
+     * Writes [bytes] to [destination] like [copy] does: under a temporary name, renamed only once complete, replacing
+     * a file already there. Returns [CopyResult.COPIED], [CopyResult.STORAGE_FULL], or [CopyResult.UNREADABLE] when
+     * it can't be written for another reason.
+     */
+    suspend fun write(bytes: ByteArray, destination: String): CopyResult
+
     /** Deletes these files, then each folder they leave empty. Missing files are skipped. */
     suspend fun delete(paths: List<String>)
 

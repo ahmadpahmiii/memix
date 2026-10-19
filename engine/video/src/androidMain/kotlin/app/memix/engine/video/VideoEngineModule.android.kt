@@ -7,5 +7,12 @@ import org.koin.dsl.module
 
 actual val videoEngineModule = module {
     // Lazy like every Koin single: nothing Media3 loads until the first export.
-    single<VideoEngine> { Media3VideoEngine(androidContext(), logger = get(), ioDispatcher = Dispatchers.IO) }
+    single<VideoEngine> {
+        Media3VideoEngine(
+            androidContext(),
+            logger = get(),
+            ioDispatcher = Dispatchers.IO,
+            measureSoundOnsets = getProperty(HAND_CHECKS_PROPERTY, false),
+        )
+    }
 }

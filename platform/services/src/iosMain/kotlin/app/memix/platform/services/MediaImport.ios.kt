@@ -13,6 +13,7 @@ import app.memix.core.model.project.MediaOrigin
 internal class NoMediaFiles : MediaFiles {
     override suspend fun describe(origin: MediaOrigin): PickedFile? = null
     override suspend fun copy(origin: MediaOrigin, destination: String, onBytesCopied: (Long) -> Unit) = CopyResult.UNREADABLE
+    override suspend fun write(bytes: ByteArray, destination: String) = CopyResult.UNREADABLE
     override suspend fun delete(paths: List<String>) = Unit
     override suspend fun listFolders(parent: String): List<String> = emptyList()
     override suspend fun deleteFolder(path: String) = Unit

@@ -64,6 +64,8 @@ internal class Media3PreviewSession(
     private val logger: Logger,
     private val ioDispatcher: CoroutineDispatcher,
     project: Project,
+    /** Hand-check builds: log where each sound is heard in the mix ([SoundOnsetLog]). */
+    private val measureSoundOnsets: Boolean = false,
 ) : PreviewSession {
     // CompositionPlayer must be used from the thread that created it: the main thread.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -96,6 +98,9 @@ internal class Media3PreviewSession(
     private var lengthUs = project.videoLengthUs()
     private var scrubbing = false
     private var closed = false
+
+    // The live gains of the composition on the player, with the volume it already applies per sound.
+    private var liveVolumes = LiveVolumes(emptyMap(), emptyMap())
     private val positionTicker = FrameTicker(::publishPlayerPosition)
     private val headphonesUnplugged = HeadphonesUnpluggedReceiver(context, onUnplugged = ::pause)
     private val playSpan = PlaySpanLog(logger)
@@ -198,6 +203,11 @@ internal class Media3PreviewSession(
         if (playerShowsTrim) mutablePlayer.value?.seekTo(trimSourceUs / MICROS_PER_MILLI)
     }
 
+    override fun previewVolume(itemId: String, volume: Float) {
+        val committed = liveVolumes.committed[itemId]?.takeIf { it > 0f } ?: return
+        liveVolumes.gains[itemId]?.factor = volume / committed
+    }
+
     override fun endTrimFrames() {
         if (closed || trimClip.value == null) return
         // The project's composition is rebuilt at positionUs; the trim's commit right after replaces that build.
@@ -225,8 +235,12 @@ internal class Media3PreviewSession(
         val unplayable = resolved.missingItemIds.toSet() + plan.itemsWithoutLength()
         val playablePlan = plan.withGapsFor(unplayable)
         return try {
-            val composition = Media3CompositionBuilder(playablePlan, resolved.uriByMedia, ExportSettings.DEFAULT_FRAME_RATE).build()
-            PreparedPreview.Ready(composition, plan.durationUs, missingMedia = unplayable.isNotEmpty())
+            val onsetLog = if (measureSoundOnsets) listOf(SoundOnsetLog(playablePlan.soundStartsUs.toLongArray(), logger)) else emptyList()
+            val sounds = playablePlan.audioLanes.flatMap { it.segments }.filterIsInstance<SoundClip>()
+            val liveGains = sounds.associate { it.itemId to LiveGainProcessor() }
+            val composition = Media3CompositionBuilder(playablePlan, resolved.uriByMedia, ExportSettings.DEFAULT_FRAME_RATE, onsetLog, liveGains).build()
+            val volumes = sounds.associate { it.itemId to it.volume }
+            PreparedPreview.Ready(composition, plan.durationUs, missingMedia = unplayable.isNotEmpty(), LiveVolumes(liveGains, volumes))
         } catch (e: RuntimeException) {
             // Media3's own argument checks.
             PreparedPreview.Failed("the composition couldn't be built", e)
@@ -260,6 +274,7 @@ internal class Media3PreviewSession(
             player.playWhenReady = mutablePlayback.value.isPlaying
         }
         shownUpdate = update
+        liveVolumes = prepared.liveVolumes
         mutablePosition.value = startUs
         publish { it.copy(missingMedia = prepared.missingMedia) }
         timeFirstFrame()
@@ -347,10 +362,13 @@ internal class Media3PreviewSession(
     private fun publish(change: (PreviewPlayback) -> PreviewPlayback) = mutablePlayback.update(change)
 
     private sealed interface PreparedPreview {
-        class Ready(val composition: Composition, val lengthUs: Long, val missingMedia: Boolean) : PreparedPreview
+        class Ready(val composition: Composition, val lengthUs: Long, val missingMedia: Boolean, val liveVolumes: LiveVolumes) : PreparedPreview
 
         class Failed(val reason: String, val cause: Throwable?) : PreparedPreview
     }
+
+    /** Each sound's [LiveGainProcessor] in one composition, and the volume that composition applies to it. */
+    private class LiveVolumes(val gains: Map<String, LiveGainProcessor>, val committed: Map<String, Float>)
 
     private companion object {
         const val MICROS_PER_MILLI = 1_000L

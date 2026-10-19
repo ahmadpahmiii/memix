@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
@@ -54,6 +55,8 @@ internal class TimelinePainter(
     private val rulerStyle: TextStyle,
     private val originalAudioLabel: String,
     private val missingFileLabel: String,
+    /** The app's language, for catalog titles that come in every language. */
+    private val languageCode: String,
     density: Density,
 ) {
     private val gapPx = with(density) { MemixSpacing.space1.toPx() }
@@ -121,8 +124,10 @@ internal class TimelinePainter(
 
     /**
      * Bands, items, strips, washes and labels of every row, for the time on screen plus one tile on each side. An item
-     * being trimmed ([trim]) is drawn last, at its dragged size, so on the main track it covers a neighbor it overlaps.
-     * In reorder mode ([hideMainClips]) the main clips are left to [drawReorder].
+     * being trimmed ([trim]) is drawn last, at its dragged size, so on the main track it covers a neighbor it overlaps;
+     * an item being moved ([move]) is drawn last too, on the lane it would land on, with the selection outline. Rows
+     * slide to their new places when a lane comes or goes ([EditMotion.laneShiftPx]). In reorder mode
+     * ([hideMainClips]) the main clips are left to [drawReorder].
      */
     fun DrawScope.drawLanes(
         timeline: TimelineUi,
@@ -132,28 +137,44 @@ internal class TimelinePainter(
         thumbnails: TimelineThumbnails?,
         missingSources: Set<MediaRef>,
         trim: TrimDrag?,
+        move: MoveDrag?,
         motion: EditMotion,
         hideMainClips: Boolean,
     ) {
         if (pxPerUs <= 0f) return
         val centerPx = size.width / 2
-        val windowStartUs = timeAt(-tileSizePx.toFloat(), playheadUs, centerPx, pxPerUs)
-        val windowEndUs = timeAt(size.width + tileSizePx, playheadUs, centerPx, pxPerUs)
         val zeroX = xOf(0, playheadUs, centerPx, pxPerUs)
         val endX = xOf(timeline.lengthUs, playheadUs, centerPx, pxPerUs)
         place.set(playheadUs, centerPx, pxPerUs, endX, timeline.lengthUs, thumbnails, missingSources)
+        val draggedId = trim?.item?.id ?: move?.item?.id
         for (rowIndex in lanes.rows.indices) {
             val row = lanes.rows[rowIndex]
-            if (row.track.kind != TrackKind.MAIN_VIDEO && timeline.lengthUs > 0) drawBand(row, zeroX, endX)
             if (hideMainClips && row.track.kind == TrackKind.MAIN_VIDEO) continue
-            val isMain = row.track.kind == TrackKind.MAIN_VIDEO
-            row.track.forEachItemBetween(windowStartUs, windowEndUs) { item ->
-                if (item.id == trim?.item?.id) return@forEachItemBetween
-                val startUs = if (isMain) motion.startUsOf(item) else item.startUs
-                drawLandingItem(row, item, startUs, startUs + item.durationUs, place, motion)
+            val shiftPx = motion.laneShiftPx(row.track.id)
+            if (shiftPx == 0f) {
+                drawRow(row, draggedId, zeroX, endX, motion)
+            } else {
+                translate(top = shiftPx) { drawRow(row, draggedId, zeroX, endX, motion) }
             }
         }
         if (trim != null) drawItem(trim.row, trim.item, trim.startUs, trim.endUs, trim.trimInUs, trim.trimOutUs, place)
+        if (move != null) {
+            drawItem(move.row, move.item, move.startUs, move.endUs, move.item.trimInUs, move.item.trimOutUs, place)
+            drawSelection(move.startUs, move.endUs, move.row, playheadUs, pxPerUs, badge = null, alpha = 1f, withHandles = false)
+        }
+    }
+
+    // One row's band and its items on screen, except the one being dragged ([draggedId]).
+    private fun DrawScope.drawRow(row: LaneRow, draggedId: String?, zeroX: Float, endX: Float, motion: EditMotion) {
+        if (row.track.kind != TrackKind.MAIN_VIDEO && place.lengthUs > 0) drawBand(row, zeroX, endX)
+        val isMain = row.track.kind == TrackKind.MAIN_VIDEO
+        val windowStartUs = timeAt(-tileSizePx.toFloat(), place.playheadUs, place.centerPx, place.pxPerUs)
+        val windowEndUs = timeAt(size.width + tileSizePx, place.playheadUs, place.centerPx, place.pxPerUs)
+        row.track.forEachItemBetween(windowStartUs, windowEndUs) { item ->
+            if (item.id == draggedId) return@forEachItemBetween
+            val startUs = if (isMain) motion.startUsOf(item) else item.startUs
+            drawLandingItem(row, item, startUs, startUs + item.durationUs, place, motion)
+        }
     }
 
     /** What every item of this frame is drawn against; one holder, refilled each frame, so drawing allocates nothing. */
@@ -368,6 +389,7 @@ internal class TimelinePainter(
     private fun labelOf(item: ItemUi): String? = when (val label = item.label) {
         is ItemLabel.Written -> label.text
         ItemLabel.OriginalAudio -> originalAudioLabel
+        is ItemLabel.SoundTitle -> label.title.inLanguage(languageCode)
         ItemLabel.None -> null
     }
 
@@ -378,7 +400,16 @@ internal class TimelinePainter(
      * [endUs]), its two handles outside the outline, and for a main clip the duration [badge]. [alpha] runs the 120 ms
      * fade-in.
      */
-    fun DrawScope.drawSelection(startUs: Long, endUs: Long, row: LaneRow, playheadUs: Long, pxPerUs: Float, badge: TextLayoutResult?, alpha: Float) {
+    fun DrawScope.drawSelection(
+        startUs: Long,
+        endUs: Long,
+        row: LaneRow,
+        playheadUs: Long,
+        pxPerUs: Float,
+        badge: TextLayoutResult?,
+        alpha: Float,
+        withHandles: Boolean = true,
+    ) {
         if (pxPerUs <= 0f || alpha <= 0f) return
         val centerPx = size.width / 2
         val left = xOf(startUs, playheadUs, centerPx, pxPerUs)
@@ -396,6 +427,8 @@ internal class TimelinePainter(
             style = outlineStroke,
             alpha = alpha,
         )
+        // A moved item has the outline alone: its handles would say it can be trimmed while it's carried.
+        if (!withHandles) return
         val handleInset = outlineGapPx + outlineWidthPx
         drawHandle(left - handleInset - handleWidthPx, top - handleInset, bottom + handleInset, roundedOnLeft = true, alpha)
         drawHandle(right + handleInset, top - handleInset, bottom + handleInset, roundedOnLeft = false, alpha)

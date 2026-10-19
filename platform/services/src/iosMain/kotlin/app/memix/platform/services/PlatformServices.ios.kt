@@ -8,6 +8,8 @@ import app.memix.core.domain.Logger
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.media.MediaFiles
 import app.memix.core.domain.media.MediaInspector
+import app.memix.core.domain.sound.SoundLibrary
+import kotlinx.coroutines.Dispatchers
 import org.koin.dsl.module
 import platform.Foundation.NSLocale
 import platform.Foundation.NSLocaleCountryCode
@@ -20,6 +22,7 @@ actual val platformServicesModule = module {
     single<Analytics> { NoAnalytics() }
     single<MediaFiles> { NoMediaFiles() }
     single<MediaInspector> { NoMediaInspector() }
+    single<SoundLibrary> { BundledSoundLibrary(get(), get(), Dispatchers.Default) }
 }
 
 // iOS keeps the system region in currentLocale even when the app has its own language.

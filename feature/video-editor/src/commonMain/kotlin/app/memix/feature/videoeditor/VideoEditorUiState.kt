@@ -2,13 +2,16 @@ package app.memix.feature.videoeditor
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import app.memix.core.domain.project.LaneTarget
 import app.memix.core.domain.project.TrimEdge
 import app.memix.core.domain.video.PreviewSession
+import app.memix.core.model.catalog.LocalizedText
 import app.memix.feature.videoeditor.timeline.ItemName
 import app.memix.feature.videoeditor.timeline.TimelineThumbnails
 import app.memix.feature.videoeditor.timeline.TrimRanges
 import app.memix.feature.videoeditor.timeline.TimelineUi
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.StateFlow
 
 /** What the video editor shows (spec docs/ux/specs/P1-04-editor-and-preview.md → States). */
@@ -31,8 +34,12 @@ data class VideoEditorUiState(
     val trimRanges: TrimRanges? = null,
     /** Reorder mode (spec P1-06 → Reorder): the main clips as tiles in their new order; null otherwise. */
     val reorder: ReorderUi? = null,
-    /** The item that just landed (a duplicate): the timeline bonks it once per new [LandedItem.serial]. */
+    /** The item that just landed (a duplicate, a meme sound): the timeline bonks it once per new [LandedItem.serial]. */
     val landed: LandedItem? = null,
+    /** The Meme sounds sheet and the starter pack it lists (spec P1-06 → Meme sounds sheet). */
+    val sounds: SoundsSheetUi = SoundsSheetUi(),
+    /** The Volume panel over the timeline and tool bar, or null when it's closed (spec P1-06 → Volume panel). */
+    val volumePanel: VolumePanelUi? = null,
     /** The thumbnail tiles of the timeline's strips, once the draft has opened. Compared by identity. */
     val thumbnails: TimelineThumbnails? = null,
     /** The play button shows Pause; switches as soon as play is asked for. */
@@ -87,19 +94,41 @@ enum class StageContent {
 enum class SaveProblem { STORAGE_FULL, OTHER }
 
 /**
- * Which tools the clip tool bar shows for the selected item, in the spec's order (P1-06 → Clip tool bar). P1-08 adds
- * Move here and sound volume, P1-09 Volume and Detach audio for video clips, P1-10 the text tools.
+ * Which tools the clip tool bar shows for the selected item, in the spec's order (P1-06 → Clip tool bar). P1-09 adds
+ * Volume and Detach audio for video clips, P1-10 the text tools.
  */
 enum class ClipTools {
     /** A video or photo clip on the main track: Split, Delete, Duplicate, Reorder. */
     MAIN_CLIP,
 
-    /** A caption: Delete, Split, Duplicate (captions are deleted more often than cut). */
+    /** A caption: Delete, Split, Move here, Duplicate (captions are deleted more often than cut). */
     TEXT,
 
-    /** Sounds, detached audio, overlays, stickers and effects: Split, Delete, Duplicate. */
+    /** A meme sound or detached audio: Volume, Split, Delete, Move here, Duplicate. */
+    SOUND,
+
+    /** Overlays, stickers and effects: Split, Delete, Move here, Duplicate. */
     OTHER,
 }
+
+/**
+ * The Meme sounds sheet: whether it's open, the starter pack's sounds in the pack's order (empty until they've loaded,
+ * or when the build bundles none), and the one playing in the sheet, if any.
+ */
+@Immutable
+data class SoundsSheetUi(
+    val isOpen: Boolean = false,
+    val sounds: ImmutableList<SoundRowUi> = persistentListOf(),
+    val playingId: String? = null,
+)
+
+/** One sound of the sheet: its catalog id, its title in every app language, its length (µs) and its credit text. */
+@Immutable
+data class SoundRowUi(val id: String, val title: LocalizedText, val durationUs: Long, val credit: String)
+
+/** The Volume panel of item [itemId]: [volume] follows the slider while it moves (1 = 100%). */
+@Immutable
+data class VolumePanelUi(val itemId: String, val volume: Float)
 
 /**
  * Reorder mode: the main clips' ids in the order the tiles show now, the clip being moved, and whether a long-press
@@ -116,12 +145,15 @@ data class ReorderUi(
     val movingIndex: Int get() = order.indexOf(movingId)
 }
 
-/** An item that just landed on the timeline; a new [serial] bonks it again, even the same item. */
+/**
+ * An item that just landed on the timeline; a new [serial] bonks it again, even the same item. A meme sound
+ * ([isSound]) also gets the Confirm haptic, the "tick when a sound lands" (spec P1-06 → Motion and haptics).
+ */
 @Immutable
-data class LandedItem(val itemId: String, val serial: Long)
+data class LandedItem(val itemId: String, val serial: Long, val isSound: Boolean = false)
 
 /** Why a tool explains instead of acting (spec P1-06 → Clip tool bar: tools stay enabled and explain on tap). */
-enum class Explanation { SPLIT_OUTSIDE, LAST_CLIP, REORDER_ONE_CLIP, ALREADY_FIRST, ALREADY_LAST }
+enum class Explanation { SPLIT_OUTSIDE, LAST_CLIP, REORDER_ONE_CLIP, ALREADY_FIRST, ALREADY_LAST, SOUND_UNREADABLE }
 
 /**
  * A toast on the stage; a new [id] restarts its timer, even for the same message. [isSpokenOnly] when it arrived
@@ -147,6 +179,9 @@ sealed interface ToastMessage {
 
     /** In reorder mode, after each move, for screen readers only: "Clip 2 of 3". */
     data class ReorderPosition(val position: Int, val count: Int) : ToastMessage
+
+    /** After a meme sound lands, for screen readers only: "Boom added at 3.2 seconds" ([atUs] is where it starts). */
+    data class SoundAdded(val title: LocalizedText, val atUs: Long) : ToastMessage
 }
 
 /**
@@ -262,4 +297,43 @@ sealed interface VideoEditorIntent {
 
     /** Done, or the drop: the new order is one Reorder step (none if nothing moved). */
     data object ReorderDone : VideoEditorIntent
+
+    /** The Meme sounds tool: opens the sounds sheet. */
+    data object MemeSoundsTool : VideoEditorIntent
+
+    /** The "Add a meme sound" pill: clears the selection and opens the sounds sheet (spec P1-05 → Add a meme sound). */
+    data object AddMemeSoundRow : VideoEditorIntent
+
+    /** The sheet's close button, scrim, drag, back or Escape: nothing is added. */
+    data object CloseSoundsSheet : VideoEditorIntent
+
+    /** A row's play disc: plays sound [soundId] alone, or stops it when it's the one playing. */
+    data class ToggleSoundPreview(val soundId: String) : VideoEditorIntent
+
+    /** A row's add button: sound [soundId] lands at the playhead and the sheet closes. */
+    data class AddSound(val soundId: String) : VideoEditorIntent
+
+    /** The Volume tool of the selected sound: opens the Volume panel. */
+    data object VolumeTool : VideoEditorIntent
+
+    /** The Volume slider moved to [volume] (1 = 100%); heard at once, nothing committed yet. */
+    data class VolumeChanged(val volume: Float) : VideoEditorIntent
+
+    /** The slider was let go (or stepped): the panel's volume is one Volume step (none if it's where it began). */
+    data object VolumeReleased : VideoEditorIntent
+
+    /** Done, system back or Escape on the Volume panel. */
+    data object CloseVolumePanel : VideoEditorIntent
+
+    /** Move here on the selected item: it starts at the playhead (spec P1-06 → Move). */
+    data object MoveHereSelected : VideoEditorIntent
+
+    /** A long-press lifted item [itemId] to move it (spec P1-06 → Move → By drag): playback pauses, it's selected. */
+    data class MoveStarted(val itemId: String) : VideoEditorIntent
+
+    /** The moved item was dropped to start at [startUs] on [lane]: one Move step (none if it's where it was). */
+    data class MoveEnded(val itemId: String, val startUs: Long, val lane: LaneTarget) : VideoEditorIntent
+
+    /** The move was cancelled (system back, a lost gesture); nothing changes. */
+    data object MoveCancelled : VideoEditorIntent
 }

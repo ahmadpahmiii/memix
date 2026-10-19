@@ -25,8 +25,9 @@ import kotlinx.coroutines.launch
 internal class TimelineController(val state: TimelineState, private val scope: CoroutineScope) {
     var timeline: TimelineUi = TimelineUi.Empty
         set(value) {
-            // A released trim keeps its drawn place until the edited timeline arrives, so nothing jumps back for a frame.
+            // A released trim or move keeps its drawn place until the edited timeline arrives, so nothing jumps back.
             if (field !== value && state.trim?.isReleased == true) state.trim = null
+            if (field !== value && state.move?.isReleased == true) state.move = null
             field = value
         }
     var onIntent: (VideoEditorIntent) -> Unit = {}
@@ -50,6 +51,8 @@ internal class TimelineController(val state: TimelineState, private val scope: C
     var reorderPitchPx = 0f
     private var reorderFingerX = 0f
     private var lastReorderPlace = -1
+    private var moveFingerX = 0f
+    private var moveLanes: LaneLayout? = null
 
     /** True in reorder mode (not while its tiles expand back after it ended). */
     val isReordering: Boolean get() = state.reorder?.isEnding == false
@@ -269,6 +272,91 @@ internal class TimelineController(val state: TimelineState, private val scope: C
             strip.scrollBy(speedPxPerSecond * seconds, state.widthPx.toFloat())
             dragReorder(reorderFingerX)
         }
+    }
+
+    /**
+     * A long-press on [item] in [row] (any lane but the main track) lifts it to move (spec P1-06 → Move → By drag): it
+     * follows the finger at [fingerX], over the lanes of [lanes].
+     */
+    fun liftForMove(item: ItemUi, row: LaneRow, lanes: LaneLayout, fingerX: Float) {
+        val pxPerUs = pxPerUs(state.dpPerSecond, density)
+        if (pxPerUs <= 0f) return
+        val itemX = xOf(item.startUs, state.playheadUs, state.widthPx / 2f, pxPerUs)
+        state.move = MoveDrag(
+            item = item,
+            fromRow = row,
+            rowsOfKind = lanes.rows.filter { it.track.kind == row.track.kind },
+            newLaneRow = newSoundLaneRow(row, lanes),
+            snapTargets = snapTargetsFor(timeline, item.id),
+            grabOffsetPx = fingerX - itemX,
+        )
+        moveFingerX = fingerX
+        moveLanes = lanes
+        haptics?.performHapticFeedback(HapticFeedbackType.LongPress)
+        onIntent(VideoEditorIntent.MoveStarted(item.id))
+        edgeScroll?.cancel()
+        edgeScroll = scope.launch { scrollAtEdgesWhileMoving() }
+    }
+
+    /** The finger moved to [fingerX], over [laneY] (pixels from the top of the first lane). */
+    fun dragMove(fingerX: Float, laneY: Float) {
+        val drag = state.move?.takeUnless { it.isReleased } ?: return
+        moveFingerX = fingerX
+        moveLanes?.let { drag.hoverLaneAt(laneY, it) }
+        followMoveFinger()
+    }
+
+    /** The finger lifted: the move is committed as one step. */
+    fun dropMove() {
+        val drag = state.move?.takeUnless { it.isReleased } ?: return
+        edgeScroll?.cancel()
+        drag.isReleased = true
+        onIntent(VideoEditorIntent.MoveEnded(drag.item.id, drag.startUs, drag.laneTarget))
+        // A drop where it was changes nothing and brings no new timeline; let it go after two frames.
+        scope.launch {
+            repeat(FRAMES_TO_WAIT_FOR_EDIT) { withFrameNanos { } }
+            if (state.move === drag) state.move = null
+        }
+    }
+
+    /** System back or a lost gesture: the item stays where it was. */
+    fun cancelMove() {
+        state.move?.takeUnless { it.isReleased } ?: return
+        edgeScroll?.cancel()
+        state.move = null
+        onIntent(VideoEditorIntent.MoveCancelled)
+    }
+
+    private fun followMoveFinger() {
+        val drag = state.move?.takeUnless { it.isReleased } ?: return
+        val pxPerUs = pxPerUs(state.dpPerSecond, density)
+        if (pxPerUs <= 0f) return
+        val fingerStartUs = timeAt(moveFingerX - drag.grabOffsetPx, state.playheadUs, state.widthPx / 2f, pxPerUs)
+        val engaged = drag.moveTo(fingerStartUs, state.playheadUs, snapRangeUs = (snapDistancePx / pxPerUs).roundToLong())
+        // One tick per snap (spec P1-06 → Motion and haptics).
+        if (engaged) haptics?.performHapticFeedback(HapticFeedbackType.SegmentTick)
+    }
+
+    // As for trims: near a side, time scrolls that way and the item keeps following the finger.
+    private suspend fun scrollAtEdgesWhileMoving() {
+        var previousFrameNanos = withFrameNanos { it }
+        while (true) {
+            val frameNanos = withFrameNanos { it }
+            val seconds = (frameNanos - previousFrameNanos) / NANOS_PER_SECOND
+            previousFrameNanos = frameNanos
+            val speedPxPerSecond = edgeScrollSpeed(moveFingerX, state.widthPx.toFloat(), edgeZonePx)
+            if (speedPxPerSecond != 0f && state.scrollBy(speedPxPerSecond * seconds, timeline.lengthUs, density) != 0f) {
+                followMoveFinger()
+            }
+        }
+    }
+
+    // A meme sound over the add row lands on a new lane: drawn there at a sound lane's size (spec P1-06 → Move).
+    private fun newSoundLaneRow(row: LaneRow, lanes: LaneLayout): LaneRow? {
+        val addRow = lanes.addSoundRow ?: return null
+        if (row.track.kind != TrackKind.MEME_SOUND) return null
+        val itemTopPx = addRow.topPx + (addRow.heightPx - row.itemHeightPx) / 2
+        return LaneRow(row.track, addRow.topPx, addRow.heightPx, itemTopPx, row.itemHeightPx)
     }
 
     private fun zoomTo(dpPerSecond: Float) {

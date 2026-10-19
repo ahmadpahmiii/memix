@@ -2,6 +2,7 @@ package app.memix.engine.video
 
 import app.memix.core.domain.AppError
 import app.memix.core.domain.Outcome
+import app.memix.core.domain.sound.SoundPlayer
 import app.memix.core.domain.video.ExportSettings
 import app.memix.core.domain.video.ExportedVideo
 import app.memix.core.domain.video.PreviewPlayback
@@ -34,6 +35,17 @@ private class IosVideoEngine : VideoEngine {
 
     // TODO(P7-03): AVAssetImageGenerator frames (UIImage -> JPEG). Until then the timeline's tiles stay empty.
     override fun openThumbnails(): ThumbnailReader = UnavailableThumbnailReader
+
+    // TODO(P7-03): AVAudioPlayer. Until then the sounds sheet's play buttons do nothing.
+    override fun openSoundPlayer(): SoundPlayer = SilentSoundPlayer()
+}
+
+private class SilentSoundPlayer : SoundPlayer {
+    override val playing: StateFlow<MediaRef?> = MutableStateFlow(null)
+
+    override fun play(sound: MediaRef) = Unit
+    override fun stop() = Unit
+    override fun close() = Unit
 }
 
 private class UnavailablePreviewSession : PreviewSession {
@@ -47,6 +59,7 @@ private class UnavailablePreviewSession : PreviewSession {
     override fun update(project: Project) = Unit
     override fun showTrimFrame(clip: MediaClip, sourceTimeUs: Long) = Unit
     override fun endTrimFrames() = Unit
+    override fun previewVolume(itemId: String, volume: Float) = Unit
     override fun close() = Unit
 }
 

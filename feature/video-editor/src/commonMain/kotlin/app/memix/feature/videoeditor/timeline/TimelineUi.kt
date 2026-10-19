@@ -2,10 +2,12 @@ package app.memix.feature.videoeditor.timeline
 
 import androidx.compose.runtime.Immutable
 import app.memix.core.domain.project.videoLengthUs
+import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.project.AudioClip
 import app.memix.core.model.project.EffectItem
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
+import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.StickerItem
@@ -84,31 +86,37 @@ sealed interface ItemLabel {
     /** Detached original audio: "Original audio". */
     data object OriginalAudio : ItemLabel
 
+    /** A meme sound's title from the catalog, in every app language; the timeline shows the app's language. */
+    data class SoundTitle(val title: LocalizedText) : ItemLabel
+
     /** Main video clips (thumbnails instead), and items whose name isn't in the model yet. */
     data object None : ItemLabel
 }
 
-/** Builds the timeline from [project]. */
-internal fun timelineUiOf(project: Project): TimelineUi {
+/**
+ * Builds the timeline from [project]. [soundTitles] are the catalog's titles by catalog id, for meme sound labels (the
+ * project keeps only the id, so titles follow the app's language and later catalog fixes).
+ */
+internal fun timelineUiOf(project: Project, soundTitles: Map<String, LocalizedText> = emptyMap()): TimelineUi {
     val tracks = project.video?.tracks.orEmpty()
         // Stable sort: tracks of one kind keep the model's order (spec → Track order).
         .sortedBy { it.kind.ordinal }
         .filter { it.kind == TrackKind.MAIN_VIDEO || it.items.isNotEmpty() }
-        .map(::trackUiOf)
+        .map { trackUiOf(it, soundTitles) }
     return TimelineUi(lengthUs = project.videoLengthUs(), tracks = tracks.toImmutableList())
 }
 
-private fun trackUiOf(track: Track): TrackUi {
+private fun trackUiOf(track: Track, soundTitles: Map<String, LocalizedText>): TrackUi {
     val sorted = track.items.sortedBy { it.startUs }
     var clipNumber = 0
     val items = sorted.map { item ->
         if (track.kind == TrackKind.MAIN_VIDEO) clipNumber++
-        itemUiOf(item, track.kind, if (track.kind == TrackKind.MAIN_VIDEO) clipNumber else 0)
+        itemUiOf(item, track.kind, if (track.kind == TrackKind.MAIN_VIDEO) clipNumber else 0, soundTitles)
     }
     return TrackUi(track.id, track.kind, items.toImmutableList(), track.muted)
 }
 
-private fun itemUiOf(item: TimelineItem, kind: TrackKind, clipNumber: Int): ItemUi = when (item) {
+private fun itemUiOf(item: TimelineItem, kind: TrackKind, clipNumber: Int, soundTitles: Map<String, LocalizedText>): ItemUi = when (item) {
     is MediaClip -> ItemUi(
         id = item.id,
         startUs = item.startUs,
@@ -122,7 +130,7 @@ private fun itemUiOf(item: TimelineItem, kind: TrackKind, clipNumber: Int): Item
         soundDetached = item.audioDetached,
         silenced = item.volume == 0f && item.source.hasAudio != false && item.source.kind == MediaKind.VIDEO,
     )
-    is AudioClip -> ItemUi(item.id, item.startUs, item.durationUs, audioLabelOf(item, kind))
+    is AudioClip -> ItemUi(item.id, item.startUs, item.durationUs, audioLabelOf(item, kind, soundTitles))
     is TextItem -> ItemUi(item.id, item.startUs, item.durationUs, writtenLabelOf(item.text))
     // TODO(P4-12): the sticker's name from its pack.
     is StickerItem -> ItemUi(item.id, item.startUs, item.durationUs, ItemLabel.None)
@@ -130,9 +138,12 @@ private fun itemUiOf(item: TimelineItem, kind: TrackKind, clipNumber: Int): Item
     is EffectItem -> ItemUi(item.id, item.startUs, item.durationUs, ItemLabel.None)
 }
 
-// A video file on an audio track is a clip's detached sound (P1-09). TODO(P1-08): meme sound titles from the pack.
-private fun audioLabelOf(clip: AudioClip, kind: TrackKind): ItemLabel =
-    if (kind == TrackKind.AUDIO && clip.source.kind == MediaKind.VIDEO) ItemLabel.OriginalAudio else ItemLabel.None
+// A video file on an audio track is a clip's detached sound (P1-09); a catalog sound shows its title.
+private fun audioLabelOf(clip: AudioClip, kind: TrackKind, soundTitles: Map<String, LocalizedText>): ItemLabel {
+    if (kind == TrackKind.AUDIO && clip.source.kind == MediaKind.VIDEO) return ItemLabel.OriginalAudio
+    val catalogId = (clip.source.origin as? MediaOrigin.CatalogItem)?.itemId ?: return ItemLabel.None
+    return soundTitles[catalogId]?.let(ItemLabel::SoundTitle) ?: ItemLabel.None
+}
 
 private fun writtenLabelOf(text: String): ItemLabel {
     val firstLine = text.lineSequence().firstOrNull { it.isNotBlank() }?.trim()

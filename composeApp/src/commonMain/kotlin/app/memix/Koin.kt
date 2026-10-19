@@ -13,13 +13,19 @@ import app.memix.core.domain.project.ObserveProjectSummariesUseCase
 import app.memix.core.domain.project.OpenVideoDraftUseCase
 import app.memix.core.domain.project.SaveProjectUseCase
 import app.memix.core.domain.project.StartEditSessionUseCase
+import app.memix.core.domain.sound.LoadStarterSoundsUseCase
+import app.memix.core.domain.sound.LogSoundEventsUseCase
+import app.memix.core.domain.sound.OpenSoundPlayerUseCase
+import app.memix.core.domain.sound.PrepareSoundUseCase
 import app.memix.core.domain.video.StartPreviewUseCase
 import app.memix.core.domain.video.StartThumbnailsUseCase
 import app.memix.debug.DebugEdits
 import app.memix.debug.ImportSaveFailure
+import app.memix.engine.video.HAND_CHECKS_PROPERTY
 import app.memix.engine.video.videoEngineModule
 import app.memix.feature.home.HomeViewModel
 import app.memix.feature.videoeditor.EditorDebugEdit
+import app.memix.feature.videoeditor.EditorSounds
 import app.memix.feature.videoeditor.VideoEditorViewModel
 import app.memix.feature.videoeditor.importmedia.MediaImportViewModel
 import app.memix.platform.services.platformServicesModule
@@ -56,6 +62,11 @@ private val appModule = module {
     single(createdAtStart = true) { LeftoverMediaCleaner(get(), get(), get(), get(appScope)) }
     factoryOf(::ImportMediaUseCase)
     factoryOf(::SaveGalleryProjectUseCase)
+    factoryOf(::LoadStarterSoundsUseCase)
+    factoryOf(::PrepareSoundUseCase)
+    factoryOf(::OpenSoundPlayerUseCase)
+    factoryOf(::LogSoundEventsUseCase)
+    factoryOf(::EditorSounds)
     viewModelOf(::HomeViewModel)
     viewModelOf(::MediaImportViewModel)
     viewModel { params ->
@@ -65,6 +76,7 @@ private val appModule = module {
             startEditSession = get(),
             startPreview = get(),
             startThumbnails = get(),
+            sounds = get(),
             decodeDispatcher = Dispatchers.Default,
             // Bound only in builds with hand checks (handCheckModule).
             debugEdit = getOrNull(),
@@ -87,6 +99,7 @@ private val handCheckModule = module {
 fun initKoin(handChecks: Boolean = false, platformSetup: KoinAppDeclaration = {}) {
     startKoin {
         platformSetup()
+        properties(mapOf(HAND_CHECKS_PROPERTY to handChecks))
         modules(platformServicesModule, databaseDriverModule, dataModule, videoEngineModule, appModule)
         if (handChecks) modules(handCheckModule)
     }

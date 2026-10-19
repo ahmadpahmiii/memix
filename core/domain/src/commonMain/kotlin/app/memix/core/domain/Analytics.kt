@@ -24,10 +24,25 @@ sealed interface AnalyticsEvent {
         override val params = mapOf("editor" to editor.eventValue, "source" to source.eventValue)
     }
 
-    /** A tool changed the project: one event per committed step, never during a drag (PM, 8 Oct 2026). */
+    /**
+     * A tool changed the project: one event per committed step, never during a drag (PM, 8 Oct 2026). [tool] must be
+     * one with a [EditorTool.eventValue].
+     */
     data class ToolUse(val editor: ProjectType, val tool: EditorTool) : AnalyticsEvent {
         override val name = "tool_use"
-        override val params = mapOf("editor" to editor.eventValue, "tool" to tool.eventValue)
+        override val params = mapOf("editor" to editor.eventValue, "tool" to requireNotNull(tool.eventValue))
+    }
+
+    /** A meme sound landed on the timeline from the sounds sheet; not for duplicates (spec P1-06 → Analytics). */
+    data class SoundAdd(val soundId: String, val tab: SoundTab, val editor: ProjectType) : AnalyticsEvent {
+        override val name = "sound_add"
+        override val params = mapOf("sound_id" to soundId, "tab" to tab.eventValue, "editor" to editor.eventValue)
+    }
+
+    /** A sound started playing in the sounds sheet. */
+    data class SoundPreview(val soundId: String, val tab: SoundTab) : AnalyticsEvent {
+        override val name = "sound_preview"
+        override val params = mapOf("sound_id" to soundId, "tab" to tab.eventValue)
     }
 }
 
@@ -35,7 +50,7 @@ sealed interface AnalyticsEvent {
  * `tool_use.tool`: lowercase ids, the same id for the same action in both editors (PM acceptance log, 8 Oct
  * 2026). Each editor ticket adds the tools it builds (P1-08: move, P1-09: volume, mute_original, ...).
  */
-enum class EditorTool(val eventValue: String) {
+enum class EditorTool(val eventValue: String?) {
     UNDO("undo"),
     REDO("redo"),
     SPLIT("split"),
@@ -43,6 +58,16 @@ enum class EditorTool(val eventValue: String) {
     DELETE("delete"),
     DUPLICATE("duplicate"),
     REORDER("reorder"),
+    MOVE("move"),
+    VOLUME("volume"),
+
+    /** An undo step with no `tool_use`: a landed meme sound is counted by `sound_add` instead (spec P1-06 → Analytics). */
+    ADD_SOUND(null),
+}
+
+/** `sound_add.tab` and `sound_preview.tab`: where in the sounds UI it happened. "starter" until P3-05 (PM, 8 Oct 2026). */
+enum class SoundTab(val eventValue: String) {
+    STARTER("starter"),
 }
 
 /** Where a new project came from (`project_create.source`). */

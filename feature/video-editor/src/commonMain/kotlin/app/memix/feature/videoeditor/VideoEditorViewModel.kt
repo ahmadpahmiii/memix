@@ -3,34 +3,46 @@ package app.memix.feature.videoeditor
 import androidx.lifecycle.viewModelScope
 import app.memix.core.domain.AppError
 import app.memix.core.domain.Outcome
+import app.memix.core.domain.project.LaneTarget
 import app.memix.core.domain.project.OpenVideoDraftUseCase
 import app.memix.core.domain.project.ProjectEditSession
 import app.memix.core.domain.project.ProjectEditState
 import app.memix.core.domain.project.StartEditSessionUseCase
 import app.memix.core.domain.project.TrimEdge
+import app.memix.core.domain.project.addSound
 import app.memix.core.domain.project.canDelete
 import app.memix.core.domain.project.canSplit
 import app.memix.core.domain.project.deleteItem
 import app.memix.core.domain.project.duplicateItem
 import app.memix.core.domain.project.hasNoClips
 import app.memix.core.domain.project.mainClipIds
+import app.memix.core.domain.project.moveItem
+import app.memix.core.domain.project.moveItemToPlayhead
 import app.memix.core.domain.project.moveMainClip
 import app.memix.core.domain.project.reorderMainClips
+import app.memix.core.domain.project.setVolume
 import app.memix.core.domain.project.splitItem
 import app.memix.core.domain.project.trimItem
 import app.memix.core.domain.project.trimRange
 import app.memix.core.domain.project.videoLengthUs
+import app.memix.core.domain.project.volumeOf
+import app.memix.core.domain.sound.SoundPlayer
 import app.memix.core.domain.video.ExportSettings
 import app.memix.core.domain.video.PreviewPlayback
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.domain.video.PreviewStatus
 import app.memix.core.domain.video.StartPreviewUseCase
 import app.memix.core.domain.video.StartThumbnailsUseCase
+import app.memix.core.model.catalog.CatalogSound
+import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.project.Canvas
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
+import app.memix.core.model.project.MediaOrigin
+import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.Project
+import app.memix.core.model.project.ProjectType
 import app.memix.core.model.project.TrackKind
 import app.memix.core.ui.MemixViewModel
 import app.memix.feature.videoeditor.timeline.ItemName
@@ -68,6 +80,7 @@ class VideoEditorViewModel(
     private val startEditSession: StartEditSessionUseCase,
     private val startPreview: StartPreviewUseCase,
     private val startThumbnails: StartThumbnailsUseCase,
+    private val sounds: EditorSounds,
     private val decodeDispatcher: CoroutineDispatcher,
     private val debugEdit: EditorDebugEdit?,
 ) : MemixViewModel<VideoEditorUiState, VideoEditorIntent>(VideoEditorUiState(canMakeDebugEdit = debugEdit != null)) {
@@ -87,9 +100,17 @@ class VideoEditorViewModel(
     // in one composition. Null when nothing is dragged or the item has no picture (sounds, captions).
     private var trimmedClip: MediaClip? = null
     private var trimmedEdge = TrimEdge.START
+    // The starter pack (P1-08), loaded once; its titles label the sounds on the timeline.
+    private var starterSounds: List<CatalogSound> = emptyList()
+    private var soundTitles: Map<String, LocalizedText> = emptyMap()
+    // Each sound's file once it's been checked, so a second play or add doesn't measure it again.
+    private val preparedSounds = HashMap<String, MediaRef>()
+    private var soundPlayer: SoundPlayer? = null
 
     init {
         addCloseable(AutoCloseable { preview?.close() })
+        addCloseable(AutoCloseable { soundPlayer?.close() })
+        viewModelScope.launch { loadStarterSounds() }
         viewModelScope.launch {
             when (val opened = openVideoDraft(projectId)) {
                 is Outcome.Success -> startEditing(opened.value)
@@ -138,6 +159,23 @@ class VideoEditorViewModel(
             is VideoEditorIntent.ReorderMoveTo -> moveInReorder(intent.index)
             is VideoEditorIntent.ReorderStep -> stepInReorder(intent.steps)
             VideoEditorIntent.ReorderDone -> finishReorder()
+            VideoEditorIntent.MemeSoundsTool -> openSoundsSheet()
+            VideoEditorIntent.AddMemeSoundRow -> {
+                // Two taps to any sound, even with a clip selected (spec P1-05 → Add a meme sound).
+                updateState { it.withSelection(null, null) }
+                openSoundsSheet()
+            }
+            VideoEditorIntent.CloseSoundsSheet -> closeSoundsSheet()
+            is VideoEditorIntent.ToggleSoundPreview -> toggleSoundPreview(intent.soundId)
+            is VideoEditorIntent.AddSound -> addSound(intent.soundId)
+            VideoEditorIntent.VolumeTool -> openVolumePanel()
+            is VideoEditorIntent.VolumeChanged -> changeVolume(intent.volume)
+            VideoEditorIntent.VolumeReleased -> commitVolume()
+            VideoEditorIntent.CloseVolumePanel -> updateState { it.copy(volumePanel = null) }
+            VideoEditorIntent.MoveHereSelected -> moveSelectedToPlayhead()
+            is VideoEditorIntent.MoveStarted -> startMove(intent.itemId)
+            is VideoEditorIntent.MoveEnded -> endMove(intent.itemId, intent.startUs, intent.lane)
+            VideoEditorIntent.MoveCancelled -> Unit
         }
     }
 
@@ -159,13 +197,18 @@ class VideoEditorViewModel(
 
     private fun showProject(project: Project) {
         shownProject = project
-        val timeline = timelineUiOf(project)
+        val timeline = timelineUiOf(project, soundTitles)
         // The selection outlives edits, undo and redo while its item exists (spec P1-04, P1-05 → Selection).
         // Reorder mode can't outlive a change to the clips it's ordering (an undo pressed meanwhile): it closes unapplied.
+        // The Volume panel closes when its item goes (an undo).
         val clipIds = project.mainClipIds().toSet()
         updateState {
-            it.copy(lengthUs = project.videoLengthUs(), timeline = timeline, reorder = it.reorder?.takeIf { reorder -> reorder.originalOrder.toSet() == clipIds })
-                .withSelection(it.selectedItemId, project)
+            it.copy(
+                lengthUs = project.videoLengthUs(),
+                timeline = timeline,
+                reorder = it.reorder?.takeIf { reorder -> reorder.originalOrder.toSet() == clipIds },
+                volumePanel = it.volumePanel?.takeIf { panel -> timeline.item(panel.itemId) != null },
+            ).withSelection(it.selectedItemId, project)
         }
         if (project.hasNoClips()) {
             closePreview()
@@ -247,6 +290,7 @@ class VideoEditorViewModel(
      */
     private fun goBack() {
         when {
+            state.value.volumePanel != null -> updateState { it.copy(volumePanel = null) }
             state.value.reorder != null -> updateState { it.copy(reorder = null) }
             state.value.selectedItemId != null -> updateState { it.withSelection(null, null) }
             else -> requestClose()
@@ -356,6 +400,123 @@ class VideoEditorViewModel(
         announce(VideoEdit.REORDER, state.value.timeline.nameOf(reorder.movingId))
     }
 
+    // ---- Meme sounds (spec P1-06 → Meme sounds sheet, Meme sounds) ------------------------------------------------
+
+    private suspend fun loadStarterSounds() {
+        starterSounds = sounds.loadStarterSounds()
+        soundTitles = starterSounds.associate { it.id to it.title }
+        val rows = starterSounds.map { SoundRowUi(it.id, it.title, it.durationUs, it.credit) }.toImmutableList()
+        updateState { it.copy(sounds = it.sounds.copy(sounds = rows)) }
+        // A draft opened before the pack loaded gets its sound titles now.
+        shownProject?.let { project -> updateState { it.copy(timeline = timelineUiOf(project, soundTitles)) } }
+    }
+
+    // The editor stays paused while sounds play in the sheet.
+    private fun openSoundsSheet() {
+        preview?.pause()
+        updateState { it.copy(sounds = it.sounds.copy(isOpen = true)) }
+    }
+
+    private fun closeSoundsSheet() {
+        soundPlayer?.stop()
+        updateState { it.copy(sounds = it.sounds.copy(isOpen = false)) }
+    }
+
+    private fun toggleSoundPreview(soundId: String) {
+        if (state.value.sounds.playingId == soundId) {
+            soundPlayer?.stop()
+            return
+        }
+        val sound = starterSounds.firstOrNull { it.id == soundId } ?: return
+        viewModelScope.launch {
+            val file = preparedSound(sound) ?: return@launch showToast(ToastMessage.Explain(Explanation.SOUND_UNREADABLE))
+            // Closed while the file was being prepared: nothing plays.
+            if (!state.value.sounds.isOpen) return@launch
+            openedSoundPlayer().play(file)
+            sounds.logEvents.previewed(sound.id)
+        }
+    }
+
+    private fun addSound(soundId: String) {
+        val sound = starterSounds.firstOrNull { it.id == soundId } ?: return
+        val atUs = currentPositionUs()
+        closeSoundsSheet()
+        preview?.pause()
+        viewModelScope.launch {
+            val file = preparedSound(sound) ?: return@launch showToast(ToastMessage.Explain(Explanation.SOUND_UNREADABLE))
+            landSound(sound, file, atUs)
+        }
+    }
+
+    private fun landSound(sound: CatalogSound, file: MediaRef, atUs: Long) {
+        val clipId = newId()
+        if (!commit(VideoEdit.ADD_SOUND) { it.addSound(file, clipId, atUs, newTrackId = newId()) }) return
+        sounds.logEvents.added(sound.id, ProjectType.VIDEO)
+        // Selected with its tools ready; it bonks and the phone ticks (spec P1-06 → Meme sounds → Landing).
+        updateState { it.withSelection(clipId, currentProject()).copy(landed = LandedItem(clipId, nextLandingSerial++, isSound = true)) }
+        val startUs = state.value.timeline.item(clipId)?.startUs ?: atUs
+        showToast(ToastMessage.SoundAdded(sound.title, startUs), spokenOnly = true)
+    }
+
+    private suspend fun preparedSound(sound: CatalogSound): MediaRef? {
+        preparedSounds[sound.id]?.let { return it }
+        return when (val prepared = sounds.prepareSound(sound)) {
+            is Outcome.Success -> prepared.value.also { preparedSounds[sound.id] = it }
+            is Outcome.Failure -> null
+        }
+    }
+
+    private fun openedSoundPlayer(): SoundPlayer = soundPlayer ?: sounds.openSoundPlayer().also { player ->
+        soundPlayer = player
+        viewModelScope.launch {
+            player.playing.collect { media ->
+                val playingId = (media?.origin as? MediaOrigin.CatalogItem)?.itemId
+                updateState { it.copy(sounds = it.sounds.copy(playingId = playingId)) }
+            }
+        }
+    }
+
+    // ---- Volume panel (spec P1-06 → Volume panel) -------------------------------------------------------------------
+
+    // Playback keeps going, so each change is heard as it's made.
+    private fun openVolumePanel() {
+        val itemId = state.value.selectedItemId ?: return
+        val volume = currentProject()?.volumeOf(itemId) ?: return
+        updateState { it.copy(volumePanel = VolumePanelUi(itemId, volume)) }
+    }
+
+    private fun changeVolume(volume: Float) {
+        val panel = state.value.volumePanel ?: return
+        preview?.previewVolume(panel.itemId, volume)
+        updateState { it.copy(volumePanel = panel.copy(volume = volume)) }
+    }
+
+    // The slider's last change is already in the panel, whichever way it came (drag, tap, key, TalkBack).
+    private fun commitVolume() {
+        val panel = state.value.volumePanel ?: return
+        if (!commit(VideoEdit.VOLUME, pausesPlayback = false) { it.setVolume(panel.itemId, panel.volume) }) return
+        announce(VideoEdit.VOLUME, state.value.timeline.nameOf(panel.itemId))
+    }
+
+    // ---- Move (spec P1-06 → Edits → Move) ---------------------------------------------------------------------------
+
+    private fun startMove(itemId: String) {
+        preview?.pause()
+        updateState { it.withSelection(itemId, currentProject()) }
+    }
+
+    private fun endMove(itemId: String, startUs: Long, lane: LaneTarget) {
+        if (!commit(VideoEdit.MOVE) { it.moveItem(itemId, startUs, lane, newTrackId = newId()) }) return
+        announce(VideoEdit.MOVE, state.value.timeline.nameOf(itemId))
+    }
+
+    private fun moveSelectedToPlayhead() {
+        val itemId = state.value.selectedItemId ?: return
+        preview?.pause()
+        if (!commit(VideoEdit.MOVE) { it.moveItemToPlayhead(itemId, currentPositionUs(), newTrackId = newId()) }) return
+        announce(VideoEdit.MOVE, state.value.timeline.nameOf(itemId))
+    }
+
     private fun startTrim(itemId: String, edge: TrimEdge) {
         preview?.pause()
         trimmedEdge = edge
@@ -399,10 +560,12 @@ class VideoEditorViewModel(
 
     /**
      * Applies one edit as one undo step and shows it on the timeline at once, without waiting for the session's
-     * state to come round. Returns false when the edit changed nothing (no step, no `tool_use`).
+     * state to come round. Returns false when the edit changed nothing (no step, no `tool_use`). Callers pause
+     * playback first, except the Volume panel, where playback keeps going so the change is heard.
      */
-    private fun commit(edit: VideoEdit, change: (Project) -> Project): Boolean {
+    private fun commit(edit: VideoEdit, pausesPlayback: Boolean = true, change: (Project) -> Project): Boolean {
         val session = editSession ?: return false
+        if (pausesPlayback) preview?.pause()
         val recorded = session.commit(edit.tool, change)
         if (recorded) showEditState(session.state.value)
         return recorded
@@ -439,7 +602,7 @@ class VideoEditorViewModel(
     private fun makeDebugEdit() {
         val edit = debugEdit ?: return
         preview?.pause()
-        commit(VideoEdit.TRIM, edit::apply)
+        commit(VideoEdit.TRIM, change = edit::apply)
     }
 
     /** Counts one second from the first edit the preview hasn't shown; a quick run of edits doesn't restart it. */
@@ -472,6 +635,8 @@ class VideoEditorViewModel(
 
     private fun goToBackground() {
         preview?.pause()
+        // A sound previewing in the sheet would keep playing after the user leaves the app.
+        soundPlayer?.stop()
         // Android may end a background app without warning, so the newest change is written now.
         editSession?.saveNow()
     }
@@ -558,5 +723,6 @@ private fun VideoEditorUiState.withSelection(itemId: String?, project: Project?)
 private fun clipToolsFor(kind: TrackKind): ClipTools = when (kind) {
     TrackKind.MAIN_VIDEO -> ClipTools.MAIN_CLIP
     TrackKind.TEXT -> ClipTools.TEXT
-    TrackKind.OVERLAY, TrackKind.STICKER, TrackKind.MEME_SOUND, TrackKind.AUDIO, TrackKind.EFFECT -> ClipTools.OTHER
+    TrackKind.MEME_SOUND, TrackKind.AUDIO -> ClipTools.SOUND
+    TrackKind.OVERLAY, TrackKind.STICKER, TrackKind.EFFECT -> ClipTools.OTHER
 }

@@ -48,6 +48,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.MeasurePolicy
 import androidx.compose.ui.platform.AccessibilityManager
 import androidx.compose.ui.platform.LocalAccessibilityManager
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -82,6 +83,7 @@ import app.memix.core.designsystem.component.ToastAction
 import app.memix.core.designsystem.component.ToastDismiss
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.ui.formatTimecode
+import app.memix.core.ui.spokenTime
 import app.memix.core.ui.spokenTimeOf
 import app.memix.feature.videoeditor.timeline.Timeline
 import app.memix.feature.videoeditor.timeline.spokenName
@@ -94,11 +96,15 @@ import kotlinx.coroutines.flow.StateFlow
 import memix.feature.video_editor.generated.resources.Res
 import memix.feature.video_editor.generated.resources.a11y_edit_on_item
 import memix.feature.video_editor.generated.resources.a11y_reorder_position
+import memix.feature.video_editor.generated.resources.a11y_sound_added
+import memix.feature.video_editor.generated.resources.edit_add_sound
 import memix.feature.video_editor.generated.resources.edit_delete
 import memix.feature.video_editor.generated.resources.edit_duplicate
+import memix.feature.video_editor.generated.resources.edit_move
 import memix.feature.video_editor.generated.resources.edit_reorder
 import memix.feature.video_editor.generated.resources.edit_split
 import memix.feature.video_editor.generated.resources.edit_trim
+import memix.feature.video_editor.generated.resources.edit_volume
 import memix.feature.video_editor.generated.resources.editor_close
 import memix.feature.video_editor.generated.resources.editor_dismiss
 import memix.feature.video_editor.generated.resources.editor_empty_body
@@ -124,6 +130,7 @@ import memix.feature.video_editor.generated.resources.explain_last_clip
 import memix.feature.video_editor.generated.resources.explain_reorder_first
 import memix.feature.video_editor.generated.resources.explain_reorder_last
 import memix.feature.video_editor.generated.resources.explain_reorder_one
+import memix.feature.video_editor.generated.resources.explain_sound_unreadable
 import memix.feature.video_editor.generated.resources.explain_split
 import memix.feature.video_editor.generated.resources.import_free_up_space
 import org.jetbrains.compose.resources.stringResource
@@ -152,6 +159,8 @@ fun VideoEditorScreen(
         isBackEnabled = !state.unsavedSheetOpen && (state.reorder != null || state.selectedItemId != null || state.isSaveFailing),
         onBackCompleted = { onIntent(VideoEditorIntent.Back) },
     )
+    // The sounds sheet and the Volume panel take back and Escape themselves while they're open.
+    val ownsEscape = !state.unsavedSheetOpen && !state.sounds.isOpen
     LifecycleEventEffect(Lifecycle.Event.ON_START) { onIntent(VideoEditorIntent.AppStarted) }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { onIntent(VideoEditorIntent.AppStopped) }
 
@@ -161,24 +170,26 @@ fun VideoEditorScreen(
             .background(MemixColors.canvas)
             // Escape does what system back does (spec P1-04 → Interactions); the open sheet handles its own.
             .onPreviewKeyEvent { event ->
-                val goesBack = event.key == Key.Escape && !state.unsavedSheetOpen
+                val goesBack = event.key == Key.Escape && ownsEscape
                 if (goesBack && event.type == KeyEventType.KeyUp) onIntent(VideoEditorIntent.Back)
                 goesBack
             },
     ) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
             TopBar(onClose = { onIntent(VideoEditorIntent.Close) })
-            StageTransportAndTimeline(
+            EditorLayout(
                 stage = { PreviewStage(state, onIntent, previewSurface, onFreeUpSpace) },
                 transport = { TransportRow(state, onIntent) },
                 timeline = {
                     Timeline(state.timeline, state.selectedItemId, state.trimRanges, state.reorder, state.landed, state.preview, state.thumbnails, onIntent)
                 },
+                tools = { ToolBarRegion(state.clipTools, state.reorder, isEmpty = state.timeline.isEmpty, onIntent) },
+                panel = { VolumePanel(state.volumePanel, onIntent, Modifier.fillMaxSize()) },
                 timelineMinHeight = timelineMinHeight(),
                 modifier = Modifier.weight(1f),
             )
-            ToolBarRegion(state.clipTools, state.reorder, onIntent)
         }
+        MemeSoundsSheet(state.sounds, onIntent)
         UnsavedChangesSheet(state.unsavedSheetOpen, onIntent, onFreeUpSpace.takeIf { state.canFreeUpSpace })
     }
 }
@@ -192,30 +203,41 @@ private fun TopBar(onClose: () -> Unit) {
 }
 
 /**
- * Stage on top, transport row, timeline below. The transport row takes what it needs (it grows at large font
- * sizes); the timeline takes 40% of the rest but never less than [timelineMinHeight], and the stage everything else.
+ * Stage on top, transport row, timeline, tool bar at the bottom. The transport row and the tool bar take what they
+ * need (both grow at large font sizes); the timeline takes 40% of the rest but never less than [timelineMinHeight],
+ * and the stage everything else. A tool [panel] covers exactly the timeline and the tool bar (ToolPanel), so the
+ * preview never moves or resizes while it's open.
  */
 @Composable
-private fun StageTransportAndTimeline(
+private fun EditorLayout(
     stage: @Composable () -> Unit,
     transport: @Composable () -> Unit,
     timeline: @Composable () -> Unit,
+    tools: @Composable () -> Unit,
+    panel: @Composable () -> Unit,
     timelineMinHeight: Dp,
     modifier: Modifier = Modifier,
 ) {
-    Layout(contents = listOf(stage, transport, timeline), modifier) { (stageParts, transportParts, timelineParts), constraints ->
+    Layout(contents = listOf(stage, transport, timeline, tools, panel), modifier) { (stageParts, transportParts, timelineParts, toolParts, panelParts), constraints ->
         val width = constraints.maxWidth
         val height = constraints.maxHeight
-        val transportRow = transportParts.first().measure(Constraints(minWidth = width, maxWidth = width))
-        val sharedHeight = (height - transportRow.height).coerceAtLeast(0)
+        val loose = Constraints(minWidth = width, maxWidth = width)
+        val transportRow = transportParts.first().measure(loose)
+        val toolBar = toolParts.first().measure(loose)
+        val sharedHeight = (height - transportRow.height - toolBar.height).coerceAtLeast(0)
         val timelineHeight = max((sharedHeight * TIMELINE_SHARE).roundToInt(), timelineMinHeight.roundToPx()).coerceAtMost(sharedHeight)
         val stageHeight = sharedHeight - timelineHeight
         val stageBox = stageParts.first().measure(Constraints.fixed(width, stageHeight))
         val timelineBox = timelineParts.first().measure(Constraints.fixed(width, timelineHeight))
+        val timelineTop = stageHeight + transportRow.height
+        // Nothing to measure while the panel is closed: its slot emits no layout then.
+        val panelBox = panelParts.firstOrNull()?.measure(Constraints.fixed(width, (height - timelineTop).coerceAtLeast(0)))
         layout(width, height) {
             stageBox.place(0, 0)
             transportRow.place(0, stageHeight)
-            timelineBox.place(0, stageHeight + transportRow.height)
+            timelineBox.place(0, timelineTop)
+            toolBar.place(0, timelineTop + timelineHeight)
+            panelBox?.place(0, timelineTop)
         }
     }
 }
@@ -353,7 +375,8 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
     val accessibilityManager = LocalAccessibilityManager.current
     LaunchedEffect(toast.id) {
         val baseMillis = when (toast.message) {
-            is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition -> WHAT_HAPPENED_TOAST_MILLIS
+            is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition, is ToastMessage.SoundAdded ->
+                WHAT_HAPPENED_TOAST_MILLIS
             ToastMessage.MissingMedia, is ToastMessage.Explain -> EXPLANATION_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
@@ -369,6 +392,8 @@ private fun toastText(message: ToastMessage): String = when (message) {
     is ToastMessage.Explain -> explanationText(message.explanation)
     is ToastMessage.Edited -> stringResource(Res.string.a11y_edit_on_item, editName(message.edit), spokenName(message.item))
     is ToastMessage.ReorderPosition -> stringResource(Res.string.a11y_reorder_position, message.position, message.count)
+    is ToastMessage.SoundAdded ->
+        stringResource(Res.string.a11y_sound_added, message.title.inLanguage(LocalLocale.current.language), spokenTime(message.atUs))
 }
 
 @Composable
@@ -379,6 +404,9 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.DELETE -> Res.string.edit_delete
         VideoEdit.DUPLICATE -> Res.string.edit_duplicate
         VideoEdit.REORDER -> Res.string.edit_reorder
+        VideoEdit.MOVE -> Res.string.edit_move
+        VideoEdit.VOLUME -> Res.string.edit_volume
+        VideoEdit.ADD_SOUND -> Res.string.edit_add_sound
     },
 )
 
@@ -390,6 +418,7 @@ private fun explanationText(explanation: Explanation): String = stringResource(
         Explanation.REORDER_ONE_CLIP -> Res.string.explain_reorder_one
         Explanation.ALREADY_FIRST -> Res.string.explain_reorder_first
         Explanation.ALREADY_LAST -> Res.string.explain_reorder_last
+        Explanation.SOUND_UNREADABLE -> Res.string.explain_sound_unreadable
     },
 )
 

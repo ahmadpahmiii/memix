@@ -112,4 +112,22 @@
     <string name="a11y_clip_label">klip %1$d</string>
     <string name="a11y_reorder_tile">%1$s, klip %2$d dari %3$d</string>
     <string name="a11y_reorder_position">Klip %1$d dari %2$d</string>
+    <!-- Meme sounds (P1-08): machine drafts until P5. Notes in values/strings.xml. -->
+    <string name="tool_meme_sounds">Suara meme</string>
+    <string name="tool_volume">Volume</string>
+    <string name="tool_move_here">Pindah ke sini</string>
+    <string name="tool_move_here_a11y">Pindah ke playhead</string>
+    <string name="volume_title">Volume</string>
+    <string name="volume_this_sound">Suara ini</string>
+    <string name="volume_percent">%1$d%</string>
+    <string name="sound_meta">%1$s · %2$s</string>
+    <string name="explain_sound_unreadable">Suara itu tidak bisa diputar. Coba yang lain.</string>
+    <string name="a11y_sound_added">%1$s ditambahkan di %2$s</string>
+    <string name="edit_move">Pindahkan</string>
+    <string name="edit_volume">Volume</string>
+    <string name="edit_add_sound">Tambah suara</string>
+    <string name="timeline_add_meme_sound">Tambah suara meme</string>
+    <string name="sounds_title">Suara meme</string>
+    <string name="sounds_empty_title">Belum ada suara</string>
+    <string name="sounds_empty_body">Koleksi suara meme hadir di build berikutnya.</string>
 </resources>

@@ -154,19 +154,19 @@ fun Project.moveMainClip(itemId: String, steps: Int): Project {
     return reorderMainClips(ids.toMutableList().apply { add(to, removeAt(from)) })
 }
 
-// ---- Helpers ------------------------------------------------------------------------------------------------------
+// ---- Helpers (the internal ones are shared with SoundEdits.kt and MoveEdits.kt) ------------------------------------
 
 /** No source limit: far enough that no drag reaches it, near enough that adding a screen of time can't overflow. */
 private const val UNLIMITED_EARLIER_US = Long.MIN_VALUE / 4
 private const val UNLIMITED_LATER_US = Long.MAX_VALUE / 4
 
-private data class Found(val track: Track, val item: TimelineItem)
+internal data class Found(val track: Track, val item: TimelineItem)
 
-private fun Project.tracks(): List<Track> = video?.tracks.orEmpty()
+internal fun Project.tracks(): List<Track> = video?.tracks.orEmpty()
 
-private fun Project.mainTrack(): Track? = tracks().firstOrNull { it.kind == TrackKind.MAIN_VIDEO }
+internal fun Project.mainTrack(): Track? = tracks().firstOrNull { it.kind == TrackKind.MAIN_VIDEO }
 
-private fun Project.findItem(itemId: String): Found? {
+internal fun Project.findItem(itemId: String): Found? {
     for (track in tracks()) {
         val item = track.items.firstOrNull { it.id == itemId } ?: continue
         return Found(track, item)
@@ -174,18 +174,18 @@ private fun Project.findItem(itemId: String): Found? {
     return null
 }
 
-private fun Project.withTracks(tracks: List<Track>): Project {
+internal fun Project.withTracks(tracks: List<Track>): Project {
     val timeline = video ?: return this
     return copy(video = timeline.copy(tracks = tracks))
 }
 
-private fun Project.replaceTrack(track: Track): Project = withTracks(tracks().map { if (it.id == track.id) track else it })
+internal fun Project.replaceTrack(track: Track): Project = withTracks(tracks().map { if (it.id == track.id) track else it })
 
 // Main clips by start, the model's order breaking ties, so re-packing never swaps two clips.
-private fun mainClipsInOrder(track: Track): List<TimelineItem> = track.items.sortedBy { it.startUs }
+internal fun mainClipsInOrder(track: Track): List<TimelineItem> = track.items.sortedBy { it.startUs }
 
 /** [items] back to back from 0:00, in the order given. */
-private fun repacked(items: List<TimelineItem>): List<TimelineItem> {
+internal fun repacked(items: List<TimelineItem>): List<TimelineItem> {
     var nextStartUs = 0L
     return items.map { item ->
         item.withStart(nextStartUs).also { nextStartUs += item.durationUs }
@@ -200,7 +200,7 @@ private fun Track.nextStartUs(item: TimelineItem): Long {
     return items.filter { it.id != item.id && it.startUs >= endUs }.minOfOrNull { it.startUs } ?: UNLIMITED_LATER_US
 }
 
-private fun Track.isFree(startUs: Long, endUs: Long): Boolean = items.none { it.startUs < endUs && it.startUs + it.durationUs > startUs }
+internal fun Track.isFree(startUs: Long, endUs: Long): Boolean = items.none { it.startUs < endUs && it.startUs + it.durationUs > startUs }
 
 /** How much of the source plays before the item's start: null when there's no limit or it isn't known. */
 private fun TimelineItem.footageBeforeUs(): Long? = when (this) {
@@ -218,7 +218,7 @@ private fun TimelineItem.footageAfterUs(): Long? = when (this) {
 
 private fun MediaRef.remainingAfter(trimOutUs: Long): Long = durationUs?.let { (it - trimOutUs).coerceAtLeast(0) } ?: 0L
 
-private fun TimelineItem.withStart(startUs: Long): TimelineItem = when (this) {
+internal fun TimelineItem.withStart(startUs: Long): TimelineItem = when (this) {
     is MediaClip -> copy(startUs = startUs)
     is AudioClip -> copy(startUs = startUs)
     is TextItem -> copy(startUs = startUs)

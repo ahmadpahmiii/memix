@@ -115,14 +115,33 @@ internal suspend fun PointerInputScope.detectReorderGestures(
         when {
             // Taken, so nothing below scrolls or taps, and ignored: tapping the wash is how people try to get out.
             !isOnStrip(down.position) -> tapUntilUp(down, onTap = {})
-            onGrab(down.position.x) -> dragUntilUp(down.id, onDrag, onDrop)
+            onGrab(down.position.x) -> dragUntilUp(down.id, { onDrag(it.x) }, onDrop)
             else -> tapUntilUp(down, onTap)
         }
         return@awaitEachGesture
     }
     val clip = mainClipAt(down.position) ?: return@awaitEachGesture
     if (!heldStillForLongPress(down)) return@awaitEachGesture
-    if (onLift(clip, down.position.x)) dragUntilUp(down.id, onDrag, onDrop)
+    if (onLift(clip, down.position.x)) dragUntilUp(down.id, { onDrag(it.x) }, onDrop)
+}
+
+/**
+ * Move by drag (spec P1-06 → Edits → Move): a long-press on an item of any lane but the main track ([isMovableAt])
+ * lifts it ([onLift]) and the same finger moves it, on both axes ([onDrag] gets the finger's position), until it lifts
+ * or is lost ([onDrop]); system back cancels it elsewhere. Until the press is long enough nothing is consumed, so taps
+ * and scrolling work as usual; a touch another detector took (a trim handle, reorder mode) is left alone.
+ */
+internal suspend fun PointerInputScope.detectMoveGestures(
+    isMovableAt: (Offset) -> Boolean,
+    onLift: (position: Offset) -> Unit,
+    onDrag: (position: Offset) -> Unit,
+    onDrop: () -> Unit,
+) = awaitEachGesture {
+    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+    if (down.isConsumed || !isMovableAt(down.position)) return@awaitEachGesture
+    if (!heldStillForLongPress(down)) return@awaitEachGesture
+    onLift(down.position)
+    dragUntilUp(down.id, onDrag, onDrop)
 }
 
 /** True when the finger stays down, alone and within the touch slop, for the long-press time. Consumes nothing. */
@@ -139,7 +158,7 @@ private suspend fun AwaitPointerEventScope.heldStillForLongPress(down: PointerIn
 }
 
 /** Takes every change of the gesture; [onDrag] on each move of finger [pointerId], [onDrop] when it lifts or is lost. */
-private suspend fun AwaitPointerEventScope.dragUntilUp(pointerId: PointerId, onDrag: (Float) -> Unit, onDrop: () -> Unit) {
+private suspend fun AwaitPointerEventScope.dragUntilUp(pointerId: PointerId, onDrag: (Offset) -> Unit, onDrop: () -> Unit) {
     try {
         while (true) {
             val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -147,7 +166,7 @@ private suspend fun AwaitPointerEventScope.dragUntilUp(pointerId: PointerId, onD
             val moved = finger != null && finger.positionChange() != Offset.Zero
             event.changes.forEach { it.consume() }
             if (finger == null || !finger.pressed) break
-            if (moved) onDrag(finger.position.x)
+            if (moved) onDrag(finger.position)
         }
     } finally {
         onDrop()

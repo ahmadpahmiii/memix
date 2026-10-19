@@ -69,8 +69,34 @@ internal class EditorCheckProjects : KoinComponent {
         TIMELINE_CHECK -> timelineCheck()
         TIMELINE_TRACKS -> timelineTracks()
         HOUR_LONG -> hourLong()
+        SOUND_SYNC -> soundSync()
         else -> null
     }
+
+    /**
+     * The P1-08 sync check: 12 s of photos (silent, so only the sounds are heard) and the 2 kHz test tone, whose sound
+     * starts 0.5 s into `sound.m4a`, placed so the tone starts at 1.0 s, 6.0 s, 8.0 s (start trimmed further in) and
+     * 11.8 s (runs past the end at 12 s, so the last 0.3 s is washed and silent). The preview logs where each is heard
+     * (`MemixPreview`, "Sound onset"); the steps are in engineer-hand-checks.md → P1-08.
+     */
+    private fun soundSync() = project(
+        SOUND_SYNC,
+        mainClips = (0 until SOUND_SYNC_PHOTOS).map { index ->
+            MediaClip("sync-photo-$index", startUs = index * 3_000_000L, source = photo, trimInUs = 0, trimOutUs = 3_000_000)
+        },
+        extraTracks = listOf(
+            Track(
+                "sync-sounds",
+                TrackKind.MEME_SOUND,
+                listOf(
+                    AudioClip("sync-start", startUs = 1_000_000, source = sound, trimInUs = 500_000, trimOutUs = 1_000_000),
+                    AudioClip("sync-middle", startUs = 6_000_000, source = sound, trimInUs = 500_000, trimOutUs = 1_000_000),
+                    AudioClip("sync-trimmed", startUs = 8_000_000, source = sound, trimInUs = 700_000, trimOutUs = 1_000_000),
+                    AudioClip("sync-past-end", startUs = 11_800_000, source = sound, trimInUs = 500_000, trimOutUs = 1_000_000),
+                ),
+            ),
+        ),
+    )
 
     /**
      * The P1-04 frame-rate check: 30 s of a 1080 × 1920, 30 fps video on six tracks. Only the main video and the
@@ -201,7 +227,9 @@ internal class EditorCheckProjects : KoinComponent {
         const val TIMELINE_CHECK = "timeline-check"
         const val TIMELINE_TRACKS = "timeline-tracks"
         const val HOUR_LONG = "hour-long"
-        private val NAMES = listOf(EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG)
+        const val SOUND_SYNC = "sound-sync"
+        private val NAMES = listOf(EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC)
+        private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20
         private const val HOUR_LONG_CLIPS = 120
 

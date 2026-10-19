@@ -1,0 +1,335 @@
+{
+  "schema": 1,
+  "pack": "starter",
+  "note": "Staged for P1-08; titles in id/es/pt/hi are machine drafts until P5. See README.md.",
+  "normalization": {
+    "targetLufs": -16.0,
+    "truePeakCapDbtp": -1.0,
+    "codec": "AAC-LC",
+    "bitrateKbps": 128,
+    "sampleRateHz": 48000,
+    "tool": "scripts/audio/normalize.sh"
+  },
+  "sounds": [
+    {
+      "id": "f23a5025-7b39-5b34-9a0c-40eac1a1a9e8",
+      "file": "sad-trombone.m4a",
+      "title": {
+        "en": "Sad trombone",
+        "id": "Trombon sedih",
+        "es": "Trombón triste",
+        "pt": "Trombone triste",
+        "hi": "उदास ट्रॉम्बोन"
+      },
+      "durationMs": 4729,
+      "author": "kirbydx",
+      "sourceUrl": "https://freesound.org/people/kirbydx/sounds/175409/",
+      "licenseType": "CC0",
+      "licenseName": "Creative Commons 0 (CC0 1.0 Universal Public Domain Dedication)",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseProof": "content/starter-sounds/licenses/sad-trombone.md",
+      "credit": null,
+      "courtesyCredit": "kirbydx via Freesound",
+      "sha256Source": "de4a029a0537dbecaf49b4936b0969919f5b7b54083d3859d584b5c4cc7dee3d",
+      "sha256Output": "fe36a0160e9acb0ddbdb438b0793aedde4b2cd445f5ca406259ed5bb814ac026",
+      "fetchedFrom": "freesound-hq-preview",
+      "previewUrl": "https://cdn.freesound.org/previews/175/175409_1326576-hq.mp3",
+      "edits": "leading/trailing silence trimmed (peak - 60 dB); gain -2.0 dB (to -16 LUFS); AAC-LC 128 kbps 48 kHz .m4a",
+      "loudness": {
+        "lufs": -16.0,
+        "truePeakDbtp": -5.1
+      },
+      "channels": 2,
+      "licenseCheckedAt": "2026-10-09T09:17:22Z",
+      "approvedOn": "2026-10-08"
+    },
+    {
+      "id": "c639dab2-ac87-5e0d-8dc7-29ffe2ab038d",
+      "file": "record-scratch.m4a",
+      "title": {
+        "en": "Record scratch",
+        "id": "Goresan piringan hitam",
+        "es": "Rayón de disco",
+        "pt": "Arranhão de disco",
+        "hi": "रिकॉर्ड स्क्रैच"
+      },
+      "durationMs": 1835,
+      "author": "musicvision31",
+      "sourceUrl": "https://freesound.org/people/musicvision31/sounds/431779/",
+      "licenseType": "CC0",
+      "licenseName": "Creative Commons 0 (CC0 1.0 Universal Public Domain Dedication)",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseProof": "content/starter-sounds/licenses/record-scratch.md",
+      "credit": null,
+      "courtesyCredit": "musicvision31 via Freesound",
+      "sha256Source": "18e5517e2322bbce4796066f02c8786dc6dbaa9362df1edf12dc8b6e5c5f862a",
+      "sha256Output": "e9012f2dc43d6bda8bf020b5e28c3a635f413ccfcca820c0cb7af21456c97f7b",
+      "fetchedFrom": "freesound-hq-preview",
+      "previewUrl": "https://cdn.freesound.org/previews/431/431779_817038-hq.mp3",
+      "edits": "leading/trailing silence trimmed (peak - 60 dB); gain -5.8 dB (to -16 LUFS); AAC-LC 128 kbps 48 kHz .m4a",
+      "loudness": {
+        "lufs": -16.1,
+        "truePeakDbtp": -4.0
+      },
+      "channels": 2,
+      "licenseCheckedAt": "2026-10-09T09:17:40Z",
+      "approvedOn": "2026-10-08"
+    },
+    {
+      "id": "f152c936-e835-5dc6-845e-072223b720b0",
+      "file": "boing.m4a",
+      "title": {
+        "en": "Boing",
+        "id": "Boing",
+        "es": "Boing",
+        "pt": "Boing",
+        "hi": "बोइंग"
+      },
+      "durationMs": 1668,
+      "author": "reelworldstudio",
+      "sourceUrl": "https://freesound.org/people/reelworldstudio/sounds/161122/",
+      "licenseType": "CC0",
+      "licenseName": "Creative Commons 0 (CC0 1.0 Universal Public Domain Dedication)",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseProof": "content/starter-sounds/licenses/boing.md",
+      "credit": null,
+      "courtesyCredit": "reelworldstudio via Freesound",
+      "sha256Source": "c354584c0d083c13444a8acb6be4726a90b420463e5a66cec58769f7bb98acf3",
+      "sha256Output": "6f253a3e07a3392bcfab1fba81a429fb598094d648fb0170dd0c5be79b769c57",
+      "fetchedFrom": "freesound-hq-preview",
+      "previewUrl": "https://cdn.freesound.org/previews/161/161122_2750714-hq.mp3",
+      "edits": "leading/trailing silence trimmed (peak - 60 dB); gain +22.5 dB (to -16 LUFS); AAC-LC 128 kbps 48 kHz .m4a",
+      "loudness": {
+        "lufs": -16.2,
+        "truePeakDbtp": -2.5
+      },
+      "channels": 2,
+      "licenseCheckedAt": "2026-10-09T09:17:43Z",
+      "approvedOn": "2026-10-08"
+    },
+    {
+      "id": "0f8b7c33-2030-5d1a-b120-5c0ca722a720",
+      "file": "sitcom-laugh.m4a",
+      "title": {
+        "en": "Sitcom laugh",
+        "id": "Tawa sitkom",
+        "es": "Risas de sitcom",
+        "pt": "Risada de sitcom",
+        "hi": "सिटकॉम हँसी"
+      },
+      "durationMs": 5295,
+      "author": "Kinoton",
+      "sourceUrl": "https://freesound.org/people/Kinoton/sounds/371562/",
+      "licenseType": "CC0",
+      "licenseName": "Creative Commons 0 (CC0 1.0 Universal Public Domain Dedication)",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseProof": "content/starter-sounds/licenses/sitcom-laugh.md",
+      "credit": null,
+      "courtesyCredit": "Kinoton via Freesound",
+      "sha256Source": "9b8129273534e3199a48360c462b3a33a903f2328051b2cda6689b698475a53f",
+      "sha256Output": "13c7aa7a531aafdea657ca0b24868d4b3c393c3ecf9219e6c492ecd75799afce",
+      "fetchedFrom": "freesound-hq-preview",
+      "previewUrl": "https://cdn.freesound.org/previews/371/371562_2247456-hq.mp3",
+      "edits": "leading/trailing silence trimmed (peak - 60 dB); gain +0.0 dB (peak-capped at -1.5 dBTP); AAC-LC 128 kbps 48 kHz .m4a",
+      "loudness": {
+        "lufs": -18.5,
+        "truePeakDbtp": -1.9
+      },
+      "channels": 2,
+      "licenseCheckedAt": "2026-10-09T09:17:45Z",
+      "approvedOn": "2026-10-08"
+    },
+    {
+      "id": "0fa01b92-fb35-5afa-b1fd-c7c35f8e10cc",
+      "file": "whoosh.m4a",
+      "title": {
+        "en": "Whoosh",
+        "id": "Wus",
+        "es": "Zas",
+        "pt": "Vupt",
+        "hi": "व्हूश"
+      },
+      "durationMs": 426,
+      "author": "qubodup",
+      "sourceUrl": "https://freesound.org/people/qubodup/sounds/60013/",
+      "licenseType": "CC0",
+      "licenseName": "Creative Commons 0 (CC0 1.0 Universal Public Domain Dedication)",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseProof": "content/starter-sounds/licenses/whoosh.md",
+      "credit": null,
+      "courtesyCredit": "qubodup via Freesound (https://freesound.org/s/60013/)",
+      "sha256Source": "ebdb219e7f36f7e1aecdb045d6d8bdad059119af319863777c7302a69fa41a92",
+      "sha256Output": "d166eaf96cd142dc36637d25da7bbaf6cf27b24c287204ffad160eafc006cc0a",
+      "fetchedFrom": "freesound-hq-preview",
+      "previewUrl": "https://cdn.freesound.org/previews/60/60013_71257-hq.mp3",
+      "edits": "leading/trailing silence trimmed (peak - 60 dB); gain +2.1 dB (peak-capped at -1.5 dBTP); AAC-LC 128 kbps 48 kHz .m4a",
+      "loudness": {
+        "lufs": -18.5,
+        "truePeakDbtp": -1.7
+      },
+      "channels": 2,
+      "licenseCheckedAt": "2026-10-09T09:17:48Z",
+      "approvedOn": "2026-10-08"
+    },
+    {
+      "id": "5f573504-7617-55fd-ae51-e878602ff727",
+      "file": "deep-boom.m4a",
+      "title": {
+        "en": "Deep boom",
+        "id": "Dentuman berat",
+        "es": "Bum grave",
+        "pt": "Bum grave",
+        "hi": "गहरा धमाका"
+      },
+      "durationMs": 2997,
+      "author": "_earthbound_",
+      "sourceUrl": "https://freesound.org/people/_earthbound_/sounds/856795/",
+      "licenseType": "CC0",
+      "licenseName": "Creative Commons 0 (CC0 1.0 Universal Public Domain Dedication)",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseProof": "content/starter-sounds/licenses/deep-boom.md",
+      "credit": null,
+      "courtesyCredit": "_earthbound_ via Freesound",
+      "sha256Source": "dbf2675d5bcf65cae0c2ace14046d291eb8a1be9377303faa8697ea0427af316",
+      "sha256Output": "c5ab07f3ff94d76ba9f84380044b96dd630a2eded16c0c247b5c08b00132a4c2",
+      "fetchedFrom": "freesound-hq-preview",
+      "previewUrl": "https://cdn.freesound.org/previews/856/856795_271153-hq.mp3",
+      "edits": "excerpt 0-3 s of the source; 0.5 s fade-out; leading/trailing silence trimmed (peak - 60 dB); gain -13.8 dB (to -16 LUFS); AAC-LC 128 kbps 48 kHz .m4a",
+      "loudness": {
+        "lufs": -16.0,
+        "truePeakDbtp": -9.4
+      },
+      "channels": 2,
+      "licenseCheckedAt": "2026-10-09T09:17:51Z",
+      "approvedOn": "2026-10-08"
+    },
+    {
+      "id": "7afc46a0-5fd7-5eea-8360-4ee9f2be629d",
+      "file": "awkward-crickets.m4a",
+      "title": {
+        "en": "Awkward crickets",
+        "id": "Jangkrik canggung",
+        "es": "Grillos incómodos",
+        "pt": "Grilos constrangedores",
+        "hi": "अजीब झींगुर"
+      },
+      "durationMs": 2982,
+      "author": "Defelozedd94",
+      "sourceUrl": "https://freesound.org/people/Defelozedd94/sounds/522298/",
+      "licenseType": "CC0",
+      "licenseName": "Creative Commons 0 (CC0 1.0 Universal Public Domain Dedication)",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseProof": "content/starter-sounds/licenses/awkward-crickets.md",
+      "credit": null,
+      "courtesyCredit": "Defelozedd94 via Freesound",
+      "sha256Source": "8ae77b161d9e530739f31f4885941e6bdfff218060d530314b59383cbce0bdfa",
+      "sha256Output": "14e7530356287fd9d0386d9720f217ce1bf390f53ea50a93215b864eb10ae791",
+      "fetchedFrom": "freesound-hq-preview",
+      "previewUrl": "https://cdn.freesound.org/previews/522/522298_9084007-hq.mp3",
+      "edits": "excerpt 129.75-132.75 s of the source; 0.2 s fade-in; 0.5 s fade-out; leading/trailing silence trimmed (peak - 60 dB); gain +9.3 dB (to -16 LUFS); AAC-LC 128 kbps 48 kHz .m4a",
+      "loudness": {
+        "lufs": -16.1,
+        "truePeakDbtp": -7.2
+      },
+      "channels": 2,
+      "licenseCheckedAt": "2026-10-09T09:17:54Z",
+      "approvedOn": "2026-10-08"
+    },
+    {
+      "id": "b03bbcfb-075a-56aa-b83b-4075feefd73e",
+      "file": "wrong-buzzer.m4a",
+      "title": {
+        "en": "Wrong buzzer",
+        "id": "Bel salah",
+        "es": "Timbre de error",
+        "pt": "Campainha de erro",
+        "hi": "गलत जवाब बज़र"
+      },
+      "durationMs": 494,
+      "author": "KevinVG207",
+      "sourceUrl": "https://freesound.org/people/KevinVG207/sounds/331912/",
+      "licenseType": "CC0",
+      "licenseName": "Creative Commons 0 (CC0 1.0 Universal Public Domain Dedication)",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseProof": "content/starter-sounds/licenses/wrong-buzzer.md",
+      "credit": null,
+      "courtesyCredit": "KevinVG207 via Freesound",
+      "sha256Source": "4a15cae7621711eca9d800c6dd1926f9a2381131a545d16fca15953cabc03241",
+      "sha256Output": "4d3c101cb8746423652e24255c014349ceb4cb9f87a9077ae77dd41ca516699d",
+      "fetchedFrom": "freesound-hq-preview",
+      "previewUrl": "https://cdn.freesound.org/previews/331/331912_3248244-hq.mp3",
+      "edits": "leading/trailing silence trimmed (peak - 60 dB); gain -10.1 dB (to -16 LUFS); AAC-LC 128 kbps 48 kHz .m4a",
+      "loudness": {
+        "lufs": -16.1,
+        "truePeakDbtp": -6.1
+      },
+      "channels": 1,
+      "licenseCheckedAt": "2026-10-09T09:17:57Z",
+      "approvedOn": "2026-10-08"
+    },
+    {
+      "id": "af141ed9-45db-5cd9-ac73-b0fbe738917d",
+      "file": "cartoon-fall.m4a",
+      "title": {
+        "en": "Cartoon fall",
+        "id": "Jatuh kartun",
+        "es": "Caída de caricatura",
+        "pt": "Queda de desenho animado",
+        "hi": "कार्टून गिरना"
+      },
+      "durationMs": 1991,
+      "author": "plasterbrain",
+      "sourceUrl": "https://freesound.org/people/plasterbrain/sounds/395443/",
+      "licenseType": "CC0",
+      "licenseName": "Creative Commons 0 (CC0 1.0 Universal Public Domain Dedication)",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseProof": "content/starter-sounds/licenses/cartoon-fall.md",
+      "credit": null,
+      "courtesyCredit": "plasterbrain via Freesound",
+      "sha256Source": "8285df3f6ed2e7161a2d11ae5b08a01f3a08673b23d1ea20ae76aef7270ea650",
+      "sha256Output": "11edbfb31d4ecbd49d31a9f86b648e62388ed870e4c12c7fb3fde4dfa9174ba7",
+      "fetchedFrom": "freesound-hq-preview",
+      "previewUrl": "https://cdn.freesound.org/previews/395/395443_4284968-hq.mp3",
+      "edits": "leading/trailing silence trimmed (peak - 60 dB); gain -8.0 dB (to -16 LUFS); AAC-LC 128 kbps 48 kHz .m4a",
+      "loudness": {
+        "lufs": -16.0,
+        "truePeakDbtp": -15.2
+      },
+      "channels": 2,
+      "licenseCheckedAt": "2026-10-09T09:18:00Z",
+      "approvedOn": "2026-10-08"
+    },
+    {
+      "id": "220984ab-11b6-59d9-b6f6-b08e81161df1",
+      "file": "drum-roll.m4a",
+      "title": {
+        "en": "Drum roll",
+        "id": "Tabuhan drum",
+        "es": "Redoble de tambor",
+        "pt": "Rufar de tambor",
+        "hi": "ड्रम रोल"
+      },
+      "durationMs": 4738,
+      "author": "bigjoedrummer",
+      "sourceUrl": "https://freesound.org/people/bigjoedrummer/sounds/77305/",
+      "licenseType": "CC0",
+      "licenseName": "Creative Commons 0 (CC0 1.0 Universal Public Domain Dedication)",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseProof": "content/starter-sounds/licenses/drum-roll.md",
+      "credit": null,
+      "courtesyCredit": "bigjoedrummer via Freesound",
+      "sha256Source": "2f3d571bccfaf26cbdf2d08ebb3a18fdbdde21315042d9fa9d819d1d99721fa3",
+      "sha256Output": "1565017725fa56c463d52615bd998858ee719d363e59ee0cf977aa4a652f1266",
+      "fetchedFrom": "freesound-hq-preview",
+      "previewUrl": "https://cdn.freesound.org/previews/77/77305_1105584-hq.mp3",
+      "edits": "leading/trailing silence trimmed (peak - 60 dB); gain -1.3 dB (peak-capped at -1.5 dBTP); AAC-LC 128 kbps 48 kHz .m4a",
+      "loudness": {
+        "lufs": -23.7,
+        "truePeakDbtp": -1.8
+      },
+      "channels": 2,
+      "licenseCheckedAt": "2026-10-09T09:18:02Z",
+      "approvedOn": "2026-10-08"
+    }
+  ]
+}

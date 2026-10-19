@@ -1,6 +1,9 @@
 package app.memix.core.designsystem.component
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -23,6 +26,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -32,8 +36,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +54,8 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -54,6 +63,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
@@ -89,6 +99,8 @@ import org.jetbrains.compose.resources.stringResource
  * one [Scrim] for several sheets, so it doesn't blink off and on when one sheet hands over to the next.
  * The sheet grows with its content until its top is `space-10` below the status bar; give the part that should
  * scroll then `Modifier.weight(1f, fill = false)` and a vertical scroll, so the title and bottom button stay put.
+ * With [opensAtHalfHeight] (a long list, such as the editor's Meme sounds sheet) it opens no taller than half the
+ * window, so the screen's top stays in view, and a drag up on it grows it to the full height.
  */
 @Composable
 fun Sheet(
@@ -99,6 +111,7 @@ fun Sheet(
     heroTitle: Boolean = false,
     blocking: Boolean = false,
     drawScrim: Boolean = true,
+    opensAtHalfHeight: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val reduceMotion = MemixTheme.reduceMotion
@@ -115,7 +128,7 @@ fun Sheet(
             enter = if (reduceMotion) fadeIn(tween(MemixMotion.durationPress)) else slideInVertically(tween(MemixMotion.durationSheet)) { it },
             exit = if (reduceMotion) fadeOut(tween(MemixMotion.durationPress)) else slideOutVertically(tween(MemixMotion.durationSheet)) { it },
         ) {
-            SheetSurface(title, heroTitle, blocking, onDismiss, content)
+            SheetSurface(title, heroTitle, blocking, opensAtHalfHeight, onDismiss, content)
         }
     }
 }
@@ -154,11 +167,16 @@ private fun SheetSurface(
     title: String,
     heroTitle: Boolean,
     blocking: Boolean,
+    opensAtHalfHeight: Boolean,
     onDismiss: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val dragOffset = remember { Animatable(0f) }
+    var expanded by remember { mutableStateOf(!opensAtHalfHeight) }
+    val halfWindowHeight = with(LocalDensity.current) { (LocalWindowInfo.current.containerSize.height / 2).toDp() }
+    val heightLimit = if (expanded) Modifier else Modifier.heightIn(max = halfWindowHeight)
+    val sizeSpec: FiniteAnimationSpec<IntSize> = if (MemixTheme.reduceMotion) snap() else tween(MemixMotion.durationSheet)
     val focusRequester = remember { FocusRequester() }
     // Focus moves to the sheet itself (no ring is drawn there), so Escape reaches it even after a touch open.
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -166,7 +184,11 @@ private fun SheetSurface(
         Modifier
     } else {
         Modifier.draggable(
-            rememberDraggableState { delta -> scope.launch { dragOffset.snapTo((dragOffset.value + delta).coerceAtLeast(0f)) } },
+            rememberDraggableState { delta ->
+                // Up grows a half-height sheet to the full height; down follows the finger towards closing.
+                if (delta < 0f && !expanded && dragOffset.value == 0f) expanded = true
+                scope.launch { dragOffset.snapTo((dragOffset.value + delta).coerceAtLeast(0f)) }
+            },
             Orientation.Vertical,
             onDragStopped = { velocity ->
                 if (dragOffset.value > DismissDistancePx || velocity > DismissVelocityPx) onDismiss()
@@ -178,6 +200,8 @@ private fun SheetSurface(
         Modifier
             .fillMaxWidth()
             .offset { IntOffset(0, dragOffset.value.roundToInt()) }
+            .then(heightLimit)
+            .animateContentSize(sizeSpec)
             .dropShadow(MemixShapes.radiusLgTop, MemixElevation.shadowSheet)
             .clip(MemixShapes.radiusLgTop)
             .background(MemixColors.surface)

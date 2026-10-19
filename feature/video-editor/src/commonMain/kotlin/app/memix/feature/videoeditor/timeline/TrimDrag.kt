@@ -132,7 +132,7 @@ internal fun snapTargetsFor(timeline: TimelineUi, draggedItemId: String): LongAr
 }
 
 /** The value in sorted [values] nearest to [timeUs], or null when there are none. */
-private fun nearestIn(values: LongArray, timeUs: Long): Long? {
+internal fun nearestIn(values: LongArray, timeUs: Long): Long? {
     if (values.isEmpty()) return null
     // The first value at or after timeUs (LongArray.binarySearch is JVM-only).
     var low = 0
@@ -150,11 +150,15 @@ private fun nearestIn(values: LongArray, timeUs: Long): Long? {
     }
 }
 
-/** Where the snap guide goes while a trim is snapped, or null; none when the target is the playhead, already a line. */
+/**
+ * Where the snap guide goes while a trim or a move is snapped, or null; none when the target is the playhead, already a
+ * line.
+ */
 internal fun snapGuideX(state: TimelineState, density: Float, widthPx: Float): Float? {
-    val trim = state.trim ?: return null
-    val snappedUs = trim.snappedToUs
-    if (trim.isReleased || snappedUs == TrimDrag.NOT_SNAPPED || snappedUs == state.playheadUs) return null
+    val trim = state.trim?.takeUnless { it.isReleased }
+    val move = state.move?.takeUnless { it.isReleased }
+    val snappedUs = trim?.snappedToUs ?: move?.snappedToUs ?: return null
+    if (snappedUs == TrimDrag.NOT_SNAPPED || snappedUs == MoveDrag.NOT_SNAPPED || snappedUs == state.playheadUs) return null
     return xOf(snappedUs, state.playheadUs, widthPx / 2, pxPerUs(state.dpPerSecond, density))
 }
 
@@ -170,23 +174,41 @@ internal fun CancelTrimOnBack(controller: TimelineController) {
 }
 
 /**
- * The trim's value bubble (spec P1-06 → Bubbles and guides): the new length on a `surface-raised` pill (no shadow: the
- * value step sets it apart), `space-1` above the dragged item's row, centered on the moving edge and kept inside the
- * timeline on both axes.
- * Only its text recomposes (when the shown hundredths change); where it sits is read at placement.
+ * The value bubble of a drag (spec P1-06 → Bubbles and guides): a trim's new length, centered on the moving edge, or a
+ * move's new start, centered on the item's start. A `surface-raised` pill (no shadow: the value step sets it apart),
+ * `space-1` above the dragged item's row and kept inside the timeline on both axes. Only its text recomposes (when the
+ * shown hundredths change); where it sits is read at placement.
  */
 @Composable
-internal fun TrimValueBubble(controller: TimelineController, rulerHeightPx: Float, laneScroll: ScrollState) {
+internal fun EditValueBubble(controller: TimelineController, rulerHeightPx: Float, laneScroll: ScrollState) {
     val state = controller.state
-    val drag = state.trim?.takeUnless { it.isReleased } ?: return
-    val length by remember(drag) { derivedStateOf { formatTimecode(drag.endUs - drag.startUs) } }
+    val trim = state.trim?.takeUnless { it.isReleased }
+    val move = state.move?.takeUnless { it.isReleased }
+    when {
+        trim != null -> ValueBubble(trim, { formatTimecode(trim.endUs - trim.startUs) }, { trim.edgeUs }, { trim.row.topPx }, controller, rulerHeightPx, laneScroll)
+        move != null -> ValueBubble(move, { formatTimecode(move.startUs) }, { move.startUs }, { move.row.topPx }, controller, rulerHeightPx, laneScroll)
+    }
+}
+
+@Composable
+private fun ValueBubble(
+    drag: Any,
+    value: () -> String,
+    anchorUs: () -> Long,
+    rowTopPx: () -> Float,
+    controller: TimelineController,
+    rulerHeightPx: Float,
+    laneScroll: ScrollState,
+) {
+    val state = controller.state
+    val text by remember(drag) { derivedStateOf(value) }
     val fadeIn = remember(drag) { Animatable(0f) }
     LaunchedEffect(drag) { fadeIn.animateTo(1f, tween(MemixMotion.durationPress)) }
     val gapPx = with(LocalDensity.current) { MemixSpacing.space1.toPx() }
     Layout(
         content = {
             Text(
-                length,
+                text,
                 MemixTheme.type.timecode,
                 Modifier
                     .graphicsLayer { alpha = fadeIn.value }
@@ -199,10 +221,10 @@ internal fun TrimValueBubble(controller: TimelineController, rulerHeightPx: Floa
         val bubble = measurables.first().measure(Constraints())
         layout(constraints.maxWidth, constraints.maxHeight) {
             val pxPerUs = pxPerUs(state.dpPerSecond, controller.density)
-            val edgeX = xOf(drag.edgeUs, state.playheadUs, constraints.maxWidth / 2f, pxPerUs)
-            val x = (edgeX - bubble.width / 2f).roundToInt().coerceIn(0, max(0, constraints.maxWidth - bubble.width))
+            val anchorX = xOf(anchorUs(), state.playheadUs, constraints.maxWidth / 2f, pxPerUs)
+            val x = (anchorX - bubble.width / 2f).roundToInt().coerceIn(0, max(0, constraints.maxWidth - bubble.width))
             // Inside the timeline's top edge: on the main row it sits over the ruler, never over the transport row.
-            val y = (rulerHeightPx + drag.row.topPx - laneScroll.value - gapPx - bubble.height).roundToInt().coerceAtLeast(0)
+            val y = (rulerHeightPx + rowTopPx() - laneScroll.value - gapPx - bubble.height).roundToInt().coerceAtLeast(0)
             bubble.place(x, y)
         }
     }

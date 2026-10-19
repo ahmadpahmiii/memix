@@ -112,4 +112,22 @@
     <string name="a11y_clip_label">क्लिप %1$d</string>
     <string name="a11y_reorder_tile">%1$s, %3$d में से क्लिप %2$d</string>
     <string name="a11y_reorder_position">%2$d में से क्लिप %1$d</string>
+    <!-- Meme sounds (P1-08): machine drafts until P5. Notes in values/strings.xml. -->
+    <string name="tool_meme_sounds">मीम साउंड</string>
+    <string name="tool_volume">वॉल्यूम</string>
+    <string name="tool_move_here">यहां ले जाएं</string>
+    <string name="tool_move_here_a11y">प्लेहेड पर ले जाएं</string>
+    <string name="volume_title">वॉल्यूम</string>
+    <string name="volume_this_sound">यह साउंड</string>
+    <string name="volume_percent">%1$d%</string>
+    <string name="sound_meta">%1$s · %2$s</string>
+    <string name="explain_sound_unreadable">यह साउंड नहीं चल रहा। कोई और आज़माएं।</string>
+    <string name="a11y_sound_added">%1$s, %2$s पर जोड़ा गया</string>
+    <string name="edit_move">ले जाएं</string>
+    <string name="edit_volume">वॉल्यूम</string>
+    <string name="edit_add_sound">साउंड जोड़ें</string>
+    <string name="timeline_add_meme_sound">मीम साउंड जोड़ें</string>
+    <string name="sounds_title">मीम साउंड</string>
+    <string name="sounds_empty_title">अभी कोई साउंड नहीं</string>
+    <string name="sounds_empty_body">मीम साउंड लाइब्रेरी अगले बिल्ड में आएगी।</string>
 </resources>

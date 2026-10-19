@@ -115,4 +115,22 @@
     <string name="a11y_clip_label">clip %1$d</string>
     <string name="a11y_reorder_tile">%1$s, clip %2$d of %3$d</string>
     <string name="a11y_reorder_position">Clip %1$d of %2$d</string>
+    <!-- Meme sounds (P1-08). Budgets and notes: docs/ux/specs/P1-06-clip-edits-and-audio.md -> Copy and P1-05-timeline.md -> Copy (timeline_add_meme_sound). sound_meta's second part is the license credit and is never translated; volume_percent uses a single % (Compose resources don't double it). sounds_* repeat :feature:sounds' P0-05 strings for the editor's sheet. -->
+    <string name="tool_meme_sounds">Meme sounds</string>
+    <string name="tool_volume">Volume</string>
+    <string name="tool_move_here">Move here</string>
+    <string name="tool_move_here_a11y">Move to playhead</string>
+    <string name="volume_title">Volume</string>
+    <string name="volume_this_sound">This sound</string>
+    <string name="volume_percent">%1$d%</string>
+    <string name="sound_meta">%1$s · %2$s</string>
+    <string name="explain_sound_unreadable">That sound won't play. Try another one.</string>
+    <string name="a11y_sound_added">%1$s added at %2$s</string>
+    <string name="edit_move">Move</string>
+    <string name="edit_volume">Volume</string>
+    <string name="edit_add_sound">Add sound</string>
+    <string name="timeline_add_meme_sound">Add a meme sound</string>
+    <string name="sounds_title">Meme sounds</string>
+    <string name="sounds_empty_title">No sounds yet</string>
+    <string name="sounds_empty_body">The meme sound library comes in a later build.</string>
 </resources>

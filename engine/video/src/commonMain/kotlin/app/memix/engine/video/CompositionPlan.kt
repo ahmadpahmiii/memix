@@ -35,6 +35,17 @@ internal data class CompositionPlan(
             return mainMedia + laneMedia
         }
 
+    /** Where each sound of the audio lanes starts on the timeline, µs, in lane order. */
+    val soundStartsUs: List<Long>
+        get() = audioLanes.flatMap { lane ->
+            var cursorUs = 0L
+            lane.segments.mapNotNull { segment ->
+                val startUs = cursorUs
+                cursorUs += segment.durationUs
+                startUs.takeIf { segment is SoundClip }
+            }
+        }
+
     /**
      * This plan with the items [itemIds] replaced by gaps of the same length: black and silent on the main video
      * sequence, silent in their lane. Lanes left with nothing but silence are dropped. The preview uses it to keep

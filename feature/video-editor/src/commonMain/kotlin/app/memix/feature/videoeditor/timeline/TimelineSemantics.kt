@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.ScrollAxisRange
@@ -73,6 +74,7 @@ import memix.feature.video_editor.generated.resources.timeline_zoom_in
 import memix.feature.video_editor.generated.resources.timeline_zoom_out
 import memix.feature.video_editor.generated.resources.tool_delete
 import memix.feature.video_editor.generated.resources.tool_duplicate
+import memix.feature.video_editor.generated.resources.tool_move_here_a11y
 import memix.feature.video_editor.generated.resources.tool_split
 import org.jetbrains.compose.resources.stringResource
 
@@ -360,7 +362,8 @@ private fun rememberItemActions(controller: TimelineController, isMainClip: Bool
     val duplicate = stringResource(Res.string.tool_duplicate)
     val earlier = stringResource(Res.string.reorder_move_earlier)
     val later = stringResource(Res.string.reorder_move_later)
-    return remember(controller, isMainClip, split, delete, duplicate, earlier, later) {
+    val moveToPlayhead = stringResource(Res.string.tool_move_here_a11y)
+    return remember(controller, isMainClip, split, delete, duplicate, earlier, later, moveToPlayhead) {
         fun action(label: String, intent: VideoEditorIntent) = CustomAccessibilityAction(label) {
             controller.onIntent(intent)
             true
@@ -370,7 +373,8 @@ private fun rememberItemActions(controller: TimelineController, isMainClip: Bool
             action(delete, VideoEditorIntent.DeleteSelected),
             action(duplicate, VideoEditorIntent.DuplicateSelected),
         )
-        if (!isMainClip) return@remember edits
+        // Main clips reorder; every other item moves to the playhead, the single-pointer route for Move (spec P1-06).
+        if (!isMainClip) return@remember edits + action(moveToPlayhead, VideoEditorIntent.MoveHereSelected)
         edits + action(earlier, VideoEditorIntent.MoveSelectedClip(steps = -1)) + action(later, VideoEditorIntent.MoveSelectedClip(steps = 1))
     }
 }
@@ -390,8 +394,9 @@ private fun itemDescription(track: TrackUi, item: ItemUi, clipCount: Int): Strin
             val originalAudio = stringResource(Res.string.timeline_original_audio)
             stringResource(Res.string.a11y_item, trackName, originalAudio, duration, start)
         }
-        // A sound before P1-08 gives it a title, or a sticker the user cut out (P2-07), has no name to say; saying
-        // the track's name twice would sound like a glitch.
+        is ItemLabel.SoundTitle -> stringResource(Res.string.a11y_item, trackName, label.title.inLanguage(LocalLocale.current.language), duration, start)
+        // A sound the catalog doesn't know, or a sticker the user cut out (P2-07), has no name to say; saying the
+        // track's name twice would sound like a glitch.
         ItemLabel.None -> stringResource(Res.string.a11y_item_unnamed, trackName, duration, start)
     }
 }

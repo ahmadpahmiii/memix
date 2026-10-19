@@ -1,6 +1,6 @@
 # Starter sounds (staged for P1-08)
 
-These are the 10 CC0 meme sounds the owner approved on 8 Oct 2026 (`docs/content/P1-08-starter-sound-candidates.md`, `docs/pm/decision-log.md`). They are staged here for **P1-08**, and that ticket decides where the bundled resources live in the app (proposal: `core/data/src/commonMain/composeResources/files/starter-sounds/`). Copy `<slug>.m4a` and `manifest.json` from here into that location; the `licenses/` folder stays in the repo and is not bundled. The app never calls Freesound.
+These are the 10 CC0 meme sounds the owner approved on 8 Oct 2026 (`docs/content/P1-08-starter-sound-candidates.md`, `docs/pm/decision-log.md`). P1-08 bundles them in the app at `platform/services/src/commonMain/composeResources/files/starter-sounds/` (byte-identical copies of `<slug>.m4a` and `manifest.json`; this folder stays the source). If a sound changes here, copy it there too. The `licenses/` folder stays in the repo and is not bundled. The app never calls Freesound.
 
 | File | What |
 | --- | --- |

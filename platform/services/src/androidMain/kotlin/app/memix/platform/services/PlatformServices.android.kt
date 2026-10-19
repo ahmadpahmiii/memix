@@ -16,6 +16,7 @@ import app.memix.core.domain.Logger
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.media.MediaFiles
 import app.memix.core.domain.media.MediaInspector
+import app.memix.core.domain.sound.SoundLibrary
 import com.google.android.gms.tasks.Task
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -37,6 +38,7 @@ actual val platformServicesModule = module {
     single<Analytics> { FirebaseAnalyticsLogger(androidContext()) }
     single<MediaFiles> { AndroidMediaFiles(androidContext(), Dispatchers.IO, get()) }
     single<MediaInspector> { AndroidMediaInspector(androidContext(), Dispatchers.IO, get()) }
+    single<SoundLibrary> { BundledSoundLibrary(get(), get(), Dispatchers.IO) }
 }
 
 private class AndroidDeviceRegion(private val context: Context) : DeviceRegion {

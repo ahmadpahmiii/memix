@@ -10,6 +10,7 @@ import androidx.media3.transformer.ExportResult
 import app.memix.core.domain.AppError
 import app.memix.core.domain.Logger
 import app.memix.core.domain.Outcome
+import app.memix.core.domain.sound.SoundPlayer
 import app.memix.core.domain.video.ExportSettings
 import app.memix.core.domain.video.ExportedVideo
 import app.memix.core.domain.video.PreviewSession
@@ -35,14 +36,18 @@ internal class Media3VideoEngine(
     private val context: Context,
     private val logger: Logger,
     private val ioDispatcher: CoroutineDispatcher,
+    /** Builds with hand checks: previews log where each sound is heard ([SoundOnsetLog]). */
+    private val measureSoundOnsets: Boolean = false,
 ) : VideoEngine {
     private val sourceResolver = MediaSourceResolver(context.filesDir)
     private val transformerExport = TransformerExport(context)
 
     override fun createPreview(project: Project): PreviewSession =
-        Media3PreviewSession(context, sourceResolver, logger, ioDispatcher, project)
+        Media3PreviewSession(context, sourceResolver, logger, ioDispatcher, project, measureSoundOnsets)
 
     override fun openThumbnails(): ThumbnailReader = MediaThumbnailReader(context.filesDir, ioDispatcher, logger)
+
+    override fun openSoundPlayer(): SoundPlayer = Media3SoundPlayer(context, logger)
 
     override suspend fun export(
         project: Project,

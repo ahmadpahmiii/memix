@@ -473,7 +473,7 @@ adb logcat -s MemixPreview:* MemixAnalytics:*      # second terminal
    updates; TalkBack doesn't read it.
 8. **TalkBack:**
    - Double-tap a clip to select it; its actions (TalkBack menu → Actions): Split, Delete, Duplicate, Move earlier, Move
-     later. A caption or sound: Split, Delete, Duplicate. After each edit TalkBack says what happened, e.g. "Delete: clip 2",
+     later. A caption or sound: Split, Delete, Duplicate (plus Move to playhead since P1-08). After each edit TalkBack says what happened, e.g. "Delete: clip 2",
      "Split: clip 4", "Trim: Caption 1". Explanations are spoken.
    - Right after the selected item come its handles: "Start of clip 3", "9.0 seconds". Swipe up or down: one frame each
      (one Trim step each). Action: Trim to playhead.
@@ -549,6 +549,99 @@ Take these after the review fixes, at 360 dp wide if possible, in English unless
 - `reorder-moved-far`: the strip moves along with the tile, and the slide and the scroll read as one movement.
 - In the QA notes, not screenshots: A6 (M1, washed areas do nothing), A8 (TalkBack, focus on Move earlier), A11
   (haptics), A12 (Remove animations).
+
+## P1-08 · meme sounds: in sync within one frame, in the preview and the export
+
+Spec `docs/ux/specs/P1-06-clip-edits-and-audio.md` → Meme sounds sheet, Meme sounds, Move, Volume panel; `P1-05-timeline.md`
+→ "Add a meme sound" row. Projects: `timeline-check` (P1-05) and `sound-sync` (new): 12 s of photos, so only sounds are
+heard, with P1-03's test tone (`sound.m4a`, whose 2 kHz tone starts 0.5 s into the file) starting at 1.0, 6.0, 8.0 (start
+trimmed) and 11.8 s (runs past the end). Both need P1-03's test files in `files/debug-media/` (P1-03 step 0). Not in P1-08,
+so not on screen: the original-audio toggle and clip volume (P1-09), Add media and Replace (P1-16).
+
+```sh
+./gradlew :androidApp:installDebug
+adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor timeline-check
+adb logcat -s MemixPreview:* MemixAnalytics:* MemixSounds:* MemixExportCheck:*      # second terminal
+```
+
+**A. Hand checks (debug build).**
+1. **Listen to all 10 sounds** (owner, 14 Oct): Meme sounds tool → play each row in turn. Only one plays at a time, the
+   row shows Pause while it plays and goes back to Play at its end. Press Home while one plays: it stops, and it
+   doesn't play again when you come back. Note any sound that's too quiet (Drum roll was
+   normalized to −23.7 LUFS because of its rimshot) or that sounds like a famous recording; either goes to the PM.
+2. **Two taps:** with nothing selected, Meme sounds (blue, place 2) → the sheet opens at about half the screen with the
+   top of the preview above it; a drag up on its header grows it. Add on a row: the sheet closes and the sound lands. With a
+   clip selected, the "Add a meme sound" pill (blue, centered on the playhead line and drawn over it, in its row under the
+   sound lanes) → the selection clears and the sheet opens → Add. The pill stays at the playhead while time scrolls and
+   moves with the lanes' vertical scroll.
+3. **Sheet rows:** the title (two lines at most), "0:05 · CC0" (length rounded up, the credit never cut), no heart, a
+   blue add button. In id, es, pt and hi the titles are translated (`adb shell cmd locale set-app-locales app.memix
+   --locales hi`). ×, a scrim tap, a drag down, back and Escape close it and add nothing.
+4. **Landing:** at the playhead, the whole sound at 100%; it bonks, the phone gives one Confirm vibration, it's selected
+   with its tools (Volume · Split · Delete · Move here · Duplicate), and TalkBack says "Boing added at 3.2 seconds". Where a
+   sound already plays (`timeline-check` at 0:30), it goes on a new lane under the last sound lane and the lanes below
+   slide down; if that lane is out of view, the lanes scroll to it. At the very end (scroll to the end), it's placed so it
+   ends at the end. Undo says "Undo: Add sound". Adding the same sound twice works.
+5. **Move by drag:** long-press a sound: a buzz, a white outline, and it follows the finger with a bubble showing its new
+   start. Either end snaps (one tick and a thin line) to the playhead, 0:00, the end, clip boundaries and other items'
+   edges. Over another sound lane it changes lane; over the "Add a meme sound" row it shows on a new lane there; dropped
+   where it would overlap, it goes to the next free lane or a new one. It can't start before 0:00, and the part past the end
+   is washed. Near a side of the screen, time scrolls. Back during the drag cancels. Undo says "Undo: Move". A caption
+   moves the same way (text lanes only); a long-press on a main clip still starts reorder.
+6. **Move here:** the playhead inside the video: the sound starts there. At the very end: it ends at the end.
+7. **Trim a sound:** its handles stop at the sound's own start and end, with one tick. With TalkBack, a selected sound's
+   or caption's actions add "Move to playhead" (Move here's single-pointer route).
+8. **Volume:** Volume tool → the panel covers the timeline and tool bar; the preview and transport row stay. Press Play and
+   drag the slider: the change is heard while dragging. It snaps to 100% with one tick; a double-tap on the thumb goes
+   back to 100%; 0% is silent, 200% louder (clipped, not distorted into noise). Each release: "Undo: Volume". Done, back
+   and Escape close it and the sound stays selected. With TalkBack the slider steps 10%. Undo past the landing closes it.
+9. **Analytics** (`MemixAnalytics`): `sound_add {sound_id, tab=starter, editor=video}` once per landing, never for a
+   duplicate; `sound_preview {sound_id, tab=starter}` per play; `tool_use` `move` and `volume` once per step; nothing for
+   opening the sheet or the panel, a drop where it was, or a release at the same volume.
+10. **Hindi at 200% font, 360 dp:** the sheet rows, the pill and the sound tool labels are whole; the pill row grows.
+11. **Drift trial** (owner, 8 Oct; P1-06 block E): on `timeline-check`, land a sound on a clip boundary, then trim clip 1's
+    start by about 1 s. The video after it moves 1 s earlier and the sound keeps its time, so it now plays 1 s off that
+    boundary. Note whether that would bother you.
+
+**B. Preview sync (debug build; the onset log).**
+1. `adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor sound-sync`, then `adb logcat -c`.
+2. Play from 0:00 to the end. Then tap the ruler at 0:05 and play again (a seek into a sound logs nothing, so always
+   start at least half a second before a sound).
+3. `adb logcat -d -s MemixPreview:* | grep "Sound onset"`: one line per sound, for example `Sound onset: heard at 6.000 s,
+   placed at 6.000 s, off by +0.0 ms (a frame is 33.3 ms)`. Pass: every line within one frame (expect under 1 ms). The
+   sound at 11.8 s is heard for 0.2 s and stops with the video.
+4. Add a starter sound with a sharp start (Wrong buzzer, Boing or Deep boom) from the sheet, play over it, and check its line
+   too.
+5. **Ear check** on the phone's own speaker (Bluetooth adds the headset's delay, which isn't Memix's): on `timeline-check`,
+   move Wrong buzzer until it snaps to a clip boundary and play across it. The buzz starts as the picture cuts, with no
+   gap you can see or hear.
+
+**C. Export sync (debug build).**
+1. On `sound-sync`, add starter sounds: one near the start, one in the middle, one with Move here, one with its start
+   trimmed, and one that runs past the end. Close the editor (it saves).
+2. `adb shell am start -S -n app.memix/.android.MainActivity --ez memix.exportLatestDraft true`, then
+   `adb logcat -d -s MemixExportCheck:*`: one `sound:` line per sound (where it starts, from where in its file, its length
+   and volume), then `export: done … path=…/cache/exports/<file>.mp4`.
+3. `adb exec-out run-as app.memix cat cache/exports/<file>.mp4 > p108.mp4`, then
+   `ffmpeg -i p108.mp4 -af silencedetect=noise=-40dB:d=0.05 -f null - 2>&1 | grep silence_end` and
+   `ffprobe -v error -show_entries stream=codec_type,start_time -of csv p108.mp4`.
+4. Pass: each `silence_end` is within 0.033 s of a logged start, both streams start at 0, the file is 12.0 s long and
+   the sound past the end stops at 12 s.
+
+**D. Leaks (debug build, LeakCanary 2.14).** Open and close the editor 5 times on `timeline-check`, each time: open the
+sheet, play two sounds, add one, move it, open the Volume panel and drag the slider; wait 10 s on Home. Pass: no
+LeakCanary notification and `adb logcat -d -s LeakCanary:*` reports no leak (the sheet's player closes with the editor).
+
+**E. APK size:** the starter pack adds 453,633 bytes (443 KB) to the APK, measured from the debug APK's
+`assets/composeResources/memix.platform.services.generated.resources/files/starter-sounds/` (the m4a files are stored
+uncompressed). The license proofs aren't in the APK.
+
+### States to screenshot for the design review (`docs/ux/reviews/P1-08/`)
+At 360 dp wide if possible, English unless noted: `main-tools` (Edit, Meme sounds in blue), `sounds-sheet` (half height,
+one row playing), `sounds-sheet-expanded` (after a drag up), `sound-landed` (selected, sound tools), `sound-new-lane` (a
+sound landed on a new lane), `add-row-pill` (a clip selected, the pill at the playhead), `move-drag` (a carried sound with
+its bubble and snap line), `move-to-add-row` (over the add row), `volume-panel` (100%), `volume-panel-200`,
+`sounds-sheet-hi-200`, `sound-tools-hi-200` and `add-row-hi-200` (Hindi at 200% font).
 
 ## P1-17 · Hindi display face: hero and entry cards in Teko, nothing clipped, other languages unchanged
 

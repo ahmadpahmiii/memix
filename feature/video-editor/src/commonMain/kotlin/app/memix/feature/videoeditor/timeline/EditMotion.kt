@@ -9,6 +9,8 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import app.memix.core.designsystem.MemixMotion
 import app.memix.core.designsystem.MemixTheme
 import app.memix.core.model.project.TrackKind
@@ -19,8 +21,10 @@ import kotlin.math.roundToLong
  * The timeline's motion after an edit (spec P1-06 → Motion and haptics), read only in draw code:
  * - **Ripple:** after an edit moves main clips (trim, delete, duplicate, undo), they slide from their old places to
  *   the new ones in 200 ms; with reduce motion they're simply there.
- * - **Bonk:** an item that lands (a duplicate; P1-08 meme sounds) scales 1 → 1.12 → 1 over 240 ms; with reduce motion
- *   it fades in over 120 ms instead.
+ * - **Bonk:** an item that lands (a duplicate, a meme sound) scales 1 → 1.12 → 1 over 240 ms; with reduce motion it
+ *   fades in over 120 ms instead.
+ * - **Lane slide:** when a lane comes or goes (a sound lands on a new lane, a lane empties), the rows below slide to
+ *   their new places in 200 ms (spec P1-05 → Motion); with reduce motion they're simply there.
  */
 @Stable
 internal class EditMotion {
@@ -34,6 +38,25 @@ internal class EditMotion {
         private set
     val bonkScale = Animatable(1f)
     val bonkAlpha = Animatable(1f)
+
+    /** The lanes the last lane slide was worked out from. */
+    var lastLanes: LaneLayout? = null
+
+    private var laneShiftFromPx: Map<String, Float> = emptyMap()
+    private val laneSlide = Animatable(1f)
+
+    /** How far row [key] (a track id, or [ADD_SOUND_ROW_KEY]) is drawn from its place now, px, while lanes slide. */
+    fun laneShiftPx(key: String): Float {
+        val fromPx = laneShiftFromPx[key] ?: return 0f
+        val progress = laneSlide.value
+        return if (progress >= 1f) 0f else fromPx * (1f - progress)
+    }
+
+    suspend fun slideLanes(fromPx: Map<String, Float>) {
+        laneShiftFromPx = fromPx
+        laneSlide.snapTo(0f)
+        laneSlide.animateTo(1f, tween(MemixMotion.durationSheet))
+    }
 
     /** Where main clip [item] starts on screen now: on its way from its old place while the ripple runs. */
     fun startUsOf(item: ItemUi): Long {
@@ -66,15 +89,44 @@ internal class EditMotion {
         landedItemId = null
     }
 
-    private companion object {
+    companion object {
         /** The bonk's largest scale (spec P1-06 → Motion: 1 → 1.12 → 1). */
-        const val BONK_PEAK = 1.12f
+        private const val BONK_PEAK = 1.12f
+
+        /** [laneShiftPx]'s key for the "Add a meme sound" row, which has no track. */
+        const val ADD_SOUND_ROW_KEY = "add-sound-row"
+    }
+}
+
+/**
+ * Slides the rows that changed place when [lanes] gets a lane more or less (spec P1-05 → Motion: 200 ms, nothing with
+ * reduce motion). A new lane itself just appears; its sound bonks.
+ */
+@Composable
+internal fun AnimateLanes(motion: EditMotion, lanes: LaneLayout) {
+    val reduceMotion = MemixTheme.reduceMotion
+    LaunchedEffect(lanes) {
+        val before = motion.lastLanes
+        motion.lastLanes = lanes
+        if (before == null || reduceMotion || before.rows.size == lanes.rows.size) return@LaunchedEffect
+        val shifts = HashMap<String, Float>()
+        for (row in lanes.rows) {
+            val old = before.rows.firstOrNull { it.track.id == row.track.id } ?: continue
+            if (old.topPx != row.topPx) shifts[row.track.id] = old.topPx - row.topPx
+        }
+        val oldAddRow = before.addSoundRow
+        val newAddRow = lanes.addSoundRow
+        if (oldAddRow != null && newAddRow != null && oldAddRow.topPx != newAddRow.topPx) {
+            shifts[EditMotion.ADD_SOUND_ROW_KEY] = oldAddRow.topPx - newAddRow.topPx
+        }
+        if (shifts.isNotEmpty()) motion.slideLanes(shifts)
     }
 }
 
 /**
  * Runs [motion]'s ripple whenever a new timeline moves main clips that were there before, except while reorder
- * mode's tiles handle the change themselves, and its bonk when [landed] names a new item.
+ * mode's tiles handle the change themselves, and its bonk when [landed] names a new item (with the Confirm haptic for a
+ * meme sound).
  */
 @Composable
 internal fun AnimateEdits(motion: EditMotion, timeline: TimelineUi, landed: LandedItem?, controller: TimelineController) {
@@ -86,8 +138,12 @@ internal fun AnimateEdits(motion: EditMotion, timeline: TimelineUi, landed: Land
         val moved = movedMainClips(before, timeline)
         if (moved.isNotEmpty()) motion.ripple(moved)
     }
+    val haptics = LocalHapticFeedback.current
     LaunchedEffect(landed) {
-        if (landed != null) motion.bonk(landed.itemId, reduceMotion)
+        if (landed == null) return@LaunchedEffect
+        // The tick when a sound lands (spec P1-06 → Motion and haptics; mobile-performance skill → Feel).
+        if (landed.isSound) haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+        motion.bonk(landed.itemId, reduceMotion)
     }
 }
 

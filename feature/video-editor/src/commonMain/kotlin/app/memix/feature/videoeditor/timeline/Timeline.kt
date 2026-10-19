@@ -20,6 +20,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,12 +34,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -90,8 +93,12 @@ import org.jetbrains.compose.resources.stringResource
  * The selected item's handles trim it (spec P1-06 → Trim) within [trimRanges]: a drag on a handle wins over scrolling,
  * moves only that edge at frame rate and commits once, on release.
  *
- * The original-audio toggle (P1-09), the "Add a meme sound" row (P1-08) and Add media (P1-16) arrive with their
- * tickets; until then they aren't drawn, never shown disabled.
+ * Items on every lane but the main track move by a long-press drag (spec P1-06 → Move): the same finger carries the
+ * item in time and across lanes of its kind, and the drop commits once. The "Add a meme sound" pill sits on its row at
+ * the playhead (P1-08).
+ *
+ * The original-audio toggle (P1-09) and Add media (P1-16) arrive with their tickets; until then they aren't drawn,
+ * never shown disabled.
  */
 @Composable
 internal fun Timeline(
@@ -163,6 +170,8 @@ private fun TimelineContent(
     val laneScroll = rememberScrollState()
     val scrollable = rememberScrollableState(controller::scrollBy)
     var fadeFrame by remember { mutableLongStateOf(0L) }
+    // How tall the scrolling lanes' window is, for bringing a landed sound's lane into view.
+    var lanesViewportPx by remember { mutableIntStateOf(0) }
     var zoomMenuOpen by remember { mutableStateOf(false) }
     // Kept after closing, so the menu fades out where it was.
     var zoomMenuAt by remember { mutableStateOf(IntOffset.Zero) }
@@ -173,6 +182,7 @@ private fun TimelineContent(
     FollowReorderMode(controller, reorder, timeline)
     val motion = remember { EditMotion() }
     AnimateEdits(motion, timeline, landed, controller)
+    AnimateLanes(motion, lanes)
     val reordering = state.reorder != null
     if (thumbnails != null) LoadThumbnails(controller, timeline, thumbnails, painter.tileSizePx, reordering, onFade = { fadeFrame = it })
 
@@ -186,8 +196,8 @@ private fun TimelineContent(
             .pointerInput(controller, painter, rulerHeightPx) {
                 detectTrimDrag(
                     handleAt = { offset ->
-                        // No handles in reorder mode, where the clips are tiles.
-                        currentSelected?.takeIf { currentTrimRanges != null && controller.state.reorder == null }?.let { selected ->
+                        // No handles in reorder mode, where the clips are tiles, or while an item is carried.
+                        currentSelected?.takeIf { currentTrimRanges != null && controller.state.reorder == null && controller.state.move == null }?.let { selected ->
                             handleUnder(controller, painter, selected, TimelineHit(rulerHeightPx, laneScroll.value, offset))
                         }
                     },
@@ -212,6 +222,18 @@ private fun TimelineContent(
                     onDrag = controller::dragReorder,
                     onDrop = controller::dropReorder,
                     onTap = controller::tapReorderTile,
+                )
+            }
+            // Also before the scroll and the taps: a long-press on any item but a main clip lifts it to move.
+            .pointerInput(controller, painter, lanes, rulerHeightPx) {
+                detectMoveGestures(
+                    isMovableAt = { offset -> !controller.isReordering && movableItemUnder(controller, painter, lanes, TimelineHit(rulerHeightPx, laneScroll.value, offset)) != null },
+                    onLift = { offset ->
+                        val found = movableItemUnder(controller, painter, lanes, TimelineHit(rulerHeightPx, laneScroll.value, offset))
+                        if (found != null) controller.liftForMove(found.first, found.second, lanes, offset.x)
+                    },
+                    onDrag = { offset -> controller.dragMove(offset.x, offset.y - rulerHeightPx + laneScroll.value) },
+                    onDrop = controller::dropMove,
                 )
             }
             // No overscroll stretch: time stops exactly at 0:00 and at the end.
@@ -247,7 +269,7 @@ private fun TimelineContent(
                         with(painter) { drawRuler(state.playheadUs, pxPerUs(state.dpPerSecond, density.density), labelSpacingPx) }
                     },
             )
-            Box(Modifier.fillMaxWidth().weight(1f).verticalScroll(laneScroll)) {
+            Box(Modifier.fillMaxWidth().weight(1f).onSizeChanged { lanesViewportPx = it.height }.verticalScroll(laneScroll)) {
                 Spacer(
                     Modifier
                         .fillMaxWidth()
@@ -260,19 +282,24 @@ private fun TimelineContent(
                             val pxPerUs = pxPerUs(state.dpPerSecond, density.density)
                             val missingSources = thumbnails?.missingSources.orEmpty()
                             val trim = state.trim
+                            val move = state.move
                             // In reorder mode the main clips are tiles, drawn over the wash in the layer above.
                             val strip = state.reorder
                             with(painter) {
-                                drawLanes(timeline, lanes, playheadUs, pxPerUs, thumbnails, missingSources, trim, motion, hideMainClips = strip != null)
+                                drawLanes(timeline, lanes, playheadUs, pxPerUs, thumbnails, missingSources, trim, move, motion, hideMainClips = strip != null)
                             }
-                            if (strip == null) {
+                            // A carried item draws its own outline where it goes.
+                            if (strip == null && move == null) {
                                 selection.selected?.let { selected ->
-                                    drawSelected(painter, selected, trim, motion, missingSources, playheadUs, pxPerUs, selection.alpha.value)
+                                    translate(top = motion.laneShiftPx(selected.row.track.id)) {
+                                        drawSelected(painter, selected, trim, motion, missingSources, playheadUs, pxPerUs, selection.alpha.value)
+                                    }
                                 }
                             }
                         },
                 )
                 if (!reordering) TrackSemantics(controller, painter, timeline, lanes, selection.selected?.item?.id, trimRanges, thumbnails?.missingSources.orEmpty())
+                ShowLandedLane(landed, lanes, laneScroll, viewportHeightPx = { lanesViewportPx })
             }
         }
         // Reorder mode: the wash over the ruler and lanes, and the tiles over it.
@@ -301,10 +328,14 @@ private fun TimelineContent(
             },
         )
         PlayheadSemantics(controller, timeline.lengthUs, rulerHeight)
-        TrimValueBubble(controller, rulerHeightPx, laneScroll)
+        lanes.addSoundRow?.let { addRow ->
+            AddMemeSoundPill(controller, addRow, motion, laneScroll, rulerHeight, onClick = { onIntent(VideoEditorIntent.AddMemeSoundRow) })
+        }
+        EditValueBubble(controller, rulerHeightPx, laneScroll)
         ZoomMenu(controller, zoomMenuOpen, zoomMenuAt, onDismiss = { zoomMenuOpen = false })
     }
     CancelTrimOnBack(controller)
+    CancelMoveOnBack(controller)
 }
 
 /** True when [hit] is in the main video row's band (48 dp: the reorder tiles' targets), below the ruler. */
@@ -312,6 +343,15 @@ private fun isOnMainRow(lanes: LaneLayout, hit: TimelineHit): Boolean {
     val mainRow = lanes.rows.firstOrNull { it.track.kind == TrackKind.MAIN_VIDEO } ?: return false
     val laneY = hit.offset.y - hit.rulerHeightPx + hit.laneScrollPx
     return hit.offset.y >= hit.rulerHeightPx && laneY >= mainRow.topPx && laneY < mainRow.topPx + mainRow.heightPx
+}
+
+/** The item under [hit] on any lane but the main track, with its row, for a long-press move; null elsewhere. */
+private fun movableItemUnder(controller: TimelineController, painter: TimelinePainter, lanes: LaneLayout, hit: TimelineHit): Pair<ItemUi, LaneRow>? {
+    if (hit.offset.y < hit.rulerHeightPx) return null
+    val row = lanes.rowAt(hit.offset.y - hit.rulerHeightPx + hit.laneScrollPx)?.takeIf { it.track.kind != TrackKind.MAIN_VIDEO } ?: return null
+    val state = controller.state
+    val item = painter.itemAt(row, hit.offset.x, state.playheadUs, state.widthPx / 2f, pxPerUs(state.dpPerSecond, controller.density)) ?: return null
+    return item to row
 }
 
 /** The main clip under [hit] (not on the ruler), for a long-press lift; null elsewhere. */
@@ -369,8 +409,9 @@ private fun rememberTimelinePainter(textMeasurer: TextMeasurer): TimelinePainter
     val rulerStyle = MemixTheme.type.timecode
     val originalAudio = stringResource(Res.string.timeline_original_audio)
     val missingFile = stringResource(Res.string.clip_missing_file)
-    return remember(textMeasurer, labelStyle, rulerStyle, originalAudio, missingFile, density) {
-        TimelinePainter(textMeasurer, labelStyle, rulerStyle, originalAudio, missingFile, density)
+    val languageCode = LocalLocale.current.language
+    return remember(textMeasurer, labelStyle, rulerStyle, originalAudio, missingFile, languageCode, density) {
+        TimelinePainter(textMeasurer, labelStyle, rulerStyle, originalAudio, missingFile, languageCode, density)
     }
 }
 

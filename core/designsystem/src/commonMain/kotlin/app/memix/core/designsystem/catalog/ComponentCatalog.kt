@@ -62,6 +62,7 @@ import app.memix.core.designsystem.component.Toggle
 import app.memix.core.designsystem.component.ToolBar
 import app.memix.core.designsystem.component.ToolBarClose
 import app.memix.core.designsystem.component.ToolBarItem
+import app.memix.core.designsystem.component.ToolPanel
 import app.memix.core.designsystem.component.ToolTone
 import app.memix.core.designsystem.usesHindiDisplayFace
 import kotlin.math.roundToInt
@@ -105,6 +106,7 @@ fun ComponentCatalog(onClose: () -> Unit, appSections: @Composable ColumnScope.(
             ToastSection()
             MenuSection()
             ToolBarSection()
+            ToolPanelSection()
             IconSection()
             appSections()
         }
@@ -189,6 +191,16 @@ private fun SoundRowSection() = Section("SoundRow") {
             onAdd = {},
         )
     }
+    // The editor's sounds sheet (P1-08): no heart, and a long credit wraps instead of being cut.
+    SoundRow(
+        name = "A sound title long enough to need a second line",
+        meta = "0:03 · A long attribution a CC-BY license asks for, shown in full on every row",
+        isPlaying = false,
+        isFavorite = false,
+        onPlayToggle = {},
+        onFavoriteChange = null,
+        onAdd = {},
+    )
 }
 
 @Composable
@@ -215,6 +227,19 @@ private fun TabSection() = Section("Tabs and SegmentedTabs") {
 private fun SliderAndToggleSection() = Section("Slider and Toggle") {
     var volume by remember { mutableFloatStateOf(0.8f) }
     Slider("Volume", volume, { volume = it }, "${(volume * 100).roundToInt()}%", defaultValue = 1f)
+    // The Volume panel's slider (P1-08): 0–200%, snapping to 100% within 3%.
+    var loudness by remember { mutableFloatStateOf(1f) }
+    Slider(
+        "This sound",
+        loudness,
+        { loudness = it },
+        "${(loudness * 100).roundToInt()}%",
+        valueRange = 0f..2f,
+        defaultValue = 1f,
+        step = 0.1f,
+        snapValue = 1f,
+        snapDistance = 0.03f,
+    )
     var on by remember { mutableStateOf(false) }
     Toggle("Show watermark preview", on, { on = it })
 }
@@ -277,7 +302,7 @@ private fun MenuSection() = Section("Menu") {
 }
 
 // The editor's tool bar (P1-06): nothing selected, then a video clip selected (clip mode, Delete in danger), then the
-// meme-sound and active looks P1-08 and P1-09 use.
+// meme-sound and active looks, then a meme sound selected (P1-08).
 @Composable
 private fun ToolBarSection() = Section("ToolBar") {
     ToolBar(persistentListOf(ToolBarItem("Edit", MemixIcons.Edit, {})))
@@ -298,7 +323,40 @@ private fun ToolBarSection() = Section("ToolBar") {
             ToolBarItem("Active", MemixIcons.Sounds, {}, ToolTone.Active),
         ),
     )
+    ToolBar(
+        persistentListOf(
+            ToolBarItem("Volume", MemixIcons.Volume, {}),
+            ToolBarItem("Split", MemixIcons.Split, {}),
+            ToolBarItem("Delete", MemixIcons.Delete, {}, ToolTone.Danger),
+            ToolBarItem("Move here", MemixIcons.MoveHere, {}, contentDescription = "Move to playhead"),
+            ToolBarItem("Duplicate", MemixIcons.Duplicate, {}),
+        ),
+        close = ToolBarClose("Close clip tools") {},
+    )
 }
+
+// The Volume panel's look (P1-08), shown in place at a fixed height; in the editor it covers the timeline and tools.
+@Composable
+private fun ToolPanelSection() = Section("ToolPanel") {
+    var level by remember { mutableFloatStateOf(1f) }
+    Box(Modifier.fillMaxWidth().height(PANEL_PREVIEW_HEIGHT)) {
+        ToolPanel(visible = true, title = "Volume", doneLabel = "Done", onDone = {}) {
+            Slider(
+                "This sound",
+                level,
+                { level = it },
+                "${(level * 100).roundToInt()}%",
+                valueRange = 0f..2f,
+                defaultValue = 1f,
+                step = 0.1f,
+                snapValue = 1f,
+                snapDistance = 0.03f,
+            )
+        }
+    }
+}
+
+private val PANEL_PREVIEW_HEIGHT = 200.dp
 
 @Composable
 private fun IconSection() = Section("Icons") {
@@ -310,6 +368,7 @@ private fun IconSection() = Section("Icons") {
         "pause" to MemixIcons.Pause, "heart" to MemixIcons.Heart, "heart_filled" to MemixIcons.HeartFilled,
         "undo" to MemixIcons.Undo, "redo" to MemixIcons.Redo, "edit" to MemixIcons.Edit, "split" to MemixIcons.Split,
         "delete" to MemixIcons.Delete, "duplicate" to MemixIcons.Duplicate, "reorder" to MemixIcons.Reorder,
+        "volume" to MemixIcons.Volume, "move_here" to MemixIcons.MoveHere,
     )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space4), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4)) {
         icons.forEach { (name, icon) ->

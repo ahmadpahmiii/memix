@@ -5,7 +5,7 @@ import app.memix.core.model.project.Project
 
 /**
  * The video editor's edits, each one undo step named by its [tool] (the `tool_use` id), turned back into words for
- * "Undo: Split" and "Delete: clip 2". P1-08 adds move and add sound, P1-09 volume and detach.
+ * "Undo: Split" and "Delete: clip 2". P1-09 adds detach and the original-audio toggle.
  */
 enum class VideoEdit(val tool: EditorTool) {
     SPLIT(EditorTool.SPLIT),
@@ -13,6 +13,9 @@ enum class VideoEdit(val tool: EditorTool) {
     DELETE(EditorTool.DELETE),
     DUPLICATE(EditorTool.DUPLICATE),
     REORDER(EditorTool.REORDER),
+    MOVE(EditorTool.MOVE),
+    VOLUME(EditorTool.VOLUME),
+    ADD_SOUND(EditorTool.ADD_SOUND),
     ;
 
     companion object {

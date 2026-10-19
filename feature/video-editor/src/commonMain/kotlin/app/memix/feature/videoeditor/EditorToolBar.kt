@@ -49,8 +49,12 @@ import memix.feature.video_editor.generated.resources.reorder_move_later
 import memix.feature.video_editor.generated.resources.tool_delete
 import memix.feature.video_editor.generated.resources.tool_duplicate
 import memix.feature.video_editor.generated.resources.tool_edit
+import memix.feature.video_editor.generated.resources.tool_meme_sounds
+import memix.feature.video_editor.generated.resources.tool_move_here
+import memix.feature.video_editor.generated.resources.tool_move_here_a11y
 import memix.feature.video_editor.generated.resources.tool_reorder
 import memix.feature.video_editor.generated.resources.tool_split
+import memix.feature.video_editor.generated.resources.tool_volume
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -63,7 +67,7 @@ import org.jetbrains.compose.resources.stringResource
  * long-press lift leaves focus alone.
  */
 @Composable
-internal fun ToolBarRegion(clipTools: ClipTools?, reorder: ReorderUi?, onIntent: (VideoEditorIntent) -> Unit) {
+internal fun ToolBarRegion(clipTools: ClipTools?, reorder: ReorderUi?, isEmpty: Boolean, onIntent: (VideoEditorIntent) -> Unit) {
     val moveEarlierFocus = remember { FocusRequester() }
     val reorderToolFocus = remember { FocusRequester() }
     var focusAfterSwap by remember { mutableStateOf(FocusAfterSwap.NONE) }
@@ -91,7 +95,7 @@ internal fun ToolBarRegion(clipTools: ClipTools?, reorder: ReorderUi?, onIntent:
         val mode = if (reordering) ToolBarMode.Reorder else clipTools?.let(ToolBarMode::Clip) ?: ToolBarMode.Main
         Crossfade(mode, animationSpec = tween(MemixMotion.durationPress), label = "tool bar") { shown ->
             when (shown) {
-                ToolBarMode.Main -> ToolBar(rememberMainTools(onIntent))
+                ToolBarMode.Main -> ToolBar(rememberMainTools(isEmpty, onIntent))
                 is ToolBarMode.Clip -> {
                     val closeLabel = stringResource(Res.string.clip_tools_close)
                     ToolBar(
@@ -153,16 +157,28 @@ private fun ReorderBar(onIntent: (VideoEditorIntent) -> Unit, moveEarlierFocus: 
     }
 }
 
-/** Nothing selected: Edit (P1-08 adds Meme sounds, P1-10 Text; each tool keeps its place as more arrive). */
+/**
+ * Nothing selected: Edit, then Meme sounds in blue, because it's meme-sound UI (P1-10 adds Text, P1-16 Add media; each
+ * tool keeps its place as more arrive). An empty project has no tools: nothing to select, nothing to play a sound over
+ * (spec P1-04 → Empty project).
+ */
 @Composable
-private fun rememberMainTools(onIntent: (VideoEditorIntent) -> Unit): ImmutableList<ToolBarItem> {
+private fun rememberMainTools(isEmpty: Boolean, onIntent: (VideoEditorIntent) -> Unit): ImmutableList<ToolBarItem> {
     val edit = stringResource(Res.string.tool_edit)
-    return remember(edit, onIntent) { persistentListOf(ToolBarItem(edit, MemixIcons.Edit, { onIntent(VideoEditorIntent.EditTool) })) }
+    val memeSounds = stringResource(Res.string.tool_meme_sounds)
+    return remember(isEmpty, edit, memeSounds, onIntent) {
+        if (isEmpty) return@remember persistentListOf()
+        persistentListOf(
+            ToolBarItem(edit, MemixIcons.Edit, { onIntent(VideoEditorIntent.EditTool) }),
+            ToolBarItem(memeSounds, MemixIcons.Sounds, { onIntent(VideoEditorIntent.MemeSoundsTool) }, ToolTone.MemeSound),
+        )
+    }
 }
 
 /**
- * The selected item's tools in the spec's order. Split comes first (the most used cut) and Delete third at most, so
- * "Split, then Delete" works without scrolling at 360 dp.
+ * The selected item's tools in the spec's order. Split comes first on clips (the most used cut), Volume first on
+ * sounds, and Delete third at most, so "Split, then Delete" works without scrolling at 360 dp. Move here moves every
+ * item but main clips, which reorder instead.
  */
 @Composable
 private fun rememberClipTools(clipTools: ClipTools, onIntent: (VideoEditorIntent) -> Unit, reorderFocus: FocusRequester): ImmutableList<ToolBarItem> {
@@ -170,10 +186,15 @@ private fun rememberClipTools(clipTools: ClipTools, onIntent: (VideoEditorIntent
     val delete = stringResource(Res.string.tool_delete)
     val duplicate = stringResource(Res.string.tool_duplicate)
     val reorder = stringResource(Res.string.tool_reorder)
-    return remember(clipTools, split, delete, duplicate, reorder, onIntent, reorderFocus) {
+    val volume = stringResource(Res.string.tool_volume)
+    val moveHere = stringResource(Res.string.tool_move_here)
+    val moveHereSpoken = stringResource(Res.string.tool_move_here_a11y)
+    return remember(clipTools, split, delete, duplicate, reorder, volume, moveHere, moveHereSpoken, onIntent, reorderFocus) {
         val splitTool = ToolBarItem(split, MemixIcons.Split, { onIntent(VideoEditorIntent.SplitSelected) })
         val deleteTool = ToolBarItem(delete, MemixIcons.Delete, { onIntent(VideoEditorIntent.DeleteSelected) }, ToolTone.Danger)
         val duplicateTool = ToolBarItem(duplicate, MemixIcons.Duplicate, { onIntent(VideoEditorIntent.DuplicateSelected) })
+        // Spoken "Move to playhead": "here" means the playhead (spec P1-06 → Accessibility).
+        val moveHereTool = ToolBarItem(moveHere, MemixIcons.MoveHere, { onIntent(VideoEditorIntent.MoveHereSelected) }, contentDescription = moveHereSpoken)
         when (clipTools) {
             ClipTools.MAIN_CLIP -> persistentListOf(
                 splitTool,
@@ -181,8 +202,15 @@ private fun rememberClipTools(clipTools: ClipTools, onIntent: (VideoEditorIntent
                 duplicateTool,
                 ToolBarItem(reorder, MemixIcons.Reorder, { onIntent(VideoEditorIntent.StartReorderSelected) }, focusRequester = reorderFocus),
             )
-            ClipTools.OTHER -> persistentListOf(splitTool, deleteTool, duplicateTool)
-            ClipTools.TEXT -> persistentListOf(deleteTool, splitTool, duplicateTool)
+            ClipTools.SOUND -> persistentListOf(
+                ToolBarItem(volume, MemixIcons.Volume, { onIntent(VideoEditorIntent.VolumeTool) }),
+                splitTool,
+                deleteTool,
+                moveHereTool,
+                duplicateTool,
+            )
+            ClipTools.TEXT -> persistentListOf(deleteTool, splitTool, moveHereTool, duplicateTool)
+            ClipTools.OTHER -> persistentListOf(splitTool, deleteTool, moveHereTool, duplicateTool)
         }
     }
 }

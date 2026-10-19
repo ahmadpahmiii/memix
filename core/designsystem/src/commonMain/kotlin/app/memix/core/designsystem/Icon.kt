@@ -21,6 +21,7 @@ import memix.core.designsystem.generated.resources.ic_globe
 import memix.core.designsystem.generated.resources.ic_heart
 import memix.core.designsystem.generated.resources.ic_heart_filled
 import memix.core.designsystem.generated.resources.ic_home
+import memix.core.designsystem.generated.resources.ic_move_here
 import memix.core.designsystem.generated.resources.ic_pause
 import memix.core.designsystem.generated.resources.ic_photo
 import memix.core.designsystem.generated.resources.ic_play
@@ -31,6 +32,7 @@ import memix.core.designsystem.generated.resources.ic_split
 import memix.core.designsystem.generated.resources.ic_templates
 import memix.core.designsystem.generated.resources.ic_undo
 import memix.core.designsystem.generated.resources.ic_video
+import memix.core.designsystem.generated.resources.ic_volume
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -48,6 +50,7 @@ object MemixIcons {
     val Heart = Res.drawable.ic_heart
     val HeartFilled = Res.drawable.ic_heart_filled
     val Home = Res.drawable.ic_home
+    val MoveHere = Res.drawable.ic_move_here
     val Pause = Res.drawable.ic_pause
     val Photo = Res.drawable.ic_photo
     val Play = Res.drawable.ic_play
@@ -58,6 +61,7 @@ object MemixIcons {
     val Templates = Res.drawable.ic_templates
     val Undo = Res.drawable.ic_undo
     val Video = Res.drawable.ic_video
+    val Volume = Res.drawable.ic_volume
 }
 
 /** [contentDescription] is null only when a visible label next to the icon already says the same thing. */

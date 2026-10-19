@@ -58,6 +58,13 @@ interface PreviewSession : AutoCloseable {
     /** Shows the project at [positionUs] again after [showTrimFrame]; does nothing otherwise. Commit the trim after it. */
     fun endTrimFrames()
 
+    /**
+     * While the Volume panel's slider moves (P1-08): plays sound [itemId] at [volume] (1 = its own level) right away,
+     * without rebuilding, so the change is heard live. A sound that's silent in the project isn't playing, so it stays
+     * silent until the change is committed. The next [update] replaces it with the project's volume.
+     */
+    fun previewVolume(itemId: String, volume: Float)
+
     /** Stops playback and frees the decoders and the surface. Further calls do nothing. */
     override fun close()
 }

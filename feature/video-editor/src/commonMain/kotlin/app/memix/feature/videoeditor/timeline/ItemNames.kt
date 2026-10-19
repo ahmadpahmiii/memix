@@ -2,6 +2,8 @@ package app.memix.feature.videoeditor.timeline
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.platform.LocalLocale
+import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.project.TrackKind
 import memix.feature.video_editor.generated.resources.Res
 import memix.feature.video_editor.generated.resources.a11y_clip_label
@@ -29,6 +31,8 @@ sealed interface ItemName {
 
     data object OriginalAudio : ItemName
 
+    data class Sound(val title: LocalizedText) : ItemName
+
     data class Unnamed(val trackKind: TrackKind) : ItemName
 }
 
@@ -47,6 +51,7 @@ internal fun nameOf(track: TrackUi, item: ItemUi): ItemName {
     return when (val label = item.label) {
         is ItemLabel.Written -> ItemName.Written(label.text)
         ItemLabel.OriginalAudio -> ItemName.OriginalAudio
+        is ItemLabel.SoundTitle -> ItemName.Sound(label.title)
         ItemLabel.None -> ItemName.Unnamed(track.kind)
     }
 }
@@ -56,6 +61,7 @@ internal fun spokenName(name: ItemName): String = when (name) {
     is ItemName.Clip -> stringResource(Res.string.a11y_clip_label, name.number)
     is ItemName.Written -> name.text
     ItemName.OriginalAudio -> stringResource(Res.string.timeline_original_audio)
+    is ItemName.Sound -> name.title.inLanguage(LocalLocale.current.language)
     is ItemName.Unnamed -> stringResource(trackNameOf(name.trackKind))
 }
 
