@@ -16,6 +16,8 @@ enum class VideoEdit(val tool: EditorTool) {
     MOVE(EditorTool.MOVE),
     VOLUME(EditorTool.VOLUME),
     ADD_SOUND(EditorTool.ADD_SOUND),
+    ADD_MEDIA(EditorTool.ADD_MEDIA),
+    REPLACE(EditorTool.REPLACE_CLIP),
     ;
 
     companion object {

@@ -154,7 +154,7 @@ fun Project.moveMainClip(itemId: String, steps: Int): Project {
     return reorderMainClips(ids.toMutableList().apply { add(to, removeAt(from)) })
 }
 
-// ---- Helpers (the internal ones are shared with SoundEdits.kt and MoveEdits.kt) ------------------------------------
+// ---- Helpers (the internal ones are shared with SoundEdits.kt, MoveEdits.kt and MediaEdits.kt) ----------------------
 
 /** No source limit: far enough that no drag reaches it, near enough that adding a screen of time can't overflow. */
 private const val UNLIMITED_EARLIER_US = Long.MIN_VALUE / 4

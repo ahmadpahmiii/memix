@@ -118,6 +118,10 @@ internal class AndroidMediaFiles(
         File(filesDir, parent).listFiles()?.filter { it.isDirectory }?.map { it.name }.orEmpty()
     }
 
+    override suspend fun listFiles(folder: String): List<String> = withContext(ioDispatcher) {
+        File(filesDir, folder).listFiles()?.filter { it.isFile }?.map { "$folder/${it.name}" }.orEmpty()
+    }
+
     override suspend fun deleteFolder(path: String) {
         withContext(ioDispatcher) { File(filesDir, path).deleteRecursively() }
     }

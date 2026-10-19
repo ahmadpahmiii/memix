@@ -30,13 +30,31 @@ import kotlin.math.min
 actual fun rememberMediaPickerLauncher(maxItems: Int, onPicked: (List<MediaOrigin>) -> Unit): MediaPickerLauncher {
     // Saved with the activity, so a tap while the picker is still opening is ignored even across a rotation.
     val awaitingResult = rememberSaveable { mutableStateOf(false) }
+    // A call site always passes the same maxItems, so this branch never switches for a given picker.
+    val launchPicker = if (maxItems == 1) rememberSinglePicker(awaitingResult, onPicked) else rememberMultiplePicker(maxItems, awaitingResult, onPicked)
+    return remember(launchPicker) { AndroidMediaPickerLauncher(awaitingResult, launchPicker) }
+}
+
+// PickMultipleVisualMedia requires a maximum above 1 (androidx.activity 1.13), so one item uses PickVisualMedia.
+@Composable
+private fun rememberSinglePicker(awaitingResult: MutableState<Boolean>, onPicked: (List<MediaOrigin>) -> Unit): () -> Unit {
     // The launcher re-registers whenever the contract instance changes, so it must stay the same object.
+    val contract = remember { PickVisualMedia() }
+    val activityLauncher = rememberLauncherForActivityResult(contract) { uri ->
+        awaitingResult.value = false
+        onPicked(listOfNotNull(uri).map { MediaOrigin.GalleryUri(it.toString()) })
+    }
+    return remember(activityLauncher) { { activityLauncher.launch(PICK_ONE_REQUEST) } }
+}
+
+@Composable
+private fun rememberMultiplePicker(maxItems: Int, awaitingResult: MutableState<Boolean>, onPicked: (List<MediaOrigin>) -> Unit): () -> Unit {
     val contract = remember(maxItems) { PickMultipleVisualMedia(pickerMaxItems(maxItems)) }
     val activityLauncher = rememberLauncherForActivityResult(contract) { uris ->
         awaitingResult.value = false
         onPicked(uris.map { uri -> MediaOrigin.GalleryUri(uri.toString()) })
     }
-    return remember(activityLauncher) { AndroidMediaPickerLauncher(awaitingResult) { activityLauncher.launch(PICK_REQUEST) } }
+    return remember(activityLauncher) { { activityLauncher.launch(PICK_REQUEST) } }
 }
 
 private class AndroidMediaPickerLauncher(
@@ -59,6 +77,10 @@ private class AndroidMediaPickerLauncher(
 private val PICK_REQUEST = PickVisualMediaRequest.Builder()
     .setMediaType(PickVisualMedia.ImageAndVideo)
     .setOrderedSelection(true)
+    .build()
+
+private val PICK_ONE_REQUEST = PickVisualMediaRequest.Builder()
+    .setMediaType(PickVisualMedia.ImageAndVideo)
     .build()
 
 // The contract refuses a maximum above the system picker's own limit, so ask for the lower of the two.

@@ -14,15 +14,15 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import app.memix.core.designsystem.MemixMotion
 import app.memix.core.designsystem.MemixTheme
 import app.memix.core.model.project.TrackKind
-import app.memix.feature.videoeditor.LandedItem
+import app.memix.feature.videoeditor.LandedItems
 import kotlin.math.roundToLong
 
 /**
  * The timeline's motion after an edit (spec P1-06 → Motion and haptics), read only in draw code:
  * - **Ripple:** after an edit moves main clips (trim, delete, duplicate, undo), they slide from their old places to
  *   the new ones in 200 ms; with reduce motion they're simply there.
- * - **Bonk:** an item that lands (a duplicate, a meme sound) scales 1 → 1.12 → 1 over 240 ms; with reduce motion it
- *   fades in over 120 ms instead.
+ * - **Bonk:** items that land (a duplicate, a meme sound, added or replaced media) scale 1 → 1.12 → 1 over 240 ms, each
+ *   around its own center; with reduce motion they fade in over 120 ms instead.
  * - **Lane slide:** when a lane comes or goes (a sound lands on a new lane, a lane empties), the rows below slide to
  *   their new places in 200 ms (spec P1-05 → Motion); with reduce motion they're simply there.
  */
@@ -34,7 +34,7 @@ internal class EditMotion {
     private var slideFromUs: Map<String, Long> = emptyMap()
     val slide = Animatable(1f)
 
-    var landedItemId by mutableStateOf<String?>(null)
+    var landedItemIds by mutableStateOf<Set<String>>(emptySet())
         private set
     val bonkScale = Animatable(1f)
     val bonkAlpha = Animatable(1f)
@@ -71,8 +71,8 @@ internal class EditMotion {
         slide.animateTo(1f, tween(MemixMotion.durationSheet))
     }
 
-    suspend fun bonk(itemId: String, reduceMotion: Boolean) {
-        landedItemId = itemId
+    suspend fun bonk(itemIds: Set<String>, reduceMotion: Boolean) {
+        landedItemIds = itemIds
         if (reduceMotion) {
             bonkAlpha.snapTo(0f)
             bonkAlpha.animateTo(1f, tween(MemixMotion.durationPress))
@@ -86,7 +86,7 @@ internal class EditMotion {
                 },
             )
         }
-        landedItemId = null
+        landedItemIds = emptySet()
     }
 
     companion object {
@@ -125,11 +125,11 @@ internal fun AnimateLanes(motion: EditMotion, lanes: LaneLayout) {
 
 /**
  * Runs [motion]'s ripple whenever a new timeline moves main clips that were there before, except while reorder
- * mode's tiles handle the change themselves, and its bonk when [landed] names a new item (with the Confirm haptic for a
+ * mode's tiles handle the change themselves, and its bonk when [landed] names new items (with the Confirm haptic for a
  * meme sound).
  */
 @Composable
-internal fun AnimateEdits(motion: EditMotion, timeline: TimelineUi, landed: LandedItem?, controller: TimelineController) {
+internal fun AnimateEdits(motion: EditMotion, timeline: TimelineUi, landed: LandedItems?, controller: TimelineController) {
     val reduceMotion = MemixTheme.reduceMotion
     LaunchedEffect(timeline) {
         val before = motion.lastTimeline
@@ -143,7 +143,7 @@ internal fun AnimateEdits(motion: EditMotion, timeline: TimelineUi, landed: Land
         if (landed == null) return@LaunchedEffect
         // The tick when a sound lands (spec P1-06 → Motion and haptics; mobile-performance skill → Feel).
         if (landed.isSound) haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-        motion.bonk(landed.itemId, reduceMotion)
+        motion.bonk(landed.itemIds, reduceMotion)
     }
 }
 

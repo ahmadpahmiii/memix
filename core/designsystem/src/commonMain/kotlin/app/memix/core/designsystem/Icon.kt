@@ -27,6 +27,7 @@ import memix.core.designsystem.generated.resources.ic_photo
 import memix.core.designsystem.generated.resources.ic_play
 import memix.core.designsystem.generated.resources.ic_redo
 import memix.core.designsystem.generated.resources.ic_reorder
+import memix.core.designsystem.generated.resources.ic_replace
 import memix.core.designsystem.generated.resources.ic_sounds
 import memix.core.designsystem.generated.resources.ic_split
 import memix.core.designsystem.generated.resources.ic_templates
@@ -56,6 +57,7 @@ object MemixIcons {
     val Play = Res.drawable.ic_play
     val Redo = Res.drawable.ic_redo
     val Reorder = Res.drawable.ic_reorder
+    val Replace = Res.drawable.ic_replace
     val Sounds = Res.drawable.ic_sounds
     val Split = Res.drawable.ic_split
     val Templates = Res.drawable.ic_templates

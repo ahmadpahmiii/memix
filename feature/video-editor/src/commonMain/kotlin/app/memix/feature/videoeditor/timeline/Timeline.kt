@@ -32,6 +32,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
@@ -60,7 +61,7 @@ import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.TrackKind
 import app.memix.core.ui.formatTimecode
 import app.memix.feature.videoeditor.EditorPreview
-import app.memix.feature.videoeditor.LandedItem
+import app.memix.feature.videoeditor.LandedItems
 import app.memix.feature.videoeditor.ReorderUi
 import app.memix.feature.videoeditor.VideoEditorIntent
 import kotlin.math.max
@@ -95,10 +96,10 @@ import org.jetbrains.compose.resources.stringResource
  *
  * Items on every lane but the main track move by a long-press drag (spec P1-06 → Move): the same finger carries the
  * item in time and across lanes of its kind, and the drop commits once. The "Add a meme sound" pill sits on its row at
- * the playhead (P1-08).
+ * the playhead (P1-08), and the Add media tile after the end of the video (P1-16; [addMediaTileFocus] brings focus back
+ * to it after its pick).
  *
- * The original-audio toggle (P1-09) and Add media (P1-16) arrive with their tickets; until then they aren't drawn,
- * never shown disabled.
+ * The original-audio toggle (P1-09) arrives with its ticket; until then it isn't drawn, never shown disabled.
  */
 @Composable
 internal fun Timeline(
@@ -106,15 +107,16 @@ internal fun Timeline(
     selectedItemId: String?,
     trimRanges: TrimRanges?,
     reorder: ReorderUi?,
-    landed: LandedItem?,
+    landed: LandedItems?,
     preview: EditorPreview?,
     thumbnails: TimelineThumbnails?,
+    addMediaTileFocus: FocusRequester,
     onIntent: (VideoEditorIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Time always runs left to right, whatever the language (spec → Structure).
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        TimelineContent(timeline, selectedItemId, trimRanges, reorder, landed, preview, thumbnails, onIntent, modifier)
+        TimelineContent(timeline, selectedItemId, trimRanges, reorder, landed, preview, thumbnails, addMediaTileFocus, onIntent, modifier)
     }
 }
 
@@ -132,9 +134,10 @@ private fun TimelineContent(
     selectedItemId: String?,
     trimRanges: TrimRanges?,
     reorder: ReorderUi?,
-    landed: LandedItem?,
+    landed: LandedItems?,
     preview: EditorPreview?,
     thumbnails: TimelineThumbnails?,
+    addMediaTileFocus: FocusRequester,
     onIntent: (VideoEditorIntent) -> Unit,
     modifier: Modifier,
 ) {
@@ -330,6 +333,11 @@ private fun TimelineContent(
         PlayheadSemantics(controller, timeline.lengthUs, rulerHeight)
         lanes.addSoundRow?.let { addRow ->
             AddMemeSoundPill(controller, addRow, motion, laneScroll, rulerHeight, onClick = { onIntent(VideoEditorIntent.AddMemeSoundRow) })
+        }
+        // The last clip's end handle and its 48 dp target take the same place, so the tile waits while that clip is selected.
+        val lastClipSelected = selectedItemId != null && selectedItemId == timeline.lastMainClipId
+        if (!lastClipSelected) {
+            AddMediaTile(controller, lanes, timeline.lengthUs, laneScroll, rulerHeight, addMediaTileFocus, onClick = { onIntent(VideoEditorIntent.AddMediaTile) })
         }
         EditValueBubble(controller, rulerHeightPx, laneScroll)
         ZoomMenu(controller, zoomMenuOpen, zoomMenuAt, onDismiss = { zoomMenuOpen = false })

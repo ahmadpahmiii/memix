@@ -45,7 +45,7 @@
     <string name="editor_preview_a11y">प्रीव्यू, %1$s</string>
     <string name="editor_preview_error_body">प्रीव्यू रुक गया। आपके बदलाव सुरक्षित हैं।</string>
     <string name="editor_preview_retry">फिर कोशिश करें</string>
-    <string name="editor_missing_media">एक क्लिप की फ़ाइल नहीं मिली, इसलिए वह काली दिखेगी। ठीक करने के लिए वह क्लिप हटाएं।</string>
+    <string name="editor_missing_media">एक क्लिप की फ़ाइल नहीं मिली, इसलिए वह काली दिखेगी। ठीक करने के लिए वह क्लिप बदलें या हटाएं।</string>
     <string name="editor_save_storage_full">आपका फ़ोन भर गया है, इसलिए आपके नए बदलाव सेव नहीं हुए।</string>
     <string name="editor_save_failed">आपके नए बदलाव अभी सेव नहीं हुए। अगले बदलाव पर Memix फिर कोशिश करेगा।</string>
     <string name="editor_dismiss">संदेश बंद करें</string>
@@ -54,7 +54,7 @@
     <string name="editor_unsaved_body">आपका फ़ोन भर गया है। बदलाव रखने के लिए जगह खाली करें, या छोड़ें और उन्हें खो दें।</string>
     <string name="editor_leave_anyway">फिर भी छोड़ें</string>
     <string name="editor_empty_title">इस ड्राफ़्ट में क्लिप नहीं है</string>
-    <string name="editor_empty_body">इसे बंद करें और नया वीडियो मीम बनाएं।</string>
+    <string name="editor_empty_body_add">शुरू करने के लिए कोई वीडियो या फ़ोटो जोड़ें।</string>
     <string name="edit_trim">ट्रिम</string>
     <string name="edit_split">स्प्लिट</string>
     <string name="edit_delete">हटाएं</string>
@@ -130,4 +130,16 @@
     <string name="sounds_title">मीम साउंड</string>
     <string name="sounds_empty_title">अभी कोई साउंड नहीं</string>
     <string name="sounds_empty_body">मीम साउंड लाइब्रेरी अगले बिल्ड में आएगी।</string>
+    <!-- P1-16: Add media and Replace (spec P1-06 -> Add media, Replace; P1-05 -> Trailing area) -->
+    <string name="tool_add_media">मीडिया जोड़ें</string>
+    <string name="tool_replace">बदलें</string>
+    <string name="edit_add_media">मीडिया जोड़ें</string>
+    <string name="edit_replace">बदलें</string>
+    <string name="explain_replace_too_short">वह वीडियो इस क्लिप से छोटा है (%1$s)। कोई लंबा वीडियो चुनें, या पहले यह क्लिप ट्रिम करें।</string>
+    <string name="explain_replace_detached">अलग की गई साउंड बनी रहेगी, इसलिए इस क्लिप की अपनी साउंड 0% से शुरू होगी।</string>
+    <plurals name="a11y_media_added">
+        <item quantity="one">%1$d क्लिप जोड़ी गई</item>
+        <item quantity="other">%1$d क्लिप जोड़ी गईं</item>
+    </plurals>
+    <string name="timeline_add_media">वीडियो या फ़ोटो जोड़ें</string>
 </resources>

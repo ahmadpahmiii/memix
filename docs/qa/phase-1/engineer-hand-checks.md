@@ -643,6 +643,95 @@ sound landed on a new lane), `add-row-pill` (a clip selected, the pill at the pl
 its bubble and snap line), `move-to-add-row` (over the add row), `volume-panel` (100%), `volume-panel-200`,
 `sounds-sheet-hi-200`, `sound-tools-hi-200` and `add-row-hi-200` (Hindi at 200% font).
 
+## P1-16 · Add media lands after the clip under the playhead as one step; Replace keeps the clip's start and length
+
+Spec `docs/ux/specs/P1-06-clip-edits-and-audio.md` → Main tool bar, Add media, Replace, States, Copy, Accessibility,
+Analytics; `P1-05-timeline.md` → Trailing area; `P1-04` → missing-file toast and empty state. Projects: `timeline-check`
+(20 clips of 6, 3, 5 and 2 s: clip 3 runs 9–14 s, so 9.0 s is the boundary between clips 2 and 3; clip 1's sound is
+detached), `export-check` (clip B at 5.0–8.0 s is detached, its audio on the audio lane at 5.0 s), `missing-media` and
+`empty`. Keep a few videos of different lengths (one of 2 s, one of 60 s) and some photos in the phone's gallery.
+
+```sh
+./gradlew :androidApp:installDebug
+adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor timeline-check
+adb logcat -s MemixAnalytics:* MemixEditorCheck:* MediaImport:*      # second terminal
+```
+
+**A. Add media (debug build).**
+1. **Main tool bar:** with nothing selected, Edit · Meme sounds (blue) · Add media (plus icon, place 3 until P1-10's Text
+   takes place 3). The same system picker as Create → Video meme opens, with no permission prompt; it allows 35.
+2. **Inside a clip:** playhead at about 11 s (inside clip 3), Add media, pick a photo and a video. They land right after
+   clip 3, in pick order; clip 3 isn't cut; clip 4 and everything after it move right by the added length (they slide);
+   the meme sounds, captions and "Original audio" don't move. The playhead jumps to the first new clip (14.0 s) and the
+   new clips bonk together. The selection and tool bar don't change. TalkBack: "2 clips added". Undo: "Undo: Add media"
+   removes both; Redo brings both back.
+3. **On a boundary:** with TalkBack on, double-tap clip 3 (the playhead goes to exactly 9.0 s), TalkBack off, Add media,
+   one photo: it lands at 9.0 s, between clips 2 and 3 (before clip 3, not after it).
+4. **At the end:** scroll to the very end, Add media: appended after the last clip.
+5. **The tile:** at the end of the video, the plus tile sits just right of the last clip (a dark square, pressed: lighter).
+   With the playhead a little before the end (inside the last clip), tap the tile, pick one: appended at the end, not after
+   the clip under the playhead. The tile hides in reorder mode, while a trim handle or a carried sound is held, and while the
+   last clip is selected (its end handle takes that place). TalkBack reads it as "Add videos or photos", after the "Add a
+   meme sound" pill.
+6. **Empty project:** `--es memix.openEditor empty`: "This draft has no clips · Add a video or photo to start.", the tool
+   bar shows only Add media, and the tile sits just right of the playhead at 0:00. Add from either: the clips start at
+   0:00, the preview comes up, Play works, and Edit and Meme sounds appear.
+7. **Nothing happens when nothing is picked:** open the picker and press back, or close it, or confirm with nothing
+   selected: no change, no "Undo", no `tool_use` line. Focus (TalkBack) goes back to the tool or tile that opened it.
+8. **Import sheet:** pick a long video (over 300 ms to copy): P1-02's "Adding your media" sheet over the editor, with its
+   own scrim, "1 of 1" and the bar; Cancel or back cancels (nothing added, no copy left: `adb shell run-as app.memix ls
+   files/media/<project id>/`). Pick a damaged file with a good one: "1 of 2 added" with the row; Continue returns to the
+   editor and then the clip bonks. "Not enough space" (fill the phone, or a big pick on a nearly full phone) and Free up
+   space behave as in P1-02.
+9. **Drift trial** (PM, with P1-06 block E): land a meme sound on a clip boundary, then Add media before it: later clips
+   move right, the sound keeps its time and now plays off that boundary. Note whether that would bother you.
+
+**B. Replace (debug build).**
+1. **Where:** select a main clip: Split · Delete · Duplicate · Reorder · Replace (last; new icon: a block between two curved
+   arrows). Sounds, captions and other items have no Replace.
+2. **A longer video:** select clip 3 (5.0 s), Replace, pick the 60 s video. Same start and length (the badge still says
+   00:05.00), new thumbnails, it bonks once, stays selected, the playhead doesn't move. TalkBack: "Replace: clip 3".
+   Undo: "Undo: Replace" brings the old picture back. The logcat `MemixEditorCheck` lines of the next save list only
+   `video.tracks[...].items[timeline-clip-2].source.*` (clip 3 already ran from 0 to 5 s of its file, so no trim line; a
+   clip with a trimmed start also shows `trimInUs` -> 0 and its `trimOutUs`): no other clip, track, sound or caption, no
+   `startUs`, `volume` or `muted`.
+3. **A photo:** Replace clip 3 with a photo: it shows for the clip's 5.0 s.
+4. **A shorter video:** Replace clip 3 with the 2 s video: the toast "That video is shorter than this clip (00:05.00). Pick
+   a longer one, or trim this clip first.", nothing changes, no "Undo", and its copy is gone (`ls files/media/<id>/`: no new
+   file).
+5. **Detached clip:** `--es memix.openEditor export-check`, select clip B (5.0–8.0 s, its audio already on the audio lane),
+   Replace with a video that has sound: the toast "The detached sound stays, so this clip's own sound starts at 0%.";
+   playing, you hear the detached audio once, not doubled. The save's `MemixEditorCheck` lines show `audioDetached` true ->
+   false and `volume` -> 0.0 for that clip besides its source and trim; the audio lane's clip has no line. A photo or a
+   silent video gets no toast.
+6. **Missing file:** `--es memix.openEditor missing-media`: the toast now says "Replace or delete that clip to fix it.".
+   Select the middle clip ("File missing"): Replace comes first. Replace it with a 3 s or longer video: "File missing"
+   goes, thumbnails appear, the preview plays it.
+7. **Copies go at the next start** (PM bar): after step B2, note the old file in `adb shell run-as app.memix ls
+   files/media/<id>/`, close the editor, `adb shell am force-stop app.memix`, start the app again: the old file is gone and
+   the draft opens with the new picture. With the editor still open (before closing), Undo brings the old picture back.
+8. **Analytics** (`MemixAnalytics`): `tool_use {editor=video, tool=add_media}` once per pick that lands (2 items = one
+   line), `tool_use {tool=replace_clip}` once per Replace; nothing for a cancelled pick, a refused Replace or an empty
+   pick, and never `project_create` from the editor.
+
+**C. Process death (debug build).** In Developer options set "Don't keep activities" on. Add media → the picker opens,
+the editor is destroyed behind it → pick 2 photos: back in the editor, they land after the clip that was under the
+playhead when you tapped (the draft reopens first). Turn the option off again.
+
+**D. Leaks (debug build, LeakCanary 2.14).** Open and close the editor 5 times on `timeline-check`, each time: Add media
+(2 photos), Replace one clip, cancel one pick, then wait 10 s on Home. Pass: no LeakCanary notification and `adb logcat
+-d -s LeakCanary:*` reports no leak.
+
+**E. Hindi and large text:** Hindi at 200% font, 360 dp: the main tool bar (Add media), a main clip's tools (Replace),
+the empty state, and the import sheet are whole; labels wrap, nothing is cut.
+
+### States to screenshot for the design review (`docs/ux/reviews/P1-16/`)
+At 360 dp wide if possible, English unless noted: `main-tools-add-media`, `tile-at-end`, `tile-pressed`, `empty-project`
+(tile and Add media only), `media-added` (after the bonk, playhead on the first new clip), `import-sheet-over-editor`,
+`clip-tools-replace`, `replaced-clip` (same start and length, new thumbnails), `replace-too-short-toast`,
+`replace-detached-toast`, `missing-clip-replace-first`, `main-tools-hi-200`, `clip-tools-replace-hi-200`,
+`empty-project-hi-200`, `main-tools-es-200` (the longest Add media label).
+
 ## P1-17 · Hindi display face: hero and entry cards in Teko, nothing clipped, other languages unchanged
 
 ```sh

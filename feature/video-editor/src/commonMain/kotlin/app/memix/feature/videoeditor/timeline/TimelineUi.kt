@@ -37,6 +37,9 @@ data class TimelineUi(
     /** The item with [id], or null when no track holds it (any more). */
     fun item(id: String): ItemUi? = tracks.firstNotNullOfOrNull { track -> track.items.firstOrNull { it.id == id } }
 
+    /** The main video track's last clip, which ends the video; null in an empty project. */
+    val lastMainClipId: String? get() = tracks.firstOrNull { it.kind == TrackKind.MAIN_VIDEO }?.items?.lastOrNull()?.id
+
     companion object {
         val Empty = TimelineUi(lengthUs = 0, tracks = persistentListOf())
     }

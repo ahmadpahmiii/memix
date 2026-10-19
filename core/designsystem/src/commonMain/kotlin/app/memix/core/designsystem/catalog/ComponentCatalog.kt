@@ -301,17 +301,24 @@ private fun MenuSection() = Section("Menu") {
     }
 }
 
-// The editor's tool bar (P1-06): nothing selected, then a video clip selected (clip mode, Delete in danger), then the
-// meme-sound and active looks, then a meme sound selected (P1-08).
+// The editor's tool bar (P1-06): nothing selected (with P1-16's Add media), then a video clip selected (clip mode,
+// Delete in danger, Replace last), then the meme-sound and active looks, then a meme sound selected (P1-08).
 @Composable
 private fun ToolBarSection() = Section("ToolBar") {
-    ToolBar(persistentListOf(ToolBarItem("Edit", MemixIcons.Edit, {})))
+    ToolBar(
+        persistentListOf(
+            ToolBarItem("Edit", MemixIcons.Edit, {}),
+            ToolBarItem("Meme sounds", MemixIcons.Sounds, {}, ToolTone.MemeSound),
+            ToolBarItem("Add media", MemixIcons.Create, {}),
+        ),
+    )
     ToolBar(
         persistentListOf(
             ToolBarItem("Split", MemixIcons.Split, {}),
             ToolBarItem("Delete", MemixIcons.Delete, {}, ToolTone.Danger),
             ToolBarItem("Duplicate", MemixIcons.Duplicate, {}),
             ToolBarItem("Reorder", MemixIcons.Reorder, {}),
+            ToolBarItem("Replace", MemixIcons.Replace, {}),
             ToolBarItem("A long label that wraps", MemixIcons.Edit, {}),
         ),
         close = ToolBarClose("Close clip tools") {},
@@ -368,7 +375,7 @@ private fun IconSection() = Section("Icons") {
         "pause" to MemixIcons.Pause, "heart" to MemixIcons.Heart, "heart_filled" to MemixIcons.HeartFilled,
         "undo" to MemixIcons.Undo, "redo" to MemixIcons.Redo, "edit" to MemixIcons.Edit, "split" to MemixIcons.Split,
         "delete" to MemixIcons.Delete, "duplicate" to MemixIcons.Duplicate, "reorder" to MemixIcons.Reorder,
-        "volume" to MemixIcons.Volume, "move_here" to MemixIcons.MoveHere,
+        "volume" to MemixIcons.Volume, "move_here" to MemixIcons.MoveHere, "replace" to MemixIcons.Replace,
     )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space4), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4)) {
         icons.forEach { (name, icon) ->

@@ -46,7 +46,7 @@
     <string name="editor_preview_a11y">Preview, %1$s</string>
     <string name="editor_preview_error_body">The preview stopped. Your edits are safe.</string>
     <string name="editor_preview_retry">Try again</string>
-    <string name="editor_missing_media">A clip's file is missing, so it plays black. Delete that clip to fix it.</string>
+    <string name="editor_missing_media">A clip's file is missing, so it plays black. Replace or delete that clip to fix it.</string>
     <string name="editor_save_storage_full">Your phone is full, so your latest changes aren't saved.</string>
     <string name="editor_save_failed">Your latest changes aren't saved yet. Memix tries again with your next change.</string>
     <string name="editor_dismiss">Dismiss</string>
@@ -55,7 +55,7 @@
     <string name="editor_unsaved_body">Your phone is full. Free up space to keep them, or leave and lose them.</string>
     <string name="editor_leave_anyway">Leave anyway</string>
     <string name="editor_empty_title">This draft has no clips</string>
-    <string name="editor_empty_body">Close it and start a new video meme.</string>
+    <string name="editor_empty_body_add">Add a video or photo to start.</string>
     <!-- Edit names, used in "Undo: ..." (spec P1-06 -> Copy); P1-06 adds the rest. -->
     <string name="edit_trim">Trim</string>
     <string name="edit_split">Split</string>
@@ -133,4 +133,16 @@
     <string name="sounds_title">Meme sounds</string>
     <string name="sounds_empty_title">No sounds yet</string>
     <string name="sounds_empty_body">The meme sound library comes in a later build.</string>
+    <!-- P1-16: Add media and Replace (spec P1-06 -> Add media, Replace; P1-05 -> Trailing area) -->
+    <string name="tool_add_media">Add media</string>
+    <string name="tool_replace">Replace</string>
+    <string name="edit_add_media">Add media</string>
+    <string name="edit_replace">Replace</string>
+    <string name="explain_replace_too_short">That video is shorter than this clip (%1$s). Pick a longer one, or trim this clip first.</string>
+    <string name="explain_replace_detached">The detached sound stays, so this clip's own sound starts at 0%.</string>
+    <plurals name="a11y_media_added">
+        <item quantity="one">%1$d clip added</item>
+        <item quantity="other">%1$d clips added</item>
+    </plurals>
+    <string name="timeline_add_media">Add videos or photos</string>
 </resources>

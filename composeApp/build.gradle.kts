@@ -33,6 +33,8 @@ kotlin {
         implementation(libs.jetbrains.navigation.compose)
         implementation(libs.jetbrains.lifecycle.runtime.compose)
         implementation(libs.kotlinx.collections.immutable)
+        // The debug save diff (EditorSaveDiffLog) compares projects as JSON trees.
+        implementation(libs.kotlinx.serialization.json)
         implementation(project.dependencies.platform(libs.koin.bom))
         implementation(libs.koin.core)
         implementation(libs.koin.compose.viewmodel)

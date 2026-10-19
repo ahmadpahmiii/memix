@@ -21,7 +21,7 @@ fun Project.withMediaAppended(media: List<MediaRef>): Project {
     var nextStartUs = mainTrack.items.maxOfOrNull { it.startUs + it.durationUs } ?: 0L
     val newClips = buildList {
         for (ref in media) {
-            val clip = clipFor(ref, nextStartUs)
+            val clip = newMainClip(ref, Uuid.random().toString(), nextStartUs)
             add(clip)
             nextStartUs += clip.durationUs
         }
@@ -30,11 +30,15 @@ fun Project.withMediaAppended(media: List<MediaRef>): Project {
     return copy(video = timeline.copy(tracks = timeline.tracks.map { if (it.id == mainTrack.id) updatedMainTrack else it }))
 }
 
-private fun clipFor(media: MediaRef, startUs: Long): MediaClip {
+/**
+ * A main track clip for newly added [media] at [startUs]: a video at its full length with its own sound, a photo for
+ * [PHOTO_CLIP_DURATION_US]. Also used by the editor's Add media (P1-16).
+ */
+internal fun newMainClip(media: MediaRef, id: String, startUs: Long): MediaClip {
     val lengthUs = when (media.kind) {
         MediaKind.VIDEO -> requireNotNull(media.durationUs) { "A video needs its duration, measured at import" }
         MediaKind.IMAGE -> PHOTO_CLIP_DURATION_US
         MediaKind.AUDIO -> throw IllegalArgumentException("Audio goes on an audio track, not the main video track")
     }
-    return MediaClip(id = Uuid.random().toString(), startUs = startUs, source = media, trimInUs = 0, trimOutUs = lengthUs)
+    return MediaClip(id = id, startUs = startUs, source = media, trimInUs = 0, trimOutUs = lengthUs)
 }

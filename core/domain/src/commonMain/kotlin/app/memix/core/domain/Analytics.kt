@@ -63,6 +63,10 @@ enum class EditorTool(val eventValue: String?) {
 
     /** An undo step with no `tool_use`: a landed meme sound is counted by `sound_add` instead (spec P1-06 → Analytics). */
     ADD_SOUND(null),
+
+    /** One pick added from the editor, however many items went in (P1-16). */
+    ADD_MEDIA("add_media"),
+    REPLACE_CLIP("replace_clip"),
 }
 
 /** `sound_add.tab` and `sound_preview.tab`: where in the sounds UI it happened. "starter" until P3-05 (PM, 8 Oct 2026). */

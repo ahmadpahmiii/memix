@@ -198,9 +198,9 @@ internal class TimelinePainter(
         }
     }
 
-    /** An item at [startUs]..[endUs]; the one that just landed bonks (or fades in, with reduce motion) around its center. */
+    /** An item at [startUs]..[endUs]; one that just landed bonks (or fades in, with reduce motion) around its center. */
     private fun DrawScope.drawLandingItem(row: LaneRow, item: ItemUi, startUs: Long, endUs: Long, place: ItemPlace, motion: EditMotion) {
-        if (item.id != motion.landedItemId) return drawItem(row, item, startUs, endUs, item.trimInUs, item.trimOutUs, place)
+        if (item.id !in motion.landedItemIds) return drawItem(row, item, startUs, endUs, item.trimInUs, item.trimOutUs, place)
         val left = xOf(startUs, place.playheadUs, place.centerPx, place.pxPerUs)
         val right = left + widthPx(endUs - startUs, place.pxPerUs)
         val scale = motion.bonkScale.value

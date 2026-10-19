@@ -35,6 +35,9 @@ interface MediaFiles {
     /** Names of the folders directly inside [parent]; empty when it doesn't exist. */
     suspend fun listFolders(parent: String): List<String>
 
+    /** Paths of the files directly inside [folder], in the same relative form; empty when it doesn't exist. */
+    suspend fun listFiles(folder: String): List<String>
+
     /** Deletes a folder and everything in it. */
     suspend fun deleteFolder(path: String)
 

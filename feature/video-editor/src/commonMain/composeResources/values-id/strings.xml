@@ -45,7 +45,7 @@
     <string name="editor_preview_a11y">Pratinjau, %1$s</string>
     <string name="editor_preview_error_body">Pratinjau berhenti. Editanmu aman.</string>
     <string name="editor_preview_retry">Coba lagi</string>
-    <string name="editor_missing_media">File sebuah klip hilang, jadi klip itu tampil hitam. Hapus klip itu untuk memperbaikinya.</string>
+    <string name="editor_missing_media">File sebuah klip hilang, jadi klip itu tampil hitam. Ganti atau hapus klip itu untuk memperbaikinya.</string>
     <string name="editor_save_storage_full">HP kamu penuh, jadi perubahan terbarumu belum tersimpan.</string>
     <string name="editor_save_failed">Perubahan terbarumu belum tersimpan. Memix mencoba lagi saat kamu mengubah sesuatu.</string>
     <string name="editor_dismiss">Tutup pesan</string>
@@ -54,7 +54,7 @@
     <string name="editor_unsaved_body">HP kamu penuh. Kosongkan ruang agar tetap tersimpan, atau keluar dan perubahannya hilang.</string>
     <string name="editor_leave_anyway">Tetap keluar</string>
     <string name="editor_empty_title">Draf ini tidak punya klip</string>
-    <string name="editor_empty_body">Tutup draf ini dan buat meme video baru.</string>
+    <string name="editor_empty_body_add">Tambahkan video atau foto untuk mulai.</string>
     <string name="edit_trim">Pangkas</string>
     <string name="edit_split">Pisahkan</string>
     <string name="edit_delete">Hapus</string>
@@ -130,4 +130,16 @@
     <string name="sounds_title">Suara meme</string>
     <string name="sounds_empty_title">Belum ada suara</string>
     <string name="sounds_empty_body">Koleksi suara meme hadir di build berikutnya.</string>
+    <!-- P1-16: Add media and Replace (spec P1-06 -> Add media, Replace; P1-05 -> Trailing area) -->
+    <string name="tool_add_media">Tambah media</string>
+    <string name="tool_replace">Ganti</string>
+    <string name="edit_add_media">Tambah media</string>
+    <string name="edit_replace">Ganti</string>
+    <string name="explain_replace_too_short">Video itu lebih pendek dari klip ini (%1$s). Pilih yang lebih panjang, atau pangkas klip ini dulu.</string>
+    <string name="explain_replace_detached">Suara yang dilepas tetap ada, jadi suara asli klip ini mulai dari 0%.</string>
+    <plurals name="a11y_media_added">
+        <item quantity="one">%1$d klip ditambahkan</item>
+        <item quantity="other">%1$d klip ditambahkan</item>
+    </plurals>
+    <string name="timeline_add_media">Tambah video atau foto</string>
 </resources>

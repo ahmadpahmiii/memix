@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,10 +82,12 @@ import app.memix.core.designsystem.component.Sheet
 import app.memix.core.designsystem.component.Toast
 import app.memix.core.designsystem.component.ToastAction
 import app.memix.core.designsystem.component.ToastDismiss
+import app.memix.core.domain.media.ImportMediaUseCase
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.ui.formatTimecode
 import app.memix.core.ui.spokenTime
 import app.memix.core.ui.spokenTimeOf
+import app.memix.feature.videoeditor.importmedia.ImportSheet
 import app.memix.feature.videoeditor.timeline.Timeline
 import app.memix.feature.videoeditor.timeline.spokenName
 import app.memix.feature.videoeditor.timeline.timelineMinHeight
@@ -94,20 +97,23 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import memix.feature.video_editor.generated.resources.Res
+import memix.feature.video_editor.generated.resources.a11y_media_added
 import memix.feature.video_editor.generated.resources.a11y_edit_on_item
 import memix.feature.video_editor.generated.resources.a11y_reorder_position
 import memix.feature.video_editor.generated.resources.a11y_sound_added
 import memix.feature.video_editor.generated.resources.edit_add_sound
+import memix.feature.video_editor.generated.resources.edit_add_media
 import memix.feature.video_editor.generated.resources.edit_delete
 import memix.feature.video_editor.generated.resources.edit_duplicate
 import memix.feature.video_editor.generated.resources.edit_move
 import memix.feature.video_editor.generated.resources.edit_reorder
+import memix.feature.video_editor.generated.resources.edit_replace
 import memix.feature.video_editor.generated.resources.edit_split
 import memix.feature.video_editor.generated.resources.edit_trim
 import memix.feature.video_editor.generated.resources.edit_volume
 import memix.feature.video_editor.generated.resources.editor_close
 import memix.feature.video_editor.generated.resources.editor_dismiss
-import memix.feature.video_editor.generated.resources.editor_empty_body
+import memix.feature.video_editor.generated.resources.editor_empty_body_add
 import memix.feature.video_editor.generated.resources.editor_empty_title
 import memix.feature.video_editor.generated.resources.editor_leave_anyway
 import memix.feature.video_editor.generated.resources.editor_missing_media
@@ -130,9 +136,12 @@ import memix.feature.video_editor.generated.resources.explain_last_clip
 import memix.feature.video_editor.generated.resources.explain_reorder_first
 import memix.feature.video_editor.generated.resources.explain_reorder_last
 import memix.feature.video_editor.generated.resources.explain_reorder_one
+import memix.feature.video_editor.generated.resources.explain_replace_detached
+import memix.feature.video_editor.generated.resources.explain_replace_too_short
 import memix.feature.video_editor.generated.resources.explain_sound_unreadable
 import memix.feature.video_editor.generated.resources.explain_split
 import memix.feature.video_editor.generated.resources.import_free_up_space
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -141,14 +150,15 @@ import org.jetbrains.compose.resources.stringResource
  * jumps while editing.
  *
  * [previewSurface] draws a preview session's picture: the composition root passes the engine's surface, which a
- * feature can't depend on. [onFreeUpSpace] opens the phone's storage manager.
+ * feature can't depend on. [onFreeUpSpace] opens the phone's storage manager, asking for the given number of bytes.
+ * The picker for Add media and Replace is the app's too: it opens the one in [VideoEditorUiState.mediaPicker].
  */
 @Composable
 fun VideoEditorScreen(
     state: VideoEditorUiState,
     onIntent: (VideoEditorIntent) -> Unit,
     previewSurface: @Composable (PreviewSession, Modifier) -> Unit,
-    onFreeUpSpace: () -> Unit,
+    onFreeUpSpace: (requestedBytes: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // System back closes the editor through the app's own navigation, which saves on the way out. The editor takes
@@ -159,10 +169,14 @@ fun VideoEditorScreen(
         isBackEnabled = !state.unsavedSheetOpen && (state.reorder != null || state.selectedItemId != null || state.isSaveFailing),
         onBackCompleted = { onIntent(VideoEditorIntent.Back) },
     )
-    // The sounds sheet and the Volume panel take back and Escape themselves while they're open.
-    val ownsEscape = !state.unsavedSheetOpen && !state.sounds.isOpen
+    // The sounds sheet, the import sheet and the Volume panel take back and Escape themselves while they're open.
+    val ownsEscape = !state.unsavedSheetOpen && !state.sounds.isOpen && !state.isImporting
     LifecycleEventEffect(Lifecycle.Event.ON_START) { onIntent(VideoEditorIntent.AppStarted) }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { onIntent(VideoEditorIntent.AppStopped) }
+    // A save needs little room; ask for the import's headroom, so the next import fits too (spec P1-04 → Saving).
+    val freeUpSpaceForSave = remember(onFreeUpSpace) { { onFreeUpSpace(ImportMediaUseCase.HEADROOM_BYTES) } }
+    val pickFocus = remember { PickOpenerFocus() }
+    ReturnFocusAfterPick(state.returnFocus, pickFocus)
 
     Box(
         modifier
@@ -178,20 +192,67 @@ fun VideoEditorScreen(
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
             TopBar(onClose = { onIntent(VideoEditorIntent.Close) })
             EditorLayout(
-                stage = { PreviewStage(state, onIntent, previewSurface, onFreeUpSpace) },
+                stage = { PreviewStage(state, onIntent, previewSurface, freeUpSpaceForSave) },
                 transport = { TransportRow(state, onIntent) },
                 timeline = {
-                    Timeline(state.timeline, state.selectedItemId, state.trimRanges, state.reorder, state.landed, state.preview, state.thumbnails, onIntent)
+                    Timeline(
+                        state.timeline,
+                        state.selectedItemId,
+                        state.trimRanges,
+                        state.reorder,
+                        state.landed,
+                        state.preview,
+                        state.thumbnails,
+                        pickFocus.addMediaTile,
+                        onIntent,
+                    )
                 },
-                tools = { ToolBarRegion(state.clipTools, state.reorder, isEmpty = state.timeline.isEmpty, onIntent) },
+                tools = {
+                    ToolBarRegion(state.clipTools, state.reorder, state.timeline.isEmpty, selectedIsMissing(state), pickFocus, onIntent)
+                },
                 panel = { VolumePanel(state.volumePanel, onIntent, Modifier.fillMaxSize()) },
                 timelineMinHeight = timelineMinHeight(),
                 modifier = Modifier.weight(1f),
             )
         }
         MemeSoundsSheet(state.sounds, onIntent)
-        UnsavedChangesSheet(state.unsavedSheetOpen, onIntent, onFreeUpSpace.takeIf { state.canFreeUpSpace })
+        state.mediaImport?.let { EditorImportSheet(it, onIntent, onFreeUpSpace) }
+        UnsavedChangesSheet(state.unsavedSheetOpen, onIntent, freeUpSpaceForSave.takeIf { state.canFreeUpSpace })
     }
+}
+
+/**
+ * The import sheet of Add media and Replace (spec P1-06 → Add media: P1-02's sheet over the editor, with its own scrim).
+ * It reads the import's progress itself, so only it redraws while copying.
+ */
+@Composable
+private fun EditorImportSheet(mediaImport: EditorMediaImportUi, onIntent: (VideoEditorIntent) -> Unit, onFreeUpSpace: (Long) -> Unit) {
+    val importState by mediaImport.state.collectAsState()
+    ImportSheet(
+        state = importState,
+        onIntent = { onIntent(VideoEditorIntent.Import(it)) },
+        onPickAgain = { onIntent(VideoEditorIntent.PickAgain) },
+        onFreeUpSpace = onFreeUpSpace,
+        drawScrim = true,
+    )
+}
+
+/** Focus goes back to the control that opened the picker once the pick is over (spec P1-06 → Accessibility). */
+@Composable
+private fun ReturnFocusAfterPick(returnFocus: ReturnFocus?, pickFocus: PickOpenerFocus) {
+    LaunchedEffect(returnFocus) {
+        val target = returnFocus ?: return@LaunchedEffect
+        // One frame, so the tool bar or tile the picker covered is laid out again.
+        withFrameNanos { }
+        pickFocus.returnTo(target.opener)
+    }
+}
+
+/** The selected main clip's file is missing (its thumbnails couldn't find it), so Replace comes first. */
+@Composable
+private fun selectedIsMissing(state: VideoEditorUiState): Boolean {
+    val media = state.selectedItemId?.let { state.timeline.item(it)?.media } ?: return false
+    return state.thumbnails?.missingSources?.contains(media) == true
 }
 
 @Composable
@@ -314,7 +375,8 @@ private fun PreviewError(onRetry: () -> Unit) {
 private fun EmptyDraft() {
     CenteredMessage {
         Text(stringResource(Res.string.editor_empty_title), MemixTheme.type.title, textAlign = TextAlign.Center)
-        Text(stringResource(Res.string.editor_empty_body), MemixTheme.type.body, color = MemixColors.textSecondary, textAlign = TextAlign.Center)
+        // The Add media tool and the tile below are the way on (spec P1-04 → States, with P1-16).
+        Text(stringResource(Res.string.editor_empty_body_add), MemixTheme.type.body, color = MemixColors.textSecondary, textAlign = TextAlign.Center)
     }
 }
 
@@ -375,9 +437,10 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
     val accessibilityManager = LocalAccessibilityManager.current
     LaunchedEffect(toast.id) {
         val baseMillis = when (toast.message) {
-            is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition, is ToastMessage.SoundAdded ->
-                WHAT_HAPPENED_TOAST_MILLIS
-            ToastMessage.MissingMedia, is ToastMessage.Explain -> EXPLANATION_TOAST_MILLIS
+            is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition, is ToastMessage.SoundAdded,
+            is ToastMessage.MediaAdded,
+            -> WHAT_HAPPENED_TOAST_MILLIS
+            ToastMessage.MissingMedia, is ToastMessage.Explain, is ToastMessage.ReplaceTooShort -> EXPLANATION_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
         onTimedOut(toast.id)
@@ -394,6 +457,9 @@ private fun toastText(message: ToastMessage): String = when (message) {
     is ToastMessage.ReorderPosition -> stringResource(Res.string.a11y_reorder_position, message.position, message.count)
     is ToastMessage.SoundAdded ->
         stringResource(Res.string.a11y_sound_added, message.title.inLanguage(LocalLocale.current.language), spokenTime(message.atUs))
+    is ToastMessage.MediaAdded -> pluralStringResource(Res.plurals.a11y_media_added, message.count, message.count)
+    // The timecode is never translated (spec P1-06 → Copy).
+    is ToastMessage.ReplaceTooShort -> stringResource(Res.string.explain_replace_too_short, formatTimecode(message.clipLengthUs))
 }
 
 @Composable
@@ -407,6 +473,8 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.MOVE -> Res.string.edit_move
         VideoEdit.VOLUME -> Res.string.edit_volume
         VideoEdit.ADD_SOUND -> Res.string.edit_add_sound
+        VideoEdit.ADD_MEDIA -> Res.string.edit_add_media
+        VideoEdit.REPLACE -> Res.string.edit_replace
     },
 )
 
@@ -419,6 +487,7 @@ private fun explanationText(explanation: Explanation): String = stringResource(
         Explanation.ALREADY_FIRST -> Res.string.explain_reorder_first
         Explanation.ALREADY_LAST -> Res.string.explain_reorder_last
         Explanation.SOUND_UNREADABLE -> Res.string.explain_sound_unreadable
+        Explanation.REPLACE_DETACHED -> Res.string.explain_replace_detached
     },
 )
 

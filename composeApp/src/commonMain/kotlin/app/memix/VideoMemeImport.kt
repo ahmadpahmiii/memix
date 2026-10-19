@@ -115,7 +115,7 @@ internal fun rememberVideoMemeImport(closeCreateSheet: () -> Unit, openEditor: (
         VideoMemeImport(viewModel, picker, freeUpSpace, importState, pickStartedOnCreateSheet, scrimHeld, handOverFromCreateSheet, scope)
     }
 
-    val editorToOpen by remember { derivedStateOf { (importState.value as? ImportUiState.OpenEditor)?.projectId } }
+    val editorToOpen by remember { derivedStateOf { (importState.value as? ImportUiState.Done)?.projectId } }
     val currentOpenEditor by rememberUpdatedState(openEditor)
     val pushMillis = if (MemixTheme.reduceMotion) MemixMotion.durationPress else MemixMotion.durationScreen
     LaunchedEffect(editorToOpen) {
@@ -123,7 +123,7 @@ internal fun rememberVideoMemeImport(closeCreateSheet: () -> Unit, openEditor: (
         currentOpenEditor(projectId)
         // The sheet and scrim hold still while the editor's push covers them, then go (spec P1-02 → Motion).
         delay(pushMillis.toLong())
-        viewModel.onIntent(ImportIntent.EditorOpened)
+        viewModel.onIntent(ImportIntent.Finish)
     }
     val idle by remember { derivedStateOf { importState.value == ImportUiState.Idle } }
     LaunchedEffect(idle) { if (idle) scrimHeld.value = false }

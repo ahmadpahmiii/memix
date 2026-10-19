@@ -35,7 +35,7 @@ import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.MemixTheme
 import app.memix.core.designsystem.Text
 import app.memix.core.designsystem.focusRing
-import app.memix.feature.videoeditor.LandedItem
+import app.memix.feature.videoeditor.LandedItems
 import kotlin.math.roundToInt
 import memix.feature.video_editor.generated.resources.Res
 import memix.feature.video_editor.generated.resources.timeline_add_meme_sound
@@ -92,10 +92,10 @@ internal fun BoxScope.AddMemeSoundPill(
  * 200 ms (at once with reduce motion). [viewportHeightPx] is how tall the lanes' window is.
  */
 @Composable
-internal fun ShowLandedLane(landed: LandedItem?, lanes: LaneLayout, laneScroll: ScrollState, viewportHeightPx: () -> Int) {
+internal fun ShowLandedLane(landed: LandedItems?, lanes: LaneLayout, laneScroll: ScrollState, viewportHeightPx: () -> Int) {
     val reduceMotion = MemixTheme.reduceMotion
     LaunchedEffect(landed) {
-        val row = landed?.let { lanes.rowOf(it.itemId) } ?: return@LaunchedEffect
+        val row = landed?.itemIds?.firstNotNullOfOrNull(lanes::rowOf) ?: return@LaunchedEffect
         // One frame, so a new lane is laid out and the lanes can scroll that far.
         withFrameNanos { }
         val viewport = viewportHeightPx()

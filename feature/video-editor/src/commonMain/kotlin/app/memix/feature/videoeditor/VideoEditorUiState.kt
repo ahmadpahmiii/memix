@@ -3,14 +3,19 @@ package app.memix.feature.videoeditor
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import app.memix.core.domain.project.LaneTarget
+import app.memix.core.domain.project.MediaPlace
 import app.memix.core.domain.project.TrimEdge
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.model.catalog.LocalizedText
+import app.memix.core.model.project.MediaOrigin
+import app.memix.feature.videoeditor.importmedia.ImportIntent
+import app.memix.feature.videoeditor.importmedia.ImportUiState
 import app.memix.feature.videoeditor.timeline.ItemName
 import app.memix.feature.videoeditor.timeline.TimelineThumbnails
 import app.memix.feature.videoeditor.timeline.TrimRanges
 import app.memix.feature.videoeditor.timeline.TimelineUi
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.StateFlow
 
@@ -34,12 +39,23 @@ data class VideoEditorUiState(
     val trimRanges: TrimRanges? = null,
     /** Reorder mode (spec P1-06 → Reorder): the main clips as tiles in their new order; null otherwise. */
     val reorder: ReorderUi? = null,
-    /** The item that just landed (a duplicate, a meme sound): the timeline bonks it once per new [LandedItem.serial]. */
-    val landed: LandedItem? = null,
+    /** What just landed (a duplicate, a meme sound, added media): the timeline bonks it once per new [LandedItems.serial]. */
+    val landed: LandedItems? = null,
     /** The Meme sounds sheet and the starter pack it lists (spec P1-06 → Meme sounds sheet). */
     val sounds: SoundsSheetUi = SoundsSheetUi(),
     /** The Volume panel over the timeline and tool bar, or null when it's closed (spec P1-06 → Volume panel). */
     val volumePanel: VolumePanelUi? = null,
+    /**
+     * Add media and Replace (P1-16): the import sheet's state, which only the sheet reads (its progress changes up to
+     * ten times a second). Compared by identity.
+     */
+    val mediaImport: EditorMediaImportUi? = null,
+    /** From a pick until its import sheet is gone; tools that start another pick wait (spec P1-06 → Entry and exit). */
+    val isImporting: Boolean = false,
+    /** The picker the app should open now; the app opens it and sends [VideoEditorIntent.PickerOpened]. */
+    val mediaPicker: MediaPickRequest? = null,
+    /** After a pick ends, focus goes back to the control that opened the picker (spec P1-06 → Accessibility). */
+    val returnFocus: ReturnFocus? = null,
     /** The thumbnail tiles of the timeline's strips, once the draft has opened. Compared by identity. */
     val thumbnails: TimelineThumbnails? = null,
     /** The play button shows Pause; switches as soon as play is asked for. */
@@ -98,7 +114,7 @@ enum class SaveProblem { STORAGE_FULL, OTHER }
  * Volume and Detach audio for video clips, P1-10 the text tools.
  */
 enum class ClipTools {
-    /** A video or photo clip on the main track: Split, Delete, Duplicate, Reorder. */
+    /** A video or photo clip on the main track: Split, Delete, Duplicate, Reorder, Replace (Replace first when its file is missing). */
     MAIN_CLIP,
 
     /** A caption: Delete, Split, Move here, Duplicate (captions are deleted more often than cut). */
@@ -146,14 +162,44 @@ data class ReorderUi(
 }
 
 /**
- * An item that just landed on the timeline; a new [serial] bonks it again, even the same item. A meme sound
- * ([isSound]) also gets the Confirm haptic, the "tick when a sound lands" (spec P1-06 → Motion and haptics).
+ * Items that just landed on the timeline, bonking together; a new [serial] bonks them again, even the same items. A
+ * meme sound ([isSound]) also gets the Confirm haptic, the "tick when a sound lands" (spec P1-06 → Motion and haptics).
  */
 @Immutable
-data class LandedItem(val itemId: String, val serial: Long, val isSound: Boolean = false)
+data class LandedItems(val itemIds: ImmutableSet<String>, val serial: Long, val isSound: Boolean = false)
+
+/**
+ * The picker the editor wants opened (spec P1-06 → Add media, Replace), and what the pick is for. The app keeps it
+ * while the picker is open and hands it back with the result ([VideoEditorIntent.MediaPicked]), so a pick still lands
+ * where it should after Android restarted the app behind the picker.
+ */
+@Immutable
+sealed interface MediaPickRequest {
+    /** Up to 35 videos and photos, landing at [place] on the main track. */
+    data class Add(val place: MediaPlace) : MediaPickRequest
+
+    /** One video or photo for main clip [itemId]. */
+    data class Replace(val itemId: String) : MediaPickRequest
+}
+
+/** Which control gets focus back after a pick; a new [serial] moves it again. */
+@Immutable
+data class ReturnFocus(val opener: PickOpener, val serial: Long)
+
+/** The controls that open the picker. */
+enum class PickOpener {
+    /** The Add media tool on the main tool bar. */
+    ADD_MEDIA_TOOL,
+
+    /** The Add media tile at the end of the main track (P1-05 → Trailing area). */
+    ADD_MEDIA_TILE,
+
+    /** The Replace tool of the selected clip. */
+    REPLACE_TOOL,
+}
 
 /** Why a tool explains instead of acting (spec P1-06 → Clip tool bar: tools stay enabled and explain on tap). */
-enum class Explanation { SPLIT_OUTSIDE, LAST_CLIP, REORDER_ONE_CLIP, ALREADY_FIRST, ALREADY_LAST, SOUND_UNREADABLE }
+enum class Explanation { SPLIT_OUTSIDE, LAST_CLIP, REORDER_ONE_CLIP, ALREADY_FIRST, ALREADY_LAST, SOUND_UNREADABLE, REPLACE_DETACHED }
 
 /**
  * A toast on the stage; a new [id] restarts its timer, even for the same message. [isSpokenOnly] when it arrived
@@ -182,7 +228,20 @@ sealed interface ToastMessage {
 
     /** After a meme sound lands, for screen readers only: "Boom added at 3.2 seconds" ([atUs] is where it starts). */
     data class SoundAdded(val title: LocalizedText, val atUs: Long) : ToastMessage
+
+    /** After Add media lands, for screen readers only: "3 clips added". */
+    data class MediaAdded(val count: Int) : ToastMessage
+
+    /** Replace refused a video shorter than the clip, whose length ([clipLengthUs]) the toast names. */
+    data class ReplaceTooShort(val clipLengthUs: Long) : ToastMessage
 }
+
+/**
+ * The editor's import (Add media and Replace): its sheet's state, read only by the sheet. Compared by identity: one
+ * per editor.
+ */
+@Stable
+class EditorMediaImportUi internal constructor(internal val state: StateFlow<ImportUiState>)
 
 /**
  * The editor's live preview: the engine session behind the picture, and the time on screen. The time changes with
@@ -336,4 +395,28 @@ sealed interface VideoEditorIntent {
 
     /** The move was cancelled (system back, a lost gesture); nothing changes. */
     data object MoveCancelled : VideoEditorIntent
+
+    /** The Add media tool: the pick lands after the main clip under the playhead (spec P1-06 → Add media). */
+    data object AddMediaTool : VideoEditorIntent
+
+    /** The Add media tile at the end of the main track: the pick lands at the end. */
+    data object AddMediaTile : VideoEditorIntent
+
+    /** The Replace tool of the selected main clip: one video or photo takes its place (spec P1-06 → Replace). */
+    data object ReplaceSelected : VideoEditorIntent
+
+    /** The app opened the picker for [VideoEditorUiState.mediaPicker]. */
+    data object PickerOpened : VideoEditorIntent
+
+    /** The phone has no app that picks media: the import sheet says so. */
+    data object PickerUnavailable : VideoEditorIntent
+
+    /** The picker returned [items] for [request] (empty when nothing was picked: nothing changes). */
+    data class MediaPicked(val request: MediaPickRequest, val items: List<MediaOrigin>) : VideoEditorIntent
+
+    /** Something on the editor's import sheet (Cancel, Continue, Close, back from the storage screen, ...). */
+    data class Import(val intent: ImportIntent) : VideoEditorIntent
+
+    /** "Pick again" on the import sheet: it closes, then the same picker opens again. */
+    data object PickAgain : VideoEditorIntent
 }

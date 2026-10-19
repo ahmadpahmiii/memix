@@ -20,7 +20,7 @@ sealed interface ImportUiState {
     /** Checked before copying, or the phone ran out while copying. Sizes include the headroom. */
     data class NotEnoughSpace(val neededBytes: Long, val freeBytes: Long, val canFreeUpSpace: Boolean) : ImportUiState
 
-    /** At least one item went in and the project is saved; Continue opens it. */
+    /** At least one item went in and the project has it; Continue goes on to the project. */
     data class SomeNotAdded(
         val projectId: String,
         val addedCount: Int,
@@ -29,25 +29,26 @@ sealed interface ImportUiState {
         val limit: Int?,
     ) : ImportUiState
 
-    /** Nothing went in; no project. */
+    /** Nothing went in; the project is unchanged (Create → Video meme: no project). */
     data class NoneAdded(val notAdded: ImmutableList<NotAddedItemUi>) : ImportUiState
 
     /** The phone has no app that can pick media. */
     data object NoPicker : ImportUiState
 
     /**
-     * The project is saved and nothing needs saying: the app opens the editor, then sends [ImportIntent.EditorOpened]
-     * once the editor's push has covered the screen. [sheetShown]: the sheet that was up stays, unchanged, until then,
-     * so the editor slides in over it instead of the sheet sliding away (spec P1-02 → Motion).
+     * The media is in the project and nothing needs saying. The owner shows it, then sends [ImportIntent.Finish]:
+     * Create → Video meme opens the editor and finishes once the editor's push has covered the screen, so a sheet that
+     * was up ([sheetShown]) stays, unchanged, and the editor slides in over it (spec P1-02 → Motion); the editor's own
+     * Add media and Replace finish at once, and the sheet slides away over the landed clips.
      */
-    data class OpenEditor(val projectId: String, val sheetShown: Boolean) : ImportUiState
+    data class Done(val projectId: String, val sheetShown: Boolean) : ImportUiState
 }
 
 /** Whether the import sheet is up. */
 val ImportUiState.showsSheet: Boolean
     get() = when (this) {
         is ImportUiState.Copying -> sheetShown
-        is ImportUiState.OpenEditor -> sheetShown
+        is ImportUiState.Done -> sheetShown
         is ImportUiState.NotEnoughSpace, is ImportUiState.SomeNotAdded, is ImportUiState.NoneAdded, ImportUiState.NoPicker -> true
         ImportUiState.Idle -> false
     }
@@ -55,7 +56,7 @@ val ImportUiState.showsSheet: Boolean
 /** Whether the sheet has content of its own in this state; otherwise it keeps showing what it showed last. */
 internal val ImportUiState.hasSheetContent: Boolean
     get() = when (this) {
-        ImportUiState.Idle, is ImportUiState.OpenEditor -> false
+        ImportUiState.Idle, is ImportUiState.Done -> false
         is ImportUiState.Copying, is ImportUiState.NotEnoughSpace, is ImportUiState.SomeNotAdded -> true
         is ImportUiState.NoneAdded, ImportUiState.NoPicker -> true
     }
@@ -68,7 +69,7 @@ val ImportUiState.isBlockingSheet: Boolean
     get() = when (this) {
         is ImportUiState.Copying, is ImportUiState.SomeNotAdded -> true
         is ImportUiState.NotEnoughSpace, is ImportUiState.NoneAdded, ImportUiState.NoPicker -> false
-        ImportUiState.Idle, is ImportUiState.OpenEditor -> false
+        ImportUiState.Idle, is ImportUiState.Done -> false
     }
 
 /** The copying sheet's numbers, already throttled to at most 10 changes a second. */
@@ -132,6 +133,6 @@ sealed interface ImportIntent {
     /** Neither storage screen opened, so the "Free up space" button goes away. */
     data object FreeUpSpaceUnavailable : ImportIntent
 
-    /** The app has navigated to the editor for [ImportUiState.OpenEditor]. */
-    data object EditorOpened : ImportIntent
+    /** The owner has shown [ImportUiState.Done] (the editor is open, or the clips landed): back to Idle. */
+    data object Finish : ImportIntent
 }

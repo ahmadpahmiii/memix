@@ -82,10 +82,10 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The import sheet over whatever screen the pick started from (spec P1-02 → Import sheet). It draws no scrim of its
- * own: the app draws one shared scrim, so it doesn't blink when the Create sheet hands over to this one.
- * [onPickAgain] closes the sheet and reopens the picker; [onFreeUpSpace] opens the phone's storage screen asking
- * for the given number of bytes.
+ * The import sheet over whatever screen the pick started from (spec P1-02 → Import sheet). From Create it draws no
+ * scrim of its own ([drawScrim] false): the app draws one shared scrim, so it doesn't blink when the Create sheet hands
+ * over to this one. Over the editor (P1-16) it draws its own. [onPickAgain] closes the sheet and reopens the picker;
+ * [onFreeUpSpace] opens the phone's storage screen asking for the given number of bytes.
  */
 @Composable
 fun ImportSheet(
@@ -94,6 +94,7 @@ fun ImportSheet(
     onPickAgain: () -> Unit,
     onFreeUpSpace: (requestedBytes: Long) -> Unit,
     modifier: Modifier = Modifier,
+    drawScrim: Boolean = false,
 ) {
     // While the sheet slides away, or holds still under the editor's push, it keeps showing its last content
     // instead of going blank.
@@ -116,7 +117,7 @@ fun ImportSheet(
         title = titleFor(shown),
         modifier = modifier,
         blocking = shown.isBlockingSheet,
-        drawScrim = false,
+        drawScrim = drawScrim,
     ) {
         val reduceMotion = MemixTheme.reduceMotion
         AnimatedContent(
@@ -156,7 +157,7 @@ private fun SheetContent(
         is ImportUiState.NotEnoughSpace -> NotEnoughSpaceContent(state, onFreeUpSpace)
         ImportUiState.NoPicker -> NoPickerContent(onClose = { onIntent(ImportIntent.Close) })
         // Never shown: in these states the sheet is hidden or held under the editor, keeping its last content.
-        ImportUiState.Idle, is ImportUiState.OpenEditor -> Unit
+        ImportUiState.Idle, is ImportUiState.Done -> Unit
     }
 }
 
@@ -309,7 +310,7 @@ private fun titleFor(state: ImportUiState): String = when (state) {
     is ImportUiState.NoneAdded -> stringResource(Res.string.import_none_title)
     is ImportUiState.NotEnoughSpace -> stringResource(Res.string.import_storage_title)
     ImportUiState.NoPicker -> stringResource(Res.string.import_no_picker_title)
-    ImportUiState.Idle, is ImportUiState.OpenEditor -> ""
+    ImportUiState.Idle, is ImportUiState.Done -> ""
 }
 
 // System back and Escape run the screen's own way out: cancel while copying, continue after a partial import.
@@ -317,5 +318,5 @@ private fun dismissIntentFor(state: ImportUiState): ImportIntent = when (state) 
     is ImportUiState.Copying -> ImportIntent.Cancel
     is ImportUiState.SomeNotAdded -> ImportIntent.Continue
     is ImportUiState.NoneAdded, is ImportUiState.NotEnoughSpace, ImportUiState.NoPicker -> ImportIntent.Close
-    ImportUiState.Idle, is ImportUiState.OpenEditor -> ImportIntent.Close
+    ImportUiState.Idle, is ImportUiState.Done -> ImportIntent.Close
 }

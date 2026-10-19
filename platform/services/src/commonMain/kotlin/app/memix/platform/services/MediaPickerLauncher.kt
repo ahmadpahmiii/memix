@@ -15,7 +15,8 @@ interface MediaPickerLauncher {
 
 /**
  * Registers the system photo picker: videos and photos, several at once, up to [maxItems] (fewer if the system
- * allows fewer), in the order the user taps them where the picker supports it. It needs no permission.
+ * allows fewer), in the order the user taps them where the picker supports it; with [maxItems] 1, the picker for one
+ * item (the editor's Replace). It needs no permission. Pass the same [maxItems] on every composition.
  *
  * Call it once, unconditionally, at the root of the UI. If Android stops the app while the picker is open, the
  * result still arrives in [onPicked] after the restart, but only when this is composed at the same place again.

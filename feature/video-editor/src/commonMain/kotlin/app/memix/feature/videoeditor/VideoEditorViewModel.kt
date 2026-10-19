@@ -3,7 +3,9 @@ package app.memix.feature.videoeditor
 import androidx.lifecycle.viewModelScope
 import app.memix.core.domain.AppError
 import app.memix.core.domain.Outcome
+import app.memix.core.domain.media.ImportMediaUseCase
 import app.memix.core.domain.project.LaneTarget
+import app.memix.core.domain.project.MediaPlace
 import app.memix.core.domain.project.OpenVideoDraftUseCase
 import app.memix.core.domain.project.ProjectEditSession
 import app.memix.core.domain.project.ProjectEditState
@@ -44,16 +46,22 @@ import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.ProjectType
 import app.memix.core.model.project.TrackKind
+import app.memix.core.designsystem.MemixMotion
 import app.memix.core.ui.MemixViewModel
+import app.memix.feature.videoeditor.importmedia.ImportIntent
 import app.memix.feature.videoeditor.timeline.ItemName
 import app.memix.feature.videoeditor.timeline.TimelineThumbnails
 import app.memix.feature.videoeditor.timeline.TrimRanges
 import app.memix.feature.videoeditor.timeline.nameOf
 import app.memix.feature.videoeditor.timeline.timelineUiOf
 import app.memix.feature.videoeditor.timeline.trackOf
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.Uuid
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableSet
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -72,7 +80,8 @@ import kotlinx.coroutines.launch
  * UiState; the preview's time is not (it changes every frame, see [EditorPreview]), and neither are the timeline's
  * scroll and zoom (the timeline keeps them). The sessions and the thumbnail reader close with this ViewModel: the
  * edit session saves on the way out (or deletes a draft left with no clips), the preview frees its decoders and the
- * thumbnails their open files. [decodeDispatcher] decodes thumbnail pictures off the main thread.
+ * thumbnails their open files. [decodeDispatcher] decodes thumbnail pictures off the main thread. Add media and
+ * Replace copy through [importMedia] ([EditorMediaImport]).
  */
 class VideoEditorViewModel(
     projectId: String,
@@ -81,6 +90,7 @@ class VideoEditorViewModel(
     private val startPreview: StartPreviewUseCase,
     private val startThumbnails: StartThumbnailsUseCase,
     private val sounds: EditorSounds,
+    importMedia: ImportMediaUseCase,
     private val decodeDispatcher: CoroutineDispatcher,
     private val debugEdit: EditorDebugEdit?,
 ) : MemixViewModel<VideoEditorUiState, VideoEditorIntent>(VideoEditorUiState(canMakeDebugEdit = debugEdit != null)) {
@@ -106,8 +116,13 @@ class VideoEditorViewModel(
     // Each sound's file once it's been checked, so a second play or add doesn't measure it again.
     private val preparedSounds = HashMap<String, MediaRef>()
     private var soundPlayer: SoundPlayer? = null
+    // Completes once the draft is open; a pick that comes back after Android restarted the app waits for it.
+    private val draftOpened = CompletableDeferred<ProjectEditSession>()
+    private val mediaImport = EditorMediaImport(importMedia, viewModelScope, projectId, MediaImportEditor())
+    private var nextFocusSerial = 0L
 
     init {
+        updateState { it.copy(mediaImport = mediaImport.ui) }
         addCloseable(AutoCloseable { preview?.close() })
         addCloseable(AutoCloseable { soundPlayer?.close() })
         viewModelScope.launch { loadStarterSounds() }
@@ -130,7 +145,10 @@ class VideoEditorViewModel(
             VideoEditorIntent.LeaveAnyway -> updateState { it.copy(unsavedSheetOpen = false, isClosing = true) }
             VideoEditorIntent.StayInEditor -> updateState { it.copy(unsavedSheetOpen = false) }
             VideoEditorIntent.DismissSaveBanner -> dismissSaveBanner()
-            VideoEditorIntent.FreeUpSpaceUnavailable -> updateState { it.copy(canFreeUpSpace = false) }
+            VideoEditorIntent.FreeUpSpaceUnavailable -> {
+                updateState { it.copy(canFreeUpSpace = false) }
+                mediaImport.onIntent(ImportIntent.FreeUpSpaceUnavailable)
+            }
             VideoEditorIntent.RetryPreview -> retryPreview()
             is VideoEditorIntent.ToastTimedOut -> updateState { if (it.toast?.id == intent.id) it.copy(toast = null) else it }
             VideoEditorIntent.AppStarted -> retryFailedSave()
@@ -176,6 +194,15 @@ class VideoEditorViewModel(
             is VideoEditorIntent.MoveStarted -> startMove(intent.itemId)
             is VideoEditorIntent.MoveEnded -> endMove(intent.itemId, intent.startUs, intent.lane)
             VideoEditorIntent.MoveCancelled -> Unit
+            // The tool adds after the clip under the playhead; the tile at the end appends (spec P1-06 → Add media).
+            VideoEditorIntent.AddMediaTool -> requestPick(MediaPickRequest.Add(MediaPlace.AfterClipAt(currentPositionUs())))
+            VideoEditorIntent.AddMediaTile -> requestPick(MediaPickRequest.Add(MediaPlace.End))
+            VideoEditorIntent.ReplaceSelected -> state.value.selectedItemId?.let { requestPick(MediaPickRequest.Replace(it)) }
+            VideoEditorIntent.PickerOpened -> updateState { it.copy(mediaPicker = null) }
+            VideoEditorIntent.PickerUnavailable -> pickerUnavailable()
+            is VideoEditorIntent.MediaPicked -> onMediaPicked(intent.request, intent.items)
+            is VideoEditorIntent.Import -> mediaImport.onIntent(intent.intent)
+            VideoEditorIntent.PickAgain -> pickAgain()
         }
     }
 
@@ -183,6 +210,7 @@ class VideoEditorViewModel(
         val session = startEditSession(project)
         addCloseable(session)
         editSession = session
+        draftOpened.complete(session)
         val thumbnails = TimelineThumbnails(startThumbnails(), viewModelScope, decodeDispatcher)
         addCloseable(thumbnails)
         updateState { it.copy(canvas = canvasUiOf(project.canvas), thumbnails = thumbnails) }
@@ -336,7 +364,7 @@ class VideoEditorViewModel(
         val copyId = newId()
         if (!commit(VideoEdit.DUPLICATE) { it.duplicateItem(itemId, copyId, newTrackId = newId()) }) return
         // The copy is new content, so it lands with the bonk (spec P1-06 → Duplicate).
-        updateState { it.withSelection(copyId, currentProject()).copy(landed = LandedItem(copyId, nextLandingSerial++)) }
+        updateState { it.withSelection(copyId, currentProject()).copy(landed = LandedItems(persistentSetOf(copyId), nextLandingSerial++)) }
         announce(VideoEdit.DUPLICATE, state.value.timeline.nameOf(copyId))
     }
 
@@ -453,7 +481,7 @@ class VideoEditorViewModel(
         if (!commit(VideoEdit.ADD_SOUND) { it.addSound(file, clipId, atUs, newTrackId = newId()) }) return
         sounds.logEvents.added(sound.id, ProjectType.VIDEO)
         // Selected with its tools ready; it bonks and the phone ticks (spec P1-06 → Meme sounds → Landing).
-        updateState { it.withSelection(clipId, currentProject()).copy(landed = LandedItem(clipId, nextLandingSerial++, isSound = true)) }
+        updateState { it.withSelection(clipId, currentProject()).copy(landed = LandedItems(persistentSetOf(clipId), nextLandingSerial++, isSound = true)) }
         val startUs = state.value.timeline.item(clipId)?.startUs ?: atUs
         showToast(ToastMessage.SoundAdded(sound.title, startUs), spokenOnly = true)
     }
@@ -474,6 +502,86 @@ class VideoEditorViewModel(
                 updateState { it.copy(sounds = it.sounds.copy(playingId = playingId)) }
             }
         }
+    }
+
+    // ---- Add media and Replace (spec P1-06 → Add media, Replace) -----------------------------------------------------
+
+    // One pick at a time; the app opens the picker for the request.
+    private fun requestPick(request: MediaPickRequest) {
+        if (state.value.isImporting || editSession == null) return
+        preview?.pause()
+        updateState { it.copy(isImporting = true, mediaPicker = request) }
+    }
+
+    private fun pickerUnavailable() {
+        val request = state.value.mediaPicker ?: return
+        updateState { it.copy(mediaPicker = null) }
+        mediaImport.pickerUnavailable(request)
+    }
+
+    private fun onMediaPicked(request: MediaPickRequest, items: List<MediaOrigin>) {
+        updateState { it.copy(isImporting = true, mediaPicker = null) }
+        if (items.isEmpty()) mediaImport.nothingPicked(request) else mediaImport.start(request, items)
+    }
+
+    // The sheet slides away first, then the same picker opens (spec P1-02 → States, "Pick again").
+    private fun pickAgain() {
+        val request = mediaImport.pickAgain() ?: return
+        viewModelScope.launch {
+            delay(MemixMotion.durationSheet.milliseconds)
+            updateState { it.copy(mediaPicker = request) }
+        }
+    }
+
+    // After the sheet is gone, so the bonk is seen (spec P1-06 → Add media → After landing, Replace → Afterwards).
+    private fun showMediaLanding(landing: MediaLanding, afterSheet: Boolean) {
+        viewModelScope.launch {
+            if (afterSheet) delay(MemixMotion.durationSheet.milliseconds)
+            when (landing) {
+                is MediaLanding.Added -> showAddedMedia(landing.clipIds)
+                is MediaLanding.Replaced -> showReplacedClip(landing)
+            }
+        }
+    }
+
+    // The playhead goes to the first new clip; the selection stays as it was.
+    private fun showAddedMedia(clipIds: List<String>) {
+        val first = clipIds.firstNotNullOfOrNull { state.value.timeline.item(it) } ?: return
+        preview?.seekTo(first.startUs)
+        updateState { it.copy(landed = LandedItems(clipIds.toImmutableSet(), nextLandingSerial++)) }
+        showToast(ToastMessage.MediaAdded(clipIds.size), spokenOnly = true)
+    }
+
+    // The clip stays selected and the playhead stays put.
+    private fun showReplacedClip(landing: MediaLanding.Replaced) {
+        if (state.value.timeline.item(landing.itemId) == null) return
+        updateState { it.copy(landed = LandedItems(persistentSetOf(landing.itemId), nextLandingSerial++)) }
+        announce(VideoEdit.REPLACE, state.value.timeline.nameOf(landing.itemId))
+        if (landing.newSoundMuted) showToast(ToastMessage.Explain(Explanation.REPLACE_DETACHED))
+    }
+
+    private fun endPick(request: MediaPickRequest) {
+        val opener = when (request) {
+            is MediaPickRequest.Replace -> PickOpener.REPLACE_TOOL
+            is MediaPickRequest.Add -> when (request.place) {
+                is MediaPlace.AfterClipAt -> PickOpener.ADD_MEDIA_TOOL
+                MediaPlace.End -> PickOpener.ADD_MEDIA_TILE
+            }
+        }
+        updateState { it.copy(isImporting = false, returnFocus = ReturnFocus(opener, nextFocusSerial++)) }
+    }
+
+    /** What [EditorMediaImport] needs from the editor. */
+    private inner class MediaImportEditor : EditorMediaImport.Editor {
+        override suspend fun openedProject(): Project = draftOpened.await().state.value.project
+
+        override fun commit(edit: VideoEdit, change: (Project) -> Project): Boolean = this@VideoEditorViewModel.commit(edit, change = change)
+
+        override fun showToast(message: ToastMessage) = this@VideoEditorViewModel.showToast(message)
+
+        override fun showLanding(landing: MediaLanding, afterSheet: Boolean) = showMediaLanding(landing, afterSheet)
+
+        override fun onPickEnded(request: MediaPickRequest) = endPick(request)
     }
 
     // ---- Volume panel (spec P1-06 → Volume panel) -------------------------------------------------------------------

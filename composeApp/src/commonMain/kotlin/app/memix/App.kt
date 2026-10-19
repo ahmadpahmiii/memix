@@ -38,7 +38,6 @@ import app.memix.core.designsystem.component.BottomNav
 import app.memix.core.designsystem.component.NavDestination
 import app.memix.core.designsystem.component.Scrim
 import app.memix.core.domain.RefreshAppConfigUseCase
-import app.memix.core.domain.media.ImportMediaUseCase
 import app.memix.debug.DebugComponentCatalog
 import app.memix.debug.openDebugEditorProject
 import app.memix.engine.video.VideoPreviewSurface
@@ -202,23 +201,26 @@ private fun TabsNavHost(
     }
 }
 
-/** The video editor (P1-04) with the engine's preview surface and the phone's storage screen plugged in. */
+/**
+ * The video editor (P1-04) with the engine's preview surface, the phone's storage screen and the pickers for Add media
+ * and Replace (P1-16) plugged in.
+ */
 @Composable
 private fun VideoEditorDestination(projectId: String, onClose: () -> Unit) {
     val viewModel = koinViewModel<VideoEditorViewModel> { parametersOf(projectId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val freeUpSpace = rememberFreeUpSpaceLauncher()
     LockPortraitOnPhones()
+    EditorMediaPickers(state.mediaPicker, viewModel::onIntent)
     val currentOnClose by rememberUpdatedState(onClose)
     LaunchedEffect(state.isClosing) { if (state.isClosing) currentOnClose() }
     VideoEditorScreen(
         state = state,
         onIntent = viewModel::onIntent,
         previewSurface = { session, modifier -> VideoPreviewSurface(session, modifier) },
-        // A save needs little room; ask for the import's headroom, so the next import fits too. When no storage screen
-        // opens, the editor hides the button (spec P1-04 → Saving).
-        onFreeUpSpace = {
-            if (!freeUpSpace.launch(ImportMediaUseCase.HEADROOM_BYTES)) viewModel.onIntent(VideoEditorIntent.FreeUpSpaceUnavailable)
+        // When no storage screen opens, the editor hides the button (spec P1-04 → Saving).
+        onFreeUpSpace = { requestedBytes ->
+            if (!freeUpSpace.launch(requestedBytes)) viewModel.onIntent(VideoEditorIntent.FreeUpSpaceUnavailable)
         },
     )
 }

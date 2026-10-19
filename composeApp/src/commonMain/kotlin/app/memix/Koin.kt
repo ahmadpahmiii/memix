@@ -20,6 +20,7 @@ import app.memix.core.domain.sound.PrepareSoundUseCase
 import app.memix.core.domain.video.StartPreviewUseCase
 import app.memix.core.domain.video.StartThumbnailsUseCase
 import app.memix.debug.DebugEdits
+import app.memix.debug.EditorSaveDiffLog
 import app.memix.debug.ImportSaveFailure
 import app.memix.engine.video.HAND_CHECKS_PROPERTY
 import app.memix.engine.video.videoEngineModule
@@ -59,7 +60,7 @@ private val appModule = module {
     factoryOf(::StartThumbnailsUseCase)
     factory { StartEditSessionUseCase(get(), get(), get(), get(appScope)) }
     // Created at start-up so it clears last run's leftover media in the background before any import copies.
-    single(createdAtStart = true) { LeftoverMediaCleaner(get(), get(), get(), get(appScope)) }
+    single(createdAtStart = true) { LeftoverMediaCleaner(get(), get(), get(), get(), get(appScope)) }
     factoryOf(::ImportMediaUseCase)
     factoryOf(::SaveGalleryProjectUseCase)
     factoryOf(::LoadStarterSoundsUseCase)
@@ -77,6 +78,7 @@ private val appModule = module {
             startPreview = get(),
             startThumbnails = get(),
             sounds = get(),
+            importMedia = get(),
             decodeDispatcher = Dispatchers.Default,
             // Bound only in builds with hand checks (handCheckModule).
             debugEdit = getOrNull(),
@@ -85,11 +87,13 @@ private val appModule = module {
 }
 
 // Debug and benchmark builds: the editor's test edit for the P1-07 hand checks (TECHNICAL_DESIGN → Debug hand checks),
-// and the import's save that can be made to fail once for the P1-02 N2 check. Loaded after appModule, so its
-// SaveGalleryProjectUseCase replaces the plain one.
+// the import's save that can be made to fail once for the P1-02 N2 check, and the editor saves' change log for the
+// P1-16 Replace check. Loaded after appModule, so its SaveGalleryProjectUseCase and StartEditSessionUseCase replace
+// the plain ones.
 private val handCheckModule = module {
     single<EditorDebugEdit> { DebugEdits.shortenLastClip }
     factory { SaveGalleryProjectUseCase(SaveProjectUseCase(ImportSaveFailure.around(get()), get()), get()) }
+    factory { StartEditSessionUseCase(SaveProjectUseCase(EditorSaveDiffLog.around(get(), get()), get()), get(), get(), get(appScope)) }
 }
 
 /**

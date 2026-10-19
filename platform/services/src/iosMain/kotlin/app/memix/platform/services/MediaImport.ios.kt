@@ -16,6 +16,7 @@ internal class NoMediaFiles : MediaFiles {
     override suspend fun write(bytes: ByteArray, destination: String) = CopyResult.UNREADABLE
     override suspend fun delete(paths: List<String>) = Unit
     override suspend fun listFolders(parent: String): List<String> = emptyList()
+    override suspend fun listFiles(folder: String): List<String> = emptyList()
     override suspend fun deleteFolder(path: String) = Unit
     override suspend fun deleteUnfinishedCopies(parent: String) = Unit
     override suspend fun allocatableBytes(): Long = 0
