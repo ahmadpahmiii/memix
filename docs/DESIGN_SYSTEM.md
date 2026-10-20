@@ -65,7 +65,7 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 
 **Radii, borders, shadows.**
 - `radius-sm` timeline clips and badges, `radius-md` buttons, inputs and tool highlights, `radius-lg` cards and sheets, `radius-full` chips, segmented tabs and play buttons.
-- Borders are `stroke-hairline` in `hairline`, used for dividers and the search field only. Depth comes from value steps, not lines or shadows. Two exceptions, both so a mark can't vanish: a Swatch whose color is under 3:1 against `surface` (Black, "No outline") gets a `stroke-hairline` ring in `text-muted`, and white selection marks drawn over the user's content get a `stroke-hairline` `on-primary` edge.
+- Borders are `stroke-hairline` in `hairline`, used for dividers and the search field only. Depth comes from value steps, not lines or shadows. Three exceptions, all so a mark can't vanish: a Swatch whose color is under 3:1 against `surface` (Black, "No outline") gets a `stroke-hairline` ring in `text-muted`; white selection marks drawn over the user's content get a `stroke-hairline` `on-primary` edge; and the **frame edge** in the video editor, a `stroke-hairline` line in `text-muted` just outside the canvas frame on the `stage` (6.9:1), shown only while the Canvas panel is open or a caption is being moved, sized or turned, because a black background is invisible on the black stage (P1-11). It never covers content and is never exported.
 - Bottom sheets use `shadow-sheet` over `scrim`; floating menus and toasts use `shadow-float`.
 
 **States.**
@@ -115,6 +115,13 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
 - Original audio (P1-09, approved in the P1-09 review):
   - `volume_off`: `sounds`' solid cone with a 6 × 6 cross of two strokes in place of the waves, centered on the cone's axis and 2.3px clear of its tip. It's the muted state of the timeline's original-audio toggle, whose "on" state is `sounds`.
   - `detach_audio`: a solid clip (16 × 8px, 1px corners) over a two-period wave stroke, 3px apart. The gap carries "detach". It doesn't collide with `split`, `duplicate` or `replace`, none of which has a wave.
+- Canvas (P1-11, to draw with the ticket; specs in `docs/ux/specs/P1-11-canvas.md` → Requests 8):
+  - `fit`: a stroked tall frame with a solid wide block inside it, touching its sides.
+  - `fill`: the same frame filled solid, with short strokes beyond its left and right sides for the cut edges.
+  - `blur`: a solid dot inside a ring of four short strokes.
+  - `ratio_custom`: a stroked rectangle with a solid square at its bottom-right corner (a resize handle).
+  - The ratio tiles' rectangles are drawn from the ratio (solid, 1px corners, long side 20px), not icon files.
+- Drafts (P1-14, to draw with the ticket): `more`: three solid 3 × 3px dots in a row, 4px apart (all core, like play).
 - Later, drawn with its ticket: `lock` (L-02).
 
 Source files are Android vector drawables in `:core:designsystem` `composeResources/drawable/` (`ic_<name>.xml`), path-only so Compose Multiplatform renders them the same on Android and iOS. There is no Memix logo yet: until one exists, write the name "Memix" in Anton; the launcher icon is a plain placeholder built from that wordmark, not a logo.
@@ -223,6 +230,17 @@ Captions are the user's meme, not chrome, so they have their own fonts, palette 
 
 Sources: [Poppins](https://github.com/google/fonts/blob/main/ofl/poppins/METADATA.pb), [Baloo 2](https://github.com/google/fonts/blob/main/ofl/baloo2/METADATA.pb) and its [upstream](https://github.com/google/fonts/blob/main/ofl/baloo2/upstream_info.md), [Kalam](https://github.com/google/fonts/blob/main/ofl/kalam/METADATA.pb), [Rozha One](https://github.com/google/fonts/blob/main/ofl/rozhaone/METADATA.pb), [Anton](https://github.com/google/fonts/blob/main/ofl/anton/METADATA.pb); file sizes from the GitHub file pages, 9 Oct 2026.
 
+### Canvas (user content, P1-11)
+
+The video canvas's shape and what fills it are the user's meme, not chrome, so they live in `design/tokens.json` → `canvas`, next to the caption constants, never in `MemixTheme`. Full rules: `docs/ux/specs/P1-11-canvas.md`.
+
+- **Ratios and sizes:** 9:16 1080 × 1920 (default), 1:1 1080 × 1080, 4:5 1080 × 1350, 3:4 1080 × 1440, 16:9 1920 × 1080. Custom w:h (1 to 99 each, the long side at most 2.39 × the short side) is w·k × h·k with k the even number nearest 1080 ÷ min(w, h). The shorter side stays about 1080, so captions keep their size across ratios.
+- **Fit or Fill** applies to every main clip at once; new clips take the shared fit.
+- **Background:** black (default), a caption-palette color, or Blur (a Fill-scaled copy of the playing clip, Gaussian sigma 3% of the output's shorter side, no darkening). Gaps and missing clips are always black.
+- **Ratio change:** a layer fully inside the frame stays fully inside (moved in to a 2% margin, shrunk first if too big); a layer the user hung off the edge keeps its place.
+
+Sources: [Media3 GaussianBlurWithFrameOverlaid](https://developer.android.com/reference/androidx/media3/effect/GaussianBlurWithFrameOverlaid); X's 1:2.39 to 2.39:1 video range ([Social Media Today](https://www.socialmediatoday.com/news/twitter-updates-video-playback-to-ensure-a-higher-quality-viewing-experienc/607184)).
+
 ### Spacing
 
 4px base. Screen side gutter is space-4.
@@ -287,6 +305,7 @@ Fixed sizes used across screens (dp on Android).
 | `rail-height` | `MemixSize.railHeight` | `4px` | The thin rail under a fill: progress bar and slider. Rail in `hairline`, fill in `primary` (7.3:1 on surface, 4.9:1 against the rail). "Rail", not "track", because a track is a timeline lane in Memix. |
 | `canvas-handle-size` | `MemixSize.canvasHandleSize` | `24px` | The white scale-and-rotate handle on a selected caption on the preview (later stickers and layers), with a 1px `on-primary` edge and an `icon-small` icon in `on-primary` (18.9:1). Its target is still `touch-target`. |
 | `swatch-size` | `MemixSize.swatchSize` | `32px` | A color swatch (caption text and outline; later brush colors), drawn inside a `touch-target` square. Selected: a `stroke-selection` white ring 2px outside it (17.2:1 on surface). |
+| `list-thumb-size` | `MemixSize.listThumbSize` | `56px` | Square thumbnail at the start of a list row (a draft's first frame, P1-14), `radius-sm`, with the type badge (`scrim`, `icon-small` in `text`) in its corner. The row is at least this plus `space-2` above and below. |
 
 ### Motion
 
@@ -306,7 +325,7 @@ Fixed sizes used across screens (dp on Android).
 - `primary` sky blue: one main action per screen (+ the global Create button), active tool (on `primary-subtle`), links, progress, and all meme-sound UI.
 - `meme-caption` is Anton, white fill with a 3 dp black stroke: draw the text twice (stroke pass with `TextStyle(drawStyle = Stroke(width, join = StrokeJoin.Round))`, then fill). This is user content styling, not chrome. Editor captions use the same two passes with the stroke at font size ÷ 12, through the one caption renderer (P1-10); their fonts, palette and geometry are caption constants, not `MemixTheme` tokens.
 - Timeline: clips are positioned by time (µs → px via the zoom scale), never by index. Track heights from `trackHeightVideo` / `trackHeight`; playhead `playheadWidth` in `selection` with a `playheadHeadSize` circular head, fixed in the center while the content scrolls; trim handles `trimHandleWidth` in `selection`. Zoom scales and ruler steps are layout math kept as named constants in the timeline component (spec `docs/ux/specs/P1-05-timeline.md`), not tokens.
-- Editor tool panels (Volume, Style and Position for text, later Canvas) use the ToolPanel component. While a panel is open, the region it covers (timeline and tool bar) leaves the accessibility tree and can't take keyboard focus, so nothing hidden can be reached (P1-08 review). Long lists in a sheet (the editor's Meme sounds sheet, later the P3-05 picker) use the Sheet's half-height opening (`opensAtHalfHeight`); a SoundRow on a sheet uses `surface-raised` for its playing band. Sliders that have a level worth finding again snap to it (`snapValue`, one SegmentTick), and commit one undo step in `onValueChangeFinished`. Font choices use FontTile and color choices use Swatch; floating menus use Menu; short messages use Toast (with `FadingToast` for its fade, one at a time); icon-only controls with no fill (Close, Play/Pause, Undo, Redo, a toast's ×) use IconButton (`design/system/components/`). An IconButton on `surface-raised` presses to `hairline`.
+- Editor tool panels (Volume, Style and Position for text, later Canvas) use the ToolPanel component. While a panel is open, the region it covers (timeline and tool bar) leaves the accessibility tree and can't take keyboard focus, so nothing hidden can be reached (P1-08 review). Long lists in a sheet (the editor's Meme sounds sheet, later the P3-05 picker) use the Sheet's half-height opening (`opensAtHalfHeight`); a SoundRow on a sheet uses `surface-raised` for its playing band. Sliders that have a level worth finding again snap to it (`snapValue`, one SegmentTick), and commit one undo step in `onValueChangeFinished`. Font choices use FontTile and color choices use Swatch (the canvas background adds its Blur variant); settings shown as shapes (ratio, Fit / Fill) use OptionTile; a current setting in an editor's top bar (the ratio) uses SettingPill; a two-to-five-way setting value (export resolution and frame rate, P1-12) uses SegmentedChoice, with the white selection; floating menus use Menu; short messages use Toast (with `FadingToast` for its fade, one at a time); icon-only controls with no fill (Close, Play/Pause, Undo, Redo, a toast's ×) use IconButton (`design/system/components/`). An IconButton on `surface-raised` presses to `hairline`.
 - Pressed states: `primary` → `primary-pressed`; neutral controls go one value step lighter (`surface-raised` → `hairline`). No translate/scale on press; the 240 ms "bonk" scale is only for content landing on the timeline.
 - Icons: Memix-drawn vector drawables in `composeResources/drawable/` (see Iconography), 24 dp, 2 dp flat-cap stroke, tinted per state.
 - Tool bars: each tool is at least `toolItemWidth` wide and `touchTarget` tall. Its label is never cut: two lines is the copy budget, not a line cap, so at 200% font a long translation takes a third line and the bar grows (WCAG 2.2 SC 1.4.4).
@@ -321,7 +340,7 @@ Fixed sizes used across screens (dp on Android).
 | Templates | `Templates.dc.html` | Video/Photo segmented tabs, category chips (selected = white), 2-column template grid |
 | Sounds | `Sounds.dc.html` | Labelled search, Trending/Local/Global/Favorites/My sounds tabs, category chips, sound rows (one playing) |
 | Video editor | `VideoEditor.dc.html` | Top bar (close, 9:16, 1080p, Export), preview on black stage, transport row, 6-track timeline with a white-selected meme sound, selected-clip bar, tool bar with active tool. The P1-04/05/06 specs supersede parts of it: no track-label column, clip tools replace the tool bar instead of a separate bar, "Add a meme sound" row, original-audio toggle. |
-| Export sheet | `Export.dc.html` | Resolution, frame rate, watermark row with rewarded-ad Remove, size/time estimate, Export video |
+| Export sheet | `Export.dc.html` | Resolution, frame rate, watermark row with rewarded-ad Remove, size/time estimate, Export video. The P1-12 spec adds 480p and gives selected segments the white selection (SegmentedChoice); the Video editor board's "1080p" pill is dropped. |
 | Exported | `ExportDone.dc.html` | Result preview with watermark, saved status, share grid, Make another / Done |
 | Photo editor | `PhotoEditor.dc.html` | Classic caption canvas with a white-selected text layer, Make it a video meme, format chips, text bar, tool bar |
 | Remove background | `RemoveBackground.dc.html` | Checkerboard cut-out, success status, Erase/Restore, brush size and edge softness, Save as sticker / Apply |

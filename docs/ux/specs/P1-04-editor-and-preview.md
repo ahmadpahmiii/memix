@@ -60,14 +60,14 @@ Worked sizes (dp, 100% font):
 ### Top bar
 `canvas`, no divider.
 - **Left:** Close: icon button, `MemixIcons.Close` in `text`, 48 dp target. Spoken "Close editor".
-- **Center, reserved for P1-11 and P1-12:** the ratio chip (board "9:16", P1-11 Canvas) and the quality chip (board "1080p", P1-12 Export). Leave them out until their tickets. A chip that does nothing would be a dead control (P0-05 rule). Their specs define them.
+- **Center, reserved for P1-11 and P1-12:** the ratio pill (board "9:16", P1-11 Canvas, specced in `P1-11-canvas.md` with the SettingPill component) The board's quality pill ("1080p") is dropped in the P1-12 draft spec (export settings live in the Export sheet). Leave the pill out until P1-11. A pill that does nothing would be a dead control (P0-05 rule).
 - **Right, reserved for P1-12:** Export, the primary Button. P1-12 specs it. Until then the space stays empty. Note for P1-12: top-right is hard to reach one-handed, but every competitor puts the final action there and it's used once per project. P1-12 weighs that trade-off.
 
 ### Preview stage
 - **Stage:** `stage` black fills the region.
 - **Canvas frame:** the largest rectangle with the project's canvas ratio that fits inside the stage, inset by `space-2` on every side and centered. The engine's player surface fills it.
 - **Before the first frame:** the frame shows `surface-raised` (the "empty media frame" role), static. No spinner and no shimmer, because nothing in Memix loops (MOTION 2). PRD target: the editor opens in under 1 s.
-- **Frame edge:** a black canvas background (the default) blends into the black stage, so a fitted landscape clip doesn't show where the 9:16 frame ends. P1-11 owns showing the frame boundary; nothing is added here.
+- **Frame edge:** a black canvas background (the default) blends into the black stage, so a fitted landscape clip doesn't show where the 9:16 frame ends. P1-11 shows the boundary while the Canvas panel is open or a caption is moved (`P1-11-canvas.md` → The frame edge); nothing is added here.
 - **Taps:** a tap anywhere on the stage toggles play/pause, except on a caption: P1-10 selects it (and a tap on the selected caption edits it). Taps outside every caption keep toggling play, even with a caption selected (`P1-10-text.md` → On the preview).
 - **Toasts and the save banner** sit at the top of the stage (component `design/system/components/Toast/README.md`).
 
@@ -173,7 +173,7 @@ Board sample content and what replaces it:
 | One clip, many tracks | No difference in this region; see P1-05 | |
 | Tool panel open | Preview and transport row stay; panel covers the timeline and tool bar (P1-06) | |
 | Preview error (the engine can't build or play the composition) | The frame shows `surface` (not `surface-raised`: a secondary button on `surface-raised` loses its shape) with a centered line in `body` `text-secondary` and a secondary **Try again** button. Play/Pause is disabled. Edits keep working and saving. Try again rebuilds the preview session. | `editor_preview_error_body`, `editor_preview_retry` |
-| A clip's file is missing (defensive: the app's copy is gone) | That clip plays as the canvas background. Its timeline clip shows no thumbnails (P1-05). A toast shows once per open. With P1-16 the toast names Replace as well as Delete, and Replace comes first in that clip's tool bar (P1-06 → Replace). | `editor_missing_media` |
+| A clip's file is missing (defensive: the app's copy is gone) | That clip plays black, whatever the canvas background (P1-11 → Rendering rules). Its timeline clip shows no thumbnails (P1-05). A toast shows once per open. With P1-16 the toast names Replace as well as Delete, and Replace comes first in that clip's tool bar (P1-06 → Replace). | `editor_missing_media` |
 | Save failing | Banner at the top of the stage (Saving) | `editor_save_storage_full` or `editor_save_failed`, `editor_free_up_space`, `editor_dismiss` |
 | Leaving while a save is failing | Sheet (Saving) | `editor_unsaved_title`, `editor_unsaved_body`, `editor_free_up_space`, `editor_leave_anyway` |
 | Empty project (defensive: P1-02 never creates one, and P1-06 won't delete the last clip) | The frame shows the canvas background. A title in `title` and a body in `body` `text-secondary` sit centered on the whole stage, `space-2` in from its sides, not inside the canvas frame: with no picture the frame adds nothing, and its 9:16 width cut the Hindi body at 200% (P1-16 review, P6). The message scrolls if it's still taller than the stage. The timeline shows the ruler and an empty main row. The tool bar has no tools. Play/Pause is disabled. Close is the way out. Once P1-16 ships, the body changes, the Add media tile (P1-05) is the action, and the tool bar shows Add media as its only tool (P1-06 → Main tool bar). | `editor_empty_title`, `editor_empty_body` (`editor_empty_body_add` with P1-16) |

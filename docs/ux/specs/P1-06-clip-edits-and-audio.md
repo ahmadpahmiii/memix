@@ -379,6 +379,7 @@ P1-16's Done when (TICKETS, worded by the PM on 13 Oct): "Media added with the A
 - **Tile:** at the end of the video.
 - **Empty project** (P1-04 defensive state): at 0:00, from either entry.
 - In the order they were picked, with the same import rules as P1-02 (a photo's length as in P1-02).
+- **Fit (P1-11):** new clips take the Fit or Fill that every main clip shares (Fit when they're mixed), so a meme set to Fill stays filled.
 - Later main clips move right by the added length. Items on other lanes keep their times, the same as every ripple (owner, 8 Oct; part of the drift trial).
 
 **After landing:**
@@ -402,7 +403,7 @@ P1-16's Done when (TICKETS, worded by the PM on 13 Oct): "Media added with the A
 - **A video shorter than the clip** isn't used. A toast explains: "That video is shorter than this clip (00:03.20). Pick a longer one, or trim this clip first." (`explain_replace_too_short`, with the clip's length as the timecode). Nothing changes, and the new copy is deleted. Shrinking the clip would ripple the main track and pull everything after it out of sync, which is exactly what Replace promises not to do.
 
 **What's kept and what changes:**
-- **Kept:** the clip's id, start, length, place on the main track and **volume**. Replace keeps the slot's mix: a clip turned down under a meme sound stays down for the new video. Photos always carry 100%, so a photo replaced by a video plays at 100%.
+- **Kept:** the clip's id, start, length, place on the main track, its Fit or Fill (P1-11) and **volume**. Replace keeps the slot's mix: a clip turned down under a meme sound stays down for the new video. Photos always carry 100%, so a photo replaced by a video plays at 100%.
 - **Changed:** the source and the trim (in 0). Thumbnails reload by P1-05's loading rule.
 - **Not touched:** sounds, text and every other lane, and "Mute original audio of every clip" (`Track.muted`). That's the point of Replace.
 - A later per-clip setting (speed P4-09, filters P4-06) says in its own spec whether it carries over. P1 clips have none.
