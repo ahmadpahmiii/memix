@@ -25,11 +25,14 @@ internal class OriginalAudioControl(private val host: EditorHost) {
 
     /**
      * Detach audio on the selected video clip: its sound becomes its own "Original audio" clip, which is selected and
-     * bonks (no haptic: that's for meme sounds). A clip with no sound, or already detached, explains instead.
+     * bonks (no haptic: that's for meme sounds). A clip with no sound, or already detached, explains instead, and so
+     * does one whose file is missing ([fileMissing]): its detached clip would play nothing and outlive the Replace that
+     * fixes the clip (P1-09 review, M2), so the missing-file toast points to Replace.
      */
-    fun detachSelected() {
+    fun detachSelected(fileMissing: Boolean) {
         val itemId = host.uiState.selectedItemId ?: return
         val project = host.currentProject() ?: return
+        if (fileMissing) return host.showToast(ToastMessage.MissingMedia)
         when (project.originalSoundOf(itemId)) {
             OriginalSound.NONE -> return host.showToast(ToastMessage.Explain(Explanation.NO_SOUND))
             OriginalSound.DETACHED -> return host.showToast(ToastMessage.Explain(Explanation.DETACHED))

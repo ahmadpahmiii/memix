@@ -112,12 +112,13 @@ fun Project.deleteItem(itemId: String): Project {
 /**
  * Copies the item as [newItemId], right after the original. On the main track later clips move along. Elsewhere
  * the copy stays on the original's track if that time is free, else goes to the first track of the same kind
- * that's free there, else to a new track ([newTrackId]) after the last one of that kind.
+ * that's free there, else to a new track ([newTrackId]) after the last one of that kind. A copy of a clip whose sound
+ * is detached gets its own sound back at 0%: no detached clip lies under the copy, and nothing gets louder.
  */
 fun Project.duplicateItem(itemId: String, newItemId: String, newTrackId: String): Project {
     val (track, item) = findItem(itemId) ?: return this
     val copyStartUs = item.startUs + item.durationUs
-    val copy = item.withId(newItemId).withStart(copyStartUs)
+    val copy = item.withId(newItemId).withStart(copyStartUs).withOwnSoundAtZero()
     if (track.kind == TrackKind.MAIN_VIDEO) {
         val ordered = mainClipsInOrder(track)
         val index = ordered.indexOfFirst { it.id == itemId }
@@ -225,6 +226,10 @@ internal fun TimelineItem.withStart(startUs: Long): TimelineItem = when (this) {
     is StickerItem -> copy(startUs = startUs)
     is EffectItem -> copy(startUs = startUs)
 }
+
+// A detached clip's copy (P1-09 review, P1): the same rule as Replace on a detached clip (MediaEdits).
+private fun TimelineItem.withOwnSoundAtZero(): TimelineItem =
+    if (this is MediaClip && audioDetached) copy(audioDetached = false, volume = 0f) else this
 
 private fun TimelineItem.withId(id: String): TimelineItem = when (this) {
     is MediaClip -> copy(id = id)

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -42,25 +43,34 @@ import org.jetbrains.compose.resources.stringResource
  * `radius-sm`, inside a 48 dp target, its right edge `space-2` before 0:00 in the main row. Sound on: `sounds` in
  * `text-secondary`; muted: `volume_off` in `text`, the brighter state, since muted is the exception. A tap mutes or
  * unmutes every clip's own sound. It moves with time and the lanes' vertical scroll, clipped below the ruler, and is
- * read as the switch "Original audio" right after the playhead. Hidden in reorder mode, where only the tiles act.
+ * read as the switch "Original audio" right after the playhead. Hidden in reorder mode, where only the tiles act, while
+ * a trim or move is held, and while the selected main clip ([selectedStartUs]) starts less than `touch-target` after
+ * 0:00, because its start handle's target reaches out over this place (P1-09 review, M1); the clip's Volume tool holds
+ * the same switch meanwhile.
  */
 @Composable
 internal fun BoxScope.OriginalAudioToggle(
     controller: TimelineController,
     lanes: LaneLayout,
     muted: Boolean,
+    selectedStartUs: Long?,
     laneScroll: ScrollState,
     rulerHeight: Dp,
     onToggle: () -> Unit,
 ) {
     val state = controller.state
-    if (state.reorder != null) return
+    if (state.reorder != null || state.trim != null || state.move != null) return
     val mainRow = lanes.rows.firstOrNull { it.track.kind == TrackKind.MAIN_VIDEO } ?: return
+    val density = LocalDensity.current
+    val targetPx = with(density) { MemixSize.touchTarget.toPx() }
+    // The zoom is read in derivedStateOf, so a pinch recomposes only when the answer flips.
+    val startHandleHere by remember(selectedStartUs, targetPx) {
+        derivedStateOf { selectedStartUs != null && selectedStartUs * pxPerUs(state.dpPerSecond, density.density) < targetPx }
+    }
+    if (startHandleHere) return
     val label = stringResource(Res.string.timeline_original_audio)
     val interactionSource = remember { MutableInteractionSource() }
     val fill by pressedColor(interactionSource, MemixColors.surfaceRaised, MemixColors.hairline)
-    val density = LocalDensity.current
-    val targetPx = with(density) { MemixSize.touchTarget.toPx() }
     val tilePx = with(density) { MemixSize.trackHeightVideo.toPx() }
     val gapPx = with(density) { MemixSpacing.space2.toPx() }
     Box(Modifier.matchParentSize().padding(top = rulerHeight).clipToBounds()) {

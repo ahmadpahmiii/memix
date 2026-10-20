@@ -792,7 +792,9 @@ adb logcat -s MemixAnalytics:* MemixEditorCheck:* MemixExportCheck:*      # seco
    and the lanes' vertical scroll. Tap it while playing: the clips' own sound stops at once and playback goes on; the
    icon becomes the crossed speaker in white. Tap again: the sound is back. Each tap is one step ("Undo: Mute original
    audio", "Undo: Unmute original audio"). A tap on it never scrubs. Pressed, it turns lighter. It's hidden in reorder
-   mode. On `sound-sync` (photos only) there's no toggle.
+   mode. On `sound-sync` (photos only) there's no toggle. Select clip 1 at 0:00: the toggle hides (its start handle
+   is there) and dragging that handle trims without muting anything; clear the selection and it's back. It also hides
+   while a trim or move is held (review M1).
 2. **Clip volume:** select clip 3 (a video): Split · Volume · Delete · Duplicate · Detach audio · Reorder · Replace.
    Volume → "This clip", 0–200%, and under it "Mute original audio of every clip" with a switch. Play and drag: the clip
    gets quieter and louder while you drag. Drag to 0%, release, then drag up again while playing: it's heard while you
@@ -810,14 +812,19 @@ adb logcat -s MemixAnalytics:* MemixEditorCheck:* MemixExportCheck:*      # seco
    was muted, so the detached sound starts at 0%." and the new clip's Volume shows 0%.
 6. **Explanations:** clip 1 (already detached): Volume and Detach audio say "This clip's sound is on its own track now.
    Select it there." Add the silent video (Add media) and select it: Volume and Detach audio say "This clip has no sound."
-   None of these is an undo step.
-7. **Analytics** (`MemixAnalytics`): `tool_use` `mute_original` / `unmute_original` once per flip (toggle or switch),
+   On `missing-media`, the missing clip's Detach audio shows "A clip's file is missing, so it plays black. Replace or
+   delete that clip to fix it." and no Audio lane appears; Replace it, and it plays its new sound at its old volume
+   (review M2). None of these is an undo step or fires an event.
+7. **Duplicate a detached clip** (review P1): duplicate clip 1: the copy's Volume opens at 0% (no "on its own track"
+   explanation), TalkBack reads "Original audio muted" on it, and raising it brings its own sound in. Split clip 1
+   instead: both pieces stay detached.
+8. **Analytics** (`MemixAnalytics`): `tool_use` `mute_original` / `unmute_original` once per flip (toggle or switch),
    `detach_audio` once per detach, `volume` once per release; nothing for an explanation or a release at the same value.
-8. **TalkBack:** swiping from "Playhead" reaches "Original audio, switch, on" (off when muted) before the tracks;
+9. **TalkBack:** swiping from "Playhead" reaches "Original audio, switch, on" (off when muted) before the tracks;
    double-tap flips it. Clip 1 says "Sound detached"; with the toggle off, clips say "Original audio muted".
-9. **Hindi at 200% font, 360 dp:** a video clip's tools show Split, Volume and Delete without scrolling; in the Volume
+10. **Hindi at 200% font, 360 dp:** a video clip's tools show Split, Volume and Delete without scrolling; in the Volume
    panel the switch row's label wraps and the switch stays whole (renders 123 and 124).
-10. **Drift trial** (owner): on `timeline-check`, detach clip 2's sound, then trim clip 1's start by about 1 s. Clip 2
+11. **Drift trial** (owner): on `timeline-check`, detach clip 2's sound, then trim clip 1's start by about 1 s. Clip 2
     moves 1 s earlier and its detached sound keeps its time, so it now plays 1 s off its picture (the detached clip is
     independent, spec → After detaching). Note whether that would bother you.
 

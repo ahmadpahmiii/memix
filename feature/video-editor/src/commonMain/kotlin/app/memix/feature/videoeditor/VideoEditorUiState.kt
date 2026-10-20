@@ -467,6 +467,9 @@ sealed interface VideoEditorIntent {
     /** The timeline's original-audio toggle or the Volume panel's row: mutes or unmutes every clip's own sound. */
     data object ToggleOriginalAudio : VideoEditorIntent
 
-    /** Detach audio on the selected video clip: its sound moves to its own audio clip (spec P1-06 → Detach audio). */
-    data object DetachAudioSelected : VideoEditorIntent
+    /**
+     * Detach audio on the selected video clip: its sound moves to its own audio clip (spec P1-06 → Detach audio).
+     * [fileMissing] when the screen knows the clip's file is gone (the thumbnails' missing sources): it explains instead.
+     */
+    data class DetachAudioSelected(val fileMissing: Boolean) : VideoEditorIntent
 }

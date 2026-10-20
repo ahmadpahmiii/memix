@@ -136,7 +136,7 @@
     <string name="edit_add_media">मीडिया जोड़ें</string>
     <string name="edit_replace">बदलें</string>
     <string name="explain_replace_too_short">वह वीडियो इस क्लिप से छोटा है (%1$s)। कोई लंबा वीडियो चुनें, या पहले यह क्लिप ट्रिम करें।</string>
-    <string name="explain_replace_detached">अलग की गई साउंड बनी रहेगी, इसलिए इस क्लिप की अपनी साउंड 0% से शुरू होगी।</string>
+    <string name="explain_replace_detached">अलग किया गया साउंड बना रहेगा, इसलिए इस क्लिप का अपना साउंड 0% से शुरू होगा।</string>
     <plurals name="a11y_media_added">
         <item quantity="one">%1$d क्लिप जोड़ी गई</item>
         <item quantity="other">%1$d क्लिप जोड़ी गईं</item>
@@ -147,8 +147,8 @@
     <string name="volume_this_clip">यह क्लिप</string>
     <string name="volume_mute_all">सभी क्लिप का मूल ऑडियो म्यूट करें</string>
     <string name="explain_no_sound">इस क्लिप में साउंड नहीं है।</string>
-    <string name="explain_detached">इस क्लिप की साउंड अब अपने ट्रैक पर है। उसे वहीं चुनें।</string>
-    <string name="explain_detached_muted">मूल ऑडियो म्यूट था, इसलिए अलग की गई साउंड 0% से शुरू होगी।</string>
+    <string name="explain_detached">इस क्लिप का साउंड अब अपने ट्रैक पर है। उसे वहीं चुनें।</string>
+    <string name="explain_detached_muted">मूल ऑडियो म्यूट था, इसलिए अलग किया गया साउंड 0% से शुरू होगा।</string>
     <string name="edit_mute_original">मूल ऑडियो म्यूट करें</string>
     <string name="edit_unmute_original">मूल ऑडियो अनम्यूट करें</string>
     <string name="edit_detach_audio">ऑडियो अलग करें</string>

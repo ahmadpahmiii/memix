@@ -142,8 +142,9 @@ private fun ToolButton(tool: ToolBarItem) {
         verticalArrangement = Arrangement.spacedBy(MemixSpacing.space1),
     ) {
         Icon(tool.icon, contentDescription = null, tint = tint)
-        // Never cut: two lines is the copy budget, not a cap (a three-word label at 200% takes three).
-        Text(tool.label, MemixTheme.type.caption, Modifier.fillMaxWidth(), color = tint, textAlign = TextAlign.Center)
+        // Never cut: two lines is the copy budget, not a cap (a three-word label at 200% takes three). Every label keeps
+        // room for two, so the icons don't jump between bars with and without a two-line label (P1-09 review, P2).
+        Text(tool.label, MemixTheme.type.caption, Modifier.fillMaxWidth(), color = tint, textAlign = TextAlign.Center, minLines = 2)
     }
 }
 

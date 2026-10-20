@@ -20,6 +20,7 @@ fun Text(
     maxLines: Int = Int.MAX_VALUE,
     // MiddleEllipsis keeps a file name's extension visible; it needs maxLines = 1.
     overflow: TextOverflow = TextOverflow.Ellipsis,
+    minLines: Int = 1,
 ) {
     BasicText(
         text = text,
@@ -27,6 +28,7 @@ fun Text(
         style = if (textAlign == null) style.copy(color = color) else style.copy(color = color, textAlign = textAlign),
         overflow = overflow,
         maxLines = maxLines,
+        minLines = minLines,
     )
 }
 

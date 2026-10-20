@@ -37,10 +37,15 @@ data class TimelineUi(
     /** The item with [id], or null when no track holds it (any more). */
     fun item(id: String): ItemUi? = tracks.firstNotNullOfOrNull { track -> track.items.firstOrNull { it.id == id } }
 
+    /** Where main clip [itemId] starts, µs; null when [itemId] is null or not a main clip. */
+    fun mainClipStartUs(itemId: String?): Long? = mainClip(itemId)?.startUs
+
     /** Where main clip [itemId] ends, µs; null when [itemId] is null or not a main clip. */
-    fun mainClipEndUs(itemId: String?): Long? {
+    fun mainClipEndUs(itemId: String?): Long? = mainClip(itemId)?.endUs
+
+    private fun mainClip(itemId: String?): ItemUi? {
         if (itemId == null) return null
-        return tracks.firstOrNull { it.kind == TrackKind.MAIN_VIDEO }?.items?.firstOrNull { it.id == itemId }?.endUs
+        return tracks.firstOrNull { it.kind == TrackKind.MAIN_VIDEO }?.items?.firstOrNull { it.id == itemId }
     }
 
     companion object {

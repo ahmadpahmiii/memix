@@ -198,7 +198,7 @@ class VideoEditorViewModel(
             is VideoEditorIntent.Import -> mediaImport.onIntent(intent.intent)
             VideoEditorIntent.PickAgain -> pickAgain()
             VideoEditorIntent.ToggleOriginalAudio -> originalAudio.toggleMute()
-            VideoEditorIntent.DetachAudioSelected -> originalAudio.detachSelected()
+            is VideoEditorIntent.DetachAudioSelected -> originalAudio.detachSelected(intent.fileMissing)
         }
     }
 

@@ -228,7 +228,7 @@ private fun rememberClipTools(
             // Volume second, because lowering the original under a meme sound is the next most common job; Detach audio
             // with the rare tools (spec P1-06 → Clip tool bar). A clip with no sound keeps both; they explain on tap.
             ClipTools.VIDEO_CLIP -> {
-                val detachTool = ToolBarItem(detach, MemixIcons.DetachAudio, { onIntent(VideoEditorIntent.DetachAudioSelected) })
+                val detachTool = ToolBarItem(detach, MemixIcons.DetachAudio, { onIntent(VideoEditorIntent.DetachAudioSelected(fileMissing = isMissing)) })
                 val usual = listOf(splitTool, volumeTool, deleteTool, duplicateTool, detachTool, reorderTool)
                 (if (isMissing) listOf(replaceTool) + usual else usual + replaceTool).toImmutableList()
             }

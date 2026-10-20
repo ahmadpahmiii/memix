@@ -342,7 +342,8 @@ private fun TimelineContent(
         )
         PlayheadSemantics(controller, timeline.lengthUs, rulerHeight)
         originalAudio?.let { audio ->
-            OriginalAudioToggle(controller, lanes, audio.muted, laneScroll, rulerHeight, onToggle = { onIntent(VideoEditorIntent.ToggleOriginalAudio) })
+            val selectedStartUs = remember(timeline, selectedItemId) { timeline.mainClipStartUs(selectedItemId) }
+            OriginalAudioToggle(controller, lanes, audio.muted, selectedStartUs, laneScroll, rulerHeight, onToggle = { onIntent(VideoEditorIntent.ToggleOriginalAudio) })
         }
         lanes.addSoundRow?.let { addRow ->
             AddMemeSoundPill(controller, addRow, motion, laneScroll, rulerHeight, addSoundPillFocus, onClick = { onIntent(VideoEditorIntent.AddMemeSoundRow) })
