@@ -211,7 +211,8 @@ internal class Media3PreviewSession(
 
     override fun endTrimFrames() {
         if (closed || trimClip.value == null) return
-        // The project's composition is rebuilt at positionUs; the trim's commit right after replaces that build.
+        // The project's composition is rebuilt at positionUs, the trim's commit included when it came first (the
+        // editor commits, then ends the trim frames); otherwise the commit right after replaces that build.
         trimClip.value = null
     }
 

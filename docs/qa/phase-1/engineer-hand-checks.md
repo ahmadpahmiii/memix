@@ -444,6 +444,12 @@ adb logcat -s MemixPreview:* MemixAnalytics:*      # second terminal
    - Drag an edge near the playhead, a clip boundary or a caption's edge: it snaps with one buzz and a thin gray line
      across the lanes (no line at the playhead, which is already one).
    - Keep the finger at the screen's edge: time scrolls that way, faster nearer the edge.
+   - **Past the end (review P8, built after P1-09):** scroll to the end, select the last clip and drag its end handle to
+     the right edge of the screen, then hold: time keeps scrolling past the end and the clip keeps growing, until its
+     footage runs out (one buzz, the scroll stops there); a photo grows for as long as you hold. Release: the clip keeps
+     its new length, the video is that much longer and the playhead stays where it was. Do the same with the last
+     caption's end handle, past the end of the video: on release the playhead slides back to the end of the video
+     (200 ms; at once with reduce motion). System back during such a drag cancels it and the playhead slides back too.
    - A caption's end stops at the next caption. A photo can be made longer without limit.
    - A drag that starts on a handle never scrolls the timeline. System back during a drag cancels it (nothing changes).
 4. **Delete:** later clips close up, the selection clears, Edit returns. In a one-clip project: "Your video needs at least

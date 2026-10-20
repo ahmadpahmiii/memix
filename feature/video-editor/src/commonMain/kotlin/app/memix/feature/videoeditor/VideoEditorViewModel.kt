@@ -564,9 +564,11 @@ class VideoEditorViewModel(
     }
 
     private fun endTrim(itemId: String, edge: TrimEdge, edgeUs: Long, playheadUs: Long) {
+        val trimmed = commit(VideoEdit.TRIM) { it.trimItem(itemId, edge, edgeUs) }
+        // After the commit, so a playhead past the old end (the trim extended the video, P1-06 review P8) isn't clamped
+        // to it by the preview.
         stopTrimFrames(playheadUs)
-        if (!commit(VideoEdit.TRIM) { it.trimItem(itemId, edge, edgeUs) }) return
-        announce(VideoEdit.TRIM, state.value.timeline.nameOf(itemId))
+        if (trimmed) announce(VideoEdit.TRIM, state.value.timeline.nameOf(itemId))
     }
 
     private fun cancelTrim(playheadUs: Long) = stopTrimFrames(playheadUs)

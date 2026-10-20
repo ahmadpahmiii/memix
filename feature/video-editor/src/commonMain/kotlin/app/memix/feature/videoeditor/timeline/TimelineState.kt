@@ -45,13 +45,14 @@ internal class TimelineState {
 
     /**
      * Moves time by a horizontal drag of [deltaPx] (positive when the finger moves right, which shows earlier time),
-     * stopping exactly at 0:00 and at [lengthUs]. Returns the pixels used, so a fling stops at either end.
+     * stopping exactly at 0:00 and at [endUs]: the end of the video, or a held trim handle's limit past it (P8).
+     * Returns the pixels used, so a fling stops at either end.
      */
-    fun scrollBy(deltaPx: Float, lengthUs: Long, density: Float): Float {
+    fun scrollBy(deltaPx: Float, endUs: Long, density: Float): Float {
         val pxPerUs = pxPerUs(dpPerSecond, density)
-        if (pxPerUs <= 0f || lengthUs <= 0) return 0f
+        if (pxPerUs <= 0f || endUs <= 0) return 0f
         val targetUs = playheadUs - (deltaPx / pxPerUs).roundToLong()
-        val clampedUs = targetUs.coerceIn(0, lengthUs)
+        val clampedUs = targetUs.coerceIn(0, endUs)
         val consumedPx = if (clampedUs == targetUs) deltaPx else (playheadUs - clampedUs) * pxPerUs
         playheadUs = clampedUs
         return consumedPx

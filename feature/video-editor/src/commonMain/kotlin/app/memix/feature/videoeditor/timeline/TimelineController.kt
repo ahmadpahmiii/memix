@@ -101,8 +101,13 @@ internal class TimelineController(val state: TimelineState, private val scope: C
     /** A tap on the ruler: [timeUs] scrolls under the playhead over 200 ms (a jump with reduce motion). */
     fun seekAnimated(timeUs: Long) {
         val targetUs = timeUs.coerceIn(0, timeline.lengthUs.coerceAtLeast(0))
-        seekAnimation?.cancel()
         onIntent(VideoEditorIntent.SeekTo(targetUs))
+        slidePlayheadTo(targetUs)
+    }
+
+    // The playhead slides to targetUs over 200 ms, or jumps there with reduce motion; a touch stops it (onTouchDown).
+    private fun slidePlayheadTo(targetUs: Long) {
+        seekAnimation?.cancel()
         if (reduceMotion) {
             state.playheadUs = targetUs
             return
@@ -155,7 +160,8 @@ internal class TimelineController(val state: TimelineState, private val scope: C
         val drag = state.trim?.takeUnless { it.isReleased } ?: return
         edgeScroll?.cancel()
         drag.isReleased = true
-        onIntent(VideoEditorIntent.TrimEnded(drag.item.id, drag.edge, drag.edgeUs, state.playheadUs))
+        val playheadUs = settleInside(lengthAfter(drag))
+        onIntent(VideoEditorIntent.TrimEnded(drag.item.id, drag.edge, drag.edgeUs, playheadUs))
         // A trim released where it started changes nothing and brings no new timeline; let it go after two frames.
         scope.launch {
             repeat(FRAMES_TO_WAIT_FOR_EDIT) { withFrameNanos { } }
@@ -168,7 +174,27 @@ internal class TimelineController(val state: TimelineState, private val scope: C
         state.trim?.takeUnless { it.isReleased } ?: return
         edgeScroll?.cancel()
         state.trim = null
-        onIntent(VideoEditorIntent.TrimCancelled(state.playheadUs))
+        onIntent(VideoEditorIntent.TrimCancelled(settleInside(timeline.lengthUs)))
+    }
+
+    /**
+     * How long the video will be once [drag] is committed: a main clip's change of length moves every later clip, so
+     * the end moves by it too; other items leave the length as it is.
+     */
+    private fun lengthAfter(drag: TrimDrag): Long {
+        if (drag.row.track.kind != TrackKind.MAIN_VIDEO) return timeline.lengthUs
+        return timeline.lengthUs + (drag.endUs - drag.startUs) - (drag.item.endUs - drag.item.startUs)
+    }
+
+    /**
+     * A trim may have scrolled past the end (P1-06 review, P8); after it, a playhead past [lengthUs] slides back to it
+     * (the "settle at the new end"). Returns where the playhead ends up, for the preview.
+     */
+    private fun settleInside(lengthUs: Long): Long {
+        val endUs = lengthUs.coerceAtLeast(0)
+        if (state.playheadUs <= endUs) return state.playheadUs
+        slidePlayheadTo(endUs)
+        return endUs
     }
 
     private fun followTrimFinger() {
@@ -185,7 +211,9 @@ internal class TimelineController(val state: TimelineState, private val scope: C
 
     /**
      * While the finger is within [edgeZonePx] of a side, time scrolls that way, faster the closer it gets, up to one
-     * screen width a second (spec P1-06 → Edge auto-scroll); the edge keeps following the finger as time moves.
+     * screen width a second (spec P1-06 → Edge auto-scroll); the edge keeps following the finger as time moves. Time
+     * may scroll past the end of the video as far as the handle's own limit, so extending the last clip isn't capped at
+     * what the screen shows (P1-06 review, P8); reaching that limit ticks once, like any limit.
      */
     private suspend fun scrollAtEdgesWhileTrimming() {
         var previousFrameNanos = withFrameNanos { it }
@@ -194,7 +222,8 @@ internal class TimelineController(val state: TimelineState, private val scope: C
             val seconds = (frameNanos - previousFrameNanos) / NANOS_PER_SECOND
             previousFrameNanos = frameNanos
             val speedPxPerSecond = edgeScrollSpeed(trimFingerX, state.widthPx.toFloat(), edgeZonePx)
-            if (speedPxPerSecond != 0f && state.scrollBy(speedPxPerSecond * seconds, timeline.lengthUs, density) != 0f) {
+            val scrollEndUs = maxOf(timeline.lengthUs, state.trim?.range?.maxUs ?: timeline.lengthUs)
+            if (speedPxPerSecond != 0f && state.scrollBy(speedPxPerSecond * seconds, scrollEndUs, density) != 0f) {
                 followTrimFinger()
             }
         }
