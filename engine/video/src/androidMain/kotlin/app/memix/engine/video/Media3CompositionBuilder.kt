@@ -32,7 +32,10 @@ internal class Media3CompositionBuilder(
     private val frameRate: Int,
     /** Processors for the whole mix, after the sequences are mixed; only the preview's hand-check measure uses one. */
     private val mixProcessors: List<AudioProcessor> = emptyList(),
-    /** The preview's live volume per sound item (see [LiveGainProcessor]); empty for exports. */
+    /**
+     * The preview's live volume per item that plays sound: sounds and main clips (see [LiveGainProcessor]); empty for
+     * exports. An item at 0% with a live gain gets no fixed volume step: its live gain starts at 0 and can raise it.
+     */
     private val liveGains: Map<String, LiveGainProcessor> = emptyMap(),
 ) {
     fun build(): Composition {
@@ -67,7 +70,7 @@ internal class Media3CompositionBuilder(
         } else {
             mediaItem.setClippingConfiguration(clipping(clip.trimInUs, clip.trimOutUs))
         }
-        val audioProcessors = if (clip.playsOwnAudio) volumeProcessors(clip.volume) else emptyList()
+        val audioProcessors = if (clip.playsOwnAudio) itemVolume(clip.itemId, clip.volume) else emptyList()
         val item = EditedMediaItem.Builder(mediaItem.build())
             .setRemoveAudio(!clip.playsOwnAudio)
             // The output rate for photos; a ceiling that drops extra frames from faster videos.
@@ -95,7 +98,7 @@ internal class Media3CompositionBuilder(
             .setClippingConfiguration(clipping(clip.trimInUs, clip.trimOutUs))
             .build()
         // Detached audio points at the original video file; its picture isn't decoded again here.
-        val processors = volumeProcessors(clip.volume) + listOfNotNull(liveGains[clip.itemId])
+        val processors = itemVolume(clip.itemId, clip.volume)
         return EditedMediaItem.Builder(mediaItem)
             .setRemoveVideo(true)
             .setEffects(Effects(processors, emptyList()))
@@ -121,6 +124,13 @@ internal class Media3CompositionBuilder(
             Presentation.createForWidthAndHeight(plan.canvasWidthPx, plan.canvasHeightPx, Presentation.LAYOUT_SCALE_TO_FIT)
         FrameFit.FILL ->
             Presentation.createForWidthAndHeight(plan.canvasWidthPx, plan.canvasHeightPx, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP)
+    }
+
+    // The committed volume, then the preview's live gain if it has one. A 0% item's silence comes from its live gain
+    // alone, since a fixed 0 step before it would leave nothing to raise.
+    private fun itemVolume(itemId: String, volume: Float): List<AudioProcessor> {
+        val liveGain = liveGains[itemId] ?: return volumeProcessors(volume)
+        return if (volume == 0f) listOf(liveGain) else volumeProcessors(volume) + liveGain
     }
 
     // Scales every channel by the volume. Media3 clamps samples past full scale, so volumes above 1

@@ -84,7 +84,10 @@ internal data class VisualClip(
     val trimInUs: Long,
     val trimOutUs: Long,
     val fit: FrameFit,
-    /** False for photos, videos without a sound track, detached audio, a muted main track and volume 0. */
+    /**
+     * False for photos, videos without a sound track, detached audio and a muted main track; also at volume 0, except
+     * in a preview's plan, which keeps silent items so a raise is heard live.
+     */
     val playsOwnAudio: Boolean,
     /** 1 is the original loudness; only used when [playsOwnAudio]. */
     val volume: Float,
@@ -101,7 +104,7 @@ internal data class SoundClip(
     val source: MediaRef,
     val trimInUs: Long,
     val trimOutUs: Long,
-    /** 1 is the original loudness; never 0, because silent clips are left out of the plan. */
+    /** 1 is the original loudness; 0 only in a preview's plan (export plans leave silent clips out). */
     val volume: Float,
 ) : AudioSegment {
     override val durationUs: Long get() = trimOutUs - trimInUs

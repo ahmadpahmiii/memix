@@ -9,10 +9,12 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * A gain the preview can change while it plays, so a Volume slider is heard as it moves (P1-08) without rebuilding the
- * composition. One per sound item in a preview composition; [factor] multiplies the level the composition already
- * applies (1 changes nothing). Samples past full scale are clamped, as Media3's ChannelMixingAudioProcessor does for
- * the committed volume. The player's audio thread reads [factor]; the main thread writes it.
+ * A gain the preview can change while it plays, so a Volume slider is heard as it moves (P1-08, P1-09) without
+ * rebuilding the composition. One per item with sound in a preview composition (a sound, or a main clip playing its
+ * own sound); [factor] multiplies the level the composition already applies (1 changes nothing). An item committed at
+ * 0% has no volume processor, so its factor is the slider's level itself and starts at 0 (silent). Samples past full
+ * scale are clamped, as Media3's ChannelMixingAudioProcessor does for the committed volume. The player's audio thread
+ * reads [factor]; the main thread writes it.
  */
 @OptIn(UnstableApi::class)
 internal class LiveGainProcessor : BaseAudioProcessor() {

@@ -145,4 +145,14 @@
         <item quantity="other">%1$d clips added</item>
     </plurals>
     <string name="timeline_add_media">Add videos or photos</string>
+    <!-- P1-09: original audio (spec P1-06 -> Original audio, Volume panel) -->
+    <string name="tool_detach_audio">Detach audio</string>
+    <string name="volume_this_clip">This clip</string>
+    <string name="volume_mute_all">Mute original audio of every clip</string>
+    <string name="explain_no_sound">This clip has no sound.</string>
+    <string name="explain_detached">This clip's sound is on its own track now. Select it there.</string>
+    <string name="explain_detached_muted">Original audio was muted, so the detached sound starts at 0%.</string>
+    <string name="edit_mute_original">Mute original audio</string>
+    <string name="edit_unmute_original">Unmute original audio</string>
+    <string name="edit_detach_audio">Detach audio</string>
 </resources>

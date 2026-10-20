@@ -15,6 +15,8 @@ import app.memix.core.domain.project.canSplit
 import app.memix.core.domain.project.deleteItem
 import app.memix.core.domain.project.duplicateItem
 import app.memix.core.domain.project.hasNoClips
+import app.memix.core.domain.project.hasOriginalAudio
+import app.memix.core.domain.project.isOriginalMuted
 import app.memix.core.domain.project.mainClipIds
 import app.memix.core.domain.project.moveMainClip
 import app.memix.core.domain.project.reorderMainClips
@@ -73,8 +75,8 @@ import kotlinx.coroutines.launch
  * thumbnails their open files. [decodeDispatcher] decodes thumbnail pictures off the main thread.
  *
  * Tool areas live in helpers that reach the editor through one [EditorHost]: meme sounds ([EditorSoundTools]), the
- * Volume panel ([VolumePanelControl]) and Move ([MoveControl]); Add media and Replace copy through [importMedia]
- * ([EditorMediaImport]).
+ * Volume panel ([VolumePanelControl]), Move ([MoveControl]) and original audio ([OriginalAudioControl]); Add media and
+ * Replace copy through [importMedia] ([EditorMediaImport]).
  */
 class VideoEditorViewModel(
     projectId: String,
@@ -111,6 +113,7 @@ class VideoEditorViewModel(
     private val soundTools = EditorSoundTools(sounds, host)
     private val volumePanel = VolumePanelControl(host)
     private val move = MoveControl(host)
+    private val originalAudio = OriginalAudioControl(host)
 
     init {
         updateState { it.copy(mediaImport = mediaImport.ui) }
@@ -194,6 +197,8 @@ class VideoEditorViewModel(
             is VideoEditorIntent.MediaPicked -> onMediaPicked(intent.request, intent.items)
             is VideoEditorIntent.Import -> mediaImport.onIntent(intent.intent)
             VideoEditorIntent.PickAgain -> pickAgain()
+            VideoEditorIntent.ToggleOriginalAudio -> originalAudio.toggleMute()
+            VideoEditorIntent.DetachAudioSelected -> originalAudio.detachSelected()
         }
     }
 
@@ -227,6 +232,7 @@ class VideoEditorViewModel(
                 timeline = timeline,
                 reorder = it.reorder?.takeIf { reorder -> reorder.originalOrder.toSet() == clipIds },
                 volumePanel = it.volumePanel?.takeIf { panel -> timeline.item(panel.itemId) != null },
+                originalAudio = if (project.hasOriginalAudio()) OriginalAudioUi(muted = project.isOriginalMuted()) else null,
             ).withSelection(it.selectedItemId, project)
         }
         if (project.hasNoClips()) {
@@ -737,11 +743,12 @@ internal fun VideoEditorUiState.withSelection(itemId: String?, project: Project?
     val start = project?.trimRange(itemId, TrimEdge.START)
     val end = project?.trimRange(itemId, TrimEdge.END)
     val ranges = if (start != null && end != null) TrimRanges(start, end) else null
-    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind), trimRanges = ranges)
+    val mediaKind = timeline.item(itemId)?.media?.kind
+    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind), trimRanges = ranges)
 }
 
-private fun clipToolsFor(kind: TrackKind): ClipTools = when (kind) {
-    TrackKind.MAIN_VIDEO -> ClipTools.MAIN_CLIP
+private fun clipToolsFor(kind: TrackKind, mediaKind: MediaKind?): ClipTools = when (kind) {
+    TrackKind.MAIN_VIDEO -> if (mediaKind == MediaKind.IMAGE) ClipTools.PHOTO_CLIP else ClipTools.VIDEO_CLIP
     TrackKind.TEXT -> ClipTools.TEXT
     TrackKind.MEME_SOUND, TrackKind.AUDIO -> ClipTools.SOUND
     TrackKind.OVERLAY, TrackKind.STICKER, TrackKind.EFFECT -> ClipTools.OTHER

@@ -67,6 +67,11 @@ enum class EditorTool(val eventValue: String?) {
     /** One pick added from the editor, however many items went in (P1-16). */
     ADD_MEDIA("add_media"),
     REPLACE_CLIP("replace_clip"),
+
+    /** P1-09: one id per direction of the original-audio toggle (PM, 8 Oct), and Detach audio. */
+    MUTE_ORIGINAL("mute_original"),
+    UNMUTE_ORIGINAL("unmute_original"),
+    DETACH_AUDIO("detach_audio"),
 }
 
 /** `sound_add.tab` and `sound_preview.tab`: where in the sounds UI it happened. "starter" until P3-05 (PM, 8 Oct 2026). */

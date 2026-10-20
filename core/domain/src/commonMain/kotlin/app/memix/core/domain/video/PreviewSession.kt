@@ -59,9 +59,10 @@ interface PreviewSession : AutoCloseable {
     fun endTrimFrames()
 
     /**
-     * While the Volume panel's slider moves (P1-08): plays sound [itemId] at [volume] (1 = its own level) right away,
-     * without rebuilding, so the change is heard live. A sound that's silent in the project isn't playing, so it stays
-     * silent until the change is committed. The next [update] replaces it with the project's volume.
+     * While the Volume panel's slider moves (P1-08, P1-09): plays sound or clip [itemId] at [volume] (1 = its own
+     * level) right away, without rebuilding, so the change is heard live, also when raising it from 0%. Nothing plays
+     * for a clip whose sound is muted with every clip's, or detached. The next [update] replaces it with the
+     * project's volume.
      */
     fun previewVolume(itemId: String, volume: Float)
 

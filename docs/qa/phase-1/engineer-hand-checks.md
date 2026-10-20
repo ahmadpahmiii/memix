@@ -637,6 +637,12 @@ adb logcat -s MemixPreview:* MemixAnalytics:* MemixSounds:* MemixExportCheck:*  
    `ffprobe -v error -show_entries stream=codec_type,start_time -of csv p108.mp4`.
 4. Pass: each `silence_end` is within 0.033 s of a logged start, both streams start at 0, the file is 12.0 s long and
    the sound past the end stops at 12 s.
+5. **Export volume** (added with P1-09; the PM's C5): `--es memix.openEditor export-check`, select the meme sound at
+   3.5 s, set it to 100% (drag away and back, release), close the editor, export (step 2), pull the file as `s100.mp4`.
+   Reopen the draft from Home, set the sound to 50%, export as `s50.mp4`; then 200%, `s200.mp4`. For each:
+   `ffmpeg -ss 3.5 -t 0.5 -i s100.mp4 -vn -af volumedetect -f null - 2>&1 | grep -E "mean_volume|max_volume"`. Pass: 50%
+   is 6 dB below 100% (±1 dB); 200% is louder, up to 6 dB, and its `max_volume` stays at or below 0.0 dB (clipped, not
+   wrapped into noise). In the preview, the same three levels sound quieter, the same and louder by ear.
 
 **D. Leaks (debug build, LeakCanary 2.14).** Open and close the editor 5 times on `timeline-check`, each time: open the
 sheet, play two sounds, add one, move it, open the Volume panel and drag the slider; wait 10 s on Home. Pass: no
@@ -651,7 +657,7 @@ At 360 dp wide if possible, English unless noted: `main-tools` (Edit, Meme sound
 one row playing), `sounds-sheet-expanded` (after a drag up), `sound-landed` (selected, sound tools), `sound-new-lane` (a
 sound landed on a new lane), `add-row-pill` (a clip selected, the pill at the playhead), `move-drag` (a carried sound with
 its bubble and snap line), `move-to-add-row` (over the add row, with the new-lane band), `volume-panel` (100%),
-`volume-panel-200`, `sounds-sheet-hi-200`, `sound-tools-hi-200` and `add-row-hi-200` (Hindi at 200% font), `add-row-es-200`
+`volume-panel-200`, `text-tools` (a caption selected: Delete · Split · Move here · Duplicate), `sounds-sheet-hi-200`, `sound-tools-hi-200` and `add-row-hi-200` (Hindi at 200% font), `add-row-es-200`
 and `add-row-pt-200` (the label on two lines), plus a short screen recording of a sound landing on a new lane (the pill
 sits out the slide). Take them after the P1-08 review fixes.
 
@@ -703,7 +709,8 @@ adb logcat -s MemixAnalytics:* MemixEditorCheck:* MediaImport:*      # second te
    move right, the sound keeps its time and now plays off that boundary. Note whether that would bother you.
 
 **B. Replace (debug build).**
-1. **Where:** select a main clip: Split · Delete · Duplicate · Reorder · Replace (last; new icon: a block between two curved
+1. **Where:** select a main clip: Split · Volume · Delete · Duplicate · Detach audio · Reorder · Replace on a video since
+   P1-09 (Split · Delete · Duplicate · Reorder · Replace on a photo), Replace last (new icon: a block between two curved
    arrows). Sounds, captions and other items have no Replace.
 2. **A longer video:** select clip 3 (5.0 s), Replace, pick the 60 s video. Same start and length (the badge still says
    00:05.00), new thumbnails, it bonks once, stays selected, the playhead doesn't move. TalkBack: "Replace: clip 3".
@@ -746,7 +753,84 @@ At 360 dp wide if possible, English unless noted: `main-tools-add-media`, `tile-
 (tile and Add media only), `media-added` (after the bonk, playhead on the first new clip), `import-sheet-over-editor`,
 `clip-tools-replace`, `replaced-clip` (same start and length, new thumbnails), `replace-too-short-toast`,
 `replace-detached-toast`, `missing-clip-replace-first`, `main-tools-hi-200`, `clip-tools-replace-hi-200`,
-`empty-project-hi-200`, `main-tools-es-200` (the longest Add media label).
+`empty-project-hi-200`, `main-tools-es-200` (the longest Add media label), `main-tools-pt-200`, `tile-hidden-last-clip`
+(the last clip selected at the end: its end handle, no tile), `missing-clip-fixed` (step B6 after the Replace: no "File
+missing", thumbnails back), plus a short screen recording of Add media with a long video (the import sheet over the
+editor, then the clips bonk after the sheet has gone).
+
+## P1-09 · original audio: mute every clip, clip volume, Detach audio, never doubled or shifted
+
+Spec `docs/ux/specs/P1-06-clip-edits-and-audio.md` → Original audio, Clip tool bar, Volume panel, States, Copy,
+Accessibility, Analytics; `P1-05-timeline.md` → Leading area. Projects: `timeline-check` (clip 1's sound is already
+detached on the "Original audio" lane, 0–6 s; clip 2 runs 6–9 s; clip 4, 8, … are photos), `export-check` (clip A 0–3 s
+plays its own sound at 50%; clip B 5–8 s is detached), `missing-media` (no Audio lane), `sound-sync` (photos only). Push
+P1-03's test files first (P1-03 step 0). Keep a video with no sound track in the gallery (record one with the mic
+blocked, or `ffmpeg -i clip-a.mp4 -an silent.mp4`).
+
+```sh
+./gradlew :androidApp:installDebug
+adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor timeline-check
+adb logcat -s MemixAnalytics:* MemixEditorCheck:* MemixExportCheck:*      # second terminal
+```
+
+**A. Hand checks (debug build).**
+1. **Toggle:** at 0:00, a dark square with the speaker icon sits just left of 0:00 in the main row; it moves with time
+   and the lanes' vertical scroll. Tap it while playing: the clips' own sound stops at once and playback goes on; the
+   icon becomes the crossed speaker in white. Tap again: the sound is back. Each tap is one step ("Undo: Mute original
+   audio", "Undo: Unmute original audio"). A tap on it never scrubs. Pressed, it turns lighter. It's hidden in reorder
+   mode. On `sound-sync` (photos only) there's no toggle.
+2. **Clip volume:** select clip 3 (a video): Split · Volume · Delete · Duplicate · Detach audio · Reorder · Replace.
+   Volume → "This clip", 0–200%, and under it "Mute original audio of every clip" with a switch. Play and drag: the clip
+   gets quieter and louder while you drag. Drag to 0%, release, then drag up again while playing: it's heard while you
+   drag (not only after the release). The switch mutes every clip (the timeline toggle changes with it). While muted, the
+   slider still moves and keeps its value, and nothing is heard. Select a photo (clip 4): no Volume and no Detach audio.
+3. **Detach audio:** select clip 2 (6–9 s), Detach audio: a green "Original audio" clip appears under it on the existing
+   "Original audio" lane (6–9 s is free there), selected, with its sound tools, and it bonks; no vibration. TalkBack:
+   "Detach audio: clip 2". Play across it: the sound is heard once, not doubled, in time with the picture. Undo: "Undo:
+   Detach audio" and the green clip goes. The save's `MemixEditorCheck` lines list only the new item on that lane
+   (`items[<id>]`: its source, `trimInUs`/`trimOutUs` = clip 2's, `startUs` 6000000, `volume`) and
+   `items[timeline-clip-1].audioDetached: false -> true`, nothing else.
+4. **New lane:** `--es memix.openEditor missing-media`, select clip 1, Detach audio: a new Audio lane appears under the
+   others; the save's lines show the new track (kind `AUDIO`) with its one clip and `audioDetached` true, nothing else.
+5. **Muted project:** on `timeline-check`, mute with the toggle, select clip 3, Detach audio: the toast "Original audio
+   was muted, so the detached sound starts at 0%." and the new clip's Volume shows 0%.
+6. **Explanations:** clip 1 (already detached): Volume and Detach audio say "This clip's sound is on its own track now.
+   Select it there." Add the silent video (Add media) and select it: Volume and Detach audio say "This clip has no sound."
+   None of these is an undo step.
+7. **Analytics** (`MemixAnalytics`): `tool_use` `mute_original` / `unmute_original` once per flip (toggle or switch),
+   `detach_audio` once per detach, `volume` once per release; nothing for an explanation or a release at the same value.
+8. **TalkBack:** swiping from "Playhead" reaches "Original audio, switch, on" (off when muted) before the tracks;
+   double-tap flips it. Clip 1 says "Sound detached"; with the toggle off, clips say "Original audio muted".
+9. **Hindi at 200% font, 360 dp:** a video clip's tools show Split, Volume and Delete without scrolling; in the Volume
+   panel the switch row's label wraps and the switch stays whole (renders 123 and 124).
+10. **Drift trial** (owner): on `timeline-check`, detach clip 2's sound, then trim clip 1's start by about 1 s. Clip 2
+    moves 1 s earlier and its detached sound keeps its time, so it now plays 1 s off its picture (the detached clip is
+    independent, spec → After detaching). Note whether that would bother you.
+
+**B. No doubling, no shift (debug build; export).** On `export-check`:
+1. Close the editor once without edits (it saves the draft), export (`--ez memix.exportLatestDraft true`, P1-08 C2) and
+   pull the file as `base.mp4`.
+2. Reopen the draft from Home, mute with the toggle, close, export as `muted.mp4`. Reopen, unmute, select clip A, Detach
+   audio, close, export as `detached.mp4`.
+3. For each file: `ffmpeg -ss 0 -t 3 -i <file> -vn -af volumedetect -f null - 2>&1 | grep -E "mean_volume|max_volume"`
+   (clip A's span), the same with `-ss 5 -t 3` (clip B's detached sound), and
+   `ffmpeg -i <file> -af silencedetect=noise=-40dB:d=0.05 -f null - 2>&1 | grep silence_`.
+4. Pass: `detached.mp4` matches `base.mp4` within 1 dB (mean and max) over 0–3 s, and its silence lines are within 0.033 s
+   of `base.mp4`'s (no shift); `muted.mp4` is silent over 0–3 s (mean below −60 dB) and matches `base.mp4` over 5–8 s
+   (detached sound unaffected). The plans behind these three exports were checked on the JVM (below).
+5. **Clip export volume:** reopen, select clip A, set 100%, export `c100.mp4`; 50% → `c50.mp4`; 200% → `c200.mp4`;
+   measure 0–3 s as above. Pass: 50% is 6 dB below 100% (±1 dB); 200% is louder, up to 6 dB, `max_volume` at or below
+   0.0 dB. The same for a meme sound is P1-08 C5.
+
+**C. Leaks (debug build, LeakCanary 2.14).** Open and close the editor 5 times on `timeline-check`, each time: flip the
+toggle twice, open a clip's Volume panel and drag, flip its switch, Detach audio on clip 2, undo; wait 10 s on Home.
+Pass: no LeakCanary notification and `adb logcat -d -s LeakCanary:*` reports no leak.
+
+### States to screenshot for the design review (`docs/ux/reviews/P1-09/`)
+At 360 dp wide if possible, English unless noted: `toggle-on` and `toggle-muted` (timeline at 0:00), `video-clip-tools`,
+`photo-clip-tools`, `clip-volume` (the switch row off), `clip-volume-muted` (switch on), `detached-landed` (the new green
+clip selected), `explain-detached`, `explain-no-sound`, `explain-detached-muted`, `video-clip-tools-hi-200` and
+`clip-volume-hi-200` (Hindi at 200% font), `explain-detached-muted-es-200`.
 
 ## P1-17 · Hindi display face: hero and entry cards in Teko, nothing clipped, other languages unchanged
 

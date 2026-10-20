@@ -14,6 +14,7 @@ import memix.core.designsystem.generated.resources.ic_chevron_right
 import memix.core.designsystem.generated.resources.ic_close
 import memix.core.designsystem.generated.resources.ic_create
 import memix.core.designsystem.generated.resources.ic_delete
+import memix.core.designsystem.generated.resources.ic_detach_audio
 import memix.core.designsystem.generated.resources.ic_drafts
 import memix.core.designsystem.generated.resources.ic_duplicate
 import memix.core.designsystem.generated.resources.ic_edit
@@ -34,6 +35,7 @@ import memix.core.designsystem.generated.resources.ic_templates
 import memix.core.designsystem.generated.resources.ic_undo
 import memix.core.designsystem.generated.resources.ic_video
 import memix.core.designsystem.generated.resources.ic_volume
+import memix.core.designsystem.generated.resources.ic_volume_off
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -44,6 +46,7 @@ object MemixIcons {
     val Close = Res.drawable.ic_close
     val Create = Res.drawable.ic_create
     val Delete = Res.drawable.ic_delete
+    val DetachAudio = Res.drawable.ic_detach_audio
     val Drafts = Res.drawable.ic_drafts
     val Duplicate = Res.drawable.ic_duplicate
     val Edit = Res.drawable.ic_edit
@@ -64,6 +67,7 @@ object MemixIcons {
     val Undo = Res.drawable.ic_undo
     val Video = Res.drawable.ic_video
     val Volume = Res.drawable.ic_volume
+    val VolumeOff = Res.drawable.ic_volume_off
 }
 
 /** [contentDescription] is null only when a visible label next to the icon already says the same thing. */

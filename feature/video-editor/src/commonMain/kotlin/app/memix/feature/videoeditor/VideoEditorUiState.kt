@@ -46,6 +46,11 @@ data class VideoEditorUiState(
     /** The Volume panel over the timeline and tool bar, or null when it's closed (spec P1-06 → Volume panel). */
     val volumePanel: VolumePanelUi? = null,
     /**
+     * The original audio (the sound in the user's own videos, P1-09): whether every clip's is muted. Null when no main
+     * clip plays its own sound, so there's nothing to mute and the timeline shows no toggle.
+     */
+    val originalAudio: OriginalAudioUi? = null,
+    /**
      * Add media and Replace (P1-16): the import sheet's state, which only the sheet reads (its progress changes up to
      * ten times a second). Compared by identity.
      */
@@ -117,8 +122,11 @@ enum class SaveProblem { STORAGE_FULL, OTHER }
  * Volume and Detach audio for video clips, P1-10 the text tools.
  */
 enum class ClipTools {
-    /** A video or photo clip on the main track: Split, Delete, Duplicate, Reorder, Replace (Replace first when its file is missing). */
-    MAIN_CLIP,
+    /** A video clip on the main track: Split, Volume, Delete, Duplicate, Detach audio, Reorder, Replace (Replace first when its file is missing). */
+    VIDEO_CLIP,
+
+    /** A photo clip on the main track: Split, Delete, Duplicate, Reorder, Replace (no sound, so no Volume or Detach audio). */
+    PHOTO_CLIP,
 
     /** A caption: Delete, Split, Move here, Duplicate (captions are deleted more often than cut). */
     TEXT,
@@ -145,9 +153,16 @@ data class SoundsSheetUi(
 @Immutable
 data class SoundRowUi(val id: String, val title: LocalizedText, val durationUs: Long, val credit: String)
 
-/** The Volume panel of item [itemId]: [volume] follows the slider while it moves (1 = 100%). */
+/**
+ * The Volume panel of item [itemId]: [volume] follows the slider while it moves (1 = 100%). [isVideoClip]: a main video
+ * clip, labelled "This clip" with the "Mute original audio of every clip" row under the slider; sounds read "This sound".
+ */
 @Immutable
-data class VolumePanelUi(val itemId: String, val volume: Float)
+data class VolumePanelUi(val itemId: String, val volume: Float, val isVideoClip: Boolean = false)
+
+/** The original audio's one setting: [muted] when every main clip's own sound is off (`Track.muted`). */
+@Immutable
+data class OriginalAudioUi(val muted: Boolean)
 
 /**
  * Reorder mode: the main clips' ids in the order the tiles show now, the clip being moved, and whether a long-press
@@ -211,7 +226,24 @@ enum class FocusTarget {
 }
 
 /** Why a tool explains instead of acting (spec P1-06 → Clip tool bar: tools stay enabled and explain on tap). */
-enum class Explanation { SPLIT_OUTSIDE, LAST_CLIP, REORDER_ONE_CLIP, ALREADY_FIRST, ALREADY_LAST, SOUND_UNREADABLE, REPLACE_DETACHED }
+enum class Explanation {
+    SPLIT_OUTSIDE,
+    LAST_CLIP,
+    REORDER_ONE_CLIP,
+    ALREADY_FIRST,
+    ALREADY_LAST,
+    SOUND_UNREADABLE,
+    REPLACE_DETACHED,
+
+    /** Volume or Detach audio on a video with no sound track (P1-09). */
+    NO_SOUND,
+
+    /** Volume or Detach audio on a clip whose sound is already on its own track. */
+    DETACHED,
+
+    /** After detaching while every clip was muted: the new clip starts at 0%. */
+    DETACHED_MUTED,
+}
 
 /**
  * A toast on the stage; a new [id] restarts its timer, even for the same message. [isSpokenOnly] when it arrived
@@ -431,4 +463,10 @@ sealed interface VideoEditorIntent {
 
     /** "Pick again" on the import sheet: it closes, then the same picker opens again. */
     data object PickAgain : VideoEditorIntent
+
+    /** The timeline's original-audio toggle or the Volume panel's row: mutes or unmutes every clip's own sound. */
+    data object ToggleOriginalAudio : VideoEditorIntent
+
+    /** Detach audio on the selected video clip: its sound moves to its own audio clip (spec P1-06 → Detach audio). */
+    data object DetachAudioSelected : VideoEditorIntent
 }

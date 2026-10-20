@@ -142,4 +142,14 @@
         <item quantity="other">%1$d क्लिप जोड़ी गईं</item>
     </plurals>
     <string name="timeline_add_media">वीडियो या फ़ोटो जोड़ें</string>
+    <!-- P1-09: original audio (spec P1-06 -> Original audio, Volume panel) -->
+    <string name="tool_detach_audio">ऑडियो अलग करें</string>
+    <string name="volume_this_clip">यह क्लिप</string>
+    <string name="volume_mute_all">सभी क्लिप का मूल ऑडियो म्यूट करें</string>
+    <string name="explain_no_sound">इस क्लिप में साउंड नहीं है।</string>
+    <string name="explain_detached">इस क्लिप की साउंड अब अपने ट्रैक पर है। उसे वहीं चुनें।</string>
+    <string name="explain_detached_muted">मूल ऑडियो म्यूट था, इसलिए अलग की गई साउंड 0% से शुरू होगी।</string>
+    <string name="edit_mute_original">मूल ऑडियो म्यूट करें</string>
+    <string name="edit_unmute_original">मूल ऑडियो अनम्यूट करें</string>
+    <string name="edit_detach_audio">ऑडियो अलग करें</string>
 </resources>

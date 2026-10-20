@@ -142,4 +142,14 @@
         <item quantity="other">%1$d clips añadidos</item>
     </plurals>
     <string name="timeline_add_media">Añadir videos o fotos</string>
+    <!-- P1-09: original audio (spec P1-06 -> Original audio, Volume panel) -->
+    <string name="tool_detach_audio">Separar audio</string>
+    <string name="volume_this_clip">Este clip</string>
+    <string name="volume_mute_all">Silenciar el audio original de todos los clips</string>
+    <string name="explain_no_sound">Este clip no tiene sonido.</string>
+    <string name="explain_detached">El sonido de este clip está en su propia pista. Selecciónalo ahí.</string>
+    <string name="explain_detached_muted">Audio original silenciado: el sonido separado empieza en 0\u00A0%.</string>
+    <string name="edit_mute_original">Silenciar audio original</string>
+    <string name="edit_unmute_original">Activar audio original</string>
+    <string name="edit_detach_audio">Separar audio</string>
 </resources>

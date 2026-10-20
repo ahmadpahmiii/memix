@@ -142,4 +142,14 @@
         <item quantity="other">%1$d klip ditambahkan</item>
     </plurals>
     <string name="timeline_add_media">Tambah video atau foto</string>
+    <!-- P1-09: original audio (spec P1-06 -> Original audio, Volume panel) -->
+    <string name="tool_detach_audio">Pisahkan audio</string>
+    <string name="volume_this_clip">Klip ini</string>
+    <string name="volume_mute_all">Bisukan audio asli semua klip</string>
+    <string name="explain_no_sound">Klip ini tidak punya suara.</string>
+    <string name="explain_detached">Suara klip ini sudah dipisahkan ke trek sendiri. Pilih di sana.</string>
+    <string name="explain_detached_muted">Audio asli dibisukan, jadi suara yang dipisahkan mulai dari 0%.</string>
+    <string name="edit_mute_original">Bisukan audio asli</string>
+    <string name="edit_unmute_original">Bunyikan audio asli</string>
+    <string name="edit_detach_audio">Pisahkan audio</string>
 </resources>

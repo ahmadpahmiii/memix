@@ -63,6 +63,7 @@ import app.memix.core.model.project.TrackKind
 import app.memix.core.ui.formatTimecode
 import app.memix.feature.videoeditor.EditorPreview
 import app.memix.feature.videoeditor.LandedItems
+import app.memix.feature.videoeditor.OriginalAudioUi
 import app.memix.feature.videoeditor.ReorderUi
 import app.memix.feature.videoeditor.VideoEditorIntent
 import kotlin.math.max
@@ -100,7 +101,7 @@ import org.jetbrains.compose.resources.stringResource
  * the playhead (P1-08), and the Add media tile after the end of the video (P1-16). [addSoundPillFocus] and
  * [addMediaTileFocus] let the editor bring focus back to them after the sheet or picker they opened closes.
  *
- * The original-audio toggle (P1-09) arrives with its ticket; until then it isn't drawn, never shown disabled.
+ * The original-audio toggle sits before 0:00 in the main row when a clip has its own sound (P1-09, [originalAudio]).
  */
 @Composable
 internal fun Timeline(
@@ -111,6 +112,7 @@ internal fun Timeline(
     landed: LandedItems?,
     preview: EditorPreview?,
     thumbnails: TimelineThumbnails?,
+    originalAudio: OriginalAudioUi?,
     addSoundPillFocus: FocusRequester,
     addMediaTileFocus: FocusRequester,
     onIntent: (VideoEditorIntent) -> Unit,
@@ -118,7 +120,7 @@ internal fun Timeline(
 ) {
     // Time always runs left to right, whatever the language (spec → Structure).
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        TimelineContent(timeline, selectedItemId, trimRanges, reorder, landed, preview, thumbnails, addSoundPillFocus, addMediaTileFocus, onIntent, modifier)
+        TimelineContent(timeline, selectedItemId, trimRanges, reorder, landed, preview, thumbnails, originalAudio, addSoundPillFocus, addMediaTileFocus, onIntent, modifier)
     }
 }
 
@@ -139,6 +141,7 @@ private fun TimelineContent(
     landed: LandedItems?,
     preview: EditorPreview?,
     thumbnails: TimelineThumbnails?,
+    originalAudio: OriginalAudioUi?,
     addSoundPillFocus: FocusRequester,
     addMediaTileFocus: FocusRequester,
     onIntent: (VideoEditorIntent) -> Unit,
@@ -338,6 +341,9 @@ private fun TimelineContent(
             },
         )
         PlayheadSemantics(controller, timeline.lengthUs, rulerHeight)
+        originalAudio?.let { audio ->
+            OriginalAudioToggle(controller, lanes, audio.muted, laneScroll, rulerHeight, onToggle = { onIntent(VideoEditorIntent.ToggleOriginalAudio) })
+        }
         lanes.addSoundRow?.let { addRow ->
             AddMemeSoundPill(controller, addRow, motion, laneScroll, rulerHeight, addSoundPillFocus, onClick = { onIntent(VideoEditorIntent.AddMemeSoundRow) })
         }

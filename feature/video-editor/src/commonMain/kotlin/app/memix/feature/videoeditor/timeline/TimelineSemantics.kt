@@ -136,9 +136,17 @@ internal fun BoxScope.PlayheadSemantics(controller: TimelineController, lengthUs
                     true
                 }
                 customActions = actions
+                traversalIndex = PLAYHEAD_ORDER
             },
     )
 }
+
+/**
+ * The timeline's reading order (spec P1-05 → Accessibility): the playhead, the original-audio toggle, the tracks (each
+ * row's items at 0 and up, in time order), then the "Add a meme sound" pill and the Add media tile.
+ */
+internal const val PLAYHEAD_ORDER = -2f
+internal const val ORIGINAL_AUDIO_TOGGLE_ORDER = -1f
 
 @Composable
 private fun rememberPlayheadActions(controller: TimelineController): List<CustomAccessibilityAction> {

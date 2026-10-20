@@ -204,8 +204,9 @@ internal class Media3PreviewSession(
     }
 
     override fun previewVolume(itemId: String, volume: Float) {
-        val committed = liveVolumes.committed[itemId]?.takeIf { it > 0f } ?: return
-        liveVolumes.gains[itemId]?.factor = volume / committed
+        val committed = liveVolumes.committed[itemId] ?: return
+        // The live gain multiplies the committed level; at 0% there's no fixed step, so it's the level itself.
+        liveVolumes.gains[itemId]?.factor = if (committed > 0f) volume / committed else volume
     }
 
     override fun endTrimFrames() {
@@ -226,7 +227,8 @@ internal class Media3PreviewSession(
 
     // Runs on ioDispatcher.
     private fun prepare(project: Project): PreparedPreview {
-        val plan = when (val planned = CompositionPlanner.plan(project)) {
+        // Silent items stay in, so raising one from 0% is heard while the slider moves.
+        val plan = when (val planned = CompositionPlanner.plan(project, keepSilentItems = true)) {
             is PlanResult.Unplayable -> return PreparedPreview.Failed("the project can't be played: ${planned.problem}", cause = null)
             is PlanResult.Ready -> planned.plan
         }
@@ -236,10 +238,10 @@ internal class Media3PreviewSession(
         val playablePlan = plan.withGapsFor(unplayable)
         return try {
             val onsetLog = if (measureSoundOnsets) listOf(SoundOnsetLog(playablePlan.soundStartsUs.toLongArray(), logger)) else emptyList()
-            val sounds = playablePlan.audioLanes.flatMap { it.segments }.filterIsInstance<SoundClip>()
-            val liveGains = sounds.associate { it.itemId to LiveGainProcessor() }
+            val volumes = itemsWithSoundOf(playablePlan)
+            // A 0% item is silenced by its live gain (no fixed step), so that gain starts at 0.
+            val liveGains = volumes.mapValues { (_, volume) -> LiveGainProcessor().apply { if (volume == 0f) factor = 0f } }
             val composition = Media3CompositionBuilder(playablePlan, resolved.uriByMedia, ExportSettings.DEFAULT_FRAME_RATE, onsetLog, liveGains).build()
-            val volumes = sounds.associate { it.itemId to it.volume }
             PreparedPreview.Ready(composition, plan.durationUs, missingMedia = unplayable.isNotEmpty(), LiveVolumes(liveGains, volumes))
         } catch (e: RuntimeException) {
             // Media3's own argument checks.
@@ -367,7 +369,14 @@ internal class Media3PreviewSession(
         class Failed(val reason: String, val cause: Throwable?) : PreparedPreview
     }
 
-    /** Each sound's [LiveGainProcessor] in one composition, and the volume that composition applies to it. */
+    /** The volume of every item [plan] plays sound from: sounds on the audio lanes and main clips with their own sound. */
+    private fun itemsWithSoundOf(plan: CompositionPlan): Map<String, Float> {
+        val sounds = plan.audioLanes.flatMap { it.segments }.filterIsInstance<SoundClip>().map { it.itemId to it.volume }
+        val clips = plan.mainVideo.filterIsInstance<VisualClip>().filter { it.playsOwnAudio }.map { it.itemId to it.volume }
+        return (sounds + clips).toMap()
+    }
+
+    /** Each item's [LiveGainProcessor] in one composition, and the volume that composition applies to it. */
     private class LiveVolumes(val gains: Map<String, LiveGainProcessor>, val committed: Map<String, Float>)
 
     private companion object {

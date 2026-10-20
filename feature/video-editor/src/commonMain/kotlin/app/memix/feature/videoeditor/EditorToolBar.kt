@@ -42,6 +42,7 @@ import app.memix.core.designsystem.component.ToolBarItem
 import app.memix.core.designsystem.component.ToolTone
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import memix.feature.video_editor.generated.resources.Res
 import memix.feature.video_editor.generated.resources.clip_tools_close
 import memix.feature.video_editor.generated.resources.panel_done
@@ -49,6 +50,7 @@ import memix.feature.video_editor.generated.resources.reorder_move_earlier
 import memix.feature.video_editor.generated.resources.reorder_move_later
 import memix.feature.video_editor.generated.resources.tool_add_media
 import memix.feature.video_editor.generated.resources.tool_delete
+import memix.feature.video_editor.generated.resources.tool_detach_audio
 import memix.feature.video_editor.generated.resources.tool_duplicate
 import memix.feature.video_editor.generated.resources.tool_edit
 import memix.feature.video_editor.generated.resources.tool_meme_sounds
@@ -211,25 +213,31 @@ private fun rememberClipTools(
     val moveHere = stringResource(Res.string.tool_move_here)
     val moveHereClickLabel = stringResource(Res.string.tool_move_here_a11y)
     val replace = stringResource(Res.string.tool_replace)
-    return remember(clipTools, isMissing, split, delete, duplicate, reorder, volume, moveHere, moveHereClickLabel, replace, onIntent, reorderFocus, focus) {
+    val detach = stringResource(Res.string.tool_detach_audio)
+    return remember(clipTools, isMissing, split, delete, duplicate, reorder, volume, moveHere, moveHereClickLabel, replace, detach, onIntent, reorderFocus, focus) {
         val splitTool = ToolBarItem(split, MemixIcons.Split, { onIntent(VideoEditorIntent.SplitSelected) })
         val deleteTool = ToolBarItem(delete, MemixIcons.Delete, { onIntent(VideoEditorIntent.DeleteSelected) }, ToolTone.Danger)
         val duplicateTool = ToolBarItem(duplicate, MemixIcons.Duplicate, { onIntent(VideoEditorIntent.DuplicateSelected) })
         // Its name is its label; "move to playhead" follows as the click label, since "here" means the playhead (spec
         // P1-06 → Accessibility).
         val moveHereTool = ToolBarItem(moveHere, MemixIcons.MoveHere, { onIntent(VideoEditorIntent.MoveHereSelected) }, clickLabel = moveHereClickLabel)
+        val volumeTool = ToolBarItem(volume, MemixIcons.Volume, { onIntent(VideoEditorIntent.VolumeTool) }, focusRequester = focus.volumeTool)
+        val replaceTool = ToolBarItem(replace, MemixIcons.Replace, { onIntent(VideoEditorIntent.ReplaceSelected) }, focusRequester = focus.replaceTool)
+        val reorderTool = ToolBarItem(reorder, MemixIcons.Reorder, { onIntent(VideoEditorIntent.StartReorderSelected) }, focusRequester = reorderFocus)
         when (clipTools) {
-            ClipTools.MAIN_CLIP -> {
-                val replaceTool = ToolBarItem(replace, MemixIcons.Replace, { onIntent(VideoEditorIntent.ReplaceSelected) }, focusRequester = focus.replaceTool)
-                val reorderTool = ToolBarItem(reorder, MemixIcons.Reorder, { onIntent(VideoEditorIntent.StartReorderSelected) }, focusRequester = reorderFocus)
-                if (isMissing) {
-                    persistentListOf(replaceTool, splitTool, deleteTool, duplicateTool, reorderTool)
-                } else {
-                    persistentListOf(splitTool, deleteTool, duplicateTool, reorderTool, replaceTool)
-                }
+            // Volume second, because lowering the original under a meme sound is the next most common job; Detach audio
+            // with the rare tools (spec P1-06 → Clip tool bar). A clip with no sound keeps both; they explain on tap.
+            ClipTools.VIDEO_CLIP -> {
+                val detachTool = ToolBarItem(detach, MemixIcons.DetachAudio, { onIntent(VideoEditorIntent.DetachAudioSelected) })
+                val usual = listOf(splitTool, volumeTool, deleteTool, duplicateTool, detachTool, reorderTool)
+                (if (isMissing) listOf(replaceTool) + usual else usual + replaceTool).toImmutableList()
+            }
+            ClipTools.PHOTO_CLIP -> {
+                val usual = listOf(splitTool, deleteTool, duplicateTool, reorderTool)
+                (if (isMissing) listOf(replaceTool) + usual else usual + replaceTool).toImmutableList()
             }
             ClipTools.SOUND -> persistentListOf(
-                ToolBarItem(volume, MemixIcons.Volume, { onIntent(VideoEditorIntent.VolumeTool) }, focusRequester = focus.volumeTool),
+                volumeTool,
                 splitTool,
                 deleteTool,
                 moveHereTool,

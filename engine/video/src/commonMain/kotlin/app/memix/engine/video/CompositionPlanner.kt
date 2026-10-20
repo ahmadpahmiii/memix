@@ -31,11 +31,14 @@ internal sealed interface PlanProblem {
  * for any empty time between clips. Each unmuted meme sound and audio track becomes one or more audio
  * lanes, cut to the main track's length. Every item is placed by its start time, never by its index
  * in the track (CLAUDE.md rule 4).
+ *
+ * Items at 0% are left out of an export's plan (they'd only add silence). A preview's plan keeps them
+ * ([keepSilentItems]), so the Volume slider can raise one and be heard while it moves (P1-09).
  */
 internal object CompositionPlanner {
     private val BLACK = ArgbColor(0xFF000000)
 
-    fun plan(project: Project): PlanResult {
+    fun plan(project: Project, keepSilentItems: Boolean = false): PlanResult {
         val tracks = project.video?.tracks.orEmpty()
         val mainTrack = tracks.firstOrNull { it.kind == TrackKind.MAIN_VIDEO }
         val mainClips = mainTrack?.items.orEmpty()
@@ -51,8 +54,8 @@ internal object CompositionPlanner {
             canvasWidthPx = project.canvas.widthPx,
             canvasHeightPx = project.canvas.heightPx,
             durationUs = durationUs,
-            mainVideo = backToBack(mainClips, ::Gap) { it.toVisualClip(mainTrack.muted) },
-            audioLanes = tracks.filter { it.kind.carriesSound() && !it.muted }.flatMap { audioLanes(it, durationUs) },
+            mainVideo = backToBack(mainClips, ::Gap) { it.toVisualClip(mainTrack.muted, keepSilentItems) },
+            audioLanes = tracks.filter { it.kind.carriesSound() && !it.muted }.flatMap { audioLanes(it, durationUs, keepSilentItems) },
             notRendered = notRendered(project, tracks),
         )
         return PlanResult.Ready(plan)
@@ -67,13 +70,13 @@ internal object CompositionPlanner {
         return null
     }
 
-    private fun MediaClip.toVisualClip(trackMuted: Boolean) = VisualClip(
+    private fun MediaClip.toVisualClip(trackMuted: Boolean, keepSilent: Boolean) = VisualClip(
         itemId = id,
         source = source,
         trimInUs = trimInUs,
         trimOutUs = trimOutUs,
         fit = fit,
-        playsOwnAudio = hasOwnSound() && !audioDetached && !trackMuted && volume > 0f,
+        playsOwnAudio = hasOwnSound() && !audioDetached && !trackMuted && (volume > 0f || keepSilent),
         volume = volume,
     )
 
@@ -81,10 +84,10 @@ internal object CompositionPlanner {
     // schema 2 isn't measured (null); Media3 fills a sound track it can't find with silence.
     private fun MediaClip.hasOwnSound(): Boolean = source.kind == MediaKind.VIDEO && source.hasAudio != false
 
-    private fun audioLanes(track: Track, timelineEndUs: Long): List<AudioLane> {
+    private fun audioLanes(track: Track, timelineEndUs: Long, keepSilent: Boolean): List<AudioLane> {
         val clips = track.items
             .filterIsInstance<AudioClip>()
-            .filter { it.volume > 0f }
+            .filter { it.volume > 0f || keepSilent }
             .mapNotNull { it.cutTo(timelineEndUs) }
             .sortedBy { it.startUs }
         return packIntoLanes(clips).map { laneClips ->

@@ -389,6 +389,7 @@ private fun IconSection() = Section("Icons") {
         "undo" to MemixIcons.Undo, "redo" to MemixIcons.Redo, "edit" to MemixIcons.Edit, "split" to MemixIcons.Split,
         "delete" to MemixIcons.Delete, "duplicate" to MemixIcons.Duplicate, "reorder" to MemixIcons.Reorder,
         "volume" to MemixIcons.Volume, "move_here" to MemixIcons.MoveHere, "replace" to MemixIcons.Replace,
+        "volume_off" to MemixIcons.VolumeOff, "detach_audio" to MemixIcons.DetachAudio,
     )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space4), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4)) {
         icons.forEach { (name, icon) ->

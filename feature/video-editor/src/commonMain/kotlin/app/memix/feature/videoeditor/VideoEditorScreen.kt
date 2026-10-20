@@ -2,6 +2,7 @@ package app.memix.feature.videoeditor
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,13 +32,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.focusGroup
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -99,19 +99,22 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import memix.feature.video_editor.generated.resources.Res
-import memix.feature.video_editor.generated.resources.a11y_media_added
 import memix.feature.video_editor.generated.resources.a11y_edit_on_item
+import memix.feature.video_editor.generated.resources.a11y_media_added
 import memix.feature.video_editor.generated.resources.a11y_reorder_position
 import memix.feature.video_editor.generated.resources.a11y_sound_added
-import memix.feature.video_editor.generated.resources.edit_add_sound
 import memix.feature.video_editor.generated.resources.edit_add_media
+import memix.feature.video_editor.generated.resources.edit_add_sound
 import memix.feature.video_editor.generated.resources.edit_delete
+import memix.feature.video_editor.generated.resources.edit_detach_audio
 import memix.feature.video_editor.generated.resources.edit_duplicate
 import memix.feature.video_editor.generated.resources.edit_move
+import memix.feature.video_editor.generated.resources.edit_mute_original
 import memix.feature.video_editor.generated.resources.edit_reorder
 import memix.feature.video_editor.generated.resources.edit_replace
 import memix.feature.video_editor.generated.resources.edit_split
 import memix.feature.video_editor.generated.resources.edit_trim
+import memix.feature.video_editor.generated.resources.edit_unmute_original
 import memix.feature.video_editor.generated.resources.edit_volume
 import memix.feature.video_editor.generated.resources.editor_close
 import memix.feature.video_editor.generated.resources.editor_dismiss
@@ -134,7 +137,10 @@ import memix.feature.video_editor.generated.resources.editor_undo
 import memix.feature.video_editor.generated.resources.editor_undo_toast
 import memix.feature.video_editor.generated.resources.editor_unsaved_body
 import memix.feature.video_editor.generated.resources.editor_unsaved_title
+import memix.feature.video_editor.generated.resources.explain_detached
+import memix.feature.video_editor.generated.resources.explain_detached_muted
 import memix.feature.video_editor.generated.resources.explain_last_clip
+import memix.feature.video_editor.generated.resources.explain_no_sound
 import memix.feature.video_editor.generated.resources.explain_reorder_first
 import memix.feature.video_editor.generated.resources.explain_reorder_last
 import memix.feature.video_editor.generated.resources.explain_reorder_one
@@ -207,6 +213,7 @@ fun VideoEditorScreen(
                             state.landed,
                             state.preview,
                             state.thumbnails,
+                            state.originalAudio,
                             focusTargets.addSoundPill,
                             focusTargets.addMediaTile,
                             onIntent,
@@ -218,7 +225,7 @@ fun VideoEditorScreen(
                         ToolBarRegion(state.clipTools, state.reorder, state.timeline.isEmpty, selectedIsMissing(state), focusTargets, onIntent)
                     }
                 },
-                panel = { VolumePanel(state.volumePanel, onIntent, Modifier.fillMaxSize()) },
+                panel = { VolumePanel(state.volumePanel, state.originalAudio?.muted == true, onIntent, Modifier.fillMaxSize()) },
                 timelineMinHeight = timelineMinHeight(),
                 modifier = Modifier.weight(1f),
             )
@@ -497,6 +504,9 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.ADD_SOUND -> Res.string.edit_add_sound
         VideoEdit.ADD_MEDIA -> Res.string.edit_add_media
         VideoEdit.REPLACE -> Res.string.edit_replace
+        VideoEdit.MUTE_ORIGINAL -> Res.string.edit_mute_original
+        VideoEdit.UNMUTE_ORIGINAL -> Res.string.edit_unmute_original
+        VideoEdit.DETACH_AUDIO -> Res.string.edit_detach_audio
     },
 )
 
@@ -510,6 +520,9 @@ private fun explanationText(explanation: Explanation): String = stringResource(
         Explanation.ALREADY_LAST -> Res.string.explain_reorder_last
         Explanation.SOUND_UNREADABLE -> Res.string.explain_sound_unreadable
         Explanation.REPLACE_DETACHED -> Res.string.explain_replace_detached
+        Explanation.NO_SOUND -> Res.string.explain_no_sound
+        Explanation.DETACHED -> Res.string.explain_detached
+        Explanation.DETACHED_MUTED -> Res.string.explain_detached_muted
     },
 )
 
