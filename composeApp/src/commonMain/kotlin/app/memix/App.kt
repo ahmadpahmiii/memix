@@ -37,6 +37,7 @@ import app.memix.core.designsystem.MemixTheme
 import app.memix.core.designsystem.component.BottomNav
 import app.memix.core.designsystem.component.NavDestination
 import app.memix.core.designsystem.component.Scrim
+import app.memix.core.designsystem.component.coveredByModal
 import app.memix.core.domain.RefreshAppConfigUseCase
 import app.memix.debug.DebugComponentCatalog
 import app.memix.debug.openDebugEditorProject
@@ -137,8 +138,11 @@ private fun MainShell(
     val tabsController = rememberNavController()
     val backStackEntry by tabsController.currentBackStackEntryAsState()
     val currentTab = tabRoutes.firstOrNull { route -> backStackEntry?.destination?.hasRoute(route::class) == true } ?: HomeRoute
+    // While a sheet or its scrim is up, the tabs and nav behind it are hidden from TalkBack and the keyboard (P1-08
+    // review, F1). The scrim's own rule decides, so the hand-over from Create to the import stays covered throughout.
+    val sheetUp = createSheetOpen || videoMemeImport.needsScrim
     Box(Modifier.fillMaxSize().background(MemixColors.canvas)) {
-        Column(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().coveredByModal(sheetUp)) {
             TabsNavHost(
                 tabsController,
                 onOpenCreate = { onCreateSheetOpenChange(true) },
@@ -151,7 +155,7 @@ private fun MainShell(
         }
         // One scrim for both sheets, so it stays up when the Create sheet hands over to the import (spec P1-02).
         Scrim(
-            visible = createSheetOpen || videoMemeImport.needsScrim,
+            visible = sheetUp,
             onDismiss = if (createSheetOpen) ({ onCreateSheetOpenChange(false) }) else videoMemeImport.scrimTap,
         )
         CreateSheet(

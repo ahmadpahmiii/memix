@@ -612,6 +612,14 @@ adb logcat -s MemixPreview:* MemixAnalytics:* MemixSounds:* MemixExportCheck:*  
 11. **Drift trial** (owner, 8 Oct; P1-06 block E): on `timeline-check`, land a sound on a clip boundary, then trim clip 1's
     start by about 1 s. The video after it moves 1 s earlier and the sound keeps its time, so it now plays 1 s off that
     boundary. Note whether that would bother you.
+12. **Sheets hide the screen behind them** (review F1, fixed after P1-09): with TalkBack on, open the Meme sounds sheet,
+    the unsaved-changes sheet (fill the phone's storage so a save fails, edit, then close the editor), Add media's
+    import sheet (a long video), and on Home the Create sheet and Create → Video meme's import sheet. Swipe right from the
+    sheet's title through to the end, then left back to the start: TalkBack reads the sheet's rows, its buttons and the
+    scrim's "Close" (not on a blocking sheet), and never the editor's top bar, preview, tracks or tools, or Home's tabs
+    and nav. With a keyboard, Tab and Shift+Tab stay in the sheet. Once the sheet has closed, everything is reachable
+    again and focus is back on the control that opened it. The Volume panel still leaves the preview and transport row
+    reachable.
 
 **B. Preview sync (debug build; the onset log).**
 1. `adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor sound-sync`, then `adb logcat -c`.

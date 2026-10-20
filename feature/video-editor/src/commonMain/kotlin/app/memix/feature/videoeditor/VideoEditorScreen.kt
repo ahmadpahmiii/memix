@@ -2,7 +2,6 @@ package app.memix.feature.videoeditor
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,7 +36,6 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -84,12 +82,14 @@ import app.memix.core.designsystem.component.Sheet
 import app.memix.core.designsystem.component.Toast
 import app.memix.core.designsystem.component.ToastAction
 import app.memix.core.designsystem.component.ToastDismiss
+import app.memix.core.designsystem.component.coveredByModal
 import app.memix.core.domain.media.ImportMediaUseCase
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.ui.formatTimecode
 import app.memix.core.ui.spokenTime
 import app.memix.core.ui.spokenTimeOf
 import app.memix.feature.videoeditor.importmedia.ImportSheet
+import app.memix.feature.videoeditor.importmedia.showsSheet
 import app.memix.feature.videoeditor.timeline.Timeline
 import app.memix.feature.videoeditor.timeline.spokenName
 import app.memix.feature.videoeditor.timeline.timelineMinHeight
@@ -185,6 +185,7 @@ fun VideoEditorScreen(
     val freeUpSpaceForSave = remember(onFreeUpSpace) { { onFreeUpSpace(ImportMediaUseCase.HEADROOM_BYTES) } }
     val focusTargets = remember { EditorFocusTargets() }
     val panelOpen = state.volumePanel != null
+    val sheetOpen = state.sounds.isOpen || state.unsavedSheetOpen || importSheetShown(state.mediaImport)
     ReturnFocus(state.returnFocus, focusTargets)
 
     Box(
@@ -198,13 +199,19 @@ fun VideoEditorScreen(
                 goesBack
             },
     ) {
-        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
+        // An open sheet hides the whole editor behind it from TalkBack and the keyboard (P1-08 review, F1).
+        Column(
+            Modifier
+                .fillMaxSize()
+                .coveredByModal(sheetOpen)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
+        ) {
             TopBar(onClose = { onIntent(VideoEditorIntent.Close) })
             EditorLayout(
                 stage = { PreviewStage(state, onIntent, previewSurface, freeUpSpaceForSave) },
                 transport = { TransportRow(state, onIntent) },
                 timeline = {
-                    Box(Modifier.coveredByPanel(panelOpen), propagateMinConstraints = true) {
+                    Box(Modifier.coveredByModal(panelOpen), propagateMinConstraints = true) {
                         Timeline(
                             state.timeline,
                             state.selectedItemId,
@@ -221,7 +228,7 @@ fun VideoEditorScreen(
                     }
                 },
                 tools = {
-                    Box(Modifier.coveredByPanel(panelOpen), propagateMinConstraints = true) {
+                    Box(Modifier.coveredByModal(panelOpen), propagateMinConstraints = true) {
                         ToolBarRegion(state.clipTools, state.reorder, state.timeline.isEmpty, selectedIsMissing(state), focusTargets, onIntent)
                     }
                 },
@@ -253,12 +260,15 @@ private fun EditorImportSheet(mediaImport: EditorMediaImportUi, onIntent: (Video
 }
 
 /**
- * What an open ToolPanel covers (the timeline and the tool bar) is out of reach too: no screen-reader nodes and no
- * keyboard focus, so nothing hidden can be focused or run (spec P1-06 → Volume panel; WCAG 2.2 SC 2.4.11). The stage
- * and transport row stay reachable.
+ * Whether the import sheet of Add media and Replace is up. Only that answer is read here, so the screen doesn't
+ * recompose with each progress step.
  */
-private fun Modifier.coveredByPanel(covered: Boolean): Modifier =
-    if (!covered) this else clearAndSetSemantics { }.focusProperties { onEnter = { cancelFocusChange() } }.focusGroup()
+@Composable
+private fun importSheetShown(mediaImport: EditorMediaImportUi?): Boolean {
+    val importState = mediaImport?.state?.collectAsState() ?: return false
+    val shown by remember(importState) { derivedStateOf { importState.value.showsSheet } }
+    return shown
+}
 
 /**
  * Moves focus where [returnFocus] says once a surface has closed: back to the opener of a pick, the sheet or the panel,

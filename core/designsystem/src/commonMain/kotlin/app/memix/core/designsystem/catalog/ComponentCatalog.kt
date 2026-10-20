@@ -64,6 +64,7 @@ import app.memix.core.designsystem.component.ToolBarClose
 import app.memix.core.designsystem.component.ToolBarItem
 import app.memix.core.designsystem.component.ToolPanel
 import app.memix.core.designsystem.component.ToolTone
+import app.memix.core.designsystem.component.coveredByModal
 import app.memix.core.designsystem.usesHindiDisplayFace
 import kotlin.math.roundToInt
 import kotlinx.collections.immutable.persistentListOf
@@ -71,15 +72,19 @@ import kotlinx.collections.immutable.persistentListOf
 // Debug-only screen for the designer's review (P0-04). Labels are developer English, never translated,
 // and every name or number here is a placeholder, not catalog data.
 
-/** [appSections] adds sections from outside the design system, such as a feature's sheet states (debug only). */
+/**
+ * [appSections] adds sections from outside the design system, such as a feature's sheet states (debug only); a caller
+ * that draws its own sheet over the catalog covers it with [modifier] ([coveredByModal]).
+ */
 @Composable
-fun ComponentCatalog(onClose: () -> Unit, appSections: @Composable ColumnScope.() -> Unit = {}) {
+fun ComponentCatalog(onClose: () -> Unit, modifier: Modifier = Modifier, appSections: @Composable ColumnScope.() -> Unit = {}) {
     var sheetOpen by remember { mutableStateOf(false) }
     var blockingSheetOpen by remember { mutableStateOf(false) }
-    Box(Modifier.fillMaxSize().background(MemixColors.canvas)) {
+    Box(modifier.fillMaxSize().background(MemixColors.canvas)) {
         Column(
             Modifier
                 .fillMaxSize()
+                .coveredByModal(sheetOpen || blockingSheetOpen)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = MemixSpacing.space4, vertical = MemixSpacing.space4),

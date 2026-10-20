@@ -88,7 +88,8 @@ import memix.core.designsystem.generated.resources.close
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Bottom sheet over everything, nav included, so place it at the root of the screen tree.
+ * Bottom sheet over everything, nav included, so place it at the root of the screen tree, and put
+ * [coveredByModal] on the content it covers, so TalkBack and the keyboard reach only the sheet while it's open.
  *
  * - **Standard:** closes on its close button, a scrim tap, a drag down, system back and Escape; each calls [onDismiss].
  * - **[blocking]:** for work that must finish or be cancelled, and results the user must acknowledge. No grabber,

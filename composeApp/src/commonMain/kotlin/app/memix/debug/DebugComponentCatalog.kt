@@ -17,6 +17,7 @@ import app.memix.core.designsystem.Text
 import app.memix.core.designsystem.catalog.ComponentCatalog
 import app.memix.core.designsystem.component.Button
 import app.memix.core.designsystem.component.Scrim
+import app.memix.core.designsystem.component.coveredByModal
 import app.memix.core.domain.media.ImportFailure
 import app.memix.core.domain.media.MAX_ITEMS_PER_PICK
 import app.memix.feature.videoeditor.importmedia.CopyProgressUi
@@ -38,7 +39,7 @@ import kotlinx.collections.immutable.toPersistentList
 internal fun DebugComponentCatalog(onClose: () -> Unit) {
     var sample by remember { mutableStateOf<ImportUiState>(ImportUiState.Idle) }
     Box(Modifier.fillMaxSize()) {
-        ComponentCatalog(onClose, appSections = { ImportSheetSamples(onShow = { sample = it }) })
+        ComponentCatalog(onClose, Modifier.coveredByModal(sample.showsSheet), appSections = { ImportSheetSamples(onShow = { sample = it }) })
         Scrim(
             visible = sample.showsSheet,
             onDismiss = if (sample.isBlockingSheet) null else ({ sample = ImportUiState.Idle }),

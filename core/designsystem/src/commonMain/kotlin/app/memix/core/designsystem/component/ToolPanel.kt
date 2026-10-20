@@ -54,7 +54,8 @@ import app.memix.core.designsystem.Text
 /**
  * An editor tool's settings (design/system/components/ToolPanel): it takes the place of the timeline and the tool bar,
  * so the preview and the transport row above stay visible and working while the user adjusts. Give it exactly that
- * region. `surface` with a `hairline` top border; no scrim, shadow or grabber.
+ * region, and put [coveredByModal] on what it covers. `surface` with a `hairline` top border; no scrim, shadow or
+ * grabber.
  *
  * The top row holds [title] and [doneLabel] (a Ghost button); [onDone] also runs on system back and Escape. There's
  * no Cancel: each committed change is an undo step. [content] (Slider, Toggle and similar rows) scrolls under the top
