@@ -183,7 +183,15 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
   - Sound on: icon `sounds` in `text-secondary`.
   - Muted: icon `volume_off` in `text`. Muted is the exception, so it's the brighter state.
 - **What it does:** a tap toggles `Track.muted` on the main video track. That mutes or unmutes every clip's own sound at once. Behavior, undo and analytics are in P1-06 → Original audio.
-- **Shown only when** at least one main clip is a video with sound. An all-photo project has nothing to mute.
+  - **Playback keeps going** (P1-09 review): a flip during playback is heard at once, which is the point. The toggle is the one exception to "touch down on the timeline pauses".
+  - **No announcement** beyond the switch's own state: TalkBack reads "On" or "Off" for the focused switch.
+- **Shown only when** at least one main clip plays its own sound: a video with sound whose sound isn't detached. An all-photo project, or one where every such clip is detached, has nothing to mute (P1-09 review, as built). `Track.muted` stays as it was while the toggle is hidden, and the toggle shows it again when a clip with sound comes back.
+- **Hidden** (P1-09 review, M1):
+  - in reorder mode, where the tiles fill the leading area and only tiles act
+  - while a trim or move is held
+  - while the selected main clip starts less than `touch-target` after 0:00. That clip's start handle and its 48 dp target take the toggle's place: Compose gives an overlapping touch only to the control on top, so the toggle would take the handle's touches and mute instead of trimming. It's always the case for the first clip. At zoomed-out scales it's also the case for a clip after a very short first clip.
+  - It comes back as soon as the selection clears. Not shifted left instead: a target that jumps after a selection tap invites mis-taps (the same rule as the Add media tile, P1-16 review).
+  - The selected clip's Volume panel holds the same toggle, so muting is still one tap away.
 - **The same control lives in the Volume panel** of any video clip (P1-06), so it can be reached without scrolling back to the start.
 - **Precedent:** Microsoft Clipchamp mutes a clip from a speaker icon at the left of its timeline clip (Guidance).
 
@@ -226,7 +234,7 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
 
 | Gesture | Where | Result |
 | --- | --- | --- |
-| Touch down | anywhere on the timeline | Pauses playback (P1-04) |
+| Touch down | anywhere on the timeline | Pauses playback (P1-04), except on the original-audio toggle, so a flip is heard at once (P1-09 review) |
 | Horizontal drag | lanes or ruler | Scrolls time. The playhead time is whatever sits under the center line. The preview seeks (P1-04). A fling slows down naturally. Scrolling stops exactly at 0:00 and at the end, with no overscroll stretch. |
 | Vertical drag | lanes | Scrolls the lanes when they don't fit. The ruler and the add pill's horizontal position don't move. Movement locks to the first axis that passes touch slop. |
 | Pinch | anywhere on the timeline | Zooms around the playhead |
@@ -275,6 +283,7 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
 | State | What shows | Copy |
 | --- | --- | --- |
 | One clip, opened | Playhead at 0:00 over the clip's start; leading area with the original-audio toggle if the clip has sound; one main clip with thumbnails loading; the add row | `timeline_add_meme_sound` |
+| First clip selected at the start (P1-09) | Its start handle at 0:00; no original-audio toggle (Leading area → Hidden) | none |
 | Many clips | Clips back to back with a `space-1` gap; tiles anchored per clip | none |
 | Many tracks (more than fit) | The lanes scroll vertically under the pinned ruler. The playhead spans the visible lanes. The bottom lane is cut by the edge, which shows there is more. | none |
 | Loading thumbnails | `track-video` tiles, image fades in per tile | none |
@@ -420,7 +429,7 @@ Measured (note in the QA report):
 I don't edit code, so these are requests.
 1. **Tokens:** add `MemixSize.trimHandleWidth = 12.dp`, `MemixSize.playheadHeadSize = 12.dp` and `MemixSize.iconSmall = 16.dp` (values in `design/tokens.json`). Replace the "12 dp circular head" note's raw value with `playheadHeadSize`.
 2. **Project length** is the end of the main video track. Check that P1-03's composition ends there and cuts any audio item at that point in preview and export. Sounds past the end are allowed on the timeline but never heard.
-3. **Icons:** draw `volume_off` to the icon grammar (the `sounds` cone with a cross instead of waves). The toggle's "on" state reuses `sounds`. `lock` (shackle stroke, solid body as the core) waits for L-02.
+3. **Icons:** draw `volume_off` to the icon grammar (the `sounds` cone with a cross instead of waves). The toggle's "on" state reuses `sounds`. **Built** (56454d9; P1-09 review: passes, the cross clears the cone by 2.3 px). `lock` (shackle stroke, solid body as the core) waits for L-02.
 4. **Constants:** the zoom values and ruler ladder above are layout math. Keep them as named constants in one place in the timeline component, with a comment pointing to this spec, so the token audit can tell them from hardcoded design values.
 5. **Rendering:** draw the timeline as a few layers (ruler, bands and items, playhead, overlays) that read scroll and zoom inside draw or offset lambdas, so a scroll frame doesn't recompose. Virtualize items and tiles to the visible window plus one screen.
 6. **Semantics:** TalkBack must reach every item regardless of what's drawn. Add the playhead's adjustable semantics and the container's zoom actions. *(Revised in the P1-05 review: nodes for the items on screen plus a TalkBack scroll per row, as built; see Accessibility for the device check and the fallback.)*

@@ -2,6 +2,12 @@
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: Design decisions and their reasons, patterns that worked or failed, recurring review issues, competitor insights.
 
+- 2026-10-20 · P1-09 review (provisional, code + renders 110–128). Changes requested: M1 the original-audio toggle sat on the first clip's start-handle target (Compose gives an overlapping touch only to the top sibling, so trimming muted instead); M2 Detach on a missing-file clip made a dead green clip that outlived Replace. Both were gaps in my spec. Lessons:
+  - **Every control in the leading/trailing areas needs a hide rule against both end handles.** I wrote the tile's rule at P1-16 and missed its mirror. Check each new timeline overlay against the start handle at 0:00 and the end handle at the end.
+  - **Every new edit: ask what happens on a missing-file clip, and on a copy of a detached clip.** State flags (`audioDetached`) copied by Duplicate can make an explanation point at the wrong place. Rule: a new copy of a detached clip's picture gets its own sound at 0% (Replace, Duplicate); Split keeps detached.
+  - **ToolBar: a one-line tool is 58 dp, a two-line one 72 dp,** so one two-line label moves every icon 7 dp. Fixed with two lines of room (`minLines = 2`). Compare icon y across bars that cross-fade.
+  - **Hindi gender drifts across machine-drafted strings** (साउंड masculine in the state, feminine in the toasts). Check agreement, not just the word.
+  - `coveredByModal(covered)` is the Sheet/ToolPanel rule for hiding what they cover (df57c04, P1-08 F1 closed).
 - 2026-10-19 · P1-16 review (provisional, code + renders 85–99). Approved with polish, no must-fix. Decisions and lessons:
   - **A control under another control's touch target hides; it doesn't shift.** Add media tile hides while the selected main clip ends < `touch-target` before the video end (always the last clip; also the clip before a narrow last clip when zoomed out). Shifting = a target jumping right after a selection tap (mis-taps) and a gap that breaks proximity. Check every overlay against handle targets at zoomed-out scales too.
   - **Sheet focus trap must end when the sheet starts leaving.** `onExit` cancel during the 200 ms exit swallows focus-return requests when focus sat on a sheet button. Rule now in the Sheet README. Compose: an unattached FocusRequester's requestFocus just warns and returns false (no crash); clickables take no focus in touch mode, so TalkBack focus return is always a device check.

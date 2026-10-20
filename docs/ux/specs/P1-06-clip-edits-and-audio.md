@@ -109,7 +109,7 @@ Component `design/system/components/ToolPanel/README.md` (new). The panel covers
 - **What it covers is out of reach too** (P1-08 review, M2): while the panel is open, the timeline and the tool bar under it leave the accessibility tree and can't take keyboard focus. TalkBack and Shift+Tab must not land on the hidden sound tools or timeline items (in the P1-08 build they did, and a double-tap would act on them).
 - **Top row:** "Volume" in `title` on the left (`space-4` gutter); **Done** (Ghost button) on the right.
 - **Slider** (component Slider), `space-4` side padding:
-  - Label: "This clip" or "This sound". The readout is the percent in `timecode` style.
+  - Label: "This clip" on video clips; "This sound" on meme sounds and on detached original audio, which is audio only and is called "the detached sound" everywhere else (P1-09 review, b). The readout is the percent in `timecode` style.
   - Range 0% to 200%. Default and reset value 100%. Keyboard and TalkBack step 10%, landing on multiples of 10% (from 147%: 150% up, 140% down), so 100% can be reached without a drag or the double-tap (P1-08 review, P5).
   - While dragging, it snaps to 100% within ±3% with one SegmentTick haptic, so the original level is easy to find again.
   - Double-tap on the thumb resets to 100% (component behavior).
@@ -197,6 +197,11 @@ All times are in microseconds. The minimum length of any item is 0.1 s (100,000 
 - **Main track:** the copy is inserted right after the original. Later clips move right over 200 ms.
 - **Other lanes:** the copy goes right after the original on the same lane if that space is free for its whole length. Otherwise it goes on the first lane of that kind that's free there, otherwise on a new lane.
 - **The copy** keeps every property, becomes the selection, and lands with the bonk (it's new content).
+- **A clip whose sound is detached** (P1-09 review, P1): the copy gets its own sound back, at 0% (`audioDetached` false, volume 0%).
+  - No detached clip lies under the copy, so "This clip's sound is on its own track now. Select it there." would send the user to the original's green clip.
+  - At 0% the copy sounds the same as before (silent), its Volume panel can raise it, and TalkBack reads "Original audio muted" on it. It's the same "nothing suddenly gets louder" rule as Replace on a detached clip.
+  - No toast: if the user deleted the detached clip on purpose, "the detached sound stays" would be wrong.
+  - Split is different: both pieces stay detached, because the detached clip still lies under them.
 - **Undo** is one step ("Duplicate").
 
 ### Reorder (main video track)
@@ -336,6 +341,9 @@ Reworded 10 Oct (PM ready check) to say what the user sees, not how the engine w
 - **Undo** is one step ("Detach audio"). It fires `tool_use` `detach_audio`.
 - **If every clip was muted:** the new clip starts at 0%, so nothing suddenly gets louder. A toast explains: "Original audio was muted, so the detached sound starts at 0%."
 - **Already detached:** the tool explains "This clip's sound is on its own track now. Select it there."
+- **A clip whose file is missing** (P1-09 review, M2): Detach audio explains with P1-04's missing-file toast, "A clip's file is missing, so it plays black. Replace or delete that clip to fix it." (`editor_missing_media`). Nothing changes, with no step and no event.
+  - Otherwise the new clip would point at nothing and play silence while looking like real sound. It would also outlive the fix: Replace keeps a detached clip's audio and attaches the new sound at 0%.
+  - The toast names Replace, which is first in that clip's tool bar. Volume still works on a missing clip, because Replace keeps the clip's volume.
 
 **After detaching:**
 - The clip and its detached audio are independent. Trimming, splitting, moving or deleting one doesn't change the other.
@@ -443,6 +451,8 @@ P1-16's Done when (TICKETS, worded by the PM on 13 Oct): "Media added with the A
 | Clip has no sound | Volume and Detach audio explain | `explain_no_sound` |
 | Sound already detached | Volume and Detach audio explain | `explain_detached` |
 | Detached while muted | New clip at 0%; toast | `explain_detached_muted` |
+| Detach audio on a missing-file clip (P1-09 review) | Nothing changes; the missing-file toast | `editor_missing_media` |
+| Duplicated a detached clip (P1-09 review) | The copy has its own sound at 0%; no toast | none |
 | Locked: **Later (L-02)** | Unlock first; other tools explain | `tool_unlock`, `explain_locked` (L-02) |
 | Long content | Tool labels wrap to two lines inside `tool-item-width` (64); at large font scales items widen when a word can't fit, labels may take a third line, and the bar grows. Labels are never cut (Accessibility). Long sound titles end in an ellipsis on the clip and wrap to two lines in the sheet. | |
 | Offline, permission | Doesn't apply: everything is on the phone; no permission needed | none |
@@ -543,6 +553,7 @@ Translator notes:
   - Portuguese and Spanish run longest. Hindi needs extra line height (the system Devanagari font).
   - Two lines are fine; three aren't (at 100% font). If a label won't fit in two lines of about 10 characters, choose a shorter synonym. At 200% the app lets a label take a third line rather than cut it.
 - **"Meme"** stays as is if your language uses the loanword.
+- **One grammatical gender per word across strings** (P1-09 review, P3): Hindi "साउंड" is masculine in `a11y_state_sound_detached` ("साउंड अलग किया गया"), so `explain_detached`, `explain_detached_muted` and `explain_replace_detached` use the masculine forms too ("इस क्लिप का साउंड", "अलग किया गया साउंड"). TalkBack users hear the state and the toasts within one task.
 
 ## Accessibility
 - **Tool bar:** every tool's visible label is its accessible name, with no exception (WCAG 2.2 SC 2.5.3 Label in Name, Level A). Move here is named "Move here"; "Move to playhead" is its click label, so TalkBack says "Move here, button, double-tap to move to playhead" and a voice-control user can still say "Tap Move here" (P1-08 review, M1: the first version of this spec replaced the name, which fails 2.5.3). Close clip tools is icon-only and spoken. Focus order runs left to right. The tool bar comes after the timeline in the editor's focus order (P1-04).
@@ -619,7 +630,7 @@ Translator notes:
 4. **Volume panel** on a meme sound (P1-08) and on a video clip (P1-09): slider at 100%, the mute-every-clip toggle on clips; preview and transport visible above. With TalkBack, swiping back from the panel's title never reaches a sound tool or a timeline item.
 5. **Reorder mode** by the Reorder tool: tiles, washed surroundings, the playhead faded out, the reorder bar (Move earlier, Move later, Done in blue text) with its hairline top border. Then, on the 20-clip project, the moving tile still on screen after six taps of Move later.
 8. **Add media and Replace (P1-16):** the main tool bar with Add media in place 4; clips added mid-video with the tool (after the clip under the playhead) and at the end with the tile; the end of the video with the last clip selected (its end handle, no tile); a replaced clip with the same start and length; the "too short" toast; a missing-file clip's tool bar with Replace first, then the same clip fixed (Replace back at the end). Plus a screen recording of adding a 10 s video: its bonk stays in place.
-6. **Detached audio:** the green "Original audio" clip on its lane under the clip, and the explanation when Detach audio is tapped again.
+6. **Detached audio:** the green "Original audio" clip on its lane under the clip, and the explanation when Detach audio is tapped again. Plus (P1-09 review): the first clip selected at 0:00 with no original-audio toggle under its start handle; Detach audio on a missing clip showing the missing-file toast with no new lane; a duplicate of a detached clip whose Volume panel opens at 0%.
 7. **Preview catching up:** a screen recording of a delete on the 20-clip project. Every frame between the edit and the edited preview shows the old frame: none black or gray. If an edit takes over 1 s, a still of the "Updating the preview" status.
 
 Measured (note in the QA report):
@@ -645,7 +656,7 @@ I don't edit code, so these are requests.
    - `volume`: three bars rising left to right, the tallest solid.
    - `delete`: a lid stroke over a solid can.
    - `duplicate`: two offset rectangles, the front one solid.
-   - `detach_audio`: a rectangle above a short wave line, with a gap between them.
+   - `detach_audio`: a rectangle above a short wave line, with a gap between them. **Built** (56454d9; P1-09 review: passes, a solid 16 × 8 clip 3 px above a two-period wave).
    - `reorder`: two rectangles under a curved two-way arrow.
    - `move_here`: an arrow pointing right into a vertical line.
    - `replace` (P1-16): one solid rectangle in the middle (the clip, the core) between two curved strokes, one above it running left to right and ending in a solid arrowhead pointing down, one below it running right to left and ending in a solid arrowhead pointing up. A swap cycle around a single clip, so it can't be mistaken for `reorder` (two clips under one arc) or for undo and redo. **Built** (69bffee; P1-16 review: passes the grammar). The core is 7 × 4 px (x 8.5–15.5, y 10–14, 1 px corners), so each arrowhead clears it by at least 1.4 px; the first build's 8 × 5 core left 0.7 px (P4).
@@ -680,6 +691,8 @@ I don't edit code, so these are requests.
    - A "keep sounds with their clip" option would be a proposal before P4 planning, if the trial shows drift hurts.
 5. **The board's "Duck audio" chip** isn't in the PRD's v1 audio list, so it's left out (PM agreed, 8 Oct).
 6. **Keyboard shortcuts and the locked-track UI** moved to Later, L-01 and L-02 (owner, 8 Oct). The sections here stay as drafts for those tickets.
+
+7. **Duplicate of a detached clip (P1-09 review, P1), for the PM's ticket check.** P1-06's check says a copy "keeps every property". One exception now: a copy of a clip whose sound is detached gets `audioDetached` false and volume 0% (Edits → Duplicate). No scope change; it's a small domain rule, and no persisted shape changes.
 
 Open for the owner: only item 4, after trying the P1-06 build.
 

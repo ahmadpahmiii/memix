@@ -26,5 +26,6 @@ The bottom tool bar in both editors: a horizontally scrolling row of icon-plus-l
 - **Layout:**
   - `surface` bar, `toolbar-height`, `hairline` top border.
   - Items at least `tool-item-width` wide and at least `touch-target` tall; labels in `caption`. Two lines is the copy budget, not a line cap: labels are never cut.
+  - **Every label keeps room for two lines** (P1-09 review), so a one-line label sits at the top of a two-line space. One line made a tool 58 dp tall and two lines 72 dp (`toolbar-height`). A bar holding one two-line label (English "Detach audio") then put every icon 7 dp higher than a bar without one, and switching between a photo clip's and a video clip's tools cross-faded two icon rows 7 dp apart. With the two-line room, the icon line never moves between bars at 100% font. In Compose: `minLines = 2` on the label.
   - At large font scales, items widen when a word can't fit, and labels may take more lines; the bar grows taller rather than cutting labels.
   - No outlines or shadows.

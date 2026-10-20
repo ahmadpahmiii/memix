@@ -103,7 +103,7 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
 - **Color:** a single color per icon, applied as a tint: `text-secondary` (inactive), `text` (current nav item), `primary` (active tool), `on-primary` on blue fills. No two-tone icons.
 - **Meaning first:** every icon names a real action or place and always comes with a visible label or a screen-reader label. No sparkle, magic or robot glyphs.
 
-**The set so far** (`MemixIcons`, 25 icons after P1-16):
+**The set so far** (`MemixIcons`, 27 icons after P1-09):
 - Navigation and chrome: `home`, `templates`, `create` (plus; also Add media and every "add"), `sounds`, `drafts`, `arrow_back`, `chevron_right`, `close`, `globe`.
 - Media and playback: `video`, `photo`, `play`, `pause`, `undo`, `redo`, `heart`, `heart_filled`.
 - Editor tools (P1-06): `edit` (scissor blades, finger loops as the core), `split` (two outlined clips around a solid bar), `delete` (lid and handle strokes over a solid can), `duplicate` (open back outline behind a solid front clip), `reorder` (an arc with two solid arrowheads over two outlined clips).
@@ -112,7 +112,10 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
   - `move_here`: a horizontal shaft with a solid arrowhead pointing right into a full-height vertical bar (the playhead), 2.5px apart. The bar is the destination, the same white line the user sees on the timeline.
 - Clip tool (P1-16, approved in the P1-16 review):
   - `replace`: a solid clip in the center (7 × 4px, 1px corners) between two curved strokes. The upper one runs left to right into a solid arrowhead pointing down; the lower one runs right to left into a solid arrowhead pointing up. It's exactly 180° symmetric, a swap cycle around one clip, so it doesn't read as `reorder` (one arc over two outlined clips) or as `undo`/`redo` (one hooked arrow).
-- Later, drawn with their tickets: `volume_off` and `detach_audio` (P1-09), `lock` (L-02).
+- Original audio (P1-09, approved in the P1-09 review):
+  - `volume_off`: `sounds`' solid cone with a 6 × 6 cross of two strokes in place of the waves, centered on the cone's axis and 2.3px clear of its tip. It's the muted state of the timeline's original-audio toggle, whose "on" state is `sounds`.
+  - `detach_audio`: a solid clip (16 × 8px, 1px corners) over a two-period wave stroke, 3px apart. The gap carries "detach". It doesn't collide with `split`, `duplicate` or `replace`, none of which has a wave.
+- Later, drawn with its ticket: `lock` (L-02).
 
 Source files are Android vector drawables in `:core:designsystem` `composeResources/drawable/` (`ic_<name>.xml`), path-only so Compose Multiplatform renders them the same on Android and iOS. There is no Memix logo yet: until one exists, write the name "Memix" in Anton; the launcher icon is a plain placeholder built from that wordmark, not a logo.
 
