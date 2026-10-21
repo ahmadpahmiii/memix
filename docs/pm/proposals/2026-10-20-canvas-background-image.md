@@ -1,6 +1,6 @@
 # A picture behind the clips: canvas background image
 
-**Date:** 20 Oct 2026 · **Author:** PM (from the designer's P1-11 spec, 90c8b07 → Proposals and questions for the PM, 1) · **Status:** Proposed
+**Date:** 20 Oct 2026 · **Author:** PM (from the designer's P1-11 spec, 90c8b07 → Proposals and questions for the PM, 1) · **Status:** **Approved: B** (Owner's words, 21 Oct 2026: "1 - 6 do with your recomendation, i have approve it"). P2-12 added to TICKETS after P2-01; `decision-log.md`, 21 Oct
 
 **Problem:** the PRD promises a background image in both editors: the video canvas has "background color, blur **or image**" and the photo canvas "background color **or image**". No ticket builds it. P1-11 builds color and blur only, as its ticket says, and P2-01 says only "canvas". Without a ticket, the promise quietly drops out of v1.
 

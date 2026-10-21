@@ -1,6 +1,6 @@
 # Export (P1-12): a Share button now, and the first permission Memix asks for
 
-**Date:** 20 Oct 2026 · **Author:** PM (from the designer's P1-12 draft spec, 90c8b07 → Proposals and questions for the PM, 2 and 3) · **Status:** Proposed
+**Date:** 20 Oct 2026 · **Author:** PM (from the designer's P1-12 draft spec, 90c8b07 → Proposals and questions for the PM, 2 and 3) · **Status:** **Approved: Q1 A, Q2 A** (Owner's words, 21 Oct 2026: "1 - 6 do with your recomendation, i have approve it"). Notes on P1-12 and P5-05 in TICKETS; `decision-log.md`, 21 Oct
 
 P1-12's spec can't be finished until these are answered. Latest useful answer: about 24 Oct, when P1-11 should be built and P1-12 is next.
 

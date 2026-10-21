@@ -2,6 +2,8 @@
 
 **Date:** 8 Oct 2026 · **Author:** PM · **Status:** question 1 **Approved: 1B** (owner, 8 Oct 2026). Question 2: ticket P5-08 was added on the owner's answer 11 ("yes personal / start early"). The PM picked the start date (B); the owner can change it with "2A" or "2C".
 
+> **21 Oct 2026 (owner): question 1 is overtaken.** Owner's words: "P1-15 play release setup i will setup manual by myself, i will manually deploy". The owner sets up Play signing and the Play Console and builds, signs and uploads every Play build by hand. No upload key, keystore or service account goes into the repo or CI, and there's no CI upload, so the "credentials by 11 Jan 2027" date below no longer applies. P1-15 now holds only release build settings that need no secrets and the owner's runbook (TICKETS P1-15; `decision-log.md`, 21 Oct). Question 2 (closed test from about 25 Jan 2027) stands; it now needs the owner's Play Console app and first manual upload before it starts.
+
 **Facts used** (Google's help page [answer 14151465](https://support.google.com/googleplay/android-developer/answer/14151465), read through search results on 8 Oct; support.google.com doesn't load from this session. Re-check at P1-15 and when P5-08 starts):
 - Personal accounts created after 13 Nov 2023 must run a closed test before the Production track opens. At least 12 testers must have been opted in for at least the last 14 days in a row.
 - After that, the owner applies for production access on the Play Console dashboard. The form asks about the app, how it was tested and whether it's ready. Google then reviews it; guides say about a week, which isn't confirmed.

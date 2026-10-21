@@ -1,6 +1,6 @@
 # Crop, rotate and flip a video clip, and Fit or Fill per clip
 
-**Date:** 20 Oct 2026 · **Author:** PM (from the designer's P1-11 spec, 90c8b07 → Proposals and questions for the PM, 2) · **Status:** Proposed
+**Date:** 20 Oct 2026 · **Author:** PM (from the designer's P1-11 spec, 90c8b07 → Proposals and questions for the PM, 2) · **Status:** **Approved: A** (Owner's words, 21 Oct 2026: "1 - 6 do with your recomendation, i have approve it"). P4-16 added to TICKETS after P4-10; `decision-log.md`, 21 Oct
 
 **Problem:** the PRD's video editor promises "crop, rotate, flip" under Basic edits. No ticket builds them for video. P2-04 builds them for photos only, and P4-10 covers reverse and freeze frame only. Also, P1-11 sets Fit or Fill for every clip at once. Drafts already store Fit or Fill per clip, but nothing lets the user set it for one clip, for example a landscape clip filling the frame while a portrait photo next to it fits. Without a ticket, none of this is in v1.
 

@@ -1,6 +1,6 @@
 # Analytics: which canvas choices people make, and export cancels
 
-**Date:** 20 Oct 2026 · **Author:** PM (from the designer's specs, 90c8b07: P1-11 → Proposals 3, P1-12 → Proposals 4) · **Status:** Proposed
+**Date:** 20 Oct 2026 · **Author:** PM (from the designer's specs, 90c8b07: P1-11 → Proposals 3, P1-12 → Proposals 4) · **Status:** **Approved: Q1 A, Q2 A** (Owner's words, 21 Oct 2026: "1 - 6 do with your recomendation, i have approve it"). PRD analytics table updated (`tool_use` `value`, `export_cancel`); `decision-log.md`, 21 Oct
 
 Both change the PRD's analytics table (`docs/PRD.md` → Metrics and analytics), so they're yours. Analytics stays off until the user consents (P5-01), and neither carries personal data.
 

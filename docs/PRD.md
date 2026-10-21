@@ -66,7 +66,7 @@ The video editor ships the core toolset of common mobile editors in v1, plus mem
 | Media | Import videos and photos from the gallery (multi-select), add more at any time, replace a clip |
 | Basic edits | Split, trim, delete, duplicate, reorder, crop, rotate, flip, freeze frame, reverse |
 | Speed | Constant 0.1× to 10×; speed curves with presets (ramp, bullet, flash) and a custom curve |
-| Canvas | Ratios 9:16, 1:1, 4:5, 3:4, 16:9 and custom; fit or fill; background color, blur or image |
+| Canvas | Ratios 9:16, 1:1, 4:5, 3:4, 16:9 and custom; fit or fill (for all clips, or per clip: P4-16); background color, blur or image (image: P2-12, owner 21 Oct 2026) |
 | Layers | Unlimited video and photo overlays (picture-in-picture), opacity, blend modes, shape masks (rectangle, circle, linear, mirror), green screen keying (pick color, strength, edge softness) |
 | Keyframes | Position, scale, rotation, opacity and volume, with easing |
 | Text | Meme fonts including Anton, outline, shadow, background box, in / out / loop animations, text presets |
@@ -93,7 +93,7 @@ The photo editor is a separate editor tuned for still images. It shares the text
 | Draw | Brush sizes and colors, eraser |
 | Censor | Blur, pixelate, black bar |
 | Background removal | People, pets and objects, free; refine brush; save the cut-out as a sticker |
-| Canvas | Ratios and custom size, background color or image |
+| Canvas | Ratios and custom size, background color or image (image: P2-12, owner 21 Oct 2026) |
 | Project | Undo / redo, auto-save, drafts |
 | Make it a video meme | Opens the photo in the Video editor as a clip with its layers, then opens the sound picker |
 
@@ -160,10 +160,10 @@ Exports have **no length limit**: video is encoded straight to the output file, 
 | Stickers | WhatsApp sticker pack |
 
 - **Before export:** show the estimated file size and time, and check free space.
-- **During export:** it keeps running in the background with a progress notification, and can be cancelled.
+- **During export:** it keeps running in the background with a progress notification, and can be cancelled. On Android 13 and newer, Memix asks for notification permission once, at the first tap on Export video; the export starts at once, whatever the answer (owner, 21 Oct 2026).
 - **Watermark:** a small "Memix" text mark (no logo), top-left with a 3% margin, on every free export. Top-left avoids the buttons TikTok and Reels place on the right and bottom.
 - **Remove watermark:** one rewarded ad removes it from that one export.
-- **After export:** a share row with TikTok, Instagram (Reels and Stories), WhatsApp, YouTube Shorts, Save to gallery, and More (system share sheet). Files also save to a "Memix" album.
+- **After export:** a share row with TikTok, Instagram (Reels and Stories), WhatsApp, YouTube Shorts, Save to gallery, and More (system share sheet). Files also save to a "Memix" album. Until the share row lands (P5-05), the Exported screen has one Share button that opens the system share sheet (owner, 21 Oct 2026).
 
 Direct sharing uses Android share intents aimed at each app. TikTok's own share SDK can come later if intents prove too limited.
 
@@ -234,11 +234,12 @@ The north-star metric is **DAU, with a target of 5,000 by month 3 after the Andr
 | `template_open` | A template opens | template\_id, type |
 | `sound_preview` | A sound plays in the library | sound\_id, tab |
 | `sound_add` | A sound lands on a timeline | sound\_id, tab, editor |
-| `tool_use` | A tool is applied | editor, tool; font (font id: anton, poppins, baloo2, kalam, rozha) when tool is add_text or text_font |
+| `tool_use` | A tool is applied | editor, tool; font (font id: anton, poppins, baloo2, kalam, rozha) when tool is add_text or text_font; value when tool is a canvas tool (owner, 21 Oct 2026): `canvas_ratio` → 9:16, 1:1, 4:5, 3:4, 16:9 or custom (never the custom numbers), `canvas_fit` → fit or fill, `canvas_background` → blur or color (never the color itself) |
 | `bg_remove` | Background removal finishes | editor, success, duration\_ms |
 | `export_start` | The user starts an export (Export video in the export sheet, PM 20 Oct 2026) | editor, format, resolution, fps, length\_s |
 | `export_complete` | The file is saved | editor, format, time\_ms, size\_mb |
 | `export_fail` | Export errors | editor, error\_code |
+| `export_cancel` | The user cancels a running export (owner, 21 Oct 2026) | editor, progress (percent done, 0–100) |
 | `watermark_removed` | A rewarded ad completes | editor |
 | `share_target` | A share target is chosen | target |
 | `sound_report` | A sound is reported | sound\_id |
@@ -257,7 +258,7 @@ The store title becomes **"Memix: Meme Video & Photo" (25 characters)**. "Memix 
 | Privacy policy and support | Hosted on the app's domain, linked from both stores and the app |
 | AdMob | Publish app-ads.txt on the same domain |
 | Play Console | Target audience 13+, "contains ads", Data safety form (advertising ID, analytics, crash data), content rating questionnaire |
-| Play testing gate | The developer account is personal (owner, 8 Oct 2026), so Google's closed test applies before production access: currently at least 12 testers opted in for 14 days in a row, then an application that Google reviews ([Google Play help](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en-GB); re-check at P1-15). Ticket P5-08 starts it around 25 Jan 2027 with 15–20 testers the owner recruits. Internal testing is still used. (Corrects the 7 Oct entry, which said the rule didn't apply.) |
+| Play testing gate | The developer account is personal (owner, 8 Oct 2026), so Google's closed test applies before production access: currently at least 12 testers opted in for 14 days in a row, then an application that Google reviews ([Google Play help](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en-GB); re-check when P5-08 starts). Ticket P5-08 starts it around 25 Jan 2027 with 15–20 testers the owner recruits. Internal testing is still used. (Corrects the 7 Oct entry, which said the rule didn't apply.) |
 | Consent | Google UMP for EEA, UK and Switzerland; Apple's tracking prompt (ATT) on iOS later |
 | Credits screen | Open-source licenses, font licenses, sound credits |
 
@@ -278,7 +279,7 @@ Android launches around **7 March 2027** and iOS around **2 May 2027**, if the f
 | P6 | 20–21 | Feb 22 – Mar 7 | Android QA and release → **Android launch ≈ Mar 7, 2027** |
 | P7 | 22–29 | Mar 8 – May 2 | iOS → **iOS launch ≈ May 2, 2027** |
 
-Each phase ends with a build in internal testing and a manual QA pass, so problems surface early. The internal-testing build starts once P1-15 is built, which waits for the owner's Play upload key and service account (8 Oct 2026); until then QA uses debug builds. What each phase delivers:
+Each phase ends with a build in internal testing and a manual QA pass, so problems surface early. The owner sets up Play signing and the Play Console and builds, signs and uploads each internal-testing build by hand; no signing key or Play credential goes into the repo or CI, and nothing uploads from CI (owner, 21 Oct 2026). Until the owner's first upload, phases close without it and QA uses debug builds. What each phase delivers:
 
 - **0 · Foundation (1 week):** KMP project, CI, design system in Compose, Supabase set up. Media storage moved (8 Oct 2026): Supabase Storage in phase 3, Cloudflare R2 before launch.
 - **1 · Core + video editor (4 weeks):** project model, timeline, Android engine preview and export, meme sounds on the timeline, text, watermark. First internal test build.
@@ -303,7 +304,7 @@ Each phase ends with a build in internal testing and a manual QA pass, so proble
 | Name conflict | Costly rename later | Trademark search before launch |
 | File download costs | Bill grows with users | Supabase Storage while only the team downloads, Cloudflare R2 (free egress) before launch, on-device caching |
 | Supabase Free limits | Backend restricted when over quota | Monitor usage, move to Pro at about 1,500 DAU |
-| Closed test before production (personal Play account) | Launch slips about 3 weeks if testers drop below 12 or Google refuses the application | Recruit 15–20 testers; start around 25 Jan 2027 (P5-08) so one rerun still fits before 7 Mar; upload key and service account by 11 Jan 2027 |
+| Closed test before production (personal Play account) | Launch slips about 3 weeks if testers drop below 12 or Google refuses the application | Recruit 15–20 testers; start around 25 Jan 2027 (P5-08) so one rerun still fits before 7 Mar; the owner's Play Console app and first manual upload before then (owner, 21 Oct 2026) |
 
 **Open items**
 
