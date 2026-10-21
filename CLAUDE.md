@@ -137,6 +137,7 @@ Settled by the owner on 21 Oct 2026:
 
 Still open:
 - WhatsApp sticker-pack spec must be checked at P2-09.
+- Watermark top margin: TikTok's top bar may cover a mark 3% from the top. P1-13 is built at 3% with separate top/left constants; the owner decides A (keep), B (about 13%) or C (test one private post at phase-end QA, recommended).
 
 ## Skills in this repo (`.claude/skills/`)
 
