@@ -10,5 +10,5 @@ A small pill in an editor's top bar that shows a current setting and opens where
 - **Open** (its panel or sheet is showing and the pill is still visible): `primary` text on `primary-subtle`, the active-tool look (6.2:1 over `canvas`).
 - **Pressed:** `surface-raised` → `hairline`; open: `primary-subtle` → `surface-raised` (5.9:1). Nothing moves.
 - **Behavior:** a tap opens its panel or sheet; a tap while open closes it. When the editor is in a mode that can't open it (reorder mode), it explains on tap with a toast instead of looking disabled.
-- **Accessibility:** a button. Its name contains the visible value (WCAG 2.2 SC 2.5.3). State "expanded" or "collapsed" when it opens a panel.
+- **Accessibility:** a button. Its name contains the visible value (WCAG 2.2 SC 2.5.3). When it opens a panel, its state is spoken through the **state description** ("Expanded" or "Collapsed", string resources in all five languages, the way Material 3's dropdown anchor does it). Compose's `expand`/`collapse` semantics are actions, not a state: TalkBack lists them but doesn't say whether the panel is open (P1-11 review M1). Keep the actions too.
 - **Don't:** use it as a filter (that's Chip), for an action with no setting to show (that's Button or IconButton), or anywhere but an editor's top bar.

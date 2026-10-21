@@ -2,6 +2,13 @@
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: Design decisions and their reasons, patterns that worked or failed, recurring review issues, competitor insights.
 
+- 2026-10-21 · P1-11 review (provisional, code + renders 180–197, stand-in picture, no real blur). Changes requested, all screen-reader: M1 SettingPill set only `expand`/`collapse` actions, so no open/closed state is spoken (add `stateDescription` "Expanded"/"Collapsed"); M2 OptionTile put the Fit/Fill hint in `stateDescription`, which replaces the spoken "selected" (my spec asked for it; hint now goes in the name after the label); M3 caption TalkBack nodes kept onClick + Style/Position actions under the Canvas panel, so panels could stack. Lessons:
+  - **Never spec extra words as a state description on a selectable/checkable control.** Extra meaning goes in the name, after the visible label.
+  - **Expanded/collapsed needs a spoken state, not just actions.** Every disclosure control gets state strings.
+  - **When a mode disables touch gestures on an area, disable the same actions on its TalkBack nodes** (keep them readable). Check every semantics `onClick`/`customActions` against each mode that blocks the touch path.
+  - **A selected item in a scrolling row must be scrolled into view** when its panel opens or undo changes it (Custom at the row's end was fully off screen at 200%/es/pt while its steppers showed).
+  - **Inline pairs in a FlowRow item still squeeze:** make the pair itself a FlowRow. Measure the 200% fit from a render's 100% tile widths × 2.
+  - Accepted: 720 px preview while Blur is on (sigma follows the preview output). The `blur` crosshair glyph reads weakly at `icon-small`; recheck on device, redraw at P2-12 if needed.
 - 2026-10-21 · P1-10 review (provisional, code + renders 160–174 with a fake text renderer). Changes requested: M1 the stage `BoxWithConstraints` had no `clipToBounds`, so the caption frame drew over the top bar, transport row and entry bar (render 167). Lessons and decisions:
   - **Anything drawn from content bounds (frames, guides, hit/a11y rects) needs a clip at its region's edge.** Compose never clips by default. Check every overlay layer for a clip when its content can be bigger than the region (long captions, big scales, short stages while typing).
   - **Motion that plays under a panel/keyboard opening at the same moment is moot** (the 200 ms playhead scroll became a jump). Same rule as "covered states are moot".

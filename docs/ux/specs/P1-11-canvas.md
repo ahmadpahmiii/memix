@@ -69,6 +69,7 @@ ToolPanel rules (`design/system/components/ToolPanel/README.md`): title "Canvas"
 | Custom | icon `ratio_custom` | Custom |
 
 - The shape is the ratio itself, drawn as a solid rectangle with 1 dp corners whose long side is 20 dp inside the 24 dp icon box (icon grammar: the central 20 px). It's layout math from the ratio, not an icon file.
+- The selected tile is scrolled into view when the panel opens and when undo or redo changes the selection (review P1): with Custom selected, at 200% or in Spanish and Portuguese, it is otherwise fully off screen while its steppers show.
 - Order is the PRD's. At 360 dp in English, 9:16 to 16:9 show in full (tiles about 48–54 dp wide) and Custom is cut by the edge, which shows the row scrolls (FontTile pattern). Longer translations of "Custom" only push it further out.
 - Shape and label in `text-secondary` and `text` on `surface-raised`; the selected tile is white (`selection` fill, both in `on-primary`).
 
@@ -82,7 +83,7 @@ ToolPanel rules (`design/system/components/ToolPanel/README.md`): title "Canvas"
 - Limits (explain on tap, P1-06 rule): a step that would make the long side more than **2.39 times** the short side doesn't apply ("This is as wide as a video can be." / "This is as tall as a video can be."). Below 1 or above 99: "1 is the smallest number." / "99 is the biggest number." 2.39:1 covers every format people post (21:9 is 2.33, a 9:19.5 phone screen 2.17) and is the widest range X accepts for video, the strictest major platform (Evidence). P1-12 checks the encoder separately.
 - No text field and no keyboard: steppers are reachable with one thumb, by keyboard and by TalkBack, and the keyboard would cover the panel.
 
-**3. Clips.** One row: the label "Clips" (`body` `text-secondary`) at the start, two OptionTiles (inline layout: icon beside label) at the end, `space-2` apart: **Fit** (icon `fit`) and **Fill** (icon `fill`). When they don't fit beside the label (200% font), they wrap under it.
+**3. Clips.** One row: the label "Clips" (`body` `text-secondary`) at the start, two OptionTiles (inline layout: icon beside label) at the end, `space-2` apart: **Fit** (icon `fit`) and **Fill** (icon `fill`). When they don't fit beside the label (200% font), they wrap under it; if the pair is still too wide, Fill wraps under Fit (review P3: pt at 200% leaves about 6 dp to spare on 360 dp).
 - **Fit:** the whole clip shows, scaled down to fit inside the frame; the background shows around it.
 - **Fill:** the clip covers the whole frame, scaled up and centered; the edges that don't fit are cut off.
 - **It applies to every main clip at once.** Users fix black bars for the whole meme, not clip by clip (Clipchamp's per-clip Fit/Fill and its "no way to set all clips at once" are the counter-example; Guidance). The model's per-clip `fit` stays, for later per-clip framing (Proposals 2).
@@ -140,6 +141,8 @@ The engine draws the canvas the same way in the preview and the export, at any r
 | Gaps and missing clips | Black, whatever the background. A missing clip is an error state, black keeps P1-04's "plays black" true, and it stands out against any color. |
 | Captions | Above everything here (P1-10), clipped at the canvas edge |
 
+**Build note (review):** while Blur is the background, the preview renders at a 720 px shorter side to hold 30 fps; the sigma follows that output (3% of 720 = about 22 px), so the softness looks the same as the 1080p export. With a color background the preview keeps its normal size.
+
 ## States
 | State | What shows | Copy |
 | --- | --- | --- |
@@ -192,7 +195,7 @@ English source; the engineer machine-drafts id, es, pt and hi until P5. Budgets 
 | `canvas_title` | Canvas | 20 | Panel title. The frame the video is made in, its shape and what's behind the clips. Not "painting canvas"; use your language's video-editor word (CapCut's local label for this tool is a good guide). |
 | `canvas_ratio` | Ratio | 20 | Row heading: the shape (width to height) |
 | `canvas_ratio_custom` | Custom | 14 | Tile label: a shape the user sets. Short: it's a tile. |
-| `canvas_ratio_a11y` | %1$s, %2$s | 30 | Spoken tile name: "9:16, tall" |
+| `canvas_ratio_a11y` | %1$s, %2$s | 40 | Spoken tile name: the visible label, then what it means: "9:16, tall"; also "Fit, Shows the whole clip" (review M2). %1$s comes first in every language (the name starts with the visible label, WCAG 2.5.3). |
 | `canvas_shape_tall` | tall | 12 | Lower case: follows the ratio in `canvas_ratio_a11y` |
 | `canvas_shape_square` | square | 12 | |
 | `canvas_shape_wide` | wide | 12 | |
@@ -205,7 +208,7 @@ English source; the engineer machine-drafts id, es, pt and hi until P5. Budgets 
 | `canvas_clips` | Clips | 16 | Row label: how the videos and photos sit in the frame |
 | `canvas_fit` | Fit | 12 | Show the whole clip, with space around it. Short: a tile beside the label. |
 | `canvas_fill` | Fill | 12 | Cover the whole frame, cutting the edges |
-| `canvas_fit_a11y_hint` | Shows the whole clip | 30 | Spoken after "Fit" (state description slot, not the name) |
+| `canvas_fit_a11y_hint` | Shows the whole clip | 30 | Spoken after "Fit", as the second part of its name (`canvas_ratio_a11y`), not the state description (review M2) |
 | `canvas_fill_a11y_hint` | Covers the whole frame | 30 | Spoken after "Fill" |
 | `canvas_background` | Background | 20 | Row heading: what shows around clips that don't cover the frame |
 | `canvas_background_blur` | Blur | 16 | Spoken name of the blur swatch: a blurred copy of the clip behind it |
@@ -221,7 +224,16 @@ English source; the engineer machine-drafts id, es, pt and hi until P5. Budgets 
 | `edit_canvas_fill` | Fill | 24 | |
 | `edit_canvas_background` | Background | 24 | |
 
+New in `:core:designsystem` (review M1, for every SettingPill):
+
+| Key | English | Budget | Note |
+| --- | --- | --- | --- |
+| `setting_expanded` | Expanded | 16 | Spoken state of a top-bar pill whose panel is open. Use the word your language's TalkBack uses for an open dropdown. |
+| `setting_collapsed` | Collapsed | 16 | Its panel is closed |
+
 Reused: `panel_done`, `color_*` (P1-10, the swatch names), P1-04's `a11y_*`.
+
+Review note on `explain_canvas_reorder`: pt "Toque em Concluído para terminar de reordenar primeiro." is 56 of 50; use "Toque em Concluído para terminar de reordenar." (46).
 
 Translator notes:
 - **Ratios** ("9:16") are never translated or localized: ASCII digits and a colon in every language, like timecodes.
@@ -230,8 +242,9 @@ Translator notes:
 
 ## Accessibility
 - **Focus and TalkBack order** (P1-04's list): Close → **ratio pill** → (P1-12's Export) → save banner → preview → … With the panel open, after the transport row: the panel title (pane title, focus lands here on open) → Done → Ratio group → Width and Height rows (when shown) → Clips group → Background group → the hint line. Closing returns focus to the pill.
-- **The pill:** a button. Name "Canvas, 9:16"; state "expanded" while the panel is open, "collapsed" otherwise. Double-tap opens or closes the panel.
-- **Ratio tiles, Fit/Fill and swatches** are single-choice groups named by their heading ("Ratio", "Clips", "Background"). Each option reads its name ("9:16, tall", "Fit", "Blur", "Yellow"), "selected" when it is, and its position ("1 of 6"). Fit and Fill add their hint as the state description.
+- **The pill:** a button. Name "Canvas, 9:16"; state "Expanded" while the panel is open, "Collapsed" otherwise, spoken as the state description (`setting_expanded`, `setting_collapsed`; review M1: Compose's expand/collapse are actions, which TalkBack doesn't speak as a state). Double-tap opens or closes the panel.
+- **Ratio tiles, Fit/Fill and swatches** are single-choice groups named by their heading ("Ratio", "Clips", "Background"). Each option reads its name ("9:16, tall", "Fit, shows the whole clip", "Blur", "Yellow"), "selected" when it is, and its position ("1 of 6"). Fit and Fill carry their meaning in the name, after the visible label (`canvas_ratio_a11y` with the hint), never in the state description, which would replace "selected" (review M2; this spec first said state description, my error).
+- **Captions on the preview while the panel is open** stay readable ("Text: …") but take no double-tap and offer no Style or Position action, matching "no caption selection while the panel is open" (Interactions; review M3).
 - **Steppers:** the readout is the row's state ("Width, 9"). After each step the new ratio is announced politely ("5:8"). Limit toasts are announced.
 - **After a ratio change** the selected tile's state changes (TalkBack reads it) and, when it happens, the toast is announced politely. Focus stays on the tile.
 - **What the panel covers** (timeline and tool bar) leaves the accessibility tree and focus (`coveredByModal`, ToolPanel rule).
