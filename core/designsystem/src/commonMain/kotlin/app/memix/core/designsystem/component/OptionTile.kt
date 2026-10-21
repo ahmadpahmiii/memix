@@ -22,7 +22,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import app.memix.core.designsystem.ICON_CORNER
 import app.memix.core.designsystem.ICON_SHAPE_SHARE
 import app.memix.core.designsystem.ICON_SIZE
@@ -41,7 +40,8 @@ enum class OptionTileLayout { STACKED, INLINE }
 /**
  * A single-choice tile with a small picture and a short label (design/system/components/OptionTile). [picture] draws
  * the 24 dp picture in the color it's given (an icon, or a shape drawn from data such as a ratio's rectangle). [spokenName]
- * replaces the label for screen readers when given; [hint] is spoken as the state description. Selected: a white fill,
+ * replaces the label for screen readers when given; it starts with the label ("Fit, Shows the whole clip"). No state
+ * description: it would replace the "selected" screen readers say (P1-11 review M2). Selected: a white fill,
  * label and picture in `on-primary`. Put the row in a `selectableGroup()` named by its heading; a tap on the selected
  * tile does nothing.
  */
@@ -53,7 +53,6 @@ fun OptionTile(
     layout: OptionTileLayout,
     modifier: Modifier = Modifier,
     spokenName: String? = null,
-    hint: String? = null,
     picture: @Composable (tint: Color) -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -67,10 +66,7 @@ fun OptionTile(
         .clip(MemixShapes.radiusMd)
         .drawBehind { drawRect(container.value) }
         .selectable(selected, interactionSource, indication = null, role = Role.RadioButton, onClick = { if (!selected) onClick() })
-        .semantics {
-            if (spokenName != null) contentDescription = spokenName
-            if (hint != null) stateDescription = hint
-        }
+        .semantics { if (spokenName != null) contentDescription = spokenName }
     val pictureBox: @Composable () -> Unit = { Box(Modifier.size(ICON_SIZE), contentAlignment = Alignment.Center) { picture(pictureColor) } }
     when (layout) {
         OptionTileLayout.STACKED -> Column(

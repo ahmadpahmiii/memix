@@ -244,7 +244,7 @@
     <string name="explain_canvas_tallest">Um vídeo não pode ser mais alto.</string>
     <string name="explain_canvas_min">1 é o menor número.</string>
     <string name="explain_canvas_max">99 é o maior número.</string>
-    <string name="explain_canvas_reorder">Toque em Concluído para terminar de reordenar primeiro.</string>
+    <string name="explain_canvas_reorder">Toque em Concluído para terminar de reordenar.</string>
     <string name="edit_canvas_ratio">Proporção</string>
     <string name="edit_canvas_fit">Ajustar</string>
     <string name="edit_canvas_fill">Preencher</string>

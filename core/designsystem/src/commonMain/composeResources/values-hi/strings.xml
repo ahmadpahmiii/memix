@@ -5,4 +5,6 @@
     <string name="sound_pause">%1$s रोकें</string>
     <string name="sound_favorite">%1$s को पसंदीदा बनाएं</string>
     <string name="sound_add">%1$s को वीडियो में जोड़ें</string>
+    <string name="setting_expanded">खुला है</string>
+    <string name="setting_collapsed">बंद है</string>
 </resources>

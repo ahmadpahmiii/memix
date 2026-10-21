@@ -7,10 +7,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -99,22 +103,55 @@ private fun RatioRow(ratio: CanvasRatio, customPicked: Boolean, onIntent: (Video
         CanvasCatalog.presets.forEach { (preset, size) ->
             val label = RatioTerms.of(size).toString()
             val aspect = size.widthPx.toFloat() / size.heightPx
+            val selected = !customPicked && ratio == preset
             OptionTile(
                 label,
-                selected = !customPicked && ratio == preset,
+                selected = selected,
                 onClick = { onIntent(VideoEditorIntent.SetCanvasRatio(preset)) },
                 layout = OptionTileLayout.STACKED,
+                modifier = Modifier.keptInViewWhen(selected),
                 spokenName = stringResource(Res.string.canvas_ratio_a11y, label, stringResource(shapeWordOf(aspect))),
             ) { tint -> RatioShape(aspect, tint) }
         }
+        val customSelected = customPicked || ratio == CanvasRatio.CUSTOM
         OptionTile(
             stringResource(Res.string.canvas_ratio_custom),
-            selected = customPicked || ratio == CanvasRatio.CUSTOM,
+            selected = customSelected,
             onClick = { onIntent(VideoEditorIntent.SetCanvasRatio(CanvasRatio.CUSTOM)) },
             layout = OptionTileLayout.STACKED,
+            modifier = Modifier.keptInViewWhen(customSelected),
         ) { tint -> Icon(MemixIcons.RatioCustom, contentDescription = null, tint = tint) }
     }
 }
+
+/**
+ * Scrolls the row so this tile shows whole when it becomes selected, or opens selected (Custom at the row's end at 200%
+ * or in a long language; P1-11 review P1).
+ */
+@Composable
+private fun Modifier.keptInViewWhen(selected: Boolean): Modifier {
+    val requester = remember { BringIntoViewRequester() }
+    val firstRun = remember { FirstRun() }
+    LaunchedEffect(selected) {
+        // The scroll ignores the request while the panel is still sliding in, so a tile selected as the panel opens
+        // waits for the panel; a later selection waits one frame for the row's layout.
+        if (firstRun.pending) awaitFrameTime(MemixMotion.durationSheet.toLong()) else withFrameMillis { }
+        firstRun.pending = false
+        if (selected) requester.bringIntoView()
+    }
+    return bringIntoViewRequester(requester)
+}
+
+// Waits [millis] of frame time, the clock the panel's slide runs on.
+private suspend fun awaitFrameTime(millis: Long) {
+    val start = withFrameMillis { it }
+    do {
+        val now = withFrameMillis { it }
+    } while (now - start < millis)
+}
+
+/** Whether an effect hasn't run yet in this composition; plain, as no drawing reads it. */
+private class FirstRun(var pending: Boolean = true)
 
 private fun shapeWordOf(aspect: Float): StringResource = when {
     aspect < 1f -> Res.string.canvas_shape_tall
@@ -173,9 +210,11 @@ private fun ClipsRow(fit: FrameFit?, onIntent: (VideoEditorIntent) -> Unit) {
         itemVerticalAlignment = Alignment.CenterVertically,
     ) {
         Text(heading, MemixTheme.type.body, color = MemixColors.textSecondary)
-        Row(
+        // The pair wraps one under the other too, before a long label would break mid-word (P1-11 review P3).
+        FlowRow(
             Modifier.selectableGroup().semantics { contentDescription = heading },
             horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space2),
+            verticalArrangement = Arrangement.spacedBy(MemixSpacing.space2),
         ) {
             FitTile(FrameFit.FIT, fit, Res.string.canvas_fit, Res.string.canvas_fit_a11y_hint, onIntent)
             FitTile(FrameFit.FILL, fit, Res.string.canvas_fill, Res.string.canvas_fill_a11y_hint, onIntent)
@@ -190,7 +229,7 @@ private fun FitTile(option: FrameFit, current: FrameFit?, label: StringResource,
         selected = current == option,
         onClick = { onIntent(VideoEditorIntent.SetClipsFit(option)) },
         layout = OptionTileLayout.INLINE,
-        hint = stringResource(hint),
+        spokenName = stringResource(Res.string.canvas_ratio_a11y, stringResource(label), stringResource(hint)),
     ) { tint -> Icon(if (option == FrameFit.FIT) MemixIcons.Fit else MemixIcons.Fill, contentDescription = null, tint = tint) }
 }
 

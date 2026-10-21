@@ -504,7 +504,8 @@ private fun PreviewStage(
                 state.captionMeasure,
                 captionStandIn,
                 focusTargets.selectedCaption,
-                onIntent,
+                interactive = state.canvasPanel == null,
+                onIntent = onIntent,
             )
             FrameMessage(state.stage, frame, onRetry = { onIntent(VideoEditorIntent.RetryPreview) })
         }

@@ -80,7 +80,9 @@ typealias CaptionStandInSlot = @Composable (
  * What the editor draws over the preview for captions (spec P1-10 → The selected text on the preview): the caption
  * being typed or moved, or a committed one the preview hasn't shown yet, drawn by [standInSlot] while the preview
  * leaves it out; the two-tone selection frame and the scale-and-rotate handle; the snap guides and the value bubble
- * during a gesture; and one screen-reader node per caption shown at the playhead ([visible]).
+ * during a gesture; and one screen-reader node per caption shown at the playhead ([visible]). With [interactive] false
+ * (the Canvas panel is open) the nodes are only heard: no double-tap and no Style or Position actions, so no caption
+ * gets selected and no second panel opens behind the panel (P1-11 review M3).
  */
 @Composable
 internal fun BoxScope.CaptionLayer(
@@ -94,6 +96,7 @@ internal fun BoxScope.CaptionLayer(
     measure: EditorCaptionMeasure?,
     standInSlot: CaptionStandInSlot,
     selectedFocus: FocusRequester,
+    interactive: Boolean,
     onIntent: (VideoEditorIntent) -> Unit,
 ) {
     val frame = state.frame
@@ -115,7 +118,7 @@ internal fun BoxScope.CaptionLayer(
         if (framed != null) TurnHandle(state, framed, canvas)
         SnapGuides(state)
         TransformBubble(state)
-        CaptionNodes(state, visible, selectedItemId, canvas, selectedFocus, onIntent)
+        CaptionNodes(state, visible, selectedItemId, canvas, selectedFocus, interactive, onIntent)
     }
 }
 
@@ -273,6 +276,7 @@ private fun BoxScope.CaptionNodes(
     selectedItemId: String?,
     canvas: CanvasUi,
     selectedFocus: FocusRequester,
+    interactive: Boolean,
     onIntent: (VideoEditorIntent) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -295,6 +299,7 @@ private fun BoxScope.CaptionNodes(
                 .clearAndSetSemantics {
                     contentDescription = label
                     selected = isSelected
+                    if (!interactive) return@clearAndSetSemantics
                     onClick { onIntent(VideoEditorIntent.CaptionTapped(caption.itemId)); true }
                     customActions = listOf(
                         CustomAccessibilityAction(styleLabel) { openPanel(caption.itemId, TextPanel.STYLE, onIntent) },

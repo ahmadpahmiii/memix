@@ -1019,13 +1019,16 @@ adb logcat -s MemixAnalytics:* MemixPreview:* MemixExportCheck:*      # second t
    below, no sharp copy, no darkening. Yellow: yellow bars. Clip B in 9:16 (same shape): no bars whatever the background.
    Seek into a gap or the missing-media project: black whatever the background. "Undo: Background".
 8. **Panel open, the preview:** a tap anywhere on the stage plays or pauses, also on a caption (it isn't selected); two
-   fingers do nothing. Drag a caption with the panel closed on a black background: the frame edge shows during the drag
-   only.
+   fingers do nothing. TalkBack: a caption still reads "Text: …", but double-tap and the actions menu (no Style or
+   Position) do nothing while the panel is open. Drag a caption with the panel closed on a black background: the frame
+   edge shows during the drag only. Open the panel with Custom selected in Spanish or Hindi at 200%: the row scrolls
+   so the Custom tile shows whole.
 9. **Analytics** (`MemixAnalytics`): `tool_use {tool=canvas_ratio, value=16:9}` (and `custom` for steppers, never the
    numbers), `{tool=canvas_fit, value=fit|fill}`, `{tool=canvas_background, value=blur|color}`, once per step; nothing
    for opening the panel, holding a stepper, an explanation or the selected option.
-10. **TalkBack:** "Canvas, 9:16, button, collapsed" (expanded while open); the panel title gets focus; groups "Ratio",
-    "Clips", "Background" read "9:16, tall, selected, 1 of 6", "Fit, Shows the whole clip", "Blur"; "Width, 9" with
+10. **TalkBack:** "Canvas, 9:16, collapsed, button" ("expanded" while open); the panel title gets focus; groups
+    "Ratio", "Clips", "Background" read "9:16, tall, selected, 1 of 6", "Fit, Shows the whole clip, selected, 1 of 2"
+    (Fill without "selected"), "Blur"; "Width, 9" with
     "Decrease width" / "Increase width". Closing returns focus to the pill.
 11. **Hindi at 200% font, 360 × 640:** pill taller, panel scrolls to each row, Clips tiles wrap under "क्लिप", nothing cut.
 

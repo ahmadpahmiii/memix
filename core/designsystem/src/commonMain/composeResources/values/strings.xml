@@ -5,4 +5,6 @@
     <string name="sound_pause">Pause %1$s</string>
     <string name="sound_favorite">Favorite %1$s</string>
     <string name="sound_add">Add %1$s to video</string>
+    <string name="setting_expanded">Expanded</string>
+    <string name="setting_collapsed">Collapsed</string>
 </resources>
