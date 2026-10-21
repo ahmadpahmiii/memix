@@ -199,6 +199,7 @@
     <string name="position_rotation_value">%1$d°</string>
     <string name="text_transform_bubble">%1$s · %2$s</string>
     <string name="a11y_text_transformed">%1$s, %2$s</string>
+    <string name="a11y_text_position">%1$d\u00A0% en horizontal, %2$d\u00A0% en vertical</string>
     <string name="explain_text_smallest">Este es el tamaño más pequeño.</string>
     <string name="explain_text_biggest">Este es el tamaño más grande.</string>
     <string name="explain_text_edge">Tu texto no puede ir más lejos por aquí.</string>

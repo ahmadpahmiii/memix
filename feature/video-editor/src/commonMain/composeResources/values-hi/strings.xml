@@ -199,6 +199,7 @@
     <string name="position_rotation_value">%1$d°</string>
     <string name="text_transform_bubble">%1$s · %2$s</string>
     <string name="a11y_text_transformed">%1$s, %2$s</string>
+    <string name="a11y_text_position">%1$d% बाएँ से, %2$d% ऊपर से</string>
     <string name="explain_text_smallest">यह सबसे छोटा आकार है।</string>
     <string name="explain_text_biggest">यह सबसे बड़ा आकार है।</string>
     <string name="explain_text_edge">आपका टेक्स्ट इस तरफ़ और आगे नहीं जा सकता।</string>

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -33,6 +34,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -59,17 +61,34 @@ import org.jetbrains.compose.resources.DrawableResource
  * Rows the editor's tool panels share (spec P1-10 → Style and Position panels, P1-11 → Canvas panel).
  */
 
-/** A heading above a horizontally scrolling single-choice group named by it. */
+/**
+ * A heading above a horizontally scrolling single-choice group named by it. The row scrolls edge to edge: it reaches
+ * past the panel's `space-4` side padding and keeps that padding inside the scroll, so at rest the first item lines up
+ * with the heading and scrolled items slide out at the screen edge (ToolPanel README → Content; P1-10 review P1).
+ */
 @Composable
 internal fun ChoiceRow(heading: String, choices: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(MemixSpacing.space2)) {
         Text(heading, MemixTheme.type.label, Modifier.semantics { heading() }, color = MemixColors.textSecondary)
         Row(
-            Modifier.horizontalScroll(rememberScrollState()).selectableGroup().semantics { contentDescription = heading },
+            Modifier
+                .bleedPastPanelPadding()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = MemixSpacing.space4)
+                .selectableGroup()
+                .semantics { contentDescription = heading },
             horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space2),
             verticalAlignment = Alignment.CenterVertically,
         ) { choices() }
     }
+}
+
+// Measures the content `space-4` wider on each side than the panel's content area and places it that far left.
+private fun Modifier.bleedPastPanelPadding(): Modifier = layout { measurable, constraints ->
+    val bleed = MemixSpacing.space4.roundToPx()
+    val wide = constraints.maxWidth + 2 * bleed
+    val placeable = measurable.measure(constraints.copy(minWidth = wide, maxWidth = wide))
+    layout(constraints.maxWidth, placeable.height) { placeable.place(-bleed, 0) }
 }
 
 /**

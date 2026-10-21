@@ -199,6 +199,7 @@
     <string name="position_rotation_value">%1$d°</string>
     <string name="text_transform_bubble">%1$s · %2$s</string>
     <string name="a11y_text_transformed">%1$s, %2$s</string>
+    <string name="a11y_text_position">%1$d% dari kiri, %2$d% dari atas</string>
     <string name="explain_text_smallest">Ini ukuran terkecil.</string>
     <string name="explain_text_biggest">Ini ukuran terbesar.</string>
     <string name="explain_text_edge">Teks kamu tak bisa digeser lagi ke arah ini.</string>

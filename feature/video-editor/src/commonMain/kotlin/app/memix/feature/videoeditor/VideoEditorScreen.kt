@@ -44,6 +44,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
@@ -134,6 +135,7 @@ import memix.feature.video_editor.generated.resources.a11y_media_added
 import memix.feature.video_editor.generated.resources.a11y_reorder_position
 import memix.feature.video_editor.generated.resources.a11y_sound_added
 import memix.feature.video_editor.generated.resources.a11y_text_added
+import memix.feature.video_editor.generated.resources.a11y_text_position
 import memix.feature.video_editor.generated.resources.a11y_text_transformed
 import memix.feature.video_editor.generated.resources.canvas_layers_moved
 import memix.feature.video_editor.generated.resources.canvas_pill_a11y
@@ -460,7 +462,9 @@ private fun PreviewStage(
     }
     val visibleCaptions = rememberVisibleCaptions(state.captions, state.preview)
     // A traversal group, so screen readers reach the save banner before the preview (spec P1-04 → Accessibility).
-    BoxWithConstraints(Modifier.fillMaxSize().background(MemixColors.stage).semantics { isTraversalGroup = true }) {
+    // Clipped, so a caption's frame and its TalkBack bounds never draw over the top bar, transport row or entry bar
+    // (P1-10 review M1).
+    BoxWithConstraints(Modifier.fillMaxSize().clipToBounds().background(MemixColors.stage).semantics { isTraversalGroup = true }) {
         val frame = rememberCanvasFrame(canvas, constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat(), typing = state.textEntry != null, captionLayer)
         // With the Canvas panel open, a tap anywhere on the stage plays or pauses, even over a caption (spec P1-11).
         val gesturesOn = canvas != null && state.textEntry == null && state.stage == StageContent.VIDEO && state.canvasPanel == null
@@ -714,7 +718,7 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
     LaunchedEffect(toast.id) {
         val baseMillis = when (toast.message) {
             is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition, is ToastMessage.SoundAdded,
-            is ToastMessage.MediaAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed,
+            is ToastMessage.MediaAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned,
             -> WHAT_HAPPENED_TOAST_MILLIS
             is ToastMessage.RatioStepped -> WHAT_HAPPENED_TOAST_MILLIS
             // An unexpected move, so it stays as long as an explanation.
@@ -737,6 +741,7 @@ private fun toastText(message: ToastMessage): String = when (message) {
         stringResource(Res.string.a11y_sound_added, message.title.inLanguage(LocalLocale.current.language), spokenTime(message.atUs))
     is ToastMessage.MediaAdded -> pluralStringResource(Res.plurals.a11y_media_added, message.count, message.count)
     is ToastMessage.TextAdded -> stringResource(Res.string.a11y_text_added, spokenTime(message.atUs))
+    is ToastMessage.TextPositioned -> stringResource(Res.string.a11y_text_position, message.acrossPercent, message.downPercent)
     is ToastMessage.TextTransformed -> stringResource(
         Res.string.a11y_text_transformed,
         stringResource(Res.string.position_size_value, message.scalePercent),

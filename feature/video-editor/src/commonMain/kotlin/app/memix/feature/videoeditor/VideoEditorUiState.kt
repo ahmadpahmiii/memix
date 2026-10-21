@@ -357,6 +357,9 @@ sealed interface ToastMessage {
     /** After a size or rotation step, for screen readers only: "120%, 15 degrees". */
     data class TextTransformed(val scalePercent: Int, val degrees: Int) : ToastMessage
 
+    /** After a Move step or Center, for screen readers only: "50% across, 30% down" (the caption's center). */
+    data class TextPositioned(val acrossPercent: Int, val downPercent: Int) : ToastMessage
+
     /** After Add media lands, for screen readers only: "3 clips added". */
     data class MediaAdded(val count: Int) : ToastMessage
 

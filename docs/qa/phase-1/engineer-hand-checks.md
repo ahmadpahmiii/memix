@@ -904,7 +904,8 @@ adb logcat -s MemixAnalytics:* MemixCaptions:* MemixExportCheck:*      # second 
 6. **Position panel:** Size − / + walk 25 · 33 · … · 500% (100% always reachable), Rotation steps of 15°, Move arrows 1%
    (held: repeats after 400 ms, one undo step on release), Center. At 25%: "This is the smallest size."; at 500%: "This
    is the biggest size."; a Move arrow with the center at the edge: "Your text can't go further this way." TalkBack:
-   "Size, 120%", "Rotation, 15 degrees", and the step is announced.
+   "Size, 120%", "Rotation, 15 degrees", and each step is announced: size and turn ("110%, 0 degrees"), place after a
+   Move tap, a hold's release or Center ("50% across, 24% down").
 7. **On the preview:** tap a caption: selected; tap it again: typing. Tap elsewhere on the stage: play/pause (the
    selection stays). Drag a caption: it follows 1:1, the center snaps to the middle lines (one tick, guide). Two fingers
    anywhere on the stage with a caption selected: size, turn and move together; the bubble reads "120% · 15°"; 100%
@@ -951,11 +952,30 @@ repeat 5 times. Pass: no leak reported.
 (`unzip -lv`; Teko was already bundled).
 
 ### States to screenshot for the design review (`docs/ux/reviews/P1-10/`)
-From the spec's QA compares and states, at 360 dp wide if possible, English unless noted: `typing-new-360x800`,
-`typing-new-360x640`, `typing-empty`, `typing-counter`, `text-selected`, `style-panel`, `style-fonts-1` … `style-fonts-5`
-(the same caption in each font), `position-panel-360x640` (scrolled), `position-panel-hi-200`, `mid-pinch` (bubble and
-guides), `mixed-scripts-<font>` (with and without outline), `explain-smallest`, `explain-biggest`, `explain-edge`,
-`text-past-end`, `long-text-250`, `main-tools-text`. P1-08's `text-tools` screenshot now shows the new text tool row.
+The design review's list (`docs/ux/reviews/P1-10.md` → Device screenshots), at 360 dp wide if possible, English unless
+noted, after the review fixes:
+1. `main-tools-text`: Text in place 3, Add media in 4.
+2. `typing-new-360x800`: the entry bar on the keyboard, the live Classic caption at the top slot, the frame.
+3. `typing-new-360x640`: the same; the preview shrinks above the entry bar.
+4. `typing-empty`: the placeholder and the empty `touch-target` frame at the landing spot.
+5. `typing-counter`: 230 characters, "230/250" under the field.
+6. `typing-long-top`: a 200-character caption at the top slot; the frame is cut at the stage edge, the Close button and
+   the field are clean (review M1). Also on 360 × 640.
+7. `text-selected`: the two-tone frame and handle; the orange item selected; Edit text, Style, Position and Delete in
+   view. The `style` icon at 2× if a 2× screen is at hand (review P2).
+8. `style-panel`, then `style-panel-scrolled`: the Font row scrolled, tiles sliding out at the screen edge (review P1).
+9. `style-fonts-1` … `style-fonts-5`: the same caption in each of the five fonts.
+10. `position-panel-360x640` (scrolled to Center) and `position-panel-hi-200`.
+11. `mid-pinch`: the value bubble "…% · …°" and the center guides while snapped.
+12. `mixed-scripts-<font>`: "जब BUILD PASS हो 😂" in all five fonts, at 100%, with and without outline.
+13. `explain-smallest`, `explain-biggest`, `explain-edge`.
+14. `text-past-end`, `long-text-250`.
+15. `text-tools-hi-200`, `style-panel-hi-200`, `typing-hi-200`: Hindi at 200%.
+
+TalkBack notes for the QA report (not screenshots):
+- The text field reads "Your text" **and** the typed words.
+- Position panel: "Size, 100%"; Bigger → "110%, 0 degrees"; Move up → "50% across, 24% down" (review P3; also after a
+  held arrow's release and Center).
 
 ## P1-11 · changing ratio keeps every layer inside the frame; preview and export match
 

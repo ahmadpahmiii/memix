@@ -102,8 +102,14 @@ internal class CaptionControl(private val host: EditorHost) {
         val stepped = stepped(item.transform, step, repeats)
         if (stepped == null) return host.showToast(ToastMessage.Explain(limitOf(step)))
         val edit = if (step.changesPlace) VideoEdit.POSITION_TEXT else VideoEdit.TRANSFORM_TEXT
-        commitTransform(item, stepped, edit)
-        if (!step.changesPlace) host.showToast(ToastMessage.TextTransformed(stepped.scalePercent, stepped.rotationDegrees.roundToInt()), spokenOnly = true)
+        if (!commitTransform(item, stepped, edit)) return
+        // The result is spoken, never only seen (P1-10 review P3).
+        val result = if (step.changesPlace) {
+            ToastMessage.TextPositioned((stepped.centerX * PERCENT).roundToInt(), (stepped.centerY * PERCENT).roundToInt())
+        } else {
+            ToastMessage.TextTransformed(stepped.scalePercent, stepped.rotationDegrees.roundToInt())
+        }
+        host.showToast(result, spokenOnly = true)
     }
 
     /** A held Move arrow: the caption shows [repeats] steps along in the stand-in; the release commits. */
@@ -192,13 +198,15 @@ internal class CaptionControl(private val host: EditorHost) {
         showCommittedStandIn(item.copy(style = style))
     }
 
-    private fun commitTransform(item: TextItem, transform: Transform, edit: VideoEdit) {
+    // False when it changed nothing (no step).
+    private fun commitTransform(item: TextItem, transform: Transform, edit: VideoEdit): Boolean {
         if (!host.commit(edit) { it.setTextTransform(item.id, transform) }) {
             clearStandIn()
             host.preview?.hideCaption(null)
-            return
+            return false
         }
         showCommittedStandIn(item.copy(transform = transform.clampedForText()))
+        return true
     }
 
     // The committed caption stays drawn by the editor until the preview's new frame shows it.
