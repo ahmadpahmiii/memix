@@ -19,9 +19,9 @@ Columns: **Secret** = gives write or admin access, keep private. **Public** = sh
 | `.env` | Every value marked `.env` below; template in `.env.example` | Scripts, Supabase and Cloudflare tooling |
 | `androidApp/google-services.json` | Firebase Android config | Gradle google-services plugin |
 | `iosApp/iosApp/GoogleService-Info.plist` | Firebase iOS config (P7) | Xcode build |
-| `keystore.properties` + the upload keystore (`.jks`) | Android upload key and its passwords (P1-15) | Release signing |
+| The upload keystore (`.jks`) and its passwords | Android upload key (P1-15); only on the owner's Mac | Manual release signing by the owner |
 
-Keep the keystore outside the repo folder (for example `~/keys/memix-upload.jks`); `keystore.properties` points to it.
+Keep the keystore outside the repo folder (for example `~/keys/memix-upload.jks`). The owner signs and uploads release builds by hand (owner, 21 Oct 2026), so the keystore and its passwords never go into the repo, CI or a chat.
 
 ## Inventory
 
@@ -36,10 +36,10 @@ Keep the keystore outside the repo folder (for example `~/keys/memix-upload.jks`
 | R2 access key ID and secret access key (S3 API token, Object Read & Write on the media bucket only) | **Secret** | P0-07, P3-12 | `.env` → `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Not in CI | **Never**: the app downloads public URLs |
 | Cloudflare API token (Wrangler, Pages) | **Secret** | P6-04 website | `.env` → `CLOUDFLARE_API_TOKEN` | `CLOUDFLARE_API_TOKEN` only if CI deploys the site | **Never** |
 | Media base URL (`https://media.<domain>`, or the r2.dev URL during development) | Public | P0-07 | Firebase Remote Config → `media_base_url` | Not needed | Read at runtime |
-| Firebase Android config (`google-services.json`) | Public; its API key is restricted to `app.memix` | P0-08 | `androidApp/google-services.json` | PR builds copy the committed placeholder `androidApp/google-services.ci.json` (fake values). The release workflow (P1-15) needs the real file: `GOOGLE_SERVICES_JSON` (base64) | Yes, compiled in |
+| Firebase Android config (`google-services.json`) | Public; its API key is restricted to `app.memix` | P0-08 | `androidApp/google-services.json` | CI builds copy the committed placeholder `androidApp/google-services.ci.json` (fake values). Release builds are made on the owner's Mac with the real local file, so CI needs no secret for it | Yes, compiled in |
 | Firebase iOS config (`GoogleService-Info.plist`) | Public; restricted to the bundle ID | P7-08 | `iosApp/iosApp/GoogleService-Info.plist` | `GOOGLE_SERVICE_INFO_PLIST` (base64) | Yes, compiled in |
-| Android upload keystore, store password, key alias, key password | **Secret** | P1-15 | Keystore outside the repo + `keystore.properties` | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | No (only the signature) |
-| Google Play service account JSON (upload to internal testing) | **Secret** | P1-15 | Not stored locally | `PLAY_SERVICE_ACCOUNT_JSON` | **Never** |
+| Android upload keystore, store password, key alias, key password | **Secret** | P1-15 | Keystore outside the repo, on the owner's Mac only | Not in CI (manual signing, owner 21 Oct 2026) | No (only the signature) |
+| Google Play service account JSON | Not used: the owner uploads in Play Console by hand (owner, 21 Oct 2026) | — | — | — | **Never** |
 | AdMob app ID and ad unit IDs | Public; debug builds use Google's test IDs | P5-01 to P5-03 | `local.properties` → `memix.admob.appId`, `memix.admob.rewardedId`, `memix.admob.interstitialId` | `ADMOB_APP_ID`, `ADMOB_REWARDED_ID`, `ADMOB_INTERSTITIAL_ID` | Yes |
 | Apple distribution certificate (`.p12`) and its password | **Secret** | P7-01 | Keychain on the Mac | `IOS_CERT_P12_BASE64`, `IOS_CERT_PASSWORD` | No |
 | Apple provisioning profile | **Secret** | P7-01 | `~/Library/MobileDevice/Provisioning Profiles` | `IOS_PROVISIONING_PROFILE_BASE64` | No |
