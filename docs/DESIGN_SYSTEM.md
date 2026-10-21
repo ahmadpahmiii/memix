@@ -103,7 +103,7 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
 - **Color:** a single color per icon, applied as a tint: `text-secondary` (inactive), `text` (current nav item), `primary` (active tool), `on-primary` on blue fills. No two-tone icons.
 - **Meaning first:** every icon names a real action or place and always comes with a visible label or a screen-reader label. No sparkle, magic or robot glyphs.
 
-**The set so far** (`MemixIcons`, 27 icons after P1-09):
+**The set so far** (`MemixIcons`, 27 icons after P1-09; more listed below to draw with their tickets):
 - Navigation and chrome: `home`, `templates`, `create` (plus; also Add media and every "add"), `sounds`, `drafts`, `arrow_back`, `chevron_right`, `close`, `globe`.
 - Media and playback: `video`, `photo`, `play`, `pause`, `undo`, `redo`, `heart`, `heart_filled`.
 - Editor tools (P1-06): `edit` (scissor blades, finger loops as the core), `split` (two outlined clips around a solid bar), `delete` (lid and handle strokes over a solid can), `duplicate` (open back outline behind a solid front clip), `reorder` (an arc with two solid arrowheads over two outlined clips).
@@ -122,6 +122,9 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
   - `ratio_custom`: a stroked rectangle with a solid square at its bottom-right corner (a resize handle).
   - The ratio tiles' rectangles are drawn from the ratio (solid, 1px corners, long side 20px), not icon files.
 - Drafts (P1-14, to draw with the ticket): `more`: three solid 3 × 3px dots in a row, 4px apart (all core, like play).
+- Export (P1-12, to draw with the ticket; specs in `docs/ux/specs/P1-12-export.md` → Requests 9):
+  - `share`: Android's familiar three-node share glyph in the grammar: a solid 6px dot at the left middle (the core, the thing being shared) joined by two strokes to two stroked 6px rings at the top right and bottom right. P5-05's More tile reuses it.
+  - `check`: one stroked check mark (short leg down-right, long leg up-right), no core, like `close`. For the export status pill, and P5-02's "No watermark on this export".
 - Later, drawn with its ticket: `lock` (L-02).
 
 Source files are Android vector drawables in `:core:designsystem` `composeResources/drawable/` (`ic_<name>.xml`), path-only so Compose Multiplatform renders them the same on Android and iOS. There is no Memix logo yet: until one exists, write the name "Memix" in Anton; the launcher icon is a plain placeholder built from that wordmark, not a logo.
@@ -241,6 +244,17 @@ The video canvas's shape and what fills it are the user's meme, not chrome, so t
 
 Sources: [Media3 GaussianBlurWithFrameOverlaid](https://developer.android.com/reference/androidx/media3/effect/GaussianBlurWithFrameOverlaid); X's 1:2.39 to 2.39:1 video range ([Social Media Today](https://www.socialmediatoday.com/news/twitter-updates-video-playback-to-ensure-a-higher-quality-viewing-experienc/607184)).
 
+### Watermark (user content, P1-13)
+
+The "Memix" mark on free exports is drawn into the file, so it lives in `design/tokens.json` → `watermark`, next to the caption and canvas constants, never in `MemixTheme`. Full rules: `docs/ux/specs/P1-13-watermark.md`.
+
+- **Mark:** "Memix" in Anton (the wordmark face), never translated or uppercased; font size 4% of the output's shorter side (43 px at 1080p).
+- **Place:** top-left, the glyphs' ink box 3% of the shorter side from the left and top edges (owner, 8 Oct 2026); above every layer, for the whole video.
+- **Look:** white at 80% with a soft black shadow at 50%, no offset, blur 15% of the font size. It's content, so the chrome's no-shadow rule doesn't apply, and it has no outline (the v1 look). Brand text has no WCAG contrast requirement; the shadow keeps it readable on bright footage anyway.
+- **Not in the editor preview.** Not saved in drafts, so a value change needs no schema bump.
+
+Sources: owner decision 8 Oct 2026 (`docs/pm/decision-log.md`); [WCAG 2.2 SC 1.4.3 logotype exception](https://www.w3.org/TR/WCAG22/#contrast-minimum).
+
 ### Spacing
 
 4px base. Screen side gutter is space-4.
@@ -340,8 +354,8 @@ Fixed sizes used across screens (dp on Android).
 | Templates | `Templates.dc.html` | Video/Photo segmented tabs, category chips (selected = white), 2-column template grid |
 | Sounds | `Sounds.dc.html` | Labelled search, Trending/Local/Global/Favorites/My sounds tabs, category chips, sound rows (one playing) |
 | Video editor | `VideoEditor.dc.html` | Top bar (close, 9:16, 1080p, Export), preview on black stage, transport row, 6-track timeline with a white-selected meme sound, selected-clip bar, tool bar with active tool. The P1-04/05/06 specs supersede parts of it: no track-label column, clip tools replace the tool bar instead of a separate bar, "Add a meme sound" row, original-audio toggle. |
-| Export sheet | `Export.dc.html` | Resolution, frame rate, watermark row with rewarded-ad Remove, size/time estimate, Export video. The P1-12 spec adds 480p and gives selected segments the white selection (SegmentedChoice); the Video editor board's "1080p" pill is dropped. |
-| Exported | `ExportDone.dc.html` | Result preview with watermark, saved status, share grid, Make another / Done |
+| Export sheet | `Export.dc.html` | Resolution, frame rate, watermark row with rewarded-ad Remove, size/time estimate, Export video. The P1-12 spec adds 480p, gives selected segments the white selection (SegmentedChoice) and reads the estimate "Up to 18 MB · about 20 s"; the Video editor board's "1080p" pill is dropped. Until P5-02 the watermark row has no Remove and reads "Small text in the top-left corner of your video" (P1-13 spec). |
+| Exported | `ExportDone.dc.html` | Result preview with watermark, saved status, share grid, Make another / Done. Until P5-05 one secondary "Share" button (system share sheet) takes the grid's place (P1-12 spec, owner 21 Oct); the status reads "Saved to your gallery". |
 | Photo editor | `PhotoEditor.dc.html` | Classic caption canvas with a white-selected text layer, Make it a video meme, format chips, text bar, tool bar |
 | Remove background | `RemoveBackground.dc.html` | Checkerboard cut-out, success status, Erase/Restore, brush size and edge softness, Save as sticker / Apply |
 

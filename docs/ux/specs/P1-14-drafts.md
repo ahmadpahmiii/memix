@@ -58,7 +58,8 @@ Standard Sheet (`design/system/components/Sheet/README.md`), title "Rename draft
 - Newest edit first: sorted by `updatedAtEpochUs`, which every save sets (TECHNICAL_DESIGN → Storage).
 - **Opening a draft without changing it doesn't move it:** the editor saves nothing unless something changed (P1-07).
 - **Renaming doesn't move it either.** A name isn't an edit to the meme, and a row that jumps away right after the user renamed it breaks their place (Assumption). The rename is written without touching `updatedAtEpochUs` (request 2; Proposals 1).
-- **A duplicate sits directly above its original** (it takes the original's time plus 1 µs), so it appears where the user is looking. It moves to the top the first time it's edited (Proposals 2).
+- **A duplicate sits directly above its original** (it takes the original's time plus 1 µs), so it appears where the user is looking. It moves to the top the first time it's edited (Proposals 2). Its edit-time line shows the original's time, which is true of its content.
+- **Ties:** when two drafts have the same edit time (a second copy of the same original ties with the first), the newer one goes first: sorted by `createdAtEpochUs`, newest first. Both copies stay above the original (PM, 20 Oct).
 
 ## States
 | State | What shows | Copy |
@@ -170,7 +171,7 @@ Translator notes:
 
 ## Requests to the principal mobile engineer
 I don't edit code, so these are requests.
-1. **List:** `ProjectSummary` rows ordered by `updated_at_epoch_us` descending (the columns already exist, so the list never decodes projects), observed as a Flow so returning from the editor updates it. Read `schema_version` too, for the newer-version state.
+1. **List:** `ProjectSummary` rows ordered by `updated_at_epoch_us` descending, then `created_at_epoch_us` descending for ties (the columns already exist, so the list never decodes projects), observed as a Flow so returning from the editor updates it. Read `schema_version` too, for the newer-version state.
 2. **Rename** without touching `updated_at_epoch_us`: write the new name into the project JSON and the `name` column, keeping the time. This is a repository operation, not an editor commit.
 3. **Duplicate:** a new id, `createdAtEpochUs` now, `updatedAtEpochUs` = the original's + 1, the name rule, and its own media folder. Please use **hard links** for the media copies if both platforms allow it in the app's files directory (Android `Os.link`, iOS `FileManager.linkItem`): the copies are written once and never changed, so a link is instant and takes no space, and deleting either draft leaves the other whole. If links aren't possible, copy with P1-02's flow (space check, the import sheet after 300 ms, Cancel deletes the partial copy).
 4. **Delete with undo:** remove the row at once, keep the project in memory and its files on disk until the toast ends, then delete the folder. Undo writes the same project back (same id and times). If the app dies first, the next start's `LeftoverMediaCleaner` removes the folder.
@@ -180,11 +181,12 @@ I don't edit code, so these are requests.
 8. **Token and icon:** `MemixSize.listThumbSize` (56 dp, `design/tokens.json`); icon `more`.
 
 ## Proposals and questions for the PM
-1. **"Sorts by last edited": does a rename count as an edit?** I propose no (Order), so a renamed row stays put. Please confirm at the ready check.
-2. **Where a duplicate goes:** directly above its original rather than at the top. It's in view, and it still sorts by its own edit time from its first edit on.
-3. **Analytics:** no event for duplicate, rename or delete; duplicate doesn't count as `project_create`. If draft management matters for the north star, a `draft_action {action}` event would be a PRD change (not recommended for v1).
-4. **One list, no Video / Photo switch.** The SegmentedTabs README named Drafts as a use from P0; the PRD's Drafts is "projects saved on this phone, type badge, last edited". Recency matters more than type when resuming, and the badge tells them apart. I've removed Drafts from the SegmentedTabs README; revisit if photo drafts dominate after P2.
-5. **Later (no ticket):** a cover that shows the meme as rendered (captions, canvas background) instead of the first video frame, and selecting several drafts to delete at once.
+Questions 1–3 answered (PM, 20 Oct; decision log, TICKETS P1-14 Done when and note); 4 and 5 need no answer. Kept for the record.
+1. **Answered: no.** Opening or renaming isn't an edit; a rename writes the name without touching `updatedAtEpochUs`. **"Sorts by last edited": does a rename count as an edit?** I propose no (Order), so a renamed row stays put. Please confirm at the ready check.
+2. **Answered: directly above its original** (original's time + 1 µs; ties go to the newer copy, Order). **Where a duplicate goes:** directly above its original rather than at the top. It's in view, and it still sorts by its own edit time from its first edit on.
+3. **Answered:** duplicating fires no `project_create` and no other event; no `draft_action` event in v1. **Analytics:** no event for duplicate, rename or delete; duplicate doesn't count as `project_create`. If draft management matters for the north star, a `draft_action {action}` event would be a PRD change (not recommended for v1).
+4. **No answer needed** (PM: one list matches the PRD's Drafts row). **One list, no Video / Photo switch.** The SegmentedTabs README named Drafts as a use from P0; the PRD's Drafts is "projects saved on this phone, type badge, last edited". Recency matters more than type when resuming, and the badge tells them apart. I've removed Drafts from the SegmentedTabs README; revisit if photo drafts dominate after P2.
+5. **Not raised** (PM, 20 Oct; ideas for later). **Later (no ticket):** a cover that shows the meme as rendered (captions, canvas background) instead of the first video frame, and selecting several drafts to delete at once.
 
 ## Evidence
 | Claim | Strength | Source |

@@ -248,10 +248,10 @@ Translator notes:
 ## Analytics
 | Event | When | Parameters |
 | --- | --- | --- |
-| `tool_use` | Once per committed step (never while holding a stepper; never when the pill or a stepper only explains; never for opening the panel or tapping a selected option) | `editor: "video"`, `tool`: `canvas_ratio`, `canvas_fit`, `canvas_background` |
+| `tool_use` | Once per committed step (never while holding a stepper; never when the pill or a stepper only explains; never for opening the panel or tapping a selected option) | `editor: "video"`, `tool`: `canvas_ratio`, `canvas_fit`, `canvas_background`; `value` (owner, 21 Oct): `canvas_ratio` → `9:16`, `1:1`, `4:5`, `3:4`, `16:9` or `custom` (never the custom numbers); `canvas_fit` → `fit` or `fill`; `canvas_background` → `blur` or `color` (never the color itself) |
 
-- These ids are edit names in the undo history (TECHNICAL_DESIGN → Editing), so the PM confirms them at the ready check, as for P1-06 and P1-10.
-- Proposed extra parameter (Proposals 3): the chosen value.
+- The ids are confirmed (PM, 20 Oct). They are also edit names in the undo history (TECHNICAL_DESIGN → Editing).
+- `value` is for these three tools only; any other use comes back as a proposal (decision log, 21 Oct).
 - Analytics stay off until consent (P5-01).
 
 ## QA compares
@@ -304,20 +304,21 @@ I don't edit code, so these are requests.
 8. **Icons**, drawn to the grammar (DESIGN_SYSTEM → Iconography): `fit` (a stroked tall frame with a solid wide block inside it, touching its sides), `fill` (the same frame filled solid, with short strokes beyond its left and right sides for the cut edges), `blur` (a solid dot inside a ring of four short strokes), `ratio_custom` (a stroked rectangle with a solid square at its bottom-right corner, the resize handle). The ratio tiles' shapes are drawn from the ratio, not icon files.
 9. **Canvas constants** (the size table, the custom rule and limit, blur sigma, layer margin) in one commonMain place next to the caption constants, with a comment pointing to this spec and `design/tokens.json` → `canvas`.
 10. **Debug sample `canvas-check`** (opened with `memix.openEditor`): a 16:9 video, a 9:16 video and a 4:3 photo on the main track; captions: one large two-line caption near the top (scale 200%), one turned 30° near the right edge, one deliberately half off the left edge, one in the middle. Black background, Fit.
-11. **Analytics:** as in the table, once the PM confirms the ids.
+11. **Analytics:** as in the table, with `value`.
 
 ## Changes to other specs (made with this spec)
 - P1-04 → Preview stage: the frame-edge line now points here; the missing-clip state plays black whatever the background.
 - P1-06 → Add media: new clips take the project's shared fit. Replace: the clip's fit is kept.
 
 ## Proposals and questions for the PM
-1. **Background image (PRD scope gap).** The PRD's video canvas has "background color, blur **or image**"; P1-11 covers color and blur, as the ticket says. The photo editor's canvas (PRD: "background color or image") has no ticket that names it either; P2-01 says only "canvas". Owner decision below.
-2. **Per-clip framing.** P1-11 sets Fit or Fill for every clip at once; the model keeps a per-clip `fit` for later. The PRD's video "crop, rotate, flip" (Basic edits) has no ticket (P4-10 covers reverse and freeze only), and per-clip fit belongs with it. I recommend a P4 ticket "Clip crop, rotate, flip and per-clip fit" after P4-01, which builds the transform gestures it needs. This is a scope proposal; it doesn't block P1-11.
-3. **Analytics value** (PRD change, like the 9 Oct `font` parameter): an optional `value` on `tool_use` for the canvas tools: the ratio (`9:16` … `custom`), the fit (`fit`, `fill`), the background (`blur`, `color`, never the color itself). It tells which shapes people make, which informs template shapes in P4-05 and the default ratio. Recommend yes.
-4. **Done when reading.** I read "keeps every layer inside the frame" as: a layer fully inside stays fully inside; a caption the user hung off the edge on purpose keeps its place (Ratio change → Layers). Please confirm, so QA tests the same thing.
-5. **For P1-12 (FYI):** canvases are about 1080 px on the shorter side, and custom ratios go up to 2.39:1 (31:13 is 1092 × 2604, the extreme). P1-12's capability check must handle the long side above 1920 at "1080p" (the resolution names the shorter side) and say what happens when an encoder can't.
+All answered (owner, 21 Oct; PM, 20 Oct); kept for the record.
+1. **Answered** (owner, 21 Oct, B): new ticket P2-12, background image in both editors. P1-11 stays color and blur. **Background image (PRD scope gap).** The PRD's video canvas has "background color, blur **or image**"; P1-11 covers color and blur, as the ticket says. The photo editor's canvas (PRD: "background color or image") has no ticket that names it either; P2-01 says only "canvas". Owner decision below.
+2. **Answered** (owner, 21 Oct, A): new ticket P4-16, clip crop, rotate, flip and per-clip Fit or Fill, after P4-10. **Per-clip framing.** P1-11 sets Fit or Fill for every clip at once; the model keeps a per-clip `fit` for later. The PRD's video "crop, rotate, flip" (Basic edits) has no ticket (P4-10 covers reverse and freeze only), and per-clip fit belongs with it. I recommend a P4 ticket "Clip crop, rotate, flip and per-clip fit" after P4-01, which builds the transform gestures it needs. This is a scope proposal; it doesn't block P1-11.
+3. **Answered** (owner, 21 Oct, A): `value` added; see Analytics. **Analytics value** (PRD change, like the 9 Oct `font` parameter): an optional `value` on `tool_use` for the canvas tools: the ratio (`9:16` … `custom`), the fit (`fit`, `fill`), the background (`blur`, `color`, never the color itself). It tells which shapes people make, which informs template shapes in P4-05 and the default ratio. Recommend yes.
+4. **Answered** (PM, 20 Oct): confirmed; TICKETS' Done when reworded to match. **Done when reading.** I read "keeps every layer inside the frame" as: a layer fully inside stays fully inside; a caption the user hung off the edge on purpose keeps its place (Ratio change → Layers). Please confirm, so QA tests the same thing.
+5. **Answered** (P1-12 final spec → What the phone can do): sizes are checked at the real canvas size with the long side as width, and a size the shape can't do explains with its own toast. **For P1-12 (FYI):** canvases are about 1080 px on the shorter side, and custom ratios go up to 2.39:1 (31:13 is 1092 × 2604, the extreme). P1-12's capability check must handle the long side above 1920 at "1080p" (the resolution names the shorter side) and say what happens when an encoder can't.
 
-## Decision for the owner: background image
+## Decision for the owner: background image (decided 21 Oct: B, ticket P2-12)
 - **Problem:** the PRD promises a background image for the video canvas (and the photo canvas). No ticket builds it. Without it, users who want a picture behind a fitted clip have no way to do it until overlays (P4-01).
 - **Considerations:**
   - **A. Add it to P1-11 now:** about 1 more day in a full Phase 1, a schema bump (a new `CanvasBackground.Image` with a picked photo), the P1-02 picker reused. Users get it in the first test build.

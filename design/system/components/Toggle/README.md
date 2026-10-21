@@ -1,6 +1,6 @@
 # Toggle
 
-An on/off switch for settings that apply right away: watermark preview, mute original audio, keep audio when changing speed.
+An on/off switch for settings that apply right away: mute original audio, keep audio when changing speed. (Not the watermark: it isn't shown in the editor preview, and only P5-02's rewarded ad removes it, P1-13.)
 
 - **Provide:** a label (sentence case, says what turns on), the current value and the change action. The whole row is the touch target, not just the switch.
 - **Off:** `hairline` track with a 16px `text-secondary` thumb at the start. The thumb, not the track, carries the state: 4.7:1 against the track, 7:1 against `surface`.
