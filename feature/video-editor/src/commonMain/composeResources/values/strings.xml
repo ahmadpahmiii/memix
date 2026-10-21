@@ -218,4 +218,37 @@
         <item quantity="one">%1$d degree</item>
         <item quantity="other">%1$d degrees</item>
     </plurals>
+    <!-- Canvas (P1-11). Budgets and translator notes: docs/ux/specs/P1-11-canvas.md -> Copy. Ratios ("9:16") are never translated. -->
+    <string name="canvas_pill_a11y">Canvas, %1$s</string>
+    <string name="canvas_title">Canvas</string>
+    <string name="canvas_ratio">Ratio</string>
+    <string name="canvas_ratio_custom">Custom</string>
+    <string name="canvas_ratio_a11y">%1$s, %2$s</string>
+    <string name="canvas_shape_tall">tall</string>
+    <string name="canvas_shape_square">square</string>
+    <string name="canvas_shape_wide">wide</string>
+    <string name="canvas_custom_width">Width</string>
+    <string name="canvas_custom_height">Height</string>
+    <string name="canvas_custom_width_down">Decrease width</string>
+    <string name="canvas_custom_width_up">Increase width</string>
+    <string name="canvas_custom_height_down">Decrease height</string>
+    <string name="canvas_custom_height_up">Increase height</string>
+    <string name="canvas_clips">Clips</string>
+    <string name="canvas_fit">Fit</string>
+    <string name="canvas_fill">Fill</string>
+    <string name="canvas_fit_a11y_hint">Shows the whole clip</string>
+    <string name="canvas_fill_a11y_hint">Covers the whole frame</string>
+    <string name="canvas_background">Background</string>
+    <string name="canvas_background_blur">Blur</string>
+    <string name="canvas_background_hidden">Your clips fill the frame, so the background doesn't show.</string>
+    <string name="canvas_layers_moved">Text moved to stay inside the frame.</string>
+    <string name="explain_canvas_widest">This is as wide as a video can be.</string>
+    <string name="explain_canvas_tallest">This is as tall as a video can be.</string>
+    <string name="explain_canvas_min">1 is the smallest number.</string>
+    <string name="explain_canvas_max">99 is the biggest number.</string>
+    <string name="explain_canvas_reorder">Tap Done to finish reordering first.</string>
+    <string name="edit_canvas_ratio">Ratio</string>
+    <string name="edit_canvas_fit">Fit</string>
+    <string name="edit_canvas_fill">Fill</string>
+    <string name="edit_canvas_background">Background</string>
 </resources>

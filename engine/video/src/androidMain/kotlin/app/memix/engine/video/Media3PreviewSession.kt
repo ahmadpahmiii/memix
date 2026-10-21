@@ -21,6 +21,7 @@ import app.memix.core.domain.video.PreviewSession
 import app.memix.core.domain.video.PreviewStatus
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
+import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.Track
 import app.memix.core.model.project.TrackKind
@@ -82,6 +83,9 @@ internal class Media3PreviewSession(
     private var updateCount = 0
     private var shownUpdate = 0
 
+    // The canvas size of the composition on the player, which becomes the picture's at its first frame.
+    private var playerCanvasSize: PixelSize? = null
+
     private val mutablePlayback = MutableStateFlow(PreviewPlayback.Preparing)
     override val playback: StateFlow<PreviewPlayback> = mutablePlayback.asStateFlow()
 
@@ -138,7 +142,7 @@ internal class Media3PreviewSession(
             firstFrameWatch?.cancel()
             showTiming.firstFrameShown()
             val caughtUp = shownUpdate == updateCount
-            publish { it.copy(firstFrameShown = true, isCatchingUp = it.isCatchingUp && !caughtUp) }
+            publish { it.copy(firstFrameShown = true, isCatchingUp = it.isCatchingUp && !caughtUp, shownCanvasSize = playerCanvasSize) }
         }
 
         override fun onPlayerError(error: PlaybackException) = fail("playback error ${error.errorCodeName}", error)
@@ -275,8 +279,16 @@ internal class Media3PreviewSession(
                 onsetLog,
                 liveGains,
                 captionOverlay = captions,
+                frameShortSidePx = if (playablePlan.background == PlanBackground.Blur) BLUR_PREVIEW_SHORT_SIDE_PX else null,
             ).build()
-            PreparedPreview.Ready(composition, plan.durationUs, missingMedia = unplayable.isNotEmpty(), LiveVolumes(liveGains, volumes), visibility)
+            PreparedPreview.Ready(
+                composition,
+                plan.durationUs,
+                missingMedia = unplayable.isNotEmpty(),
+                LiveVolumes(liveGains, volumes),
+                visibility,
+                PixelSize(plan.canvasWidthPx, plan.canvasHeightPx),
+            )
         } catch (e: RuntimeException) {
             // Media3's own argument checks.
             PreparedPreview.Failed("the composition couldn't be built", e)
@@ -313,6 +325,7 @@ internal class Media3PreviewSession(
             player.playWhenReady = mutablePlayback.value.isPlaying
         }
         shownUpdate = update
+        playerCanvasSize = prepared.canvasSize
         liveVolumes = prepared.liveVolumes
         mutablePosition.value = startUs
         publish { it.copy(missingMedia = prepared.missingMedia) }
@@ -407,6 +420,7 @@ internal class Media3PreviewSession(
             val missingMedia: Boolean,
             val liveVolumes: LiveVolumes,
             val captions: CaptionVisibility,
+            val canvasSize: PixelSize,
         ) : PreparedPreview
 
         class Failed(val reason: String, val cause: Throwable?) : PreparedPreview
@@ -425,6 +439,13 @@ internal class Media3PreviewSession(
     private companion object {
         const val MICROS_PER_MILLI = 1_000L
         const val FIRST_FRAME_TIMEOUT_MS = 5_000L
+
+        /**
+         * The preview draws at this shorter side while a blur background plays (spec P1-11 allows the blur at a reduced
+         * size in the preview): the blur pass costs per drawn pixel, and the stage shows the frame smaller than this on a
+         * phone anyway. Export draws at the chosen resolution.
+         */
+        const val BLUR_PREVIEW_SHORT_SIDE_PX = 720
         val MEDIA_AUDIO: AudioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)

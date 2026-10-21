@@ -957,6 +957,89 @@ From the spec's QA compares and states, at 360 dp wide if possible, English unle
 guides), `mixed-scripts-<font>` (with and without outline), `explain-smallest`, `explain-biggest`, `explain-edge`,
 `text-past-end`, `long-text-250`, `main-tools-text`. P1-08's `text-tools` screenshot now shows the new text tool row.
 
+## P1-11 · changing ratio keeps every layer inside the frame; preview and export match
+
+Spec `docs/ux/specs/P1-11-canvas.md` (Canvas panel, Ratio change, Rendering rules, QA compares).
+Project `canvas-check` (new): clip A (16:9, 0–3 s), clip B (9:16, 3–6 s) and a 4:3 photo (6–9 s), Fit on black, with four
+Classic captions for the whole 9 s, each on its own lane: "BUILD / PASSED" at 200% near the top, "TURNED" at 30° near
+the right edge, "OFF THE EDGE" half off the left edge on purpose, "MIDDLE" in the middle. Push P1-03's test files first
+(P1-03 step 0), plus the 4:3 photo:
+
+```sh
+ffmpeg -v error -y -f lavfi -i "color=c=teal:s=1440x1080" \
+  -vf "drawtext=text='PHOTO 4\:3':fontsize=160:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2" -frames:v 1 photo-4x3.png
+adb push photo-4x3.png /data/local/tmp/ && adb shell run-as app.memix cp /data/local/tmp/photo-4x3.png files/debug-media/photo-4x3.png
+./gradlew :androidApp:installDebug
+adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor canvas-check
+adb logcat -s MemixAnalytics:* MemixPreview:* MemixExportCheck:*      # second terminal
+```
+
+**A. Hand checks (debug build).**
+1. **Pill:** "9:16" in the top bar's center, in a 48 dp target. Tap: the Canvas panel slides up over the timeline and
+   tool bar, the pill turns blue on blue-tint, the frame edge (thin gray line just outside the frame) fades in. Done, a
+   second tap on the pill, back and Escape close it; focus goes back to the pill. Playback keeps going while it opens.
+2. **From other states:** with the Volume, Style or Position panel open, the pill swaps it for Canvas. While typing, the
+   pill commits the words first. In reorder mode the pill says "Tap Done to finish reordering first." A sheet's scrim
+   covers the pill.
+3. **Ratio tiles:** 9:16 · 1:1 · 4:5 · 3:4 · 16:9 drawn as their shapes, then Custom (cut at the edge at 360 dp). Each tap
+   applies at once, while playing too (it doesn't pause): the frame changes shape at once and shows black (or the
+   background color) until the first new frame, never a stretched picture. "Undo: Ratio". Tapping the selected tile does
+   nothing (no Undo, no analytics).
+4. **Layers** (the Done when): 9:16 → 16:9: "Text moved to stay inside the frame." and "BUILD / PASSED" sits just inside
+   the top edge; "OFF THE EDGE" doesn't move; "MIDDLE" doesn't move. One Undo brings the ratio and every caption back.
+5. **Custom:** tap Custom: the Width and Height rows fade in at 9 and 16; nothing changes yet. Width + once: 10:16, the
+   pill reads "5:8", one "Ratio" step, TalkBack says "5:8". Hold +: the readout and pill count up every 50 ms after
+   400 ms, the frame changes once on release. Steppers at 2:3, then Width up to 12:5: "This is as wide as a video can
+   be." Height down at 1: "1 is the smallest number."; 99 up: "99 is the biggest number." Close and reopen: "5 and 8".
+   A preset tile or an Undo out of Custom removes the rows.
+6. **Fit / Fill:** Fill: every clip covers the frame ("Undo: Fill"), the line "Your clips fill the frame, so the
+   background doesn't show." appears under the swatches. Fit brings the bars back. Add media after Fill: the new clip is
+   Fill too.
+7. **Background:** Blur first, then the ten colors. Blur behind clip A in 9:16: a soft, full-brightness copy above and
+   below, no sharp copy, no darkening. Yellow: yellow bars. Clip B in 9:16 (same shape): no bars whatever the background.
+   Seek into a gap or the missing-media project: black whatever the background. "Undo: Background".
+8. **Panel open, the preview:** a tap anywhere on the stage plays or pauses, also on a caption (it isn't selected); two
+   fingers do nothing. Drag a caption with the panel closed on a black background: the frame edge shows during the drag
+   only.
+9. **Analytics** (`MemixAnalytics`): `tool_use {tool=canvas_ratio, value=16:9}` (and `custom` for steppers, never the
+   numbers), `{tool=canvas_fit, value=fit|fill}`, `{tool=canvas_background, value=blur|color}`, once per step; nothing
+   for opening the panel, holding a stepper, an explanation or the selected option.
+10. **TalkBack:** "Canvas, 9:16, button, collapsed" (expanded while open); the panel title gets focus; groups "Ratio",
+    "Clips", "Background" read "9:16, tall, selected, 1 of 6", "Fit, Shows the whole clip", "Blur"; "Width, 9" with
+    "Decrease width" / "Increase width". Closing returns focus to the pill.
+11. **Hindi at 200% font, 360 × 640:** pill taller, panel scrolls to each row, Clips tiles wrap under "क्लिप", nothing cut.
+
+**B. The Done when: layers inside** (QA compares → Measured). On `canvas-check`, go 9:16 → 16:9 → 1:1 → 4:5 → custom
+9:21 → 3:4, screenshotting the preview after each: every caption that started fully inside is fully inside (outline
+included), at least 2% of the short side from the edges it was moved off; "OFF THE EDGE" keeps its place. One undo
+restores the previous ratio and every caption exactly. (Off-device: the same sequence and every preset pair pass in the
+JVM checks with a stand-in measurer.)
+
+**C. Preview = export.** Set and export `canvas-check` three times at 1080p (close the editor, then
+`adb shell am start -S -n app.memix/.android.MainActivity --ez memix.exportLatestDraft true`): 9:16 Blur, 1:1 Yellow,
+16:9 Fill. Pause the preview at 1.0 s, 4.0 s and 7.0 s and screenshot; pull each file and
+`ffmpeg -ss 1.0 -i c.mp4 -frames:v 1 c-1.png` (4.0, 7.0). Crop the screenshots to the frame, scale to the export
+width, compare: same crop and placement within 1% of the width, same background color sampled outside the clip, the blur
+alike (no sharp copy, no darkening). The preview draws at a 720 short side under Blur, so compare softness against the
+720p export too (`--ei memix.exportShortSide 720`): the same softness at 720p and 1080p. The three 1080p frames of each
+go to `docs/qa/references/P1-11-canvas/` (CLAUDE.md rule 5).
+
+**D. Responsiveness (benchmark build, the owner's phone).** Screen-record at 60 fps a ratio tap, a Fill tap and a Blur
+tap: each shows on the preview within 6 frames, or "Updating the preview" appears after 1 s. Blur at 30 fps or more:
+`preview-check` with the background set to Blur and the ratio 16:9 → 9:16 (a landscape-in-portrait blur, the worst case),
+play 20 s, read the `MemixPreview` "Played … fps" line. If it's under 30, note the number: the next step is a lower
+preview size under Blur (`BLUR_PREVIEW_SHORT_SIDE_PX`, now 720).
+
+**E. Leaks (debug build, LeakCanary 2.14).** Open the panel, cycle every ratio, step a custom ratio, switch Blur and two
+colors, close the editor; repeat 5 times. Pass: no leak reported.
+
+### States to screenshot for the design review (`docs/ux/reviews/P1-11/`)
+From the spec's QA compares 1–6, at 360 dp wide: `panel-open-360x800` (default project: pill open, 9:16 and Fit white,
+Black ringed, frame edge, swatch row cut at the bottom), `ratio-1-1`, `ratio-4-5`, `ratio-3-4`, `ratio-16-9-toast`
+(the top caption pulled in, the off-frame one unchanged), `custom-2-3`, `custom-widest-toast` (12:5), `custom-5-8-pill`
+(after 10:16), `background-blur`, `background-yellow`, `fill-hint`, `panel-hi-200-360x640-1` … `-3` (each row, Clips
+tiles wrapped), `caption-drag-edge` (black background, edge visible).
+
 ## P1-17 · Hindi display face: hero and entry cards in Teko, nothing clipped, other languages unchanged
 
 ```sh

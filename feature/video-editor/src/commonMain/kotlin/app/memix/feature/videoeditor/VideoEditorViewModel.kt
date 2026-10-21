@@ -11,6 +11,7 @@ import app.memix.core.domain.project.ProjectEditSession
 import app.memix.core.domain.project.ProjectEditState
 import app.memix.core.domain.project.StartEditSessionUseCase
 import app.memix.core.domain.project.TrimEdge
+import app.memix.core.domain.project.backgroundShows
 import app.memix.core.domain.project.canDelete
 import app.memix.core.domain.project.canSplit
 import app.memix.core.domain.project.deleteItem
@@ -21,6 +22,7 @@ import app.memix.core.domain.project.isOriginalMuted
 import app.memix.core.domain.project.mainClipIds
 import app.memix.core.domain.project.moveMainClip
 import app.memix.core.domain.project.reorderMainClips
+import app.memix.core.domain.project.sharedClipsFit
 import app.memix.core.domain.project.splitItem
 import app.memix.core.domain.project.trimItem
 import app.memix.core.domain.project.trimRange
@@ -31,12 +33,13 @@ import app.memix.core.domain.video.PreviewSession
 import app.memix.core.domain.video.PreviewStatus
 import app.memix.core.domain.video.StartPreviewUseCase
 import app.memix.core.domain.video.StartThumbnailsUseCase
-import app.memix.core.model.project.Canvas
-import app.memix.core.model.project.CanvasRatio
+import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaOrigin
+import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
+import app.memix.core.model.project.RatioTerms
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TrackKind
 import app.memix.core.ui.MemixViewModel
@@ -77,7 +80,7 @@ import kotlinx.coroutines.launch
  *
  * Tool areas live in helpers that reach the editor through one [EditorHost]: meme sounds ([EditorSoundTools]), the
  * Volume panel ([VolumePanelControl]), Move ([MoveControl]), original audio ([OriginalAudioControl]) and captions
- * ([CaptionControl], measured with [captionRendering]); Add media and Replace copy through [importMedia]
+ * ([CaptionControl], measured with [captionRendering]) and the Canvas panel ([CanvasPanelControl]); Add media and Replace copy through [importMedia]
  * ([EditorMediaImport]).
  */
 class VideoEditorViewModel(
@@ -118,6 +121,9 @@ class VideoEditorViewModel(
     private val move = MoveControl(host)
     private val originalAudio = OriginalAudioControl(host)
     private val captions = CaptionControl(host)
+    private val canvasPanel = CanvasPanelControl(host) { text, style, widthPx, heightPx -> captionRendering.measure(text, style, widthPx, heightPx) }
+    // The canvas size of the picture on screen, as the preview last reported it.
+    private var shownCanvasSize: PixelSize? = null
 
     init {
         updateState { it.copy(mediaImport = mediaImport.ui, captionMeasure = EditorCaptionMeasure(captionRendering.measure)) }
@@ -218,6 +224,17 @@ class VideoEditorViewModel(
             is VideoEditorIntent.CaptionGestureStarted -> captions.startGesture(intent.itemId)
             is VideoEditorIntent.CaptionGestureEnded -> captions.endGesture(intent.itemId, intent.transform)
             VideoEditorIntent.CaptionGestureCancelled -> captions.cancelGesture()
+            VideoEditorIntent.RatioPill -> {
+                // Typing commits first, then the panel opens (spec P1-11 → Opening from other states).
+                captions.commitEntry()
+                canvasPanel.togglePanel()
+            }
+            VideoEditorIntent.CloseCanvasPanel -> canvasPanel.close()
+            is VideoEditorIntent.SetCanvasRatio -> canvasPanel.setRatio(intent.ratio)
+            is VideoEditorIntent.CanvasStepped -> canvasPanel.step(intent.step, intent.repeats)
+            is VideoEditorIntent.CanvasStepHeld -> canvasPanel.stepHeld(intent.step, intent.repeats)
+            is VideoEditorIntent.SetClipsFit -> canvasPanel.setFit(intent.fit)
+            is VideoEditorIntent.SetCanvasBackground -> canvasPanel.setBackground(intent.argb)
         }
     }
 
@@ -228,7 +245,7 @@ class VideoEditorViewModel(
         draftOpened.complete(session)
         val thumbnails = TimelineThumbnails(startThumbnails(), viewModelScope, decodeDispatcher)
         addCloseable(thumbnails)
-        updateState { it.copy(canvas = canvasUiOf(project.canvas), thumbnails = thumbnails) }
+        updateState { it.copy(canvas = canvasUiOf(project), thumbnails = thumbnails) }
         viewModelScope.launch { session.state.collect(::showEditState) }
         // Captions are measured with the bundled fonts once they've loaded; until then with the system font.
         viewModelScope.launch {
@@ -252,6 +269,8 @@ class VideoEditorViewModel(
         val clipIds = project.mainClipIds().toSet()
         updateState {
             it.copy(
+                canvas = canvasUiOf(project),
+                pictureOutOfShape = isOutOfShape(shownCanvasSize, project),
                 lengthUs = project.videoLengthUs(),
                 timeline = timeline,
                 reorder = it.reorder?.takeIf { reorder -> reorder.originalOrder.toSet() == clipIds },
@@ -259,6 +278,7 @@ class VideoEditorViewModel(
                 originalAudio = if (project.hasOriginalAudio()) OriginalAudioUi(muted = project.isOriginalMuted()) else null,
             ).withSelection(it.selectedItemId, project)
         }
+        canvasPanel.onCanvasChanged(project.canvas)
         showCaptions(project)
         if (project.hasNoClips()) {
             closePreview()
@@ -293,8 +313,9 @@ class VideoEditorViewModel(
         previewWatch?.cancel()
         preview?.close()
         preview = null
+        shownCanvasSize = null
         showCatchingUp(false)
-        updateState { it.copy(preview = null) }
+        updateState { it.copy(preview = null, pictureOutOfShape = false) }
     }
 
     private fun showPlayback(playback: PreviewPlayback) {
@@ -303,7 +324,8 @@ class VideoEditorViewModel(
             playback.firstFrameShown -> StageContent.VIDEO
             else -> StageContent.OPENING
         }
-        updateState { it.copy(stage = stage, isPlaying = playback.isPlaying) }
+        shownCanvasSize = playback.shownCanvasSize
+        updateState { it.copy(stage = stage, isPlaying = playback.isPlaying, pictureOutOfShape = isOutOfShape(playback.shownCanvasSize, currentProject())) }
         showCatchingUp(playback.isCatchingUp)
         captions.onPreviewCatchingUp(playback.isCatchingUp)
         if (playback.missingMedia && !missingMediaShown) {
@@ -358,6 +380,7 @@ class VideoEditorViewModel(
             state.value.textEntry != null -> captions.commitEntry()
             state.value.textPanel != null -> captions.closePanel()
             state.value.volumePanel != null -> volumePanel.close()
+            state.value.canvasPanel != null -> canvasPanel.close()
             state.value.reorder != null -> updateState { it.copy(reorder = null) }
             state.value.selectedItemId != null -> updateState { it.withSelection(null, null) }
             else -> requestClose()
@@ -561,8 +584,8 @@ class VideoEditorViewModel(
         override fun currentProject() = this@VideoEditorViewModel.currentProject()
         override fun currentPositionUs() = this@VideoEditorViewModel.currentPositionUs()
 
-        override fun commit(edit: VideoEdit, pausesPlayback: Boolean, font: String?, change: (Project) -> Project) =
-            this@VideoEditorViewModel.commit(edit, pausesPlayback, font, change)
+        override fun commit(edit: VideoEdit, pausesPlayback: Boolean, font: String?, value: String?, change: (Project) -> Project) =
+            this@VideoEditorViewModel.commit(edit, pausesPlayback, font, value, change)
 
         override fun select(itemId: String?) = updateState { it.withSelection(itemId, currentProject()) }
         override fun announce(edit: VideoEdit, item: ItemName?) = this@VideoEditorViewModel.announce(edit, item)
@@ -633,10 +656,16 @@ class VideoEditorViewModel(
      * state to come round. Returns false when the edit changed nothing (no step, no `tool_use`). Callers pause
      * playback first, except the Volume panel, where playback keeps going so the change is heard.
      */
-    private fun commit(edit: VideoEdit, pausesPlayback: Boolean = true, font: String? = null, change: (Project) -> Project): Boolean {
+    private fun commit(
+        edit: VideoEdit,
+        pausesPlayback: Boolean = true,
+        font: String? = null,
+        value: String? = null,
+        change: (Project) -> Project,
+    ): Boolean {
         val session = editSession ?: return false
         if (pausesPlayback) preview?.pause()
-        val recorded = session.commit(edit.tool, font, change)
+        val recorded = session.commit(edit.tool, font, value, change)
         if (recorded) showEditState(session.state.value)
         return recorded
     }
@@ -749,26 +778,23 @@ class VideoEditorViewModel(
     private fun saveProblemOf(failure: AppError): SaveProblem =
         if (failure == AppError.StorageFull) SaveProblem.STORAGE_FULL else SaveProblem.OTHER
 
-    private fun canvasUiOf(canvas: Canvas) = CanvasUi(
-        aspectRatio = canvas.widthPx.toFloat() / canvas.heightPx,
-        ratioLabel = ratioLabelOf(canvas),
-        widthPx = canvas.widthPx,
-        heightPx = canvas.heightPx,
-    )
-
-    private fun ratioLabelOf(canvas: Canvas): String = when (canvas.ratio) {
-        CanvasRatio.RATIO_9_16 -> "9:16"
-        CanvasRatio.RATIO_1_1 -> "1:1"
-        CanvasRatio.RATIO_4_5 -> "4:5"
-        CanvasRatio.RATIO_3_4 -> "3:4"
-        CanvasRatio.RATIO_16_9 -> "16:9"
-        CanvasRatio.CUSTOM -> {
-            val divisor = greatestCommonDivisor(canvas.widthPx, canvas.heightPx).coerceAtLeast(1)
-            "${canvas.widthPx / divisor}:${canvas.heightPx / divisor}"
-        }
+    private fun canvasUiOf(project: Project): CanvasUi {
+        val canvas = project.canvas
+        return CanvasUi(
+            aspectRatio = canvas.widthPx.toFloat() / canvas.heightPx,
+            ratioLabel = RatioTerms.of(canvas.size()).toString(),
+            widthPx = canvas.widthPx,
+            heightPx = canvas.heightPx,
+            ratio = canvas.ratio,
+            backgroundArgb = (canvas.background as? CanvasBackground.Solid)?.color?.argb,
+            clipsFit = project.sharedClipsFit(),
+            backgroundShows = project.backgroundShows(),
+        )
     }
 
-    private tailrec fun greatestCommonDivisor(a: Int, b: Int): Int = if (b == 0) a else greatestCommonDivisor(b, a % b)
+    // A picture whose canvas differs from the project's would show stretched in the new frame.
+    private fun isOutOfShape(shown: PixelSize?, project: Project?): Boolean =
+        shown != null && project != null && shown != project.canvas.size()
 
     private companion object {
         /** One frame at the export's frame rate: Play this close to the end counts as "at the end". */

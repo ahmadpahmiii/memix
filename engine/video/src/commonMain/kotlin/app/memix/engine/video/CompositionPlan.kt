@@ -4,6 +4,7 @@ import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaRef
+import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.TrackKind
 import app.memix.core.model.project.Transform
 
@@ -16,6 +17,8 @@ import app.memix.core.model.project.Transform
 internal data class CompositionPlan(
     val canvasWidthPx: Int,
     val canvasHeightPx: Int,
+    /** What shows around fitted clips (spec P1-11 → Rendering rules); gaps and missing clips stay black whatever it is. */
+    val background: PlanBackground = PlanBackground.Color(BLACK_ARGB),
     /** Where the last main video clip ends. The export is this long; audio lanes never run past it. */
     val durationUs: Long,
     /** The main video track in timeline order; a [Gap] stands for empty time between clips. */
@@ -68,6 +71,17 @@ internal data class CompositionPlan(
     }
 }
 
+/** What fills the canvas around a fitted clip. */
+internal sealed interface PlanBackground {
+    /** One color, as 0xAARRGGBB. */
+    data class Color(val argb: Long) : PlanBackground
+
+    /** A copy of the clip itself, scaled to Fill and blurred (CanvasCatalog.BLUR_SIGMA_OF_SHORT_SIDE). */
+    data object Blur : PlanBackground
+}
+
+internal const val BLACK_ARGB = 0xFF000000
+
 /** One piece of the main video sequence. */
 internal sealed interface MainVideoSegment {
     val durationUs: Long
@@ -88,6 +102,8 @@ internal data class VisualClip(
     val trimInUs: Long,
     val trimOutUs: Long,
     val fit: FrameFit,
+    /** The picture's size as shown, rotation applied; null for media added before schema 2 (no background around it). */
+    val pixelSize: PixelSize?,
     /**
      * False for photos, videos without a sound track, detached audio and a muted main track; also at volume 0, except
      * in a preview's plan, which keeps silent items so a raise is heard live.

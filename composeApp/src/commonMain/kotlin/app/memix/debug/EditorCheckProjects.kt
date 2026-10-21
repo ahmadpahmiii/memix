@@ -72,6 +72,7 @@ internal class EditorCheckProjects : KoinComponent {
         HOUR_LONG -> hourLong()
         SOUND_SYNC -> soundSync()
         TEXT_CHECK -> textCheck()
+        CANVAS_CHECK -> canvasCheck()
         else -> null
     }
 
@@ -245,6 +246,27 @@ internal class EditorCheckProjects : KoinComponent {
         )
     }
 
+    /**
+     * The P1-11 checks (spec P1-11 → QA compares, request 10): a 16:9 video, a 9:16 video and a 4:3 photo, Fit on black,
+     * with four captions on their own lanes for all 9 s: a large two-line one near the top at 200% (pulled in by 16:9),
+     * one turned 30° near the right edge, one half off the left edge on purpose (never moved) and one in the middle.
+     */
+    private fun canvasCheck(): Project {
+        val clips = listOf(
+            MediaClip("canvas-wide", 0, clipA, trimInUs = 0, trimOutUs = 3_000_000),
+            MediaClip("canvas-tall", 3_000_000, clipB, trimInUs = 0, trimOutUs = 3_000_000),
+            MediaClip("canvas-photo", 6_000_000, photo4x3, trimInUs = 0, trimOutUs = 3_000_000),
+        )
+        fun caption(id: String, text: String, transform: Transform) = TextItem(id, 0, 9_000_000, text, CAPTION, transform)
+        val captions = listOf(
+            caption("canvas-top", "BUILD\nPASSED", Transform(0.5f, 0.18f, scale = 2f)),
+            caption("canvas-turned", "TURNED", Transform(0.8f, 0.5f, rotationDegrees = 30f)),
+            caption("canvas-off", "OFF THE EDGE", Transform(0f, 0.62f)),
+            caption("canvas-middle", "MIDDLE", Transform(0.5f, 0.5f)),
+        )
+        return project(CANVAS_CHECK, clips, extraTracks = captions.mapIndexed { index, item -> Track("canvas-lane-${index + 1}", TrackKind.TEXT, listOf(item)) })
+    }
+
     private fun project(id: String, mainClips: List<MediaClip>, extraTracks: List<Track> = emptyList()) = Project(
         id = id,
         type = ProjectType.VIDEO,
@@ -267,7 +289,11 @@ internal class EditorCheckProjects : KoinComponent {
         const val HOUR_LONG = "hour-long"
         const val SOUND_SYNC = "sound-sync"
         const val TEXT_CHECK = "text-check"
-        private val NAMES = listOf(EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK)
+        const val CANVAS_CHECK = "canvas-check"
+        private val NAMES = listOf(
+            EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK,
+            CANVAS_CHECK,
+        )
         private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20
         private const val HOUR_LONG_CLIPS = 120
@@ -281,6 +307,7 @@ internal class EditorCheckProjects : KoinComponent {
         private val clipA = media("clip-a.mp4", MediaKind.VIDEO)
         private val clipB = media("clip-b.mp4", MediaKind.VIDEO)
         private val photo = media("photo.png", MediaKind.IMAGE)
+        private val photo4x3 = media("photo-4x3.png", MediaKind.IMAGE)
         private val missingFile = media("missing.mp4", MediaKind.VIDEO)
         private val sound = MediaRef(MediaOrigin.CatalogItem("debug-beep"), MediaKind.AUDIO, cachedCopyPath = "${ExportCheckProject.MEDIA_DIR}/sound.m4a")
 

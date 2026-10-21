@@ -1,6 +1,7 @@
 package app.memix.core.domain.video
 
 import app.memix.core.model.project.MediaClip
+import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
 import kotlinx.coroutines.flow.StateFlow
 
@@ -98,6 +99,11 @@ data class PreviewPlayback(
      * (or the preview fails). Meanwhile the picture is the last frame before the edit (P1-06 → Preview catching up).
      */
     val isCatchingUp: Boolean = false,
+    /**
+     * The canvas size of the picture on screen (P1-11): after a ratio change it stays the old size until the first frame
+     * at the new size shows, so the editor can cover a picture of the wrong shape. Null until the first frame.
+     */
+    val shownCanvasSize: PixelSize? = null,
 ) {
     companion object {
         val Preparing = PreviewPlayback(PreviewStatus.PREPARING, isPlaying = false, firstFrameShown = false, missingMedia = false)

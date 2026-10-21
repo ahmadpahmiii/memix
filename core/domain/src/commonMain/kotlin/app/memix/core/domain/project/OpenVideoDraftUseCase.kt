@@ -13,9 +13,9 @@ import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TimelineItem
 
 /**
- * Opens a saved video draft for the editor. Media added before schema version 2 has no measured length or
- * has-sound (P1-02); the preview needs every length up front, so those facts are read from the app's copy of
- * each such file now. The draft isn't saved for this: the facts go into the database with the next edit.
+ * Opens a saved video draft for the editor. Media added before schema version 2 has no measured length,
+ * has-sound or picture size (P1-02); the preview needs every length up front and the canvas each picture's shape
+ * (P1-11), so those facts are read from the app's copy of each such file now. The draft isn't saved for this: the facts go into the database with the next edit.
  *
  * Fails like [ProjectRepository.get]. A copy that is missing or can't be read keeps its facts null; the
  * preview then plays that clip as black and says so.
@@ -50,9 +50,16 @@ class OpenVideoDraftUseCase(private val repository: ProjectRepository, private v
         )
     }
 
-    // Photos show for their clip's length and have no sound, so only video and sound files need measuring.
-    private fun MediaRef.needsMeasuring(): Boolean =
-        cachedCopyPath != null && kind != MediaKind.IMAGE && (durationUs == null || hasAudio == null)
+    // Photos show for their clip's length and have no sound, so they only need their size: the canvas draws a background
+    // around a fitted clip of another shape (P1-11). Video and sound files need their length and sound too.
+    private fun MediaRef.needsMeasuring(): Boolean {
+        if (cachedCopyPath == null) return false
+        return when (kind) {
+            MediaKind.IMAGE -> pixelSize == null
+            MediaKind.VIDEO -> durationUs == null || hasAudio == null || pixelSize == null
+            MediaKind.AUDIO -> durationUs == null || hasAudio == null
+        }
+    }
 
     // Only what the engine renders today; stickers get their facts when they're rendered (P4-12).
     private fun TimelineItem.mediaSource(): MediaRef? = when (this) {

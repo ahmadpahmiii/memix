@@ -1,5 +1,7 @@
 package app.memix.feature.videoeditor
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -43,9 +45,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -80,6 +85,7 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixIcons
+import app.memix.core.designsystem.MemixMotion
 import app.memix.core.designsystem.MemixSize
 import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.MemixStroke
@@ -89,6 +95,7 @@ import app.memix.core.designsystem.component.Button
 import app.memix.core.designsystem.component.ButtonVariant
 import app.memix.core.designsystem.component.FadingToast
 import app.memix.core.designsystem.component.IconButton
+import app.memix.core.designsystem.component.SettingPill
 import app.memix.core.designsystem.component.Sheet
 import app.memix.core.designsystem.component.Toast
 import app.memix.core.designsystem.component.ToastAction
@@ -99,6 +106,7 @@ import app.memix.core.domain.video.PreviewSession
 import app.memix.core.ui.formatTimecode
 import app.memix.core.ui.spokenTime
 import app.memix.core.ui.spokenTimeOf
+import app.memix.feature.videoeditor.canvas.CanvasPanel
 import app.memix.feature.videoeditor.captions.CanvasFrameRect
 import app.memix.feature.videoeditor.captions.CaptionLayer
 import app.memix.feature.videoeditor.captions.CaptionLayerState
@@ -127,9 +135,15 @@ import memix.feature.video_editor.generated.resources.a11y_reorder_position
 import memix.feature.video_editor.generated.resources.a11y_sound_added
 import memix.feature.video_editor.generated.resources.a11y_text_added
 import memix.feature.video_editor.generated.resources.a11y_text_transformed
+import memix.feature.video_editor.generated.resources.canvas_layers_moved
+import memix.feature.video_editor.generated.resources.canvas_pill_a11y
 import memix.feature.video_editor.generated.resources.edit_add_media
 import memix.feature.video_editor.generated.resources.edit_add_sound
 import memix.feature.video_editor.generated.resources.edit_add_text
+import memix.feature.video_editor.generated.resources.edit_canvas_background
+import memix.feature.video_editor.generated.resources.edit_canvas_fill
+import memix.feature.video_editor.generated.resources.edit_canvas_fit
+import memix.feature.video_editor.generated.resources.edit_canvas_ratio
 import memix.feature.video_editor.generated.resources.edit_delete
 import memix.feature.video_editor.generated.resources.edit_detach_audio
 import memix.feature.video_editor.generated.resources.edit_duplicate
@@ -168,6 +182,11 @@ import memix.feature.video_editor.generated.resources.editor_undo
 import memix.feature.video_editor.generated.resources.editor_undo_toast
 import memix.feature.video_editor.generated.resources.editor_unsaved_body
 import memix.feature.video_editor.generated.resources.editor_unsaved_title
+import memix.feature.video_editor.generated.resources.explain_canvas_max
+import memix.feature.video_editor.generated.resources.explain_canvas_min
+import memix.feature.video_editor.generated.resources.explain_canvas_reorder
+import memix.feature.video_editor.generated.resources.explain_canvas_tallest
+import memix.feature.video_editor.generated.resources.explain_canvas_widest
 import memix.feature.video_editor.generated.resources.explain_detached
 import memix.feature.video_editor.generated.resources.explain_detached_muted
 import memix.feature.video_editor.generated.resources.explain_last_clip
@@ -221,7 +240,7 @@ fun VideoEditorScreen(
     // A save needs little room; ask for the import's headroom, so the next import fits too (spec P1-04 → Saving).
     val freeUpSpaceForSave = remember(onFreeUpSpace) { { onFreeUpSpace(ImportMediaUseCase.HEADROOM_BYTES) } }
     val focusTargets = remember { EditorFocusTargets() }
-    val panelOpen = state.volumePanel != null || state.textPanel != null
+    val panelOpen = state.volumePanel != null || state.textPanel != null || state.canvasPanel != null
     val sheetOpen = state.sounds.isOpen || state.unsavedSheetOpen || importSheetShown(state.mediaImport)
     ReturnFocus(state.returnFocus, focusTargets)
     // Typing (spec P1-10 → Typing): the field's words live here, so only the field and the stand-in redraw per key.
@@ -248,7 +267,7 @@ fun VideoEditorScreen(
                 .coveredByModal(sheetOpen)
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         ) {
-            TopBar(onClose = { onIntent(VideoEditorIntent.Close) })
+            TopBar(state.canvas, state.canvasPanel, focusTargets, onIntent)
             EditorLayout(
                 stage = { PreviewStage(state, onIntent, previewSurface, captionStandIn, captionLayer, { entryField.text.toString() }, focusTargets, freeUpSpaceForSave) },
                 transport = { TransportRow(state, onIntent) },
@@ -278,6 +297,7 @@ fun VideoEditorScreen(
                     VolumePanel(state.volumePanel, state.originalAudio?.muted == true, onIntent, Modifier.fillMaxSize())
                     val panelCaption = selectedCaption(state)
                     TextPanels(state.textPanel, panelCaption?.style, panelCaption?.transform, onIntent, Modifier.fillMaxSize())
+                    CanvasPanel(state.canvasPanel, state.canvas, onIntent, Modifier.fillMaxSize())
                 },
                 entryBar = entry?.let { { TextEntryBar(it, entryField, onIntent) } },
                 timelineMinHeight = timelineMinHeight(),
@@ -340,11 +360,24 @@ private fun selectedIsMissing(state: VideoEditorUiState): Boolean {
     return state.thumbnails?.missingSources?.contains(media) == true
 }
 
+/**
+ * Close at the start and the ratio pill in the center of the screen (spec P1-11 → The ratio pill); P1-12's Export joins
+ * at the end. The pill shows a custom ratio in lowest terms, also while its stepper is held.
+ */
 @Composable
-private fun TopBar(onClose: () -> Unit) {
-    // P1-11's ratio chip, P1-12's quality chip and Export join this bar with their tickets.
-    Row(Modifier.fillMaxWidth().padding(horizontal = MemixSpacing.space2, vertical = MemixSpacing.space1)) {
-        IconButton(MemixIcons.Close, stringResource(Res.string.editor_close), onClose)
+private fun TopBar(canvas: CanvasUi?, canvasPanel: CanvasPanelUi?, focusTargets: EditorFocusTargets, onIntent: (VideoEditorIntent) -> Unit) {
+    Box(Modifier.fillMaxWidth().padding(horizontal = MemixSpacing.space2, vertical = MemixSpacing.space1)) {
+        IconButton(MemixIcons.Close, stringResource(Res.string.editor_close), { onIntent(VideoEditorIntent.Close) }, Modifier.align(Alignment.CenterStart))
+        if (canvas != null) {
+            val label = canvasPanel?.shownTerms?.lowest()?.toString() ?: canvas.ratioLabel
+            SettingPill(
+                label,
+                stringResource(Res.string.canvas_pill_a11y, label),
+                expanded = canvasPanel != null,
+                onClick = { onIntent(VideoEditorIntent.RatioPill) },
+                modifier = Modifier.align(Alignment.Center).focusRequester(focusTargets.ratioPill),
+            )
+        }
     }
 }
 
@@ -429,7 +462,8 @@ private fun PreviewStage(
     // A traversal group, so screen readers reach the save banner before the preview (spec P1-04 → Accessibility).
     BoxWithConstraints(Modifier.fillMaxSize().background(MemixColors.stage).semantics { isTraversalGroup = true }) {
         val frame = rememberCanvasFrame(canvas, constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat(), typing = state.textEntry != null, captionLayer)
-        val gesturesOn = canvas != null && state.textEntry == null && state.stage == StageContent.VIDEO
+        // With the Canvas panel open, a tap anywhere on the stage plays or pauses, even over a caption (spec P1-11).
+        val gesturesOn = canvas != null && state.textEntry == null && state.stage == StageContent.VIDEO && state.canvasPanel == null
         Box(
             Modifier
                 .matchParentSize()
@@ -443,12 +477,18 @@ private fun PreviewStage(
                     state.preview?.let { previewSurface(it.session, Modifier.fillMaxSize()) }
                     // Takes taps off the player's own view, so they reach the stage.
                     Box(Modifier.fillMaxSize().pointerInput(Unit) {})
-                    // The empty frame until the first picture: static, no spinner (spec P1-04 → Preview stage).
-                    if (state.stage == StageContent.OPENING) Box(Modifier.fillMaxSize().background(MemixColors.surfaceRaised))
+                    when {
+                        // The empty frame until the first picture: static, no spinner (spec P1-04 → Preview stage).
+                        state.stage == StageContent.OPENING -> Box(Modifier.fillMaxSize().background(MemixColors.surfaceRaised))
+                        // No picture of the wrong shape after a ratio change, and an empty project: the canvas background
+                        // (black for blur) fills the frame (spec P1-11 → States).
+                        state.pictureOutOfShape || state.stage == StageContent.EMPTY -> Box(Modifier.fillMaxSize().background(backgroundColorOf(canvas)))
+                    }
                 }
             }
         }
         if (canvas != null) {
+            FrameEdge(frame, visible = state.canvasPanel != null || captionLayer.gesture != null)
             CaptionLayer(
                 captionLayer,
                 canvas,
@@ -546,6 +586,32 @@ private fun selectedCaption(state: VideoEditorUiState): CaptionUi? {
     return state.captionStandIn?.takeIf { it.itemId == itemId } ?: state.captions.firstOrNull { it.itemId == itemId }
 }
 
+/** The canvas background as the frame shows it without a picture: the color, or black for blur. User content, not chrome. */
+private fun backgroundColorOf(canvas: CanvasUi): Color = canvas.backgroundArgb?.let { Color(it.toInt()) } ?: MemixColors.stage
+
+/**
+ * The frame's edge (spec P1-11 → The frame edge): a `stroke-hairline` line in `text-muted` just outside the canvas
+ * frame, on the stage, so it never covers the meme and is never exported. It fades in and out in 120 ms.
+ */
+@Composable
+private fun FrameEdge(frame: CanvasFrameRect, visible: Boolean) {
+    val alpha by animateFloatAsState(if (visible) 1f else 0f, tween(MemixMotion.durationPress), label = "frame edge")
+    if (frame.isEmpty) return
+    Box(
+        Modifier.fillMaxSize().drawBehind {
+            if (alpha == 0f) return@drawBehind
+            val stroke = MemixStroke.strokeHairline.toPx()
+            drawRect(
+                MemixColors.textMuted,
+                topLeft = Offset(frame.left - stroke / 2, frame.top - stroke / 2),
+                size = Size(frame.width + stroke, frame.height + stroke),
+                alpha = alpha,
+                style = Stroke(stroke),
+            )
+        },
+    )
+}
+
 /** The canvas frame on the stage, at [frame]. */
 @Composable
 private fun CanvasFrame(frame: CanvasFrameRect, content: @Composable BoxScope.() -> Unit) {
@@ -580,7 +646,7 @@ private fun PreviewError(onRetry: () -> Unit) {
     }
 }
 
-// The canvas background shows behind it: black until P1-11 lets the user pick one.
+// The canvas background shows behind it (spec P1-11 → States, "Empty project").
 @Composable
 private fun EmptyDraft() {
     CenteredMessage {
@@ -650,7 +716,9 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
             is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition, is ToastMessage.SoundAdded,
             is ToastMessage.MediaAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed,
             -> WHAT_HAPPENED_TOAST_MILLIS
-            ToastMessage.MissingMedia, is ToastMessage.Explain, is ToastMessage.ReplaceTooShort -> EXPLANATION_TOAST_MILLIS
+            is ToastMessage.RatioStepped -> WHAT_HAPPENED_TOAST_MILLIS
+            // An unexpected move, so it stays as long as an explanation.
+            ToastMessage.MissingMedia, is ToastMessage.Explain, is ToastMessage.ReplaceTooShort, ToastMessage.LayersMoved -> EXPLANATION_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
         onTimedOut(toast.id)
@@ -676,6 +744,9 @@ private fun toastText(message: ToastMessage): String = when (message) {
     )
     // The timecode is never translated (spec P1-06 → Copy).
     is ToastMessage.ReplaceTooShort -> stringResource(Res.string.explain_replace_too_short, formatTimecode(message.clipLengthUs))
+    ToastMessage.LayersMoved -> stringResource(Res.string.canvas_layers_moved)
+    // Ratios are never translated (spec P1-11 → Copy).
+    is ToastMessage.RatioStepped -> message.label
 }
 
 @Composable
@@ -701,6 +772,10 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.TEXT_OUTLINE -> Res.string.edit_text_outline
         VideoEdit.POSITION_TEXT -> Res.string.edit_move_text
         VideoEdit.TRANSFORM_TEXT -> Res.string.edit_transform_text
+        VideoEdit.CANVAS_RATIO -> Res.string.edit_canvas_ratio
+        VideoEdit.CANVAS_FIT -> Res.string.edit_canvas_fit
+        VideoEdit.CANVAS_FILL -> Res.string.edit_canvas_fill
+        VideoEdit.CANVAS_BACKGROUND -> Res.string.edit_canvas_background
     },
 )
 
@@ -720,6 +795,11 @@ private fun explanationText(explanation: Explanation): String = stringResource(
         Explanation.TEXT_SMALLEST -> Res.string.explain_text_smallest
         Explanation.TEXT_BIGGEST -> Res.string.explain_text_biggest
         Explanation.TEXT_EDGE -> Res.string.explain_text_edge
+        Explanation.CANVAS_WIDEST -> Res.string.explain_canvas_widest
+        Explanation.CANVAS_TALLEST -> Res.string.explain_canvas_tallest
+        Explanation.CANVAS_MIN -> Res.string.explain_canvas_min
+        Explanation.CANVAS_MAX -> Res.string.explain_canvas_max
+        Explanation.CANVAS_REORDER -> Res.string.explain_canvas_reorder
     },
 )
 

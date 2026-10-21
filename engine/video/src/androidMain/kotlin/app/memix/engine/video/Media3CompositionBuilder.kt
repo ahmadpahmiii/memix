@@ -10,19 +10,21 @@ import androidx.media3.common.audio.ChannelMixingAudioProcessor
 import androidx.media3.common.audio.ChannelMixingMatrix
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.OverlayEffect
-import androidx.media3.effect.Presentation
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
-import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.MediaRef
+import app.memix.core.model.project.PixelSize
 
 /**
  * Builds the Media3 [Composition] for a [CompositionPlan]: the main video sequence first, then one
  * audio-only sequence per audio lane. Media3 mixes sequences that overlap in time and ends with the
  * longest one, which the plan guarantees is the main video sequence. The same composition feeds the
  * export (Transformer) and the preview (CompositionPlayer), so both render alike.
+ *
+ * Every main clip is drawn at one frame size, the canvas's shape, by the canvas rules ([CanvasFraming]); captions go over
+ * the composited frame.
  *
  * Each video and sound item carries its source file's length when the project knows it: CompositionPlayer
  * needs it up front, and Transformer would otherwise read it from the file.
@@ -41,9 +43,15 @@ internal class Media3CompositionBuilder(
     private val liveGains: Map<String, LiveGainProcessor> = emptyMap(),
     /** The plan's captions over the composited video; null when the plan has none. */
     private val captionOverlay: CaptionOverlay? = null,
-    /** The output's shorter side when it's smaller than the canvas's (the debug export hook's 720p, until P1-12). */
-    private val outputShortSidePx: Int? = null,
+    /**
+     * The shorter side every frame is drawn at, when it's smaller than the canvas's: an export's lower resolution (the
+     * debug export hook's 720p until P1-12), or the preview's while a blur background plays. Null draws at canvas size.
+     */
+    private val frameShortSidePx: Int? = null,
 ) {
+    // The size every main clip is drawn at, the canvas's shape: captions and output come out at this size too.
+    private val frame: PixelSize = frameSizeOf(PixelSize(plan.canvasWidthPx, plan.canvasHeightPx), frameShortSidePx)
+
     fun build(): Composition {
         val sequences = listOf(mainVideoSequence()) + plan.audioLanes.map(::audioSequence)
         val composition = Composition.Builder(sequences)
@@ -55,20 +63,9 @@ internal class Media3CompositionBuilder(
         return composition.build()
     }
 
-    // Captions are drawn at the canvas size first, then the whole frame is scaled to the output, so a lower resolution
-    // never re-lays out a caption (spec P1-10 → Geometry: layout resolution).
-    private fun compositionVideoEffects(): List<Effect> = listOfNotNull(
-        captionOverlay?.let { OverlayEffect(listOf(it)) },
-        scaledOutputHeightPx()?.let { Presentation.createForHeight(it) },
-    )
-
-    // The canvas scaled so its shorter side is outputShortSidePx, rounded to an even height for the encoder.
-    private fun scaledOutputHeightPx(): Int? {
-        val canvasShortSidePx = minOf(plan.canvasWidthPx, plan.canvasHeightPx)
-        val shortSidePx = outputShortSidePx?.takeIf { it in 1 until canvasShortSidePx } ?: return null
-        val heightPx = plan.canvasHeightPx.toLong() * shortSidePx / canvasShortSidePx
-        return (heightPx.toInt() / 2) * 2
-    }
+    // Captions are laid out at the canvas size and drawn scaled to the frame, so a lower resolution never re-lays out a
+    // caption (spec P1-10 → Geometry: layout resolution).
+    private fun compositionVideoEffects(): List<Effect> = listOfNotNull(captionOverlay?.let { OverlayEffect(listOf(it)) })
 
     private fun mainVideoSequence(): EditedMediaItemSequence {
         // With the audio track type, Media3 fills photos, gaps and silenced clips with silence, so the
@@ -97,7 +94,7 @@ internal class Media3CompositionBuilder(
             .setRemoveAudio(!clip.playsOwnAudio)
             // The output rate for photos; a ceiling that drops extra frames from faster videos.
             .setFrameRate(frameRate)
-            .setEffects(Effects(audioProcessors, listOf(fitToCanvas(clip.fit))))
+            .setEffects(Effects(audioProcessors, CanvasFraming(clip, frame, plan.background).effects()))
         // A photo's length comes from its image duration.
         if (!clip.isStill) item.setSourceDuration(clip.source, clip.trimOutUs)
         return item.build()
@@ -140,13 +137,6 @@ internal class Media3CompositionBuilder(
             .setStartPositionUs(trimInUs)
             .setEndPositionUs(trimOutUs)
             .build()
-
-    private fun fitToCanvas(fit: FrameFit): Presentation = when (fit) {
-        FrameFit.FIT ->
-            Presentation.createForWidthAndHeight(plan.canvasWidthPx, plan.canvasHeightPx, Presentation.LAYOUT_SCALE_TO_FIT)
-        FrameFit.FILL ->
-            Presentation.createForWidthAndHeight(plan.canvasWidthPx, plan.canvasHeightPx, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP)
-    }
 
     // The committed volume, then the preview's live gain if it has one. A 0% item's silence comes from its live gain
     // alone, since a fixed 0 step before it would leave nothing to raise.

@@ -214,4 +214,37 @@
     <plurals name="a11y_degrees">
         <item quantity="other">%1$d derajat</item>
     </plurals>
+    <!-- Canvas (P1-11). Budgets and translator notes: docs/ux/specs/P1-11-canvas.md -> Copy. Ratios ("9:16") are never translated. -->
+    <string name="canvas_pill_a11y">Kanvas, %1$s</string>
+    <string name="canvas_title">Kanvas</string>
+    <string name="canvas_ratio">Rasio</string>
+    <string name="canvas_ratio_custom">Kustom</string>
+    <string name="canvas_ratio_a11y">%1$s, %2$s</string>
+    <string name="canvas_shape_tall">tegak</string>
+    <string name="canvas_shape_square">persegi</string>
+    <string name="canvas_shape_wide">lebar</string>
+    <string name="canvas_custom_width">Lebar</string>
+    <string name="canvas_custom_height">Tinggi</string>
+    <string name="canvas_custom_width_down">Kurangi lebar</string>
+    <string name="canvas_custom_width_up">Tambah lebar</string>
+    <string name="canvas_custom_height_down">Kurangi tinggi</string>
+    <string name="canvas_custom_height_up">Tambah tinggi</string>
+    <string name="canvas_clips">Klip</string>
+    <string name="canvas_fit">Pas</string>
+    <string name="canvas_fill">Penuh</string>
+    <string name="canvas_fit_a11y_hint">Menampilkan seluruh klip</string>
+    <string name="canvas_fill_a11y_hint">Menutupi seluruh bingkai</string>
+    <string name="canvas_background">Latar</string>
+    <string name="canvas_background_blur">Buram</string>
+    <string name="canvas_background_hidden">Klip kamu memenuhi bingkai, jadi latarnya tidak terlihat.</string>
+    <string name="canvas_layers_moved">Teks digeser agar tetap di dalam bingkai.</string>
+    <string name="explain_canvas_widest">Ini selebar mungkin untuk video.</string>
+    <string name="explain_canvas_tallest">Ini setinggi mungkin untuk video.</string>
+    <string name="explain_canvas_min">1 adalah angka terkecil.</string>
+    <string name="explain_canvas_max">99 adalah angka terbesar.</string>
+    <string name="explain_canvas_reorder">Ketuk Selesai untuk menyelesaikan urutan dulu.</string>
+    <string name="edit_canvas_ratio">Rasio</string>
+    <string name="edit_canvas_fit">Pas</string>
+    <string name="edit_canvas_fill">Penuh</string>
+    <string name="edit_canvas_background">Latar</string>
 </resources>

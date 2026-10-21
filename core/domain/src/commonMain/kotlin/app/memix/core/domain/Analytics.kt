@@ -27,14 +27,17 @@ sealed interface AnalyticsEvent {
     /**
      * A tool changed the project: one event per committed step, never during a drag (PM, 8 Oct 2026). [tool] must be
      * one with a [EditorTool.eventValue]. [font] is the caption font id, sent only with `add_text` and `text_font`
-     * (owner, 9 Oct 2026: PRD → Analytics).
+     * (owner, 9 Oct 2026: PRD → Analytics). [value] is the choice a canvas tool made, sent only with `canvas_ratio`
+     * (`9:16` … `16:9` or `custom`, never the custom numbers), `canvas_fit` (`fit`, `fill`) and `canvas_background`
+     * (`blur`, `color`, never the color itself) (owner, 21 Oct 2026).
      */
-    data class ToolUse(val editor: ProjectType, val tool: EditorTool, val font: String? = null) : AnalyticsEvent {
+    data class ToolUse(val editor: ProjectType, val tool: EditorTool, val font: String? = null, val value: String? = null) : AnalyticsEvent {
         override val name = "tool_use"
         override val params = buildMap {
             put("editor", editor.eventValue)
             put("tool", requireNotNull(tool.eventValue))
             if (font != null) put("font", font)
+            if (value != null) put("value", value)
         }
     }
 
@@ -86,6 +89,15 @@ enum class EditorTool(val eventValue: String?) {
     TEXT_OUTLINE("text_outline"),
     POSITION_TEXT("position_text"),
     TRANSFORM_TEXT("transform_text"),
+
+    /**
+     * P1-11: the Canvas panel (PM, 20 Oct), each with a `value`. Fit and Fill are one event, `canvas_fit` with `value`
+     * `fit` or `fill`, but two entries, so the undo history can say "Undo: Fill".
+     */
+    CANVAS_RATIO("canvas_ratio"),
+    CANVAS_FIT("canvas_fit"),
+    CANVAS_FILL("canvas_fit"),
+    CANVAS_BACKGROUND("canvas_background"),
 }
 
 /** `sound_add.tab` and `sound_preview.tab`: where in the sounds UI it happened. "starter" until P3-05 (PM, 8 Oct 2026). */

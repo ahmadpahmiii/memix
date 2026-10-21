@@ -215,4 +215,37 @@
         <item quantity="one">%1$d grado</item>
         <item quantity="other">%1$d grados</item>
     </plurals>
+    <!-- Canvas (P1-11). Budgets and translator notes: docs/ux/specs/P1-11-canvas.md -> Copy. Ratios ("9:16") are never translated. -->
+    <string name="canvas_pill_a11y">Lienzo, %1$s</string>
+    <string name="canvas_title">Lienzo</string>
+    <string name="canvas_ratio">Proporción</string>
+    <string name="canvas_ratio_custom">Personalizado</string>
+    <string name="canvas_ratio_a11y">%1$s, %2$s</string>
+    <string name="canvas_shape_tall">vertical</string>
+    <string name="canvas_shape_square">cuadrado</string>
+    <string name="canvas_shape_wide">horizontal</string>
+    <string name="canvas_custom_width">Ancho</string>
+    <string name="canvas_custom_height">Alto</string>
+    <string name="canvas_custom_width_down">Reducir ancho</string>
+    <string name="canvas_custom_width_up">Aumentar ancho</string>
+    <string name="canvas_custom_height_down">Reducir alto</string>
+    <string name="canvas_custom_height_up">Aumentar alto</string>
+    <string name="canvas_clips">Clips</string>
+    <string name="canvas_fit">Ajustar</string>
+    <string name="canvas_fill">Rellenar</string>
+    <string name="canvas_fit_a11y_hint">Muestra el clip entero</string>
+    <string name="canvas_fill_a11y_hint">Cubre todo el marco</string>
+    <string name="canvas_background">Fondo</string>
+    <string name="canvas_background_blur">Desenfoque</string>
+    <string name="canvas_background_hidden">Tus clips llenan el marco, así que el fondo no se ve.</string>
+    <string name="canvas_layers_moved">El texto se movió para quedar dentro del marco.</string>
+    <string name="explain_canvas_widest">Un video no puede ser más ancho.</string>
+    <string name="explain_canvas_tallest">Un video no puede ser más alto.</string>
+    <string name="explain_canvas_min">1 es el número más pequeño.</string>
+    <string name="explain_canvas_max">99 es el número más grande.</string>
+    <string name="explain_canvas_reorder">Toca Listo para terminar de reordenar primero.</string>
+    <string name="edit_canvas_ratio">Proporción</string>
+    <string name="edit_canvas_fit">Ajustar</string>
+    <string name="edit_canvas_fill">Rellenar</string>
+    <string name="edit_canvas_background">Fondo</string>
 </resources>

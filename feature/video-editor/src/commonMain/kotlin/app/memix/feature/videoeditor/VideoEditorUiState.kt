@@ -7,7 +7,10 @@ import app.memix.core.domain.project.MediaPlace
 import app.memix.core.domain.project.TrimEdge
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.model.catalog.LocalizedText
+import app.memix.core.model.project.CanvasRatio
+import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.MediaOrigin
+import app.memix.core.model.project.RatioTerms
 import app.memix.core.model.project.Transform
 import app.memix.feature.videoeditor.importmedia.ImportIntent
 import app.memix.feature.videoeditor.importmedia.ImportUiState
@@ -28,6 +31,11 @@ data class VideoEditorUiState(
     /** How long the project plays, in µs: where its last main video clip ends. */
     val lengthUs: Long = 0,
     val stage: StageContent = StageContent.OPENING,
+    /**
+     * The picture on screen has another canvas's shape: a ratio change whose first frame hasn't shown yet. The frame
+     * shows the background color instead, never a stretched picture (spec P1-11 → States, "Preview catching up").
+     */
+    val pictureOutOfShape: Boolean = false,
     /** The live preview, once the draft has opened and has clips. */
     val preview: EditorPreview? = null,
     /** The project's tracks and items as the timeline draws them (spec P1-05). */
@@ -46,6 +54,8 @@ data class VideoEditorUiState(
     val sounds: SoundsSheetUi = SoundsSheetUi(),
     /** The Volume panel over the timeline and tool bar, or null when it's closed (spec P1-06 → Volume panel). */
     val volumePanel: VolumePanelUi? = null,
+    /** The Canvas panel over the timeline and tool bar, or null when it's closed (spec P1-11). */
+    val canvasPanel: CanvasPanelUi? = null,
     /**
      * The original audio (the sound in the user's own videos, P1-09): whether every clip's is muted. Null when no main
      * clip plays its own sound, so there's nothing to mute and the timeline shows no toggle.
@@ -110,11 +120,35 @@ data class VideoEditorUiState(
 }
 
 /**
- * The project's frame: its width-to-height ratio, the ratio as screen readers hear it ("9:16"), and its size in pixels,
- * which captions are laid out in.
+ * The project's frame: its width-to-height ratio, the ratio as shown and spoken ("9:16", a custom one in lowest terms),
+ * its size in pixels (captions are laid out in it), and what the Canvas panel shows of it (spec P1-11): the [ratio]
+ * choice, the background ([backgroundArgb] as 0xAARRGGBB, null for blur), the fit every main clip shares ([clipsFit],
+ * null when they differ) and whether the background can show around any clip ([backgroundShows]).
  */
 @Immutable
-data class CanvasUi(val aspectRatio: Float, val ratioLabel: String, val widthPx: Int = 0, val heightPx: Int = 0)
+data class CanvasUi(
+    val aspectRatio: Float,
+    val ratioLabel: String,
+    val widthPx: Int = 0,
+    val heightPx: Int = 0,
+    val ratio: CanvasRatio = CanvasRatio.RATIO_9_16,
+    val backgroundArgb: Long? = BLACK_ARGB,
+    val clipsFit: FrameFit? = FrameFit.FIT,
+    val backgroundShows: Boolean = true,
+)
+
+private const val BLACK_ARGB = 0xFF000000
+
+/**
+ * The Canvas panel's own state for this visit (spec P1-11 → Interactions). [customTerms]: the Custom tile is selected
+ * and its steppers show these numbers as stepped (10 and 16, not 5:8), null when a preset is. [heldTerms]: a stepper is
+ * held, and the readout and the pill show these until the release commits them.
+ */
+@Immutable
+data class CanvasPanelUi(val customTerms: RatioTerms? = null, val heldTerms: RatioTerms? = null) {
+    /** What the steppers and the pill show now. */
+    val shownTerms: RatioTerms? get() = heldTerms ?: customTerms
+}
 
 /** What the canvas frame on the stage shows. */
 enum class StageContent {
@@ -250,6 +284,9 @@ enum class FocusTarget {
 
     /** The selected caption's node on the preview, after typing commits (spec P1-10 → Accessibility). */
     SELECTED_CAPTION,
+
+    /** The ratio pill in the top bar, after the Canvas panel closes (P1-11). */
+    RATIO_PILL,
 }
 
 /** Why a tool explains instead of acting (spec P1-06 → Clip tool bar: tools stay enabled and explain on tap). */
@@ -275,6 +312,15 @@ enum class Explanation {
     TEXT_SMALLEST,
     TEXT_BIGGEST,
     TEXT_EDGE,
+
+    /** Custom ratio limits (P1-11): past 2.39:1 either way, below 1, above 99. */
+    CANVAS_WIDEST,
+    CANVAS_TALLEST,
+    CANVAS_MIN,
+    CANVAS_MAX,
+
+    /** The ratio pill in reorder mode. */
+    CANVAS_REORDER,
 }
 
 /**
@@ -316,6 +362,12 @@ sealed interface ToastMessage {
 
     /** Replace refused a video shorter than the clip, whose length ([clipLengthUs]) the toast names. */
     data class ReplaceTooShort(val clipLengthUs: Long) : ToastMessage
+
+    /** A ratio change moved or shrank a caption to keep it inside the frame (P1-11). */
+    data object LayersMoved : ToastMessage
+
+    /** After a custom ratio step, for screen readers only: the new ratio in lowest terms ("5:8"). */
+    data class RatioStepped(val label: String) : ToastMessage
 }
 
 /**
@@ -555,4 +607,25 @@ sealed interface VideoEditorIntent {
 
     /** The gesture was cancelled (system back, a lost gesture); nothing changes. */
     data object CaptionGestureCancelled : VideoEditorIntent
+
+    /** The ratio pill: opens the Canvas panel, or closes it when it's open (spec P1-11). */
+    data object RatioPill : VideoEditorIntent
+
+    /** Done, system back or Escape on the Canvas panel. */
+    data object CloseCanvasPanel : VideoEditorIntent
+
+    /** A ratio tile: a preset applies at once; Custom shows the steppers. */
+    data class SetCanvasRatio(val ratio: CanvasRatio) : VideoEditorIntent
+
+    /** A custom stepper tap, or the release of a held one after [repeats] steps: one Ratio step. */
+    data class CanvasStepped(val step: RatioStep, val repeats: Int = 1) : VideoEditorIntent
+
+    /** A held custom stepper repeated: the readout and the pill show [repeats] steps along, nothing committed yet. */
+    data class CanvasStepHeld(val step: RatioStep, val repeats: Int) : VideoEditorIntent
+
+    /** Fit or Fill: every main clip at once. */
+    data class SetClipsFit(val fit: FrameFit) : VideoEditorIntent
+
+    /** A background swatch: the color [argb] (0xAARRGGBB), or blur when it's null. */
+    data class SetCanvasBackground(val argb: Long?) : VideoEditorIntent
 }

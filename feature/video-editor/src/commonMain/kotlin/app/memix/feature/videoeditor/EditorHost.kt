@@ -8,7 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 
 /**
  * What the video editor's tool helpers ([EditorSoundTools], [VolumePanelControl], [MoveControl], [OriginalAudioControl],
- * [CaptionControl]) use of the editor:
+ * [CaptionControl], [CanvasPanelControl]) use of the editor:
  * its state, its edit session and how it shows things. [VideoEditorViewModel] implements it once; main thread only.
  */
 internal interface EditorHost {
@@ -31,9 +31,9 @@ internal interface EditorHost {
 
     /**
      * Applies [change] as one [edit] step and shows it at once; false when it changed nothing (no step, no `tool_use`).
-     * [font] goes with `tool_use` for the caption tools that name one.
+     * [font] goes with `tool_use` for the caption tools that name one, [value] for the canvas tools.
      */
-    fun commit(edit: VideoEdit, pausesPlayback: Boolean = true, font: String? = null, change: (Project) -> Project): Boolean
+    fun commit(edit: VideoEdit, pausesPlayback: Boolean = true, font: String? = null, value: String? = null, change: (Project) -> Project): Boolean
 
     /** Selects [itemId] with its tools, or clears the selection when it's null or gone. */
     fun select(itemId: String?)

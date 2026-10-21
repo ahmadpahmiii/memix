@@ -1,6 +1,5 @@
 package app.memix.engine.video
 
-import app.memix.core.model.project.ArgbColor
 import app.memix.core.model.project.AudioClip
 import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.MediaClip
@@ -38,8 +37,6 @@ internal sealed interface PlanProblem {
  * ([keepSilentItems]), so the Volume slider can raise one and be heard while it moves (P1-09).
  */
 internal object CompositionPlanner {
-    private val BLACK = ArgbColor(0xFF000000)
-
     fun plan(project: Project, keepSilentItems: Boolean = false): PlanResult {
         val tracks = project.video?.tracks.orEmpty()
         val mainTrack = tracks.firstOrNull { it.kind == TrackKind.MAIN_VIDEO }
@@ -55,11 +52,15 @@ internal object CompositionPlanner {
         val plan = CompositionPlan(
             canvasWidthPx = project.canvas.widthPx,
             canvasHeightPx = project.canvas.heightPx,
+            background = when (val background = project.canvas.background) {
+                is CanvasBackground.Solid -> PlanBackground.Color(background.color.argb)
+                CanvasBackground.Blur -> PlanBackground.Blur
+            },
             durationUs = durationUs,
             mainVideo = backToBack(mainClips, ::Gap) { it.toVisualClip(mainTrack.muted, keepSilentItems) },
             audioLanes = tracks.filter { it.kind.carriesSound() && !it.muted }.flatMap { audioLanes(it, durationUs, keepSilentItems) },
             captions = captions(tracks, durationUs),
-            notRendered = notRendered(project, tracks),
+            notRendered = notRendered(tracks),
         )
         return PlanResult.Ready(plan)
     }
@@ -79,6 +80,7 @@ internal object CompositionPlanner {
         trimInUs = trimInUs,
         trimOutUs = trimOutUs,
         fit = fit,
+        pixelSize = source.pixelSize,
         playsOwnAudio = hasOwnSound() && !audioDetached && !trackMuted && (volume > 0f || keepSilent),
         volume = volume,
     )
@@ -142,16 +144,10 @@ internal object CompositionPlanner {
             }
         }
 
-    private fun notRendered(project: Project, tracks: List<Track>): List<String> {
-        val skippedTracks = tracks.mapNotNull { track ->
-            val ticket = ticketThatAddsRendering(track.kind)
-            if (ticket == null || track.items.isEmpty()) return@mapNotNull null
-            "Not rendered yet: ${track.kind.name.lowercase()} track ${track.id} (${itemCount(track)}), arrives with $ticket"
-        }
-        val background = project.canvas.background
-        val isBlack = background is CanvasBackground.Solid && background.color == BLACK
-        val backgroundNote = if (isBlack) null else "Not rendered yet: the canvas background (black for now), arrives with P1-11"
-        return skippedTracks + listOfNotNull(backgroundNote)
+    private fun notRendered(tracks: List<Track>): List<String> = tracks.mapNotNull { track ->
+        val ticket = ticketThatAddsRendering(track.kind)
+        if (ticket == null || track.items.isEmpty()) return@mapNotNull null
+        "Not rendered yet: ${track.kind.name.lowercase()} track ${track.id} (${itemCount(track)}), arrives with $ticket"
     }
 
     /** The ticket that renders a track kind this engine skips today, or null when it renders it. */

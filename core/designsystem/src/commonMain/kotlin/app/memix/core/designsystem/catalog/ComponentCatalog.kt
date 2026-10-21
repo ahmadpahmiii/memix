@@ -51,8 +51,12 @@ import app.memix.core.designsystem.component.FontTile
 import app.memix.core.designsystem.component.IconButton
 import app.memix.core.designsystem.component.Menu
 import app.memix.core.designsystem.component.MenuItem
+import app.memix.core.designsystem.component.OptionTile
+import app.memix.core.designsystem.component.OptionTileLayout
 import app.memix.core.designsystem.component.ProgressBar
+import app.memix.core.designsystem.component.RatioShape
 import app.memix.core.designsystem.component.SegmentedTabs
+import app.memix.core.designsystem.component.SettingPill
 import app.memix.core.designsystem.component.Sheet
 import app.memix.core.designsystem.component.Slider
 import app.memix.core.designsystem.component.SoundRow
@@ -111,6 +115,7 @@ fun ComponentCatalog(onClose: () -> Unit, modifier: Modifier = Modifier, appSect
             TabSection()
             SliderAndToggleSection()
             FontTileAndSwatchSection()
+            SettingPillAndOptionTileSection()
             ProgressBarSection()
             IconButtonSection()
             ToastSection()
@@ -278,10 +283,34 @@ private fun FontTileAndSwatchSection() = Section("FontTile and Swatch") {
     }
     var swatch by remember { mutableStateOf<Color?>(Color.White) }
     Row(Modifier.horizontalScroll(rememberScrollState()).selectableGroup()) {
+        Swatch(null, "Blur", selected = swatch == Color.Transparent, onClick = { swatch = Color.Transparent }, icon = MemixIcons.Blur)
         Swatch(null, "No outline", selected = swatch == null, onClick = { swatch = null })
         listOf(Color.White to "White", Color.Black to "Black", Color(0xFFFFD60A) to "Yellow", Color(0xFF0A84FF) to "Blue").forEach { (color, name) ->
             Swatch(color, name, selected = swatch == color, onClick = { swatch = color })
         }
+    }
+}
+
+// The Canvas panel's pieces (P1-11): the ratio pill, ratio tiles drawn from their ratio, and Fit / Fill inline.
+@Composable
+private fun SettingPillAndOptionTileSection() = Section("SettingPill and OptionTile") {
+    var open by remember { mutableStateOf(false) }
+    SettingPill("9:16", "Canvas, 9:16", expanded = open, onClick = { open = !open })
+    var ratio by remember { mutableStateOf("9:16") }
+    Row(Modifier.horizontalScroll(rememberScrollState()).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space2)) {
+        listOf("9:16" to (9f / 16f), "1:1" to 1f, "16:9" to (16f / 9f)).forEach { (name, aspect) ->
+            OptionTile(name, selected = ratio == name, onClick = { ratio = name }, layout = OptionTileLayout.STACKED) { tint ->
+                RatioShape(aspect, tint)
+            }
+        }
+        OptionTile("Custom", selected = ratio == "Custom", onClick = { ratio = "Custom" }, layout = OptionTileLayout.STACKED) { tint ->
+            Icon(MemixIcons.RatioCustom, null, tint)
+        }
+    }
+    var fill by remember { mutableStateOf(false) }
+    Row(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space2)) {
+        OptionTile("Fit", selected = !fill, onClick = { fill = false }, layout = OptionTileLayout.INLINE) { tint -> Icon(MemixIcons.Fit, null, tint) }
+        OptionTile("Fill", selected = fill, onClick = { fill = true }, layout = OptionTileLayout.INLINE) { tint -> Icon(MemixIcons.Fill, null, tint) }
     }
 }
 
@@ -421,6 +450,7 @@ private fun IconSection() = Section("Icons") {
         "edit_text" to MemixIcons.EditText, "style" to MemixIcons.Style, "position" to MemixIcons.Position,
         "minus" to MemixIcons.Minus, "plus" to MemixIcons.Plus, "rotate_left" to MemixIcons.RotateLeft,
         "rotate_right" to MemixIcons.RotateRight, "arrow" to MemixIcons.Arrow, "scale_rotate" to MemixIcons.ScaleRotate,
+        "fit" to MemixIcons.Fit, "fill" to MemixIcons.Fill, "blur" to MemixIcons.Blur, "ratio_custom" to MemixIcons.RatioCustom,
     )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space4), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4)) {
         icons.forEach { (name, icon) ->

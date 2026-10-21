@@ -215,4 +215,37 @@
         <item quantity="one">%1$d डिग्री</item>
         <item quantity="other">%1$d डिग्री</item>
     </plurals>
+    <!-- Canvas (P1-11). Budgets and translator notes: docs/ux/specs/P1-11-canvas.md -> Copy. Ratios ("9:16") are never translated. -->
+    <string name="canvas_pill_a11y">कैनवस, %1$s</string>
+    <string name="canvas_title">कैनवस</string>
+    <string name="canvas_ratio">अनुपात</string>
+    <string name="canvas_ratio_custom">कस्टम</string>
+    <string name="canvas_ratio_a11y">%1$s, %2$s</string>
+    <string name="canvas_shape_tall">लंबा</string>
+    <string name="canvas_shape_square">चौकोर</string>
+    <string name="canvas_shape_wide">चौड़ा</string>
+    <string name="canvas_custom_width">चौड़ाई</string>
+    <string name="canvas_custom_height">ऊँचाई</string>
+    <string name="canvas_custom_width_down">चौड़ाई घटाएँ</string>
+    <string name="canvas_custom_width_up">चौड़ाई बढ़ाएँ</string>
+    <string name="canvas_custom_height_down">ऊँचाई घटाएँ</string>
+    <string name="canvas_custom_height_up">ऊँचाई बढ़ाएँ</string>
+    <string name="canvas_clips">क्लिप</string>
+    <string name="canvas_fit">फ़िट</string>
+    <string name="canvas_fill">भरें</string>
+    <string name="canvas_fit_a11y_hint">पूरी क्लिप दिखाता है</string>
+    <string name="canvas_fill_a11y_hint">पूरा फ़्रेम भरता है</string>
+    <string name="canvas_background">बैकग्राउंड</string>
+    <string name="canvas_background_blur">धुंधला</string>
+    <string name="canvas_background_hidden">आपकी क्लिप पूरा फ़्रेम भरती हैं, इसलिए बैकग्राउंड नहीं दिखता।</string>
+    <string name="canvas_layers_moved">टेक्स्ट फ़्रेम के अंदर रहने के लिए खिसकाया गया।</string>
+    <string name="explain_canvas_widest">वीडियो इससे ज़्यादा चौड़ा नहीं हो सकता।</string>
+    <string name="explain_canvas_tallest">वीडियो इससे ज़्यादा लंबा नहीं हो सकता।</string>
+    <string name="explain_canvas_min">1 सबसे छोटी संख्या है।</string>
+    <string name="explain_canvas_max">99 सबसे बड़ी संख्या है।</string>
+    <string name="explain_canvas_reorder">पहले क्रम बदलना पूरा करने के लिए हो गया पर टैप करें।</string>
+    <string name="edit_canvas_ratio">अनुपात</string>
+    <string name="edit_canvas_fit">फ़िट</string>
+    <string name="edit_canvas_fill">भरें</string>
+    <string name="edit_canvas_background">बैकग्राउंड</string>
 </resources>

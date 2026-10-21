@@ -100,7 +100,7 @@ internal class Media3VideoEngine(
                 sources,
                 settings.frameRate,
                 captionOverlay = captions,
-                outputShortSidePx = settings.shortSidePx,
+                frameShortSidePx = settings.shortSidePx,
             ).build()
             val result = transformerExport.run(composition, outputFile.path, onProgress)
             val video = withContext(ioDispatcher) { exportedVideo(outputFile, result, plan) }

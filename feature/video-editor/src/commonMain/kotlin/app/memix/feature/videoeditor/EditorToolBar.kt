@@ -289,6 +289,7 @@ internal class EditorFocusTargets {
     val styleTool = FocusRequester()
     val positionTool = FocusRequester()
     val selectedCaption = FocusRequester()
+    val ratioPill = FocusRequester()
 
     /** Moves focus to [target]'s control; nothing happens when it isn't on screen. */
     fun moveTo(target: FocusTarget) {
@@ -303,6 +304,7 @@ internal class EditorFocusTargets {
             FocusTarget.MEME_SOUNDS_TOOL -> memeSoundsTool
             FocusTarget.ADD_SOUND_PILL -> addSoundPill
             FocusTarget.VOLUME_TOOL -> volumeTool
+            FocusTarget.RATIO_PILL -> ratioPill
         }.requestFocus()
     }
 }

@@ -215,4 +215,37 @@
         <item quantity="one">%1$d grau</item>
         <item quantity="other">%1$d graus</item>
     </plurals>
+    <!-- Canvas (P1-11). Budgets and translator notes: docs/ux/specs/P1-11-canvas.md -> Copy. Ratios ("9:16") are never translated. -->
+    <string name="canvas_pill_a11y">Tela, %1$s</string>
+    <string name="canvas_title">Tela</string>
+    <string name="canvas_ratio">Proporção</string>
+    <string name="canvas_ratio_custom">Personalizado</string>
+    <string name="canvas_ratio_a11y">%1$s, %2$s</string>
+    <string name="canvas_shape_tall">vertical</string>
+    <string name="canvas_shape_square">quadrado</string>
+    <string name="canvas_shape_wide">horizontal</string>
+    <string name="canvas_custom_width">Largura</string>
+    <string name="canvas_custom_height">Altura</string>
+    <string name="canvas_custom_width_down">Diminuir largura</string>
+    <string name="canvas_custom_width_up">Aumentar largura</string>
+    <string name="canvas_custom_height_down">Diminuir altura</string>
+    <string name="canvas_custom_height_up">Aumentar altura</string>
+    <string name="canvas_clips">Clipes</string>
+    <string name="canvas_fit">Ajustar</string>
+    <string name="canvas_fill">Preencher</string>
+    <string name="canvas_fit_a11y_hint">Mostra o clipe inteiro</string>
+    <string name="canvas_fill_a11y_hint">Cobre o quadro todo</string>
+    <string name="canvas_background">Fundo</string>
+    <string name="canvas_background_blur">Desfoque</string>
+    <string name="canvas_background_hidden">Seus clipes preenchem o quadro, então o fundo não aparece.</string>
+    <string name="canvas_layers_moved">O texto foi movido para ficar dentro do quadro.</string>
+    <string name="explain_canvas_widest">Um vídeo não pode ser mais largo.</string>
+    <string name="explain_canvas_tallest">Um vídeo não pode ser mais alto.</string>
+    <string name="explain_canvas_min">1 é o menor número.</string>
+    <string name="explain_canvas_max">99 é o maior número.</string>
+    <string name="explain_canvas_reorder">Toque em Concluído para terminar de reordenar primeiro.</string>
+    <string name="edit_canvas_ratio">Proporção</string>
+    <string name="edit_canvas_fit">Ajustar</string>
+    <string name="edit_canvas_fill">Preencher</string>
+    <string name="edit_canvas_background">Fundo</string>
 </resources>

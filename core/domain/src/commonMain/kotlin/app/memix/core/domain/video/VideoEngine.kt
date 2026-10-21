@@ -10,9 +10,9 @@ import app.memix.core.model.project.Project
  * (P7-03 to P7-05). Features reach it through use cases only (CLAUDE.md rule 2).
  *
  * Rendered today: the main video track (videos and photos, trims, fit or fill, each clip's own audio
- * and volume) and the meme sound and audio tracks (trims, volume, muted tracks, detached audio).
- * Overlay, text, sticker and effect tracks and the canvas background are skipped with a log line
- * until their tickets add them (P4-01, P1-10, P4-12, P4-06, P1-11).
+ * and volume), the canvas background around fitted clips (P1-11), captions (P1-10) and the meme sound
+ * and audio tracks (trims, volume, muted tracks, detached audio). Overlay, sticker and effect tracks are
+ * skipped with a log line until their tickets add them (P4-01, P4-12, P4-06).
  *
  * Waveforms (P3-09) and device capabilities (P1-12) join this interface with the tickets that first use
  * them.

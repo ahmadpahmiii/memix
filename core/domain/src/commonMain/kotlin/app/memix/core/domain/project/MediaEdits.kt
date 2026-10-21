@@ -1,6 +1,7 @@
 package app.memix.core.domain.project
 
 import app.memix.core.domain.media.newMainClip
+import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaRef
@@ -29,7 +30,8 @@ sealed interface MediaPlace {
 /**
  * Puts [media] on the main video track at [place], back to back in pick order, as new clips named by [clipIds] (one
  * id per item, in the same order): videos at full length with their own sound, photos for the import's photo length.
- * Later main clips move right by the added length. An empty project gets them from 0:00.
+ * They take the fit every main clip shares, Fit when the clips differ (spec P1-11 → Interactions). Later main clips move
+ * right by the added length. An empty project gets them from 0:00.
  */
 fun Project.insertMedia(media: List<MediaRef>, clipIds: List<String>, place: MediaPlace): Project {
     require(media.size == clipIds.size) { "One clip id per added item" }
@@ -37,7 +39,8 @@ fun Project.insertMedia(media: List<MediaRef>, clipIds: List<String>, place: Med
     if (media.isEmpty()) return this
     val clips = mainClipsInOrder(track)
     val index = insertionIndex(clips, place)
-    val newClips = media.zip(clipIds) { ref, id -> newMainClip(ref, id, startUs = 0) }
+    val fit = sharedClipsFit() ?: FrameFit.FIT
+    val newClips = media.zip(clipIds) { ref, id -> newMainClip(ref, id, startUs = 0).copy(fit = fit) }
     return replaceTrack(track.copy(items = repacked(clips.subList(0, index) + newClips + clips.subList(index, clips.size))))
 }
 

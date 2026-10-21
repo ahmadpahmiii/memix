@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import memix.core.designsystem.generated.resources.Res
 import memix.core.designsystem.generated.resources.ic_arrow
 import memix.core.designsystem.generated.resources.ic_arrow_back
+import memix.core.designsystem.generated.resources.ic_blur
 import memix.core.designsystem.generated.resources.ic_chevron_right
 import memix.core.designsystem.generated.resources.ic_close
 import memix.core.designsystem.generated.resources.ic_create
@@ -20,6 +21,8 @@ import memix.core.designsystem.generated.resources.ic_drafts
 import memix.core.designsystem.generated.resources.ic_duplicate
 import memix.core.designsystem.generated.resources.ic_edit
 import memix.core.designsystem.generated.resources.ic_edit_text
+import memix.core.designsystem.generated.resources.ic_fill
+import memix.core.designsystem.generated.resources.ic_fit
 import memix.core.designsystem.generated.resources.ic_globe
 import memix.core.designsystem.generated.resources.ic_heart
 import memix.core.designsystem.generated.resources.ic_heart_filled
@@ -31,6 +34,7 @@ import memix.core.designsystem.generated.resources.ic_photo
 import memix.core.designsystem.generated.resources.ic_play
 import memix.core.designsystem.generated.resources.ic_plus
 import memix.core.designsystem.generated.resources.ic_position
+import memix.core.designsystem.generated.resources.ic_ratio_custom
 import memix.core.designsystem.generated.resources.ic_redo
 import memix.core.designsystem.generated.resources.ic_reorder
 import memix.core.designsystem.generated.resources.ic_replace
@@ -53,6 +57,7 @@ import org.jetbrains.compose.resources.painterResource
 object MemixIcons {
     val Arrow = Res.drawable.ic_arrow
     val ArrowBack = Res.drawable.ic_arrow_back
+    val Blur = Res.drawable.ic_blur
     val ChevronRight = Res.drawable.ic_chevron_right
     val Close = Res.drawable.ic_close
     val Create = Res.drawable.ic_create
@@ -61,6 +66,8 @@ object MemixIcons {
     val Drafts = Res.drawable.ic_drafts
     val Duplicate = Res.drawable.ic_duplicate
     val Edit = Res.drawable.ic_edit
+    val Fill = Res.drawable.ic_fill
+    val Fit = Res.drawable.ic_fit
     val EditText = Res.drawable.ic_edit_text
     val Globe = Res.drawable.ic_globe
     val Heart = Res.drawable.ic_heart
@@ -73,6 +80,7 @@ object MemixIcons {
     val Play = Res.drawable.ic_play
     val Plus = Res.drawable.ic_plus
     val Position = Res.drawable.ic_position
+    val RatioCustom = Res.drawable.ic_ratio_custom
     val Redo = Res.drawable.ic_redo
     val Reorder = Res.drawable.ic_reorder
     val Replace = Res.drawable.ic_replace
@@ -97,7 +105,16 @@ fun Icon(
     contentDescription: String?,
     tint: Color,
     modifier: Modifier = Modifier,
-    size: Dp = 24.dp,
+    size: Dp = ICON_SIZE,
 ) {
     Image(painterResource(icon), contentDescription, modifier.size(size), colorFilter = ColorFilter.tint(tint))
 }
+
+/** The icon grammar's canvas: every icon is drawn on 24 × 24, its shapes in the central 20 (DESIGN_SYSTEM → Iconography). */
+internal val ICON_SIZE = 24.dp
+
+/** The icon grammar's corner radius for rectangles. */
+internal val ICON_CORNER = 1.dp
+
+/** The icon grammar's share of the canvas that shapes live in: the central 20 of 24. */
+internal const val ICON_SHAPE_SHARE = 20f / 24f

@@ -28,6 +28,10 @@ enum class VideoEdit(val tool: EditorTool) {
     TEXT_OUTLINE(EditorTool.TEXT_OUTLINE),
     POSITION_TEXT(EditorTool.POSITION_TEXT),
     TRANSFORM_TEXT(EditorTool.TRANSFORM_TEXT),
+    CANVAS_RATIO(EditorTool.CANVAS_RATIO),
+    CANVAS_FIT(EditorTool.CANVAS_FIT),
+    CANVAS_FILL(EditorTool.CANVAS_FILL),
+    CANVAS_BACKGROUND(EditorTool.CANVAS_BACKGROUND),
     ;
 
     companion object {

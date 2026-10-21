@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import app.memix.core.designsystem.Icon
 import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixShapes
 import app.memix.core.designsystem.MemixSize
@@ -23,15 +24,17 @@ import app.memix.core.designsystem.MemixStroke
 import app.memix.core.designsystem.focusRing
 import app.memix.core.designsystem.pressedColor
 import kotlin.math.sqrt
+import org.jetbrains.compose.resources.DrawableResource
 
 /**
  * A content color choice (design/system/components/Swatch): a `swatch-size` circle of [color] in a `touch-target`
- * square, or, with [color] null, the "none" swatch (a `surface-raised` circle crossed by one line). [name] is spoken.
+ * square, or, with [color] null, the "none" swatch (a `surface-raised` circle crossed by one line), or with [icon] too,
+ * an icon variant such as the canvas's "Blur" (a `surface-raised` circle with [icon] at `icon-small`). [name] is spoken.
  * Selected: a white ring 2 dp outside the circle. Low-contrast colors (black on `surface`) get a `text-muted` hairline
  * ring so they don't vanish. Put the row in a `selectableGroup()`; a tap on the selected swatch does nothing.
  */
 @Composable
-fun Swatch(color: Color?, name: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun Swatch(color: Color?, name: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, icon: DrawableResource? = null) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressedBackdrop = pressedColor(interactionSource, MemixColors.surfaceRaised.copy(alpha = 0f), MemixColors.surfaceRaised)
     Box(
@@ -54,6 +57,7 @@ fun Swatch(color: Color?, name: String, selected: Boolean, onClick: () -> Unit, 
                     drawCircle(pressedBackdrop.value, radius + ringGap + ringWidth)
                     if (selected) drawCircle(MemixColors.selection, radius + ringGap + ringWidth / 2, style = Stroke(ringWidth))
                     drawCircle(color ?: MemixColors.surfaceRaised, radius)
+                    if (color == null && icon != null) return@drawBehind
                     val hairline = MemixStroke.strokeHairline.toPx()
                     if (color == null || color.isLowContrastOnSurface()) {
                         drawCircle(MemixColors.textMuted, radius - hairline / 2, style = Stroke(hairline))
@@ -69,7 +73,10 @@ fun Swatch(color: Color?, name: String, selected: Boolean, onClick: () -> Unit, 
                         )
                     }
                 },
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            if (color == null && icon != null) Icon(icon, contentDescription = null, tint = MemixColors.textSecondary, size = MemixSize.iconSmall)
+        }
     }
 }
 
