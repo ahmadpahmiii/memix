@@ -35,7 +35,7 @@ The caption is half of most memes: "When the build passes first try" over the cl
 | Position panel (ToolPanel) | The Position tool | Same |
 
 - **Back order** (P1-04) gains one step at the front: **typing commits and the keyboard closes** → menu → panel → drag in progress (canvas or timeline) is cancelled → reorder → selection → editor.
-- **Opening Edit text, Style or Position while the playhead is outside the text's time** first moves the playhead to the text's start (the 200 ms ruler-tap scroll), so the user sees what they're changing. Selecting alone still never moves the playhead (P1-05).
+- **Opening Edit text, Style or Position while the playhead is outside the text's time** first moves the playhead to the text's start, so the user sees what they're changing. It **jumps** there (P1-10 review): the panel or the keyboard covers the timeline at once, so a 200 ms scroll would play under them, and the preview frame and the timecode already show the move. Selecting alone still never moves the playhead (P1-05).
 - **Kept:** every text edit is in the project (autosave, undo). Not kept: the "last style used" memory, which lasts for one editor visit.
 
 ## Layout
@@ -96,11 +96,12 @@ On the smallest phones the caption is small while typing. That's acceptable: the
 - **Scale-and-rotate handle:** a `canvas-handle-size` circle in `selection` with a `stroke-hairline` `on-primary` edge, at the frame's bottom-right corner in every language (the canvas never mirrors). Icon `scale_rotate` (a curved two-way arrow) at `icon-small` in `on-primary`. Target: `touch-target`, centered on it.
   - If that corner is outside the stage, the handle moves to the nearest corner of the frame that's inside it.
 - **Snap guides:** while snapped, a full-height line at the canvas's vertical center and/or a full-width line at its horizontal center, inside the canvas frame. Same two-tone build as the frame (`stroke-hairline` `selection` beside `stroke-hairline` `on-primary`).
-- **Value bubble** while sizing or turning: the P1-06 Value bubble (`surface-raised`, `radius-full`, `shadow-float`, `timecode` in `text`), centered at the top of the stage, `space-2` below its top edge, so fingers don't cover it. It reads "120% · 15°".
+- **Value bubble** while sizing or turning: the P1-06 Value bubble (`surface-raised`, `radius-full`, `timecode` in `text`, no shadow, as on the timeline since the P1-06 review), centered at the top of the stage, `space-2` below its top edge, so fingers don't cover it. It reads "120% · 15°". The readout carries its own contrast (12.4:1 inside the pill); the pill's edge against the video needs none, because it's a status readout, not a control.
 - Text that isn't selected has no frame. A text that's selected but not visible at the playhead shows nothing on the preview; it's still selected on the timeline.
+- **Clipped to the stage** (P1-10 review M1): the frame, the handle, the guides, the stand-in and the screen-reader bounds never draw outside the preview stage. A frame that runs past the stage edge (a long caption at the top slot, a caption moved to the edge, a big scale) is cut at the stage edge. It never draws over the top bar, the transport row or, while typing, the entry bar.
 
 ### Style panel (ToolPanel)
-ToolPanel (`design/system/components/ToolPanel/README.md`): title "Style", Done. Rows `space-4` apart; each row has a `label` `text-secondary` heading above a horizontally scrolling row with `space-2` gaps, `space-4` side padding, scrolling edge to edge.
+ToolPanel (`design/system/components/ToolPanel/README.md`): title "Style", Done. Rows `space-4` apart; each row has a `label` `text-secondary` heading above a horizontally scrolling row with `space-2` gaps, scrolling edge to edge: the row spans the panel's full width and the `space-4` side inset is content padding inside the scroll, so the first tile lines up with the heading and scrolled tiles slide out at the screen edge (ToolPanel README → Content).
 
 1. **Font:** five FontTiles (`design/system/components/FontTile/README.md`, new), in this order: Classic, Modern, Bubbly, Handwritten, Serif. Each tile shows its name **set in its own font** at `caption-sample`.
 2. **Color:** ten Swatches (`design/system/components/Swatch/README.md`, new), in palette order.
@@ -163,8 +164,13 @@ Five caption fonts, the PRD's "Anton plus 4 more". Every one covers all five lau
 - **Anton's Devanagari partner is Teko Bold** (P1-17's file, 251 KB, already bundled). With the Classic font, every Devanagari character is drawn in Teko and everything else in Anton, so a Hinglish caption ("जब BUILD PASS हो") keeps the classic heavy, condensed look in both scripts.
   - Teko is a fallback, not a sixth tile: a "Teko" tile would draw Hindi text exactly like Classic.
   - Whole Devanagari clusters (consonant, conjuncts, vowel signs) always stay in one font, or shaping breaks.
-  - Teko runs use the same font size. The engineer's hand-check screenshots a mixed line; if Teko looks smaller than Anton's capitals, I'll set a size factor in this table before the ticket closes.
+  - Teko runs use the same font size for now (factor 1.0, `design/tokens.json` → `caption.geometry.devanagariSizeFactorUnderClassic`, provisional). **Decided at phase-end QA, before the phase gate** (P1-10 review), from the owner's mixed-line screenshot (`mixed-scripts-anton`, "जब BUILD PASS हो" at 100%):
+    - Measure, in device pixels on the same line, Anton's cap height (top of "B" to the baseline) and Teko's headline height (top of the शिरोरेखा bar over "ज" to the baseline).
+    - Within 5% of each other: keep 1.0.
+    - Otherwise: factor = Anton cap height ÷ Teko headline height, rounded to 0.05, applied to Devanagari runs under Classic only. The designer records it here and in `tokens.json`; the engineer applies it in the renderer.
+    - Why before the gate: the factor is part of every draft's look. Until the first internal-testing build only the owner's test drafts exist, so setting it then needs no migration; after that it would.
 - **Anything none of the five fonts has** (emoji, other scripts) falls back to the system font: Noto Color Emoji and Noto on Android, Apple's on iOS. Emoji are drawn without an outline. Because the same renderer draws preview and export, they match on that phone.
+  - **Build note (P1-10 review):** the renderer's outline pass draws the whole line, emoji included. Android draws color emoji glyphs as images whatever the paint style, so the pass most likely just draws each emoji twice in the same place, with nothing visible. Checked on the phone at QA (`mixed-scripts-*` with outline): a dark ring, halo, tint or doubled edge around 😂 is a must-fix before the gate; a clean emoji is accepted as built.
 - **Choosing the five** (9 Oct 2026; sizes from the google/fonts file pages): the five cover the main caption styles users know from TikTok and Instagram (classic, clean sans, rounded, handwriting, serif), each draws every launch language natively, and the total stays near 1 MB.
 
 | Considered | Why not |
@@ -284,7 +290,7 @@ Text items follow every P1-05/P1-06 rule for non-main items. Specifically:
 | Text item lands on the timeline | The bonk (`duration-bonk`); a new lane slides in over 200 ms (P1-05) | 120 ms fade-in |
 | Selection frame and handle appear or go | 120 ms fade | Same |
 | Style or Position panel | 200 ms slide (ToolPanel) | 120 ms fade |
-| Playhead moves to the text's start (Edit text, Style, Position) | 200 ms scroll, like a ruler tap | Jumps |
+| Playhead moves to the text's start (Edit text, Style, Position) | Jumps (P1-10 review: the panel or keyboard covers the timeline) | Same |
 | Font, color, outline, Position steps | Apply instantly on the preview | Same |
 | Snap guides, value bubble | 120 ms fade | Same |
 | Toasts | 120 ms fade (P1-04) | Same |
@@ -341,6 +347,7 @@ English source; the engineer machine-drafts id, es, pt and hi until P5. Budgets 
 | `a11y_degrees` | one: %d degree · other: %d degrees | 20 | Plural resource; spoken rotation |
 | `text_transform_bubble` | %1$s · %2$s | 16 | "120% · 15°" |
 | `a11y_text_transformed` | %1$s, %2$s | 40 | Announced after a size or rotation change: "120%, 15 degrees" |
+| `a11y_text_position` | %1$d% across, %2$d% down | 40 | Spoken after a Move step or Center (P1-10 review P3). %1$d = the caption's center from the frame's left edge, %2$d = from its top edge, both 0–100. Use your language's percent format, as in `position_size_value`. "Across" and "down" mean left to right and top to bottom of the picture. |
 | `explain_text_smallest` | This is the smallest size. | 40 | |
 | `explain_text_biggest` | This is the biggest size. | 40 | |
 | `explain_text_edge` | Your text can't go further this way. | 50 | |
@@ -376,7 +383,7 @@ Translator notes:
   | Drag in time, trim | P1-06: Move here, Split, "Trim to playhead" |
 
 - **Typing:** opening it moves focus to the field, which reads "Your text". The keyboard is the system's. Done is the next focus stop. On commit, focus goes to the text on the preview (or, if it isn't visible, its timeline item), and the announcement plays.
-- **Panels:** ToolPanel rules: focus to the title on open, back to the tool on close. Font tiles and swatches are single-choice groups ("Font", "Color", "Outline"): each option has its name, the selected one reads "selected", and the group reads its position ("2 of 5"). Steppers: each IconButton has its spoken label, and the readout is the row's state ("Size, 120%"). After each step, `a11y_text_transformed` or the new position is announced politely.
+- **Panels:** ToolPanel rules: focus to the title on open, back to the tool on close. Font tiles and swatches are single-choice groups ("Font", "Color", "Outline"): each option has its name, the selected one reads "selected", and the group reads its position ("2 of 5"). Steppers: each IconButton has its spoken label, and the readout is the row's state ("Size, 120%"). After each step, the new value is announced politely: `a11y_text_transformed` after Smaller, Bigger and the rotations; `a11y_text_position` ("50% across, 30% down", the caption's center) after a Move tap, a hold's release and Center (P1-10 review P3).
 - **Keyboard in P1** (basic access, not shortcuts): Tab reaches the preview's text nodes, the field, Done, every tool and every panel control; Enter activates. In the field, Enter makes a new line and Tab moves on. Escape = system back (commit while typing). The Position panel is how a keyboard user moves, sizes and turns text. **Shortcuts (arrow-key nudges and so on) are Later (L-01).**
 - **Touch targets:** tools, Done, tiles, swatches (32 dp drawn in 48 dp targets), stepper buttons, the handle and every text's hit area are 48 dp or more.
 - **Contrast:**
@@ -403,7 +410,7 @@ Translator notes:
 - Analytics stay off until consent (P5-01).
 
 ## QA compares
-1. **Typing a new caption** at 360 × 800: entry bar on the keyboard, the live caption in Classic at the top slot, the frame. Then the same on 360 × 640, where the preview shrinks above the entry bar.
+1. **Typing a new caption** at 360 × 800: entry bar on the keyboard, the live caption in Classic at the top slot, the frame. Then the same on 360 × 640, where the preview shrinks above the entry bar. Then a 200-character caption at the top slot: its frame is cut at the stage edge, never drawn over the top bar or the entry bar (P1-10 review M1).
 2. **Text selected:** two-tone frame and handle on the preview; the orange item selected on the timeline; text clip tools with Edit text, Style, Position and Delete visible at 360 dp.
 3. **Style panel:** Classic tile white, White swatch and Black outline swatch ringed; preview visible above. Then each of the five fonts on the same caption.
 4. **Position panel** at 360 × 640 (scrolled) and in Hindi at 200% font.

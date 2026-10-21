@@ -2,6 +2,14 @@
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: Design decisions and their reasons, patterns that worked or failed, recurring review issues, competitor insights.
 
+- 2026-10-21 · P1-10 review (provisional, code + renders 160–174 with a fake text renderer). Changes requested: M1 the stage `BoxWithConstraints` had no `clipToBounds`, so the caption frame drew over the top bar, transport row and entry bar (render 167). Lessons and decisions:
+  - **Anything drawn from content bounds (frames, guides, hit/a11y rects) needs a clip at its region's edge.** Compose never clips by default. Check every overlay layer for a clip when its content can be bigger than the region (long captions, big scales, short stages while typing).
+  - **Motion that plays under a panel/keyboard opening at the same moment is moot** (the 200 ms playhead scroll became a jump). Same rule as "covered states are moot".
+  - **Horizontal rows in a padded panel: padding goes inside the scroll** (layout bleed + `horizontalScroll` + `padding`), else a hard cut 16 dp from the edge.
+  - **Every stepper needs a spoken result for every button,** not just the ones with a readout (Move had none). Give the string in the spec.
+  - **Draft-look constants still open at build (Teko factor) get a provisional token value and a deadline before the first build that creates real drafts** (internal testing), so no migration is needed.
+  - Desktop renders that start in a mode (typing) skip state captured on entry (the "never bigger" cap); don't judge that from them.
+  - Fixed DESIGN_SYSTEM States: selected segment is white (SegmentedChoice), `surface-raised` never marks selection.
 - 2026-10-21 · P1-12 final + P1-13 spec. Decisions and reasons:
   - **Capability conflicts: the tapped option wins,** the other setting steps down with a toast that says so (replaced "explain and keep": it forced a read-and-two-taps dance). Fully impossible options explain and keep the selection; "shape" copy when the same resolution works at 16:9 (custom 2.39:1 4K needs codec Level 6), "phone" copy otherwise. A remembered setting that's impossible here gets a visible "lowered" notice, never a silent change.
   - **Estimate copy "Up to 18 MB":** VBR undershoots on stills (most memes), so the estimate is an upper bound (+5% margin); "about" would be wrong low, "up to about" double-hedges.

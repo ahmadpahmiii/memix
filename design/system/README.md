@@ -64,7 +64,7 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 **States.**
 - Pressed: `primary` fills switch to `primary-pressed`; neutral controls go one value step lighter (`surface-raised` → `hairline`). Nothing moves.
 - Selected clip or layer: `stroke-selection` outline in `selection` plus white trim handles.
-- Selected chip: `selection` fill with `on-primary` text. Selected tab: `text` label with a 2px `selection` underline. Selected segment: `surface-raised` pill with `text`.
+- Selected chip, segment (SegmentedChoice) and font tile (FontTile): `selection` fill with `on-primary` text. Selected swatch: a white ring 2px outside it. Selected tab: `text` label with a 2px `selection` underline. `surface-raised` never marks a selection (1.4:1 against `canvas`); see `docs/DESIGN_SYSTEM.md` → States.
 - Active tool: `primary` icon and label on `primary-subtle`.
 - Disabled: `text-muted` label. Prefer keeping controls enabled and explaining on tap.
 - Focus: `stroke-focus` ring in `focus-ring`, 2px outside the control.

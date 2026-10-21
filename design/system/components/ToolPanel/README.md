@@ -9,6 +9,7 @@ The settings area for an editor tool that needs more than one tap: Volume (P1-08
   - Content padding `space-4`.
 - **Top row:** the tool's name in `title` on the left (a heading); **Done** (Ghost button, `touch-target` tall, white text) on the right. Done is Ghost, not blue, because it only closes a panel whose changes already applied; reorder mode's Done (Quiet, blue) commits, so the two differ on purpose.
 - **Content:** Slider, Toggle, FontTile and Swatch rows, stepper rows (label, IconButton, readout, IconButton) and other rows, `space-4` apart. It scrolls inside the panel when taller; the top row stays in place. Rows wrap at large font sizes.
+  - **Horizontal rows scroll edge to edge** (FontTile and Swatch rows; P1-10 review P1): the row spans the panel's full width, and the `space-4` side inset is content padding inside the scroll. At rest the first item lines up with the heading; scrolled items slide out at the screen edge, not `space-4` before it, where a hard cut reads as a layout bug and hides part of the next item.
 - **Behavior:**
   - Changes apply live (Volume is heard while dragging). Each committed change (a slider release, a toggle) is one undo step.
   - There's no Cancel: undo is the way back.

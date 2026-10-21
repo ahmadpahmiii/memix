@@ -71,7 +71,7 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 **States.**
 - Pressed: `primary` fills switch to `primary-pressed`; neutral controls go one value step lighter (`surface-raised` → `hairline`); `primary-subtle` fills (a sound's play disc, the "Add a meme sound" pill) turn `surface-raised`, with their `primary` icon and label staying (5.9:1). Nothing moves.
 - Selected clip or layer: `stroke-selection` outline in `selection` plus white trim handles.
-- Selected chip: `selection` fill with `on-primary` text. Selected tab: `text` label with a 2px `selection` underline. Selected segment: `surface-raised` pill with `text`.
+- Selected chip, segment (SegmentedChoice) and font tile (FontTile): `selection` fill with `on-primary` text. Selected swatch: a `stroke-selection` white ring 2px outside it. Selected tab: `text` label with a 2px `selection` underline. `surface-raised` never marks a selection (only 1.4:1 against `canvas`, under SC 1.4.11's 3:1); it's the pressed fill of unselected segments (P1-11 spec, P1-10 review).
 - Active tool: `primary` icon and label on `primary-subtle`.
 - Disabled: `text-muted` label. Prefer keeping controls enabled and explaining on tap.
 - Progress: determinate only, a `primary` fill on a `rail-height` rail in `hairline`, always next to a count or percent in text. No looping indeterminate bars (MOTION 2); when the total is unknown, count items or show the amount done.
@@ -103,7 +103,7 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
 - **Color:** a single color per icon, applied as a tint: `text-secondary` (inactive), `text` (current nav item), `primary` (active tool), `on-primary` on blue fills. No two-tone icons.
 - **Meaning first:** every icon names a real action or place and always comes with a visible label or a screen-reader label. No sparkle, magic or robot glyphs.
 
-**The set so far** (`MemixIcons`, 27 icons after P1-09; more listed below to draw with their tickets):
+**The set so far** (`MemixIcons`, 37 icons after P1-10; more listed below to draw with their tickets):
 - Navigation and chrome: `home`, `templates`, `create` (plus; also Add media and every "add"), `sounds`, `drafts`, `arrow_back`, `chevron_right`, `close`, `globe`.
 - Media and playback: `video`, `photo`, `play`, `pause`, `undo`, `redo`, `heart`, `heart_filled`.
 - Editor tools (P1-06): `edit` (scissor blades, finger loops as the core), `split` (two outlined clips around a solid bar), `delete` (lid and handle strokes over a solid can), `duplicate` (open back outline behind a solid front clip), `reorder` (an arc with two solid arrowheads over two outlined clips).
@@ -115,6 +115,15 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
 - Original audio (P1-09, approved in the P1-09 review):
   - `volume_off`: `sounds`' solid cone with a 6 × 6 cross of two strokes in place of the waves, centered on the cone's axis and 2.3px clear of its tip. It's the muted state of the timeline's original-audio toggle, whose "on" state is `sounds`.
   - `detach_audio`: a solid clip (16 × 8px, 1px corners) over a two-period wave stroke, 3px apart. The gap carries "detach". It doesn't collide with `split`, `duplicate` or `replace`, none of which has a wave.
+- Text (P1-10, reviewed in the P1-10 review):
+  - `text`: a "T" whose crossbar is the solid core (16 × 3.5px) over a 2px stem. Main tool bar, place 3.
+  - `edit_text`: the same "T", smaller and to the left, beside a stroked text cursor (an I-beam with short serifs), 2px apart.
+  - `style`: "Aa": a stroked "A" and a solid single-story "a" (the core). The two must keep at least 1.4px of air between them (review P2 moves the "A" left; as first built they came within 0.4px and fuse).
+  - `position`: a solid 5 × 5px center square (the core) with four strokes out to four solid arrowheads.
+  - `minus`, `plus`: one or two 14px strokes, no core, like `close`. Size steppers.
+  - `rotate_left`, `rotate_right`: an open arc with a solid arrowhead; left is right mirrored.
+  - `arrow`: a shaft into a solid arrowhead pointing right; one drawing turned four ways for the Move buttons.
+  - `scale_rotate`: a curved stroke with a solid arrowhead at each end, drawn at `icon-small` in `on-primary` on the white handle. No core: it's a handle glyph, not a tool.
 - Canvas (P1-11, to draw with the ticket; specs in `docs/ux/specs/P1-11-canvas.md` → Requests 8):
   - `fit`: a stroked tall frame with a solid wide block inside it, touching its sides.
   - `fill`: the same frame filled solid, with short strokes beyond its left and right sides for the cut edges.
@@ -142,7 +151,7 @@ Map each token to the Memix theme objects, kebab-case to camelCase: `track-meme-
 | `canvas` | `MemixColors.canvas` | `#111111` | App background behind every screen (Adobe Spectrum's dark background-base). Neutral, untinted gray so the user's colors aren't shifted. |
 | `stage` | `MemixColors.stage` | `#000000` | Behind the video or photo preview inside both editors, as in CapCut, so the frame edges read clearly. |
 | `surface` | `MemixColors.surface` | `#1B1B1B` | Cards, sheets, bottom navigation, tool bar, timeline lanes (Spectrum layer-1). |
-| `surface-raised` | `MemixColors.surfaceRaised` | `#2C2C2C` | Raised controls on surface: secondary buttons, chips, search field, selected segment, empty media frames. |
+| `surface-raised` | `MemixColors.surfaceRaised` | `#2C2C2C` | Raised controls on surface: secondary buttons, chips, search field, unselected font tiles, pressed segments, empty media frames. It never marks a selected state (only 1.4:1 against canvas). |
 | `hairline` | `MemixColors.hairline` | `#393939` | 1px dividers and quiet borders. Decorative only: never the only sign of a control's edge. |
 | `text` | `MemixColors.text` | `#F2F2F2` | Primary text and icons (about 95% white, softer than pure white on near-black). 12.4:1 or more on every surface. |
 | `text-secondary` | `MemixColors.textSecondary` | `#A6A6A6` | Supporting text and inactive icons. 5.7:1 or more on canvas, surface and surface-raised. |
@@ -151,7 +160,7 @@ Map each token to the Memix theme objects, kebab-case to camelCase: `track-meme-
 | `primary-pressed` | `MemixColors.primaryPressed` | `#189BD8` | Pressed state of primary fills. Text on it is on-primary (6.0:1). |
 | `primary-subtle` | `MemixColors.primarySubtle` | `#2BB3F329` | 16% sky wash behind the active tool, sound play buttons and the "Add a meme sound" pill (over a `canvas` base). Icons and text on it use primary (6.2:1 over canvas). Never a whole row: a playing sound row steps one value up instead. Pressed, these fills turn `surface-raised`. |
 | `on-primary` | `MemixColors.onPrimary` | `#111111` | Text and icons on primary, primary-pressed, selection-white fills and danger. Also the 1px dark edge beside white selection marks drawn over the user's content (text frame, handle, snap guides on the preview), so they read on any video: white plus this edge is 4.3:1 or more against any color. |
-| `selection` | `MemixColors.selection` | `#FFFFFF` | Selected clip or layer outline, trim handles, playhead, selected chip fill: white, as in CapCut, so selection never competes with clip colors. |
+| `selection` | `MemixColors.selection` | `#FFFFFF` | Selected clip or layer outline, trim handles, playhead, selected chip, segment and font tile fills (text on them `on-primary`), the selected swatch ring: white, as in CapCut, so selection never competes with clip colors. |
 | `track-video` | `MemixColors.trackVideo` | `#3D3D3D` | Main video and overlay clips (they show thumbnails). Labels on it are text. |
 | `track-text` | `MemixColors.trackText` | `#E78E40` | Text clips on the timeline and text layers in the layers panel. Labels on it are on-track (7.5:1). |
 | `track-sticker` | `MemixColors.trackSticker` | `#D8AE31` | Sticker, image and cut-out clips. Labels on it are on-track (9.0:1). |
@@ -230,6 +239,7 @@ Captions are the user's meme, not chrome, so they have their own fonts, palette 
 - **Palette** (text and outline, opaque): White `#FFFFFF`, Black `#000000`, Yellow `#FFD60A`, Orange `#FF9500`, Red `#FF3B30`, Pink `#FF6BC1`, Purple `#AF52DE`, Blue `#0A84FF`, Light blue `#64D2FF`, Green `#30D158`. Content colors only: they appear in the interface only inside Swatches, and they avoid the rejected v1 values.
 - **Default:** Classic, White, Black outline.
 - **Geometry:** font size 8% of the canvas's shorter side at scale 1; wrap width 90% of it; scale 25–500%; lines centered; letter spacing 0; outline stroke = font size ÷ 12 with round joins, drawn under the fill; laid out once in canvas pixels, then drawn scaled. These values are part of every saved draft's look: changing one after P1 needs a schema bump and a migration.
+- **Devanagari size under Classic:** Teko's runs at 1.0 × the caption size, provisional; set at phase-end QA before the Phase 1 gate from a mixed-line screenshot (Anton cap height ÷ Teko headline height, rounded to 0.05; 1.0 if within 5%). Spec P1-10 → Fonts.
 
 Sources: [Poppins](https://github.com/google/fonts/blob/main/ofl/poppins/METADATA.pb), [Baloo 2](https://github.com/google/fonts/blob/main/ofl/baloo2/METADATA.pb) and its [upstream](https://github.com/google/fonts/blob/main/ofl/baloo2/upstream_info.md), [Kalam](https://github.com/google/fonts/blob/main/ofl/kalam/METADATA.pb), [Rozha One](https://github.com/google/fonts/blob/main/ofl/rozhaone/METADATA.pb), [Anton](https://github.com/google/fonts/blob/main/ofl/anton/METADATA.pb); file sizes from the GitHub file pages, 9 Oct 2026.
 
