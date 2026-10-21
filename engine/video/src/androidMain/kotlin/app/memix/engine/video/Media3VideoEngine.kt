@@ -36,6 +36,8 @@ internal class Media3VideoEngine(
     private val context: Context,
     private val logger: Logger,
     private val ioDispatcher: CoroutineDispatcher,
+    /** Draws the captions of every preview and export. */
+    private val captionRenderer: AndroidCaptionRenderer,
     /** Builds with hand checks: previews log where each sound is heard ([SoundOnsetLog]). */
     private val measureSoundOnsets: Boolean = false,
 ) : VideoEngine {
@@ -43,7 +45,7 @@ internal class Media3VideoEngine(
     private val transformerExport = TransformerExport(context)
 
     override fun createPreview(project: Project): PreviewSession =
-        Media3PreviewSession(context, sourceResolver, logger, ioDispatcher, project, measureSoundOnsets)
+        Media3PreviewSession(context, sourceResolver, captionRenderer, logger, ioDispatcher, project, measureSoundOnsets)
 
     override fun openThumbnails(): ThumbnailReader = MediaThumbnailReader(context.filesDir, ioDispatcher, logger)
 
@@ -89,7 +91,17 @@ internal class Media3VideoEngine(
         val started = TimeSource.Monotonic.markNow()
         var succeeded = false
         try {
-            val composition = Media3CompositionBuilder(plan, sources, settings.frameRate).build()
+            captionRenderer.prepare()
+            val captions = plan.captions.takeIf { it.isNotEmpty() }?.let {
+                CaptionOverlay(it, captionRenderer, plan.canvasWidthPx, plan.canvasHeightPx)
+            }
+            val composition = Media3CompositionBuilder(
+                plan,
+                sources,
+                settings.frameRate,
+                captionOverlay = captions,
+                outputShortSidePx = settings.shortSidePx,
+            ).build()
             val result = transformerExport.run(composition, outputFile.path, onProgress)
             val video = withContext(ioDispatcher) { exportedVideo(outputFile, result, plan) }
             logger.debug(TAG, "Exported ${plan.durationUs} µs of video in ${started.elapsedNow().inWholeMilliseconds} ms")

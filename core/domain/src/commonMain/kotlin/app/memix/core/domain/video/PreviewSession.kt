@@ -55,8 +55,18 @@ interface PreviewSession : AutoCloseable {
      */
     fun showTrimFrame(clip: MediaClip, sourceTimeUs: Long)
 
-    /** Shows the project at [positionUs] again after [showTrimFrame]; does nothing otherwise. Commit the trim after it. */
+    /**
+     * Shows the project at [positionUs] again after [showTrimFrame]; does nothing otherwise. The trim's [update] may
+     * come just before it (P1-06 P8): both land in one build.
+     */
     fun endTrimFrames()
+
+    /**
+     * While caption [itemId] is typed or moved on the preview (P1-10), the preview leaves it out and the editor's
+     * stand-in draws it instead, so it never shows twice. Takes effect on the paused frame without rebuilding. null
+     * shows every caption again; the [update] that commits the edit usually comes first.
+     */
+    fun hideCaption(itemId: String?)
 
     /**
      * While the Volume panel's slider moves (P1-08, P1-09): plays sound or clip [itemId] at [volume] (1 = its own

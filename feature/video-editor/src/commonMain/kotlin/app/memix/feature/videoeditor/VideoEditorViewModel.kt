@@ -1,6 +1,7 @@
 package app.memix.feature.videoeditor
 
 import androidx.lifecycle.viewModelScope
+import app.memix.core.designsystem.MemixMotion
 import app.memix.core.domain.AppError
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.media.ImportMediaUseCase
@@ -36,8 +37,8 @@ import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.Project
+import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TrackKind
-import app.memix.core.designsystem.MemixMotion
 import app.memix.core.ui.MemixViewModel
 import app.memix.feature.videoeditor.importmedia.ImportIntent
 import app.memix.feature.videoeditor.timeline.ItemName
@@ -75,8 +76,9 @@ import kotlinx.coroutines.launch
  * thumbnails their open files. [decodeDispatcher] decodes thumbnail pictures off the main thread.
  *
  * Tool areas live in helpers that reach the editor through one [EditorHost]: meme sounds ([EditorSoundTools]), the
- * Volume panel ([VolumePanelControl]), Move ([MoveControl]) and original audio ([OriginalAudioControl]); Add media and
- * Replace copy through [importMedia] ([EditorMediaImport]).
+ * Volume panel ([VolumePanelControl]), Move ([MoveControl]), original audio ([OriginalAudioControl]) and captions
+ * ([CaptionControl], measured with [captionRendering]); Add media and Replace copy through [importMedia]
+ * ([EditorMediaImport]).
  */
 class VideoEditorViewModel(
     projectId: String,
@@ -85,6 +87,7 @@ class VideoEditorViewModel(
     private val startPreview: StartPreviewUseCase,
     private val startThumbnails: StartThumbnailsUseCase,
     private val sounds: EditorSounds,
+    private val captionRendering: EditorCaptionRendering,
     importMedia: ImportMediaUseCase,
     private val decodeDispatcher: CoroutineDispatcher,
     private val debugEdit: EditorDebugEdit?,
@@ -114,9 +117,10 @@ class VideoEditorViewModel(
     private val volumePanel = VolumePanelControl(host)
     private val move = MoveControl(host)
     private val originalAudio = OriginalAudioControl(host)
+    private val captions = CaptionControl(host)
 
     init {
-        updateState { it.copy(mediaImport = mediaImport.ui) }
+        updateState { it.copy(mediaImport = mediaImport.ui, captionMeasure = EditorCaptionMeasure(captionRendering.measure)) }
         addCloseable(AutoCloseable { preview?.close() })
         addCloseable(soundTools)
         viewModelScope.launch { loadStarterSounds() }
@@ -199,6 +203,21 @@ class VideoEditorViewModel(
             VideoEditorIntent.PickAgain -> pickAgain()
             VideoEditorIntent.ToggleOriginalAudio -> originalAudio.toggleMute()
             is VideoEditorIntent.DetachAudioSelected -> originalAudio.detachSelected(intent.fileMissing)
+            VideoEditorIntent.TextTool -> captions.startNew()
+            VideoEditorIntent.EditTextSelected -> captions.editSelected()
+            is VideoEditorIntent.TextEntryChanged -> captions.changeEntry(intent.text)
+            VideoEditorIntent.TextEntryDone -> captions.commitEntry()
+            is VideoEditorIntent.OpenTextPanel -> captions.openPanel(intent.panel)
+            VideoEditorIntent.CloseTextPanel -> captions.closePanel()
+            is VideoEditorIntent.SetCaptionFont -> captions.setFont(intent.fontId)
+            is VideoEditorIntent.SetCaptionColor -> captions.setColor(intent.argb)
+            is VideoEditorIntent.SetCaptionOutline -> captions.setOutline(intent.argb)
+            is VideoEditorIntent.PositionStepped -> captions.step(intent.step, intent.repeats)
+            is VideoEditorIntent.PositionStepHeld -> captions.stepHeld(intent.step, intent.repeats)
+            is VideoEditorIntent.CaptionTapped -> captions.tap(intent.itemId)
+            is VideoEditorIntent.CaptionGestureStarted -> captions.startGesture(intent.itemId)
+            is VideoEditorIntent.CaptionGestureEnded -> captions.endGesture(intent.itemId, intent.transform)
+            VideoEditorIntent.CaptionGestureCancelled -> captions.cancelGesture()
         }
     }
 
@@ -211,6 +230,11 @@ class VideoEditorViewModel(
         addCloseable(thumbnails)
         updateState { it.copy(canvas = canvasUiOf(project.canvas), thumbnails = thumbnails) }
         viewModelScope.launch { session.state.collect(::showEditState) }
+        // Captions are measured with the bundled fonts once they've loaded; until then with the system font.
+        viewModelScope.launch {
+            captionRendering.prepare()
+            currentProject()?.let(::showCaptions)
+        }
     }
 
     private fun showEditState(edit: ProjectEditState) {
@@ -235,6 +259,7 @@ class VideoEditorViewModel(
                 originalAudio = if (project.hasOriginalAudio()) OriginalAudioUi(muted = project.isOriginalMuted()) else null,
             ).withSelection(it.selectedItemId, project)
         }
+        showCaptions(project)
         if (project.hasNoClips()) {
             closePreview()
             updateState { it.copy(stage = StageContent.EMPTY, isPlaying = false) }
@@ -242,6 +267,19 @@ class VideoEditorViewModel(
         }
         val current = preview
         if (current == null) openPreview(project) else current.update(project)
+    }
+
+    private fun showCaptions(project: Project) {
+        val canvas = project.canvas
+        val captionList = project.video?.tracks.orEmpty()
+            .filter { it.kind == TrackKind.TEXT }
+            .flatMap { track -> track.items.filterIsInstance<TextItem>() }
+            .map { it.toCaptionUi(captionRendering.measure, canvas.widthPx, canvas.heightPx) }
+            .toImmutableList()
+        // A stand-in of a caption that's gone (deleted, undone) goes with it.
+        updateState { state ->
+            state.copy(captions = captionList, captionStandIn = state.captionStandIn?.takeIf { standIn -> captionList.any { it.itemId == standIn.itemId } })
+        }
     }
 
     private fun openPreview(project: Project) {
@@ -267,6 +305,7 @@ class VideoEditorViewModel(
         }
         updateState { it.copy(stage = stage, isPlaying = playback.isPlaying) }
         showCatchingUp(playback.isCatchingUp)
+        captions.onPreviewCatchingUp(playback.isCatchingUp)
         if (playback.missingMedia && !missingMediaShown) {
             missingMediaShown = true
             showToast(ToastMessage.MissingMedia)
@@ -315,6 +354,9 @@ class VideoEditorViewModel(
      */
     private fun goBack() {
         when {
+            // Back while typing keeps the words: it commits (spec P1-10 → Typing → commit).
+            state.value.textEntry != null -> captions.commitEntry()
+            state.value.textPanel != null -> captions.closePanel()
             state.value.volumePanel != null -> volumePanel.close()
             state.value.reorder != null -> updateState { it.copy(reorder = null) }
             state.value.selectedItemId != null -> updateState { it.withSelection(null, null) }
@@ -519,8 +561,8 @@ class VideoEditorViewModel(
         override fun currentProject() = this@VideoEditorViewModel.currentProject()
         override fun currentPositionUs() = this@VideoEditorViewModel.currentPositionUs()
 
-        override fun commit(edit: VideoEdit, pausesPlayback: Boolean, change: (Project) -> Project) =
-            this@VideoEditorViewModel.commit(edit, pausesPlayback, change)
+        override fun commit(edit: VideoEdit, pausesPlayback: Boolean, font: String?, change: (Project) -> Project) =
+            this@VideoEditorViewModel.commit(edit, pausesPlayback, font, change)
 
         override fun select(itemId: String?) = updateState { it.withSelection(itemId, currentProject()) }
         override fun announce(edit: VideoEdit, item: ItemName?) = this@VideoEditorViewModel.announce(edit, item)
@@ -591,10 +633,10 @@ class VideoEditorViewModel(
      * state to come round. Returns false when the edit changed nothing (no step, no `tool_use`). Callers pause
      * playback first, except the Volume panel, where playback keeps going so the change is heard.
      */
-    private fun commit(edit: VideoEdit, pausesPlayback: Boolean = true, change: (Project) -> Project): Boolean {
+    private fun commit(edit: VideoEdit, pausesPlayback: Boolean = true, font: String? = null, change: (Project) -> Project): Boolean {
         val session = editSession ?: return false
         if (pausesPlayback) preview?.pause()
-        val recorded = session.commit(edit.tool, change)
+        val recorded = session.commit(edit.tool, font, change)
         if (recorded) showEditState(session.state.value)
         return recorded
     }
@@ -651,6 +693,8 @@ class VideoEditorViewModel(
 
     // Leaving saves by itself; only changes that can't be saved make it ask first (spec P1-04 → Saving).
     private fun requestClose() {
+        // Close while typing commits first, so the words are saved on the way out.
+        captions.commitEntry()
         preview?.pause()
         if (saveFailure != null) updateState { it.copy(unsavedSheetOpen = true) } else updateState { it.copy(isClosing = true) }
     }
@@ -708,6 +752,8 @@ class VideoEditorViewModel(
     private fun canvasUiOf(canvas: Canvas) = CanvasUi(
         aspectRatio = canvas.widthPx.toFloat() / canvas.heightPx,
         ratioLabel = ratioLabelOf(canvas),
+        widthPx = canvas.widthPx,
+        heightPx = canvas.heightPx,
     )
 
     private fun ratioLabelOf(canvas: Canvas): String = when (canvas.ratio) {
@@ -741,12 +787,14 @@ class VideoEditorViewModel(
  * trim it; null (or a vanished item) clears all three.
  */
 internal fun VideoEditorUiState.withSelection(itemId: String?, project: Project?): VideoEditorUiState {
-    val track = itemId?.let(timeline::trackOf) ?: return copy(selectedItemId = null, clipTools = null, trimRanges = null)
+    // A caption's panel belongs to it: it closes when the selection moves on or goes.
+    val panel = textPanel?.takeIf { itemId != null && itemId == selectedItemId }
+    val track = itemId?.let(timeline::trackOf) ?: return copy(selectedItemId = null, clipTools = null, trimRanges = null, textPanel = null)
     val start = project?.trimRange(itemId, TrimEdge.START)
     val end = project?.trimRange(itemId, TrimEdge.END)
     val ranges = if (start != null && end != null) TrimRanges(start, end) else null
     val mediaKind = timeline.item(itemId)?.media?.kind
-    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind), trimRanges = ranges)
+    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind), trimRanges = ranges, textPanel = panel)
 }
 
 private fun clipToolsFor(kind: TrackKind, mediaKind: MediaKind?): ClipTools = when (kind) {

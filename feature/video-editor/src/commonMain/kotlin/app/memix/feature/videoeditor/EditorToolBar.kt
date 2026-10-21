@@ -53,12 +53,16 @@ import memix.feature.video_editor.generated.resources.tool_delete
 import memix.feature.video_editor.generated.resources.tool_detach_audio
 import memix.feature.video_editor.generated.resources.tool_duplicate
 import memix.feature.video_editor.generated.resources.tool_edit
+import memix.feature.video_editor.generated.resources.tool_edit_text
 import memix.feature.video_editor.generated.resources.tool_meme_sounds
 import memix.feature.video_editor.generated.resources.tool_move_here
 import memix.feature.video_editor.generated.resources.tool_move_here_a11y
+import memix.feature.video_editor.generated.resources.tool_position
 import memix.feature.video_editor.generated.resources.tool_reorder
 import memix.feature.video_editor.generated.resources.tool_replace
 import memix.feature.video_editor.generated.resources.tool_split
+import memix.feature.video_editor.generated.resources.tool_style
+import memix.feature.video_editor.generated.resources.tool_text
 import memix.feature.video_editor.generated.resources.tool_volume
 import org.jetbrains.compose.resources.stringResource
 
@@ -171,21 +175,23 @@ private fun ReorderBar(onIntent: (VideoEditorIntent) -> Unit, moveEarlierFocus: 
 }
 
 /**
- * Nothing selected: Edit, Meme sounds in blue (it's meme-sound UI), then Add media. Add media sits in place 3 until
- * P1-10's Text takes that place and moves it to 4; each tool keeps its place as more arrive (spec P1-06 → Main tool
- * bar). An empty project has only Add media: nothing to select, nothing to play a sound over.
+ * Nothing selected: Edit, Meme sounds in blue (it's meme-sound UI), Text, then Add media; each tool keeps its place as
+ * more arrive (spec P1-06 → Main tool bar; P1-10 put Text in place 3). An empty project has only Add media: nothing to
+ * select, nothing to play a sound over or caption.
  */
 @Composable
 private fun rememberMainTools(isEmpty: Boolean, focus: EditorFocusTargets, onIntent: (VideoEditorIntent) -> Unit): ImmutableList<ToolBarItem> {
     val edit = stringResource(Res.string.tool_edit)
     val memeSounds = stringResource(Res.string.tool_meme_sounds)
+    val text = stringResource(Res.string.tool_text)
     val addMedia = stringResource(Res.string.tool_add_media)
-    return remember(isEmpty, edit, memeSounds, addMedia, focus, onIntent) {
+    return remember(isEmpty, edit, memeSounds, text, addMedia, focus, onIntent) {
         val addMediaTool = ToolBarItem(addMedia, MemixIcons.Create, { onIntent(VideoEditorIntent.AddMediaTool) }, focusRequester = focus.addMediaTool)
         if (isEmpty) return@remember persistentListOf(addMediaTool)
         persistentListOf(
             ToolBarItem(edit, MemixIcons.Edit, { onIntent(VideoEditorIntent.EditTool) }),
             ToolBarItem(memeSounds, MemixIcons.Sounds, { onIntent(VideoEditorIntent.MemeSoundsTool) }, ToolTone.MemeSound, focusRequester = focus.memeSoundsTool),
+            ToolBarItem(text, MemixIcons.Text, { onIntent(VideoEditorIntent.TextTool) }, focusRequester = focus.textTool),
             addMediaTool,
         )
     }
@@ -214,7 +220,8 @@ private fun rememberClipTools(
     val moveHereClickLabel = stringResource(Res.string.tool_move_here_a11y)
     val replace = stringResource(Res.string.tool_replace)
     val detach = stringResource(Res.string.tool_detach_audio)
-    return remember(clipTools, isMissing, split, delete, duplicate, reorder, volume, moveHere, moveHereClickLabel, replace, detach, onIntent, reorderFocus, focus) {
+    val textTools = rememberTextTools(onIntent, focus)
+    return remember(clipTools, isMissing, split, delete, duplicate, reorder, volume, moveHere, moveHereClickLabel, replace, detach, textTools, onIntent, reorderFocus, focus) {
         val splitTool = ToolBarItem(split, MemixIcons.Split, { onIntent(VideoEditorIntent.SplitSelected) })
         val deleteTool = ToolBarItem(delete, MemixIcons.Delete, { onIntent(VideoEditorIntent.DeleteSelected) }, ToolTone.Danger)
         val duplicateTool = ToolBarItem(duplicate, MemixIcons.Duplicate, { onIntent(VideoEditorIntent.DuplicateSelected) })
@@ -243,9 +250,26 @@ private fun rememberClipTools(
                 moveHereTool,
                 duplicateTool,
             )
-            ClipTools.TEXT -> persistentListOf(deleteTool, splitTool, moveHereTool, duplicateTool)
+            // What people do with a caption first; Delete before Split, since a caption is deleted more often than cut
+            // (spec P1-10 → Text clip tools). The first four fit at 360 dp.
+            ClipTools.TEXT -> (textTools + listOf(deleteTool, splitTool, moveHereTool, duplicateTool)).toImmutableList()
             ClipTools.OTHER -> persistentListOf(splitTool, deleteTool, moveHereTool, duplicateTool)
         }
+    }
+}
+
+/** Edit text, Style and Position: a caption's own tools, which always act (spec P1-10 → Text clip tools). */
+@Composable
+private fun rememberTextTools(onIntent: (VideoEditorIntent) -> Unit, focus: EditorFocusTargets): List<ToolBarItem> {
+    val editText = stringResource(Res.string.tool_edit_text)
+    val style = stringResource(Res.string.tool_style)
+    val position = stringResource(Res.string.tool_position)
+    return remember(editText, style, position, onIntent, focus) {
+        listOf(
+            ToolBarItem(editText, MemixIcons.EditText, { onIntent(VideoEditorIntent.EditTextSelected) }),
+            ToolBarItem(style, MemixIcons.Style, { onIntent(VideoEditorIntent.OpenTextPanel(TextPanel.STYLE)) }, focusRequester = focus.styleTool),
+            ToolBarItem(position, MemixIcons.Position, { onIntent(VideoEditorIntent.OpenTextPanel(TextPanel.POSITION)) }, focusRequester = focus.positionTool),
+        )
     }
 }
 
@@ -261,10 +285,18 @@ internal class EditorFocusTargets {
     val memeSoundsTool = FocusRequester()
     val addSoundPill = FocusRequester()
     val volumeTool = FocusRequester()
+    val textTool = FocusRequester()
+    val styleTool = FocusRequester()
+    val positionTool = FocusRequester()
+    val selectedCaption = FocusRequester()
 
     /** Moves focus to [target]'s control; nothing happens when it isn't on screen. */
     fun moveTo(target: FocusTarget) {
         when (target) {
+            FocusTarget.TEXT_TOOL -> textTool
+            FocusTarget.STYLE_TOOL -> styleTool
+            FocusTarget.POSITION_TOOL -> positionTool
+            FocusTarget.SELECTED_CAPTION -> selectedCaption
             FocusTarget.ADD_MEDIA_TOOL -> addMediaTool
             FocusTarget.ADD_MEDIA_TILE -> addMediaTile
             FocusTarget.REPLACE_TOOL -> replaceTool

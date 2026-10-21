@@ -21,6 +21,13 @@ enum class VideoEdit(val tool: EditorTool) {
     MUTE_ORIGINAL(EditorTool.MUTE_ORIGINAL),
     UNMUTE_ORIGINAL(EditorTool.UNMUTE_ORIGINAL),
     DETACH_AUDIO(EditorTool.DETACH_AUDIO),
+    ADD_TEXT(EditorTool.ADD_TEXT),
+    EDIT_TEXT(EditorTool.EDIT_TEXT),
+    TEXT_FONT(EditorTool.TEXT_FONT),
+    TEXT_COLOR(EditorTool.TEXT_COLOR),
+    TEXT_OUTLINE(EditorTool.TEXT_OUTLINE),
+    POSITION_TEXT(EditorTool.POSITION_TEXT),
+    TRANSFORM_TEXT(EditorTool.TRANSFORM_TEXT),
     ;
 
     companion object {

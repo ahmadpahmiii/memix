@@ -1,9 +1,11 @@
 package app.memix.engine.video
 
+import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.TrackKind
+import app.memix.core.model.project.Transform
 
 /**
  * A project laid out the way both platform engines build it: one main video sequence plus audio-only
@@ -20,6 +22,8 @@ internal data class CompositionPlan(
     val mainVideo: List<MainVideoSegment>,
     /** Unmuted meme sound and audio tracks, plus extra lanes where clips on one track overlap. */
     val audioLanes: List<AudioLane>,
+    /** The captions drawn over the video, in draw order (later ones on top), cut to [durationUs]. */
+    val captions: List<CaptionClip> = emptyList(),
     /** One log line per thing in the project this engine doesn't render yet, naming the ticket that adds it. */
     val notRendered: List<String>,
 ) {
@@ -108,6 +112,22 @@ internal data class SoundClip(
     val volume: Float,
 ) : AudioSegment {
     override val durationUs: Long get() = trimOutUs - trimInUs
+}
+
+/**
+ * A caption over the video from [startUs] until [endUs] (composition time), drawn with the caption renderer by the
+ * rules in spec P1-10 → Caption rendering.
+ */
+internal data class CaptionClip(
+    val itemId: String,
+    val startUs: Long,
+    val endUs: Long,
+    val text: String,
+    val style: CaptionStyle,
+    val transform: Transform,
+) {
+    /** Whether it shows at composition time [timeUs]. */
+    fun isShownAt(timeUs: Long): Boolean = timeUs >= startUs && timeUs < endUs
 }
 
 /** Sounds that play one after another, from one meme sound or audio track. */

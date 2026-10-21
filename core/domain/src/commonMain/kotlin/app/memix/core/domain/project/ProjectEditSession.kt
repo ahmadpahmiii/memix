@@ -44,14 +44,15 @@ class ProjectEditSession internal constructor(
      * [tool] names the step: the editor turns it into words for "Undo: Split" through [ProjectEditState.undoTool]
      * and [ProjectEditState.redoTool]. A recorded step logs `tool_use` for [tool] once, unless [tool] has no event
      * value (its own event counts it); an edit that changes nothing logs nothing (PRD analytics, PM 8 Oct 2026).
-     * Returns whether a step was recorded.
+     * Returns whether a step was recorded. [font] goes with `tool_use` for the caption tools that name one
+     * (`add_text`, `text_font`).
      *
      * A drag, trim or pinch is one step: keep its in-between positions in UI state and commit once, when the
      * finger lifts (mobile-performance skill), so 60 frames of dragging are one undo, not 60.
      */
-    fun commit(tool: EditorTool, edit: (Project) -> Project): Boolean {
+    fun commit(tool: EditorTool, font: String? = null, edit: (Project) -> Project): Boolean {
         val recorded = changeHistory { history -> history.record(tool, edit(history.current)) }
-        if (recorded) logToolUse(tool)
+        if (recorded) logToolUse(tool, font)
         return recorded
     }
 
@@ -95,9 +96,9 @@ class ProjectEditSession internal constructor(
 
     // PRD tool_use: every tool, undo and redo included, counts only when it changes the project (PM, 8 Oct 2026).
     // A step without an event value is counted by its own event (a landed sound: sound_add).
-    private fun logToolUse(tool: EditorTool) {
+    private fun logToolUse(tool: EditorTool, font: String? = null) {
         if (tool.eventValue == null) return
-        analytics.log(AnalyticsEvent.ToolUse(editor = mutableState.value.project.type, tool = tool))
+        analytics.log(AnalyticsEvent.ToolUse(editor = mutableState.value.project.type, tool = tool, font = font))
     }
 
     private fun showSaveFailure(failure: AppError?) {

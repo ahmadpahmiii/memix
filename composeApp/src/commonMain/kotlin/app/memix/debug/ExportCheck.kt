@@ -22,7 +22,8 @@ import org.koin.core.component.inject
  * - [run] (P1-03, "a sample project with every track type exports correctly") exports [ExportCheckProject]; MainActivity's
  *   `memix.exportCheck` extra starts it.
  * - [runLatestDraft] (P1-08 export sync) exports the draft edited last, after logging where each of its sounds starts;
- *   the `memix.exportLatestDraft` extra starts it.
+ *   the `memix.exportLatestDraft` extra starts it, and `memix.exportShortSide` (P1-10: 720 for 720p) lowers its
+ *   resolution.
  * Debug builds only; the steps are in docs/qa/phase-1/engineer-hand-checks.md.
  */
 class ExportCheck : KoinComponent {
@@ -35,8 +36,11 @@ class ExportCheck : KoinComponent {
         export(ExportCheckProject.build())
     }
 
-    /** Exports the draft edited last, with one line per meme sound and audio clip: where it starts and what of it plays. */
-    suspend fun runLatestDraft() {
+    /**
+     * Exports the draft edited last, with one line per meme sound and audio clip: where it starts and what of it plays.
+     * [shortSidePx] exports at a lower resolution (720 for 720p); null at the canvas size.
+     */
+    suspend fun runLatestDraft(shortSidePx: Int? = null) {
         val latest = repository.observeSummaries().first().firstOrNull() ?: return logger.error(TAG, "exportLatestDraft: there are no drafts")
         val project = when (val loaded = repository.get(latest.id)) {
             is Outcome.Success -> loaded.value
@@ -56,13 +60,14 @@ class ExportCheck : KoinComponent {
                         "${seconds(clip.durationUs)} long, volume ${(clip.volume * PERCENT).roundToInt()}%$pastEnd",
                 )
             }
-        export(project)
+        export(project, ExportSettings(shortSidePx = shortSidePx))
     }
 
-    private suspend fun export(project: Project) {
+    private suspend fun export(project: Project, settings: ExportSettings = ExportSettings()) {
         val started = TimeSource.Monotonic.markNow()
         var loggedQuarters = 0
-        val outcome = videoEngine.export(project, ExportSettings()) { progress ->
+        logger.debug(TAG, "export: ${settings.shortSidePx?.let { "short side $it px" } ?: "canvas size"}")
+        val outcome = videoEngine.export(project, settings) { progress ->
             val quarters = (progress * QUARTERS).toInt()
             if (quarters > loggedQuarters) {
                 loggedQuarters = quarters

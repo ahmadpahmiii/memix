@@ -73,6 +73,12 @@ object MemixSize {
     val trimHandleWidth = 12.dp
     val iconSmall = 16.dp
     val railHeight = 4.dp
+
+    /** The white scale-and-rotate handle on a selected caption on the preview; its target is still [touchTarget]. */
+    val canvasHandleSize = 24.dp
+
+    /** A color swatch's circle, drawn in a [touchTarget] square. */
+    val swatchSize = 32.dp
 }
 
 object MemixElevation {

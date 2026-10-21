@@ -1,6 +1,7 @@
 package app.memix
 
 import app.memix.core.data.dataModule
+import app.memix.core.designsystem.readCaptionFontFile
 import app.memix.core.domain.GetPhoneRegionUseCase
 import app.memix.core.domain.RefreshAppConfigUseCase
 import app.memix.core.domain.media.ImportMediaUseCase
@@ -17,6 +18,9 @@ import app.memix.core.domain.sound.LoadStarterSoundsUseCase
 import app.memix.core.domain.sound.LogSoundEventsUseCase
 import app.memix.core.domain.sound.OpenSoundPlayerUseCase
 import app.memix.core.domain.sound.PrepareSoundUseCase
+import app.memix.core.domain.text.CaptionFontSource
+import app.memix.core.domain.text.MeasureCaptionUseCase
+import app.memix.core.domain.text.PrepareCaptionsUseCase
 import app.memix.core.domain.video.StartPreviewUseCase
 import app.memix.core.domain.video.StartThumbnailsUseCase
 import app.memix.debug.DebugEdits
@@ -25,6 +29,7 @@ import app.memix.debug.ImportSaveFailure
 import app.memix.engine.video.HAND_CHECKS_PROPERTY
 import app.memix.engine.video.videoEngineModule
 import app.memix.feature.home.HomeViewModel
+import app.memix.feature.videoeditor.EditorCaptionRendering
 import app.memix.feature.videoeditor.EditorDebugEdit
 import app.memix.feature.videoeditor.EditorSounds
 import app.memix.feature.videoeditor.VideoEditorViewModel
@@ -68,6 +73,11 @@ private val appModule = module {
     factoryOf(::OpenSoundPlayerUseCase)
     factoryOf(::LogSoundEventsUseCase)
     factoryOf(::EditorSounds)
+    // The caption fonts live with the interface fonts in the design system; the engine's renderer reads them (P1-10).
+    single<CaptionFontSource> { CaptionFontSource(::readCaptionFontFile) }
+    factoryOf(::PrepareCaptionsUseCase)
+    factoryOf(::MeasureCaptionUseCase)
+    factoryOf(::EditorCaptionRendering)
     viewModelOf(::HomeViewModel)
     viewModelOf(::MediaImportViewModel)
     viewModel { params ->
@@ -78,6 +88,7 @@ private val appModule = module {
             startPreview = get(),
             startThumbnails = get(),
             sounds = get(),
+            captionRendering = get(),
             importMedia = get(),
             decodeDispatcher = Dispatchers.Default,
             // Bound only in builds with hand checks (handCheckModule).

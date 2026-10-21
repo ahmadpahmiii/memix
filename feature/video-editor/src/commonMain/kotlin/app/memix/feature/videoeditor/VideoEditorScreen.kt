@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -15,15 +16,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -31,10 +36,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -49,6 +56,8 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.MeasurePolicy
 import androidx.compose.ui.platform.AccessibilityManager
 import androidx.compose.ui.platform.LocalAccessibilityManager
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -57,9 +66,11 @@ import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.constrainWidth
 import androidx.lifecycle.Lifecycle
@@ -88,31 +99,51 @@ import app.memix.core.domain.video.PreviewSession
 import app.memix.core.ui.formatTimecode
 import app.memix.core.ui.spokenTime
 import app.memix.core.ui.spokenTimeOf
+import app.memix.feature.videoeditor.captions.CanvasFrameRect
+import app.memix.feature.videoeditor.captions.CaptionLayer
+import app.memix.feature.videoeditor.captions.CaptionLayerState
+import app.memix.feature.videoeditor.captions.CaptionStandInSlot
+import app.memix.feature.videoeditor.captions.CaptionTouchSizes
+import app.memix.feature.videoeditor.captions.TextEntryBar
+import app.memix.feature.videoeditor.captions.TextPanels
+import app.memix.feature.videoeditor.captions.detectCaptionGestures
 import app.memix.feature.videoeditor.importmedia.ImportSheet
 import app.memix.feature.videoeditor.importmedia.showsSheet
 import app.memix.feature.videoeditor.timeline.Timeline
 import app.memix.feature.videoeditor.timeline.spokenName
 import app.memix.feature.videoeditor.timeline.timelineMinHeight
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import memix.feature.video_editor.generated.resources.Res
+import memix.feature.video_editor.generated.resources.a11y_degrees
 import memix.feature.video_editor.generated.resources.a11y_edit_on_item
 import memix.feature.video_editor.generated.resources.a11y_media_added
 import memix.feature.video_editor.generated.resources.a11y_reorder_position
 import memix.feature.video_editor.generated.resources.a11y_sound_added
+import memix.feature.video_editor.generated.resources.a11y_text_added
+import memix.feature.video_editor.generated.resources.a11y_text_transformed
 import memix.feature.video_editor.generated.resources.edit_add_media
 import memix.feature.video_editor.generated.resources.edit_add_sound
+import memix.feature.video_editor.generated.resources.edit_add_text
 import memix.feature.video_editor.generated.resources.edit_delete
 import memix.feature.video_editor.generated.resources.edit_detach_audio
 import memix.feature.video_editor.generated.resources.edit_duplicate
+import memix.feature.video_editor.generated.resources.edit_edit_text
 import memix.feature.video_editor.generated.resources.edit_move
+import memix.feature.video_editor.generated.resources.edit_move_text
 import memix.feature.video_editor.generated.resources.edit_mute_original
 import memix.feature.video_editor.generated.resources.edit_reorder
 import memix.feature.video_editor.generated.resources.edit_replace
 import memix.feature.video_editor.generated.resources.edit_split
+import memix.feature.video_editor.generated.resources.edit_text_color
+import memix.feature.video_editor.generated.resources.edit_text_font
+import memix.feature.video_editor.generated.resources.edit_text_outline
+import memix.feature.video_editor.generated.resources.edit_transform_text
 import memix.feature.video_editor.generated.resources.edit_trim
 import memix.feature.video_editor.generated.resources.edit_unmute_original
 import memix.feature.video_editor.generated.resources.edit_volume
@@ -148,7 +179,11 @@ import memix.feature.video_editor.generated.resources.explain_replace_detached
 import memix.feature.video_editor.generated.resources.explain_replace_too_short
 import memix.feature.video_editor.generated.resources.explain_sound_unreadable
 import memix.feature.video_editor.generated.resources.explain_split
+import memix.feature.video_editor.generated.resources.explain_text_biggest
+import memix.feature.video_editor.generated.resources.explain_text_edge
+import memix.feature.video_editor.generated.resources.explain_text_smallest
 import memix.feature.video_editor.generated.resources.import_free_up_space
+import memix.feature.video_editor.generated.resources.position_size_value
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -157,8 +192,8 @@ import org.jetbrains.compose.resources.stringResource
  * tool bar (P1-06). The stage and timeline split their shared space 60/40 by window size only, so the preview never
  * jumps while editing.
  *
- * [previewSurface] draws a preview session's picture: the composition root passes the engine's surface, which a
- * feature can't depend on. [onFreeUpSpace] opens the phone's storage manager, asking for the given number of bytes.
+ * [previewSurface] draws a preview session's picture and [captionStandIn] one caption with the engine's renderer: the
+ * composition root passes the engine's, which a feature can't depend on. [onFreeUpSpace] opens the phone's storage manager, asking for the given number of bytes.
  * The picker for Add media and Replace is the app's too: it opens the one in [VideoEditorUiState.mediaPicker].
  */
 @Composable
@@ -166,6 +201,7 @@ fun VideoEditorScreen(
     state: VideoEditorUiState,
     onIntent: (VideoEditorIntent) -> Unit,
     previewSurface: @Composable (PreviewSession, Modifier) -> Unit,
+    captionStandIn: CaptionStandInSlot,
     onFreeUpSpace: (requestedBytes: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -174,7 +210,8 @@ fun VideoEditorScreen(
     // System back order) or while saving fails, to ask first; an open sheet handles its own back.
     NavigationBackHandler(
         rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled = !state.unsavedSheetOpen && (state.reorder != null || state.selectedItemId != null || state.isSaveFailing),
+        isBackEnabled = !state.unsavedSheetOpen &&
+            (state.textEntry != null || state.reorder != null || state.selectedItemId != null || state.isSaveFailing),
         onBackCompleted = { onIntent(VideoEditorIntent.Back) },
     )
     // The sounds sheet, the import sheet and the Volume panel take back and Escape themselves while they're open.
@@ -184,9 +221,14 @@ fun VideoEditorScreen(
     // A save needs little room; ask for the import's headroom, so the next import fits too (spec P1-04 → Saving).
     val freeUpSpaceForSave = remember(onFreeUpSpace) { { onFreeUpSpace(ImportMediaUseCase.HEADROOM_BYTES) } }
     val focusTargets = remember { EditorFocusTargets() }
-    val panelOpen = state.volumePanel != null
+    val panelOpen = state.volumePanel != null || state.textPanel != null
     val sheetOpen = state.sounds.isOpen || state.unsavedSheetOpen || importSheetShown(state.mediaImport)
     ReturnFocus(state.returnFocus, focusTargets)
+    // Typing (spec P1-10 → Typing): the field's words live here, so only the field and the stand-in redraw per key.
+    val entry = state.textEntry
+    val entryField = remember(entry?.serial) { TextFieldState(entry?.initialText.orEmpty(), TextRange(entry?.initialText.orEmpty().length)) }
+    val captionLayer = remember { CaptionLayerState() }
+    CancelCaptionGestureOnBack(captionLayer, onIntent)
 
     Box(
         modifier
@@ -208,7 +250,7 @@ fun VideoEditorScreen(
         ) {
             TopBar(onClose = { onIntent(VideoEditorIntent.Close) })
             EditorLayout(
-                stage = { PreviewStage(state, onIntent, previewSurface, freeUpSpaceForSave) },
+                stage = { PreviewStage(state, onIntent, previewSurface, captionStandIn, captionLayer, { entryField.text.toString() }, focusTargets, freeUpSpaceForSave) },
                 transport = { TransportRow(state, onIntent) },
                 timeline = {
                     Box(Modifier.coveredByModal(panelOpen), propagateMinConstraints = true) {
@@ -232,9 +274,15 @@ fun VideoEditorScreen(
                         ToolBarRegion(state.clipTools, state.reorder, state.timeline.isEmpty, selectedIsMissing(state), focusTargets, onIntent)
                     }
                 },
-                panel = { VolumePanel(state.volumePanel, state.originalAudio?.muted == true, onIntent, Modifier.fillMaxSize()) },
+                panel = {
+                    VolumePanel(state.volumePanel, state.originalAudio?.muted == true, onIntent, Modifier.fillMaxSize())
+                    val panelCaption = selectedCaption(state)
+                    TextPanels(state.textPanel, panelCaption?.style, panelCaption?.transform, onIntent, Modifier.fillMaxSize())
+                },
+                entryBar = entry?.let { { TextEntryBar(it, entryField, onIntent) } },
                 timelineMinHeight = timelineMinHeight(),
-                modifier = Modifier.weight(1f),
+                // While typing, the layout ends at the keyboard: the entry bar rides on it.
+                modifier = Modifier.weight(1f).then(if (entry != null) Modifier.windowInsetsPadding(WindowInsets.ime) else Modifier),
             )
         }
         MemeSoundsSheet(state.sounds, onIntent)
@@ -306,6 +354,10 @@ private fun TopBar(onClose: () -> Unit) {
  * and the stage everything else. A tool [panel] covers exactly the timeline and the tool bar (ToolPanel), so the
  * preview never moves or resizes while it's open.
  */
+/**
+ * The editor's regions. While typing ([entryBar] not null) only the stage and the entry bar are placed: the stage takes
+ * the space above the bar, and the transport row, timeline and tool bar are under the keyboard (spec P1-10 → Typing).
+ */
 @Composable
 private fun EditorLayout(
     stage: @Composable () -> Unit,
@@ -313,13 +365,25 @@ private fun EditorLayout(
     timeline: @Composable () -> Unit,
     tools: @Composable () -> Unit,
     panel: @Composable () -> Unit,
+    entryBar: (@Composable () -> Unit)?,
     timelineMinHeight: Dp,
     modifier: Modifier = Modifier,
 ) {
-    Layout(contents = listOf(stage, transport, timeline, tools, panel), modifier) { (stageParts, transportParts, timelineParts, toolParts, panelParts), constraints ->
+    Layout(contents = listOf(stage, transport, timeline, tools, panel, entryBar ?: {}), modifier) { parts, constraints ->
+        val (stageParts, transportParts, timelineParts, toolParts, panelParts) = parts
+        val entryParts = parts[ENTRY_BAR_SLOT]
         val width = constraints.maxWidth
         val height = constraints.maxHeight
         val loose = Constraints(minWidth = width, maxWidth = width)
+        val entry = entryParts.firstOrNull()?.measure(loose)
+        if (entry != null) {
+            val stageHeight = (height - entry.height).coerceAtLeast(0)
+            val stageBox = stageParts.first().measure(Constraints.fixed(width, stageHeight))
+            return@Layout layout(width, height) {
+                stageBox.place(0, 0)
+                entry.place(0, stageHeight)
+            }
+        }
         val transportRow = transportParts.first().measure(loose)
         val toolBar = toolParts.first().measure(loose)
         val sharedHeight = (height - transportRow.height - toolBar.height).coerceAtLeast(0)
@@ -329,13 +393,13 @@ private fun EditorLayout(
         val timelineBox = timelineParts.first().measure(Constraints.fixed(width, timelineHeight))
         val timelineTop = stageHeight + transportRow.height
         // Nothing to measure while the panel is closed: its slot emits no layout then.
-        val panelBox = panelParts.firstOrNull()?.measure(Constraints.fixed(width, (height - timelineTop).coerceAtLeast(0)))
+        val panelBoxes = panelParts.map { it.measure(Constraints.fixed(width, (height - timelineTop).coerceAtLeast(0))) }
         layout(width, height) {
             stageBox.place(0, 0)
             transportRow.place(0, stageHeight)
             timelineBox.place(0, timelineTop)
             toolBar.place(0, timelineTop + timelineHeight)
-            panelBox?.place(0, timelineTop)
+            panelBoxes.forEach { it.place(0, timelineTop) }
         }
     }
 }
@@ -345,6 +409,10 @@ private fun PreviewStage(
     state: VideoEditorUiState,
     onIntent: (VideoEditorIntent) -> Unit,
     previewSurface: @Composable (PreviewSession, Modifier) -> Unit,
+    captionStandIn: CaptionStandInSlot,
+    captionLayer: CaptionLayerState,
+    entryText: () -> String,
+    focusTargets: EditorFocusTargets,
     onFreeUpSpace: () -> Unit,
 ) {
     val canvas = state.canvas
@@ -357,11 +425,21 @@ private fun PreviewStage(
     } else {
         Modifier
     }
+    val visibleCaptions = rememberVisibleCaptions(state.captions, state.preview)
     // A traversal group, so screen readers reach the save banner before the preview (spec P1-04 → Accessibility).
-    Box(Modifier.fillMaxSize().background(MemixColors.stage).semantics { isTraversalGroup = true }) {
-        Box(Modifier.matchParentSize().then(playOnTap).clearAndSetSemantics { contentDescription = previewLabel }) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(MemixColors.stage).semantics { isTraversalGroup = true }) {
+        val frame = rememberCanvasFrame(canvas, constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat(), typing = state.textEntry != null, captionLayer)
+        val gesturesOn = canvas != null && state.textEntry == null && state.stage == StageContent.VIDEO
+        Box(
+            Modifier
+                .matchParentSize()
+                .then(playOnTap)
+                // Inside the stage's tap, so a touch on a caption is the caption's (spec P1-10 → On the preview).
+                .captionGestures(gesturesOn, captionLayer, visibleCaptions, state, onIntent)
+                .clearAndSetSemantics { contentDescription = previewLabel },
+        ) {
             if (canvas != null) {
-                CanvasFrame(canvas.aspectRatio) {
+                CanvasFrame(frame) {
                     state.preview?.let { previewSurface(it.session, Modifier.fillMaxSize()) }
                     // Takes taps off the player's own view, so they reach the stage.
                     Box(Modifier.fillMaxSize().pointerInput(Unit) {})
@@ -370,7 +448,22 @@ private fun PreviewStage(
                 }
             }
         }
-        if (canvas != null) FrameMessage(state.stage, canvas.aspectRatio, onRetry = { onIntent(VideoEditorIntent.RetryPreview) })
+        if (canvas != null) {
+            CaptionLayer(
+                captionLayer,
+                canvas,
+                visibleCaptions.value,
+                state.selectedItemId,
+                state.textEntry,
+                entryText,
+                state.captionStandIn,
+                state.captionMeasure,
+                captionStandIn,
+                focusTargets.selectedCaption,
+                onIntent,
+            )
+            FrameMessage(state.stage, frame, onRetry = { onIntent(VideoEditorIntent.RetryPreview) })
+        }
         StageMessages(
             state,
             onIntent,
@@ -380,19 +473,97 @@ private fun PreviewStage(
     }
 }
 
-/** The largest rectangle of the canvas ratio that fits the stage, `space-2` in from every side, centered. */
+/** The captions shown at the preview's time; the stage recomposes only when that set changes, not every frame. */
 @Composable
-private fun CanvasFrame(aspectRatio: Float, content: @Composable BoxScope.() -> Unit) {
-    Box(Modifier.fillMaxSize().padding(MemixSpacing.space2), contentAlignment = Alignment.Center) {
-        Box(Modifier.aspectRatio(aspectRatio), content = content)
+private fun rememberVisibleCaptions(captions: ImmutableList<CaptionUi>, preview: EditorPreview?): State<List<CaptionUi>> {
+    val position = preview?.positionUs?.collectAsState()
+    return remember(captions, position) {
+        derivedStateOf {
+            val timeUs = position?.value ?: 0L
+            captions.filter { it.isShownAt(timeUs) }
+        }
     }
+}
+
+/**
+ * The canvas frame on a stage [stageWidth] × [stageHeight]: the largest rectangle of the canvas ratio, `space-2` in from
+ * every side. While typing it never gets bigger, and doesn't move, than it was before (spec P1-10 → Typing).
+ */
+@Composable
+private fun rememberCanvasFrame(canvas: CanvasUi?, stageWidth: Float, stageHeight: Float, typing: Boolean, layer: CaptionLayerState): CanvasFrameRect {
+    val inset = with(LocalDensity.current) { MemixSpacing.space2.toPx() }
+    val normalHeight = layer.normalStageHeight
+    val areaHeight = if (typing && normalHeight > 0f) min(stageHeight, normalHeight) else stageHeight
+    val frame = canvas?.let { CanvasFrameRect.fit(stageWidth, areaHeight, it.aspectRatio, inset) } ?: CanvasFrameRect.Empty
+    SideEffect {
+        if (!typing) layer.normalStageHeight = stageHeight
+        layer.frame = frame
+        layer.stageWidth = stageWidth
+        layer.stageHeight = stageHeight
+    }
+    return frame
+}
+
+private fun Modifier.captionGestures(
+    enabled: Boolean,
+    layer: CaptionLayerState,
+    visible: State<List<CaptionUi>>,
+    state: VideoEditorUiState,
+    onIntent: (VideoEditorIntent) -> Unit,
+): Modifier = composed {
+    if (!enabled) return@composed this
+    val density = LocalDensity.current
+    val haptics = LocalHapticFeedback.current
+    val sizes = remember(density) {
+        with(density) { CaptionTouchSizes(MemixSize.touchTarget.toPx(), MemixSpacing.space1.toPx(), MemixSpacing.space2.toPx()) }
+    }
+    val selected by rememberUpdatedState(state.selectedItemId)
+    val canvasWidth by rememberUpdatedState(state.canvas?.widthPx ?: 0)
+    val currentOnIntent by rememberUpdatedState(onIntent)
+    val currentHaptics by rememberUpdatedState(haptics)
+    pointerInput(layer, sizes) {
+        detectCaptionGestures(layer, { visible.value }, { selected }, { canvasWidth }, sizes, { currentHaptics }) { currentOnIntent(it) }
+    }
+}
+
+/** System back during a gesture on a caption cancels it: the caption goes back to where it was (spec P1-04 back order). */
+@Composable
+private fun CancelCaptionGestureOnBack(layer: CaptionLayerState, onIntent: (VideoEditorIntent) -> Unit) {
+    NavigationBackHandler(
+        rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = layer.gesture != null,
+        onBackCompleted = {
+            layer.gesture?.cancelled = true
+            layer.gesture = null
+            onIntent(VideoEditorIntent.CaptionGestureCancelled)
+        },
+    )
+}
+
+/** The selected caption as its panels show it: the stand-in's values while a hold or a commit is on its way. */
+private fun selectedCaption(state: VideoEditorUiState): CaptionUi? {
+    val itemId = state.selectedItemId ?: return null
+    return state.captionStandIn?.takeIf { it.itemId == itemId } ?: state.captions.firstOrNull { it.itemId == itemId }
+}
+
+/** The canvas frame on the stage, at [frame]. */
+@Composable
+private fun CanvasFrame(frame: CanvasFrameRect, content: @Composable BoxScope.() -> Unit) {
+    if (frame.isEmpty) return
+    val density = LocalDensity.current
+    Box(
+        Modifier
+            .offset { IntOffset(frame.left.roundToInt(), frame.top.roundToInt()) }
+            .size(with(density) { frame.width.toDp() }, with(density) { frame.height.toDp() }),
+        content = content,
+    )
 }
 
 /** What the frame says instead of a picture; drawn over the stage's tap area so its button can be pressed. */
 @Composable
-private fun FrameMessage(stage: StageContent, aspectRatio: Float, onRetry: () -> Unit) {
+private fun FrameMessage(stage: StageContent, frame: CanvasFrameRect, onRetry: () -> Unit) {
     when (stage) {
-        StageContent.ERROR -> CanvasFrame(aspectRatio) { PreviewError(onRetry) }
+        StageContent.ERROR -> CanvasFrame(frame) { PreviewError(onRetry) }
         // The frame has no picture and the canvas is black like the stage, so the message takes the stage's whole width
         // (P1-16 review, P6): Hindi at 200% isn't cut.
         StageContent.EMPTY -> Box(Modifier.fillMaxSize().padding(MemixSpacing.space2)) { EmptyDraft() }
@@ -477,7 +648,7 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
     LaunchedEffect(toast.id) {
         val baseMillis = when (toast.message) {
             is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition, is ToastMessage.SoundAdded,
-            is ToastMessage.MediaAdded,
+            is ToastMessage.MediaAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed,
             -> WHAT_HAPPENED_TOAST_MILLIS
             ToastMessage.MissingMedia, is ToastMessage.Explain, is ToastMessage.ReplaceTooShort -> EXPLANATION_TOAST_MILLIS
         }
@@ -497,6 +668,12 @@ private fun toastText(message: ToastMessage): String = when (message) {
     is ToastMessage.SoundAdded ->
         stringResource(Res.string.a11y_sound_added, message.title.inLanguage(LocalLocale.current.language), spokenTime(message.atUs))
     is ToastMessage.MediaAdded -> pluralStringResource(Res.plurals.a11y_media_added, message.count, message.count)
+    is ToastMessage.TextAdded -> stringResource(Res.string.a11y_text_added, spokenTime(message.atUs))
+    is ToastMessage.TextTransformed -> stringResource(
+        Res.string.a11y_text_transformed,
+        stringResource(Res.string.position_size_value, message.scalePercent),
+        pluralStringResource(Res.plurals.a11y_degrees, message.degrees, message.degrees),
+    )
     // The timecode is never translated (spec P1-06 → Copy).
     is ToastMessage.ReplaceTooShort -> stringResource(Res.string.explain_replace_too_short, formatTimecode(message.clipLengthUs))
 }
@@ -517,6 +694,13 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.MUTE_ORIGINAL -> Res.string.edit_mute_original
         VideoEdit.UNMUTE_ORIGINAL -> Res.string.edit_unmute_original
         VideoEdit.DETACH_AUDIO -> Res.string.edit_detach_audio
+        VideoEdit.ADD_TEXT -> Res.string.edit_add_text
+        VideoEdit.EDIT_TEXT -> Res.string.edit_edit_text
+        VideoEdit.TEXT_FONT -> Res.string.edit_text_font
+        VideoEdit.TEXT_COLOR -> Res.string.edit_text_color
+        VideoEdit.TEXT_OUTLINE -> Res.string.edit_text_outline
+        VideoEdit.POSITION_TEXT -> Res.string.edit_move_text
+        VideoEdit.TRANSFORM_TEXT -> Res.string.edit_transform_text
     },
 )
 
@@ -533,6 +717,9 @@ private fun explanationText(explanation: Explanation): String = stringResource(
         Explanation.NO_SOUND -> Res.string.explain_no_sound
         Explanation.DETACHED -> Res.string.explain_detached
         Explanation.DETACHED_MUTED -> Res.string.explain_detached_muted
+        Explanation.TEXT_SMALLEST -> Res.string.explain_text_smallest
+        Explanation.TEXT_BIGGEST -> Res.string.explain_text_biggest
+        Explanation.TEXT_EDGE -> Res.string.explain_text_edge
     },
 )
 
@@ -706,3 +893,6 @@ private const val TIMECODE_SEPARATOR = " / "
 private const val MICROS_PER_TENTH = 100_000L
 private const val WHAT_HAPPENED_TOAST_MILLIS = 2_000L
 private const val EXPLANATION_TOAST_MILLIS = 4_000L
+
+// EditorLayout's slots, in order: stage, transport, timeline, tools, panel, entry bar.
+private const val ENTRY_BAR_SLOT = 5

@@ -3,6 +3,8 @@ package app.memix.engine.video
 import app.memix.core.domain.AppError
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.sound.SoundPlayer
+import app.memix.core.domain.text.CaptionBlockSize
+import app.memix.core.domain.text.CaptionMeasurer
 import app.memix.core.domain.video.ExportSettings
 import app.memix.core.domain.video.ExportedVideo
 import app.memix.core.domain.video.PreviewPlayback
@@ -11,15 +13,38 @@ import app.memix.core.domain.video.PreviewStatus
 import app.memix.core.domain.video.Thumbnail
 import app.memix.core.domain.video.ThumbnailReader
 import app.memix.core.domain.video.VideoEngine
+import app.memix.core.model.project.CaptionCatalog
+import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.Project
+import kotlin.math.ceil
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.koin.dsl.module
 
 actual val videoEngineModule = module {
     single<VideoEngine> { IosVideoEngine() }
+    single<CaptionMeasurer> { EstimatedCaptionMeasurer }
+}
+
+// TODO(P7-04): measure with Core Text and the bundled fonts, the same rules as Android's AndroidCaptionRenderer. Until
+// then an estimate sizes the editor's selection frame; nothing draws captions on iOS.
+private object EstimatedCaptionMeasurer : CaptionMeasurer {
+    override suspend fun prepare() = Unit
+
+    override fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int): CaptionBlockSize {
+        val shortSidePx = minOf(canvasWidthPx, canvasHeightPx).toFloat()
+        val fontSizePx = shortSidePx * CaptionCatalog.FONT_SIZE_OF_SHORT_SIDE
+        val wrapPx = shortSidePx * CaptionCatalog.WRAP_WIDTH_OF_SHORT_SIDE
+        val lines = text.lines()
+        val widestPx = lines.maxOf { it.length } * fontSizePx * AVERAGE_GLYPH_WIDTH
+        val wrappedLines = lines.sumOf { maxOf(1, ceil(it.length * fontSizePx * AVERAGE_GLYPH_WIDTH / wrapPx).toInt()) }
+        return CaptionBlockSize(minOf(widestPx, wrapPx), wrappedLines * fontSizePx * LINE_HEIGHT)
+    }
+
+    private const val AVERAGE_GLYPH_WIDTH = 0.5f
+    private const val LINE_HEIGHT = 1.2f
 }
 
 // TODO(P7-05): export with AVMutableComposition and AVAssetWriter, built from the same CompositionPlan as Android.
@@ -60,6 +85,7 @@ private class UnavailablePreviewSession : PreviewSession {
     override fun showTrimFrame(clip: MediaClip, sourceTimeUs: Long) = Unit
     override fun endTrimFrames() = Unit
     override fun previewVolume(itemId: String, volume: Float) = Unit
+    override fun hideCaption(itemId: String?) = Unit
     override fun close() = Unit
 }
 

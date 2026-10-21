@@ -6,6 +6,7 @@ import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.Project
+import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TimelineItem
 import app.memix.core.model.project.Track
 import app.memix.core.model.project.TrackKind
@@ -29,7 +30,8 @@ internal sealed interface PlanProblem {
 /**
  * Turns a [Project] into a [CompositionPlan]. The main video track becomes one sequence, with a gap
  * for any empty time between clips. Each unmuted meme sound and audio track becomes one or more audio
- * lanes, cut to the main track's length. Every item is placed by its start time, never by its index
+ * lanes, cut to the main track's length. Captions are drawn over the video in lane order, a lower text lane over a
+ * higher one, also cut to that length (P1-10). Every item is placed by its start time, never by its index
  * in the track (CLAUDE.md rule 4).
  *
  * Items at 0% are left out of an export's plan (they'd only add silence). A preview's plan keeps them
@@ -56,6 +58,7 @@ internal object CompositionPlanner {
             durationUs = durationUs,
             mainVideo = backToBack(mainClips, ::Gap) { it.toVisualClip(mainTrack.muted, keepSilentItems) },
             audioLanes = tracks.filter { it.kind.carriesSound() && !it.muted }.flatMap { audioLanes(it, durationUs, keepSilentItems) },
+            captions = captions(tracks, durationUs),
             notRendered = notRendered(project, tracks),
         )
         return PlanResult.Ready(plan)
@@ -94,6 +97,16 @@ internal object CompositionPlanner {
             AudioLane(track.id, track.kind, backToBack(laneClips, ::Gap) { it.toSoundClip() })
         }
     }
+
+    // Text lanes from the first to the last, so a lower lane draws over a higher one (spec P1-10 → Draw order); blank
+    // text draws nothing, and a caption past the end of the video isn't shown.
+    private fun captions(tracks: List<Track>, timelineEndUs: Long): List<CaptionClip> =
+        tracks.filter { it.kind == TrackKind.TEXT }.flatMap { track ->
+            track.items.filterIsInstance<TextItem>()
+                .filter { it.text.isNotBlank() && it.startUs < timelineEndUs && it.durationUs > 0 }
+                .sortedBy { it.startUs }
+                .map { CaptionClip(it.id, it.startUs.coerceAtLeast(0), minOf(it.endUs, timelineEndUs), it.text, it.style, it.transform) }
+        }
 
     /** The part of this clip that lies between 0 and [timelineEndUs], or null when none of it does. */
     private fun AudioClip.cutTo(timelineEndUs: Long): AudioClip? {
@@ -143,9 +156,8 @@ internal object CompositionPlanner {
 
     /** The ticket that renders a track kind this engine skips today, or null when it renders it. */
     private fun ticketThatAddsRendering(kind: TrackKind): String? = when (kind) {
-        TrackKind.MAIN_VIDEO, TrackKind.MEME_SOUND, TrackKind.AUDIO -> null
+        TrackKind.MAIN_VIDEO, TrackKind.MEME_SOUND, TrackKind.AUDIO, TrackKind.TEXT -> null
         TrackKind.OVERLAY -> "P4-01"
-        TrackKind.TEXT -> "P1-10"
         TrackKind.STICKER -> "P4-12"
         TrackKind.EFFECT -> "P4-06"
     }

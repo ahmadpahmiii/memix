@@ -39,8 +39,10 @@ import app.memix.core.designsystem.component.NavDestination
 import app.memix.core.designsystem.component.Scrim
 import app.memix.core.designsystem.component.coveredByModal
 import app.memix.core.domain.RefreshAppConfigUseCase
+import app.memix.core.domain.text.CaptionMeasurer
 import app.memix.debug.DebugComponentCatalog
 import app.memix.debug.openDebugEditorProject
+import app.memix.engine.video.CaptionStandIn
 import app.memix.engine.video.VideoPreviewSurface
 import app.memix.feature.drafts.DraftsScreen
 import app.memix.feature.home.HomeScreen
@@ -212,6 +214,8 @@ private fun TabsNavHost(
 @Composable
 private fun VideoEditorDestination(projectId: String, onClose: () -> Unit) {
     val viewModel = koinViewModel<VideoEditorViewModel> { parametersOf(projectId) }
+    // The engine's caption renderer, which its stand-in draws with (P1-10).
+    val captionMeasurer = koinInject<CaptionMeasurer>()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val freeUpSpace = rememberFreeUpSpaceLauncher()
     LockPortraitOnPhones()
@@ -222,6 +226,9 @@ private fun VideoEditorDestination(projectId: String, onClose: () -> Unit) {
         state = state,
         onIntent = viewModel::onIntent,
         previewSurface = { session, modifier -> VideoPreviewSurface(session, modifier) },
+        captionStandIn = { text, style, transform, canvasWidthPx, canvasHeightPx, modifier ->
+            CaptionStandIn(captionMeasurer, text, style, transform, canvasWidthPx, canvasHeightPx, modifier)
+        },
         // When no storage screen opens, the editor hides the button (spec P1-04 → Saving).
         onFreeUpSpace = { requestedBytes ->
             if (!freeUpSpace.launch(requestedBytes)) viewModel.onIntent(VideoEditorIntent.FreeUpSpaceUnavailable)

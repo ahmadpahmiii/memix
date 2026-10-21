@@ -21,6 +21,7 @@ import app.memix.core.model.project.StickerItem
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.Track
 import app.memix.core.model.project.TrackKind
+import app.memix.core.model.project.Transform
 import app.memix.core.model.project.VideoTimeline
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -70,6 +71,7 @@ internal class EditorCheckProjects : KoinComponent {
         TIMELINE_TRACKS -> timelineTracks()
         HOUR_LONG -> hourLong()
         SOUND_SYNC -> soundSync()
+        TEXT_CHECK -> textCheck()
         else -> null
     }
 
@@ -207,6 +209,42 @@ internal class EditorCheckProjects : KoinComponent {
         ),
     )
 
+    /**
+     * The P1-10 Done when (spec P1-10 → QA compares → Measured): 9 s of clip A, clip B and the photo, with six captions
+     * covering every font, Devanagari, accented Latin and emoji, outline on and off, scale 50%, 100% and 250%, rotation
+     * −15°, 0° and 30°, one partly off the frame and two overlapping (on two lanes, the lower drawn on top). Pause at
+     * 1.0 s, 4.0 s and 7.0 s and compare with the exported frames.
+     */
+    private fun textCheck(): Project {
+        val clips = listOf(
+            MediaClip("text-clip-a", 0, clipA, trimInUs = 0, trimOutUs = 3_000_000),
+            MediaClip("text-clip-b", 3_000_000, clipB, trimInUs = 0, trimOutUs = 3_000_000),
+            MediaClip("text-photo", 6_000_000, photo, trimInUs = 0, trimOutUs = 3_000_000),
+        )
+        fun caption(id: String, startS: Int, endS: Int, text: String, style: CaptionStyle, transform: Transform) =
+            TextItem(id, startS * 1_000_000L, (endS - startS) * 1_000_000L, text, style, transform)
+        val yellow = ArgbColor(0xFFFFD60A)
+        val white = ArgbColor(0xFFFFFFFF)
+        val classic = caption("text-classic", 0, 9, "जब BUILD PASS हो 😂", CAPTION, Transform(0.5f, 0.2f))
+        val modern = caption("text-modern", 0, 4, "Ação rápida, ¿sí? ¡Ñandú!", CaptionStyle("poppins", yellow, null), Transform(0.5f, 0.45f, scale = 0.5f, rotationDegrees = -15f))
+        val serif = caption("text-serif", 5, 9, "THE END", CaptionStyle("rozha", white, null), Transform(0.5f, 0.45f))
+        val handwritten = caption("text-handwritten", 0, 5, "me: हाँ, sure", CaptionStyle("kalam", ArgbColor(0xFF64D2FF), BLACK), Transform(0.5f, 0.75f))
+        // Over THE END on the frame, on a lane below it, so it's drawn on top.
+        val over = caption("text-over", 6, 9, "OVERLAP", CaptionStyle("anton", ArgbColor(0xFFFF3B30), BLACK), Transform(0.55f, 0.47f))
+        // Partly off the frame's right edge: clipped there.
+        val bubbly = caption("text-bubbly", 3, 9, "BUBBLY\nTWO LINES", CaptionStyle("baloo2", white, ArgbColor(0xFFAF52DE)), Transform(0.85f, 0.7f, scale = 2.5f, rotationDegrees = 30f))
+        return project(
+            TEXT_CHECK,
+            clips,
+            extraTracks = listOf(
+                Track("text-lane-1", TrackKind.TEXT, listOf(classic)),
+                Track("text-lane-2", TrackKind.TEXT, listOf(modern, serif)),
+                Track("text-lane-3", TrackKind.TEXT, listOf(handwritten, over)),
+                Track("text-lane-4", TrackKind.TEXT, listOf(bubbly)),
+            ),
+        )
+    }
+
     private fun project(id: String, mainClips: List<MediaClip>, extraTracks: List<Track> = emptyList()) = Project(
         id = id,
         type = ProjectType.VIDEO,
@@ -228,7 +266,8 @@ internal class EditorCheckProjects : KoinComponent {
         const val TIMELINE_TRACKS = "timeline-tracks"
         const val HOUR_LONG = "hour-long"
         const val SOUND_SYNC = "sound-sync"
-        private val NAMES = listOf(EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC)
+        const val TEXT_CHECK = "text-check"
+        private val NAMES = listOf(EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK)
         private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20
         private const val HOUR_LONG_CLIPS = 120

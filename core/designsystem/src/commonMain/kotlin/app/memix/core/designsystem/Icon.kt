@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import memix.core.designsystem.generated.resources.Res
+import memix.core.designsystem.generated.resources.ic_arrow
 import memix.core.designsystem.generated.resources.ic_arrow_back
 import memix.core.designsystem.generated.resources.ic_chevron_right
 import memix.core.designsystem.generated.resources.ic_close
@@ -18,20 +19,29 @@ import memix.core.designsystem.generated.resources.ic_detach_audio
 import memix.core.designsystem.generated.resources.ic_drafts
 import memix.core.designsystem.generated.resources.ic_duplicate
 import memix.core.designsystem.generated.resources.ic_edit
+import memix.core.designsystem.generated.resources.ic_edit_text
 import memix.core.designsystem.generated.resources.ic_globe
 import memix.core.designsystem.generated.resources.ic_heart
 import memix.core.designsystem.generated.resources.ic_heart_filled
 import memix.core.designsystem.generated.resources.ic_home
+import memix.core.designsystem.generated.resources.ic_minus
 import memix.core.designsystem.generated.resources.ic_move_here
 import memix.core.designsystem.generated.resources.ic_pause
 import memix.core.designsystem.generated.resources.ic_photo
 import memix.core.designsystem.generated.resources.ic_play
+import memix.core.designsystem.generated.resources.ic_plus
+import memix.core.designsystem.generated.resources.ic_position
 import memix.core.designsystem.generated.resources.ic_redo
 import memix.core.designsystem.generated.resources.ic_reorder
 import memix.core.designsystem.generated.resources.ic_replace
+import memix.core.designsystem.generated.resources.ic_rotate_left
+import memix.core.designsystem.generated.resources.ic_rotate_right
+import memix.core.designsystem.generated.resources.ic_scale_rotate
 import memix.core.designsystem.generated.resources.ic_sounds
 import memix.core.designsystem.generated.resources.ic_split
+import memix.core.designsystem.generated.resources.ic_style
 import memix.core.designsystem.generated.resources.ic_templates
+import memix.core.designsystem.generated.resources.ic_text
 import memix.core.designsystem.generated.resources.ic_undo
 import memix.core.designsystem.generated.resources.ic_video
 import memix.core.designsystem.generated.resources.ic_volume
@@ -41,6 +51,7 @@ import org.jetbrains.compose.resources.painterResource
 
 /** The Memix-drawn icon set (docs/DESIGN_SYSTEM.md → Iconography). */
 object MemixIcons {
+    val Arrow = Res.drawable.ic_arrow
     val ArrowBack = Res.drawable.ic_arrow_back
     val ChevronRight = Res.drawable.ic_chevron_right
     val Close = Res.drawable.ic_close
@@ -50,20 +61,29 @@ object MemixIcons {
     val Drafts = Res.drawable.ic_drafts
     val Duplicate = Res.drawable.ic_duplicate
     val Edit = Res.drawable.ic_edit
+    val EditText = Res.drawable.ic_edit_text
     val Globe = Res.drawable.ic_globe
     val Heart = Res.drawable.ic_heart
     val HeartFilled = Res.drawable.ic_heart_filled
     val Home = Res.drawable.ic_home
+    val Minus = Res.drawable.ic_minus
     val MoveHere = Res.drawable.ic_move_here
     val Pause = Res.drawable.ic_pause
     val Photo = Res.drawable.ic_photo
     val Play = Res.drawable.ic_play
+    val Plus = Res.drawable.ic_plus
+    val Position = Res.drawable.ic_position
     val Redo = Res.drawable.ic_redo
     val Reorder = Res.drawable.ic_reorder
     val Replace = Res.drawable.ic_replace
+    val RotateLeft = Res.drawable.ic_rotate_left
+    val RotateRight = Res.drawable.ic_rotate_right
+    val ScaleRotate = Res.drawable.ic_scale_rotate
     val Sounds = Res.drawable.ic_sounds
     val Split = Res.drawable.ic_split
+    val Style = Res.drawable.ic_style
     val Templates = Res.drawable.ic_templates
+    val Text = Res.drawable.ic_text
     val Undo = Res.drawable.ic_undo
     val Video = Res.drawable.ic_video
     val Volume = Res.drawable.ic_volume

@@ -842,16 +842,120 @@ adb logcat -s MemixAnalytics:* MemixEditorCheck:* MemixExportCheck:*      # seco
 5. **Clip export volume:** reopen, select clip A, set 100%, export `c100.mp4`; 50% → `c50.mp4`; 200% → `c200.mp4`;
    measure 0–3 s as above. Pass: 50% is 6 dB below 100% (±1 dB); 200% is louder, up to 6 dB, `max_volume` at or below
    0.0 dB. The same for a meme sound is P1-08 C5.
+   **Preview by ear:** before each export, play clip A in the editor at the same level: 50% is clearly quieter than
+   100%, and 200% louder, clipped but not crackling into noise. Note any level where the preview and the exported file
+   don't sound the same.
 
 **C. Leaks (debug build, LeakCanary 2.14).** Open and close the editor 5 times on `timeline-check`, each time: flip the
 toggle twice, open a clip's Volume panel and drag, flip its switch, Detach audio on clip 2, undo; wait 10 s on Home.
 Pass: no LeakCanary notification and `adb logcat -d -s LeakCanary:*` reports no leak.
 
 ### States to screenshot for the design review (`docs/ux/reviews/P1-09/`)
-At 360 dp wide if possible, English unless noted: `toggle-on` and `toggle-muted` (timeline at 0:00), `video-clip-tools`,
-`photo-clip-tools`, `clip-volume` (the switch row off), `clip-volume-muted` (switch on), `detached-landed` (the new green
-clip selected), `explain-detached`, `explain-no-sound`, `explain-detached-muted`, `video-clip-tools-hi-200` and
-`clip-volume-hi-200` (Hindi at 200% font), `explain-detached-muted-es-200`.
+The designer's list (`docs/ux/reviews/P1-09.md` → Device screenshots), taken after the review fixes, at 360 dp wide if
+possible, in English unless noted, on `timeline-check`, `export-check`, `missing-media` and `sound-sync`:
+1. `toggle-on`: just opened, the toggle left of 0:00 with `sounds`.
+2. `toggle-muted`: after a tap, `volume_off` in the brighter `text`.
+3. `toggle-hidden-first-clip`: the first clip selected at 0:00, its start handle clear, no toggle (M1).
+4. `toggle-absent-photos`: an all-photo project (`sound-sync`), no toggle.
+5. `video-clip-tools`, then `photo-clip-tools` right after it: the icons at the same height in both (P2).
+6. `clip-volume`: "This clip", 100%, the mute row off. Then `clip-volume-muted`: the row on, the slider value kept.
+7. `detached-volume`: "This sound", no mute row.
+8. `detached-audio`: the green "Original audio" clip under its clip, selected after Detach.
+9. `explain-detached`, `explain-no-sound`, `explain-detached-muted`.
+10. `detach-missing-explains`: the missing-file toast on a missing clip, no Audio lane (M2).
+11. `duplicate-detached`: the copy's Volume panel at 0% (P1).
+12. `video-clip-tools-hi-200` and `clip-volume-hi-200`: Hindi at 200% (Split, Volume and Delete in view; the mute row
+    wraps).
+13. `clip-volume-es-200` and `clip-volume-pt-200`: the longest mute rows.
+
+## P1-10 · text looks the same in preview and export
+
+Spec `docs/ux/specs/P1-10-text.md` (Typing, Style panel, Position panel, On the preview, Caption rendering, QA compares).
+Project `text-check` (new): 9 s of clip A, clip B (from 3 s) and the photo (from 6 s), with six captions on four text
+lanes: Classic "जब BUILD PASS हो 😂" over the whole video (it spans the cuts at 3 s and 6 s), Modern accented Latin at
+50% and −15°, Bubbly two lines at 250% and 30° partly off the right edge, Handwritten with Devanagari, Serif "THE END",
+and Classic red "OVERLAP" over it on a lower lane (drawn on top). Push P1-03's test files first (P1-03 step 0).
+
+```sh
+./gradlew :androidApp:installDebug
+adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor text-check
+adb logcat -s MemixAnalytics:* MemixCaptions:* MemixExportCheck:*      # second terminal
+```
+
+**A. Hand checks (debug build).**
+1. **Main tool bar:** Edit · Meme sounds · Text · Add media (Text in place 3).
+2. **Typing a new caption** (360 × 800, then 360 × 640): Text → the keyboard opens with the entry bar on it (field
+   "Type your text", Done), the timeline and tools are under the keyboard, and the preview stays where it was (on
+   360 × 640 it shrinks instead of hiding). An empty frame shows at the top slot; type "WHEN THE BUILD PASSES": it
+   shows live in Classic, caps on the keyboard. Enter makes a new line; the field grows to 4 lines, then scrolls. From
+   200 characters "230/250" shows; at 250 nothing more goes in (paste 300 emoji: 250 stay), TalkBack says "Character
+   limit reached" once. Done: the keyboard closes, the caption is selected (frame and handle), its orange item bonks on
+   the text lane, TalkBack says "Text added at 1.0 seconds". Undo: "Undo: Add text".
+3. **Every way out keeps the words:** start typing, then press back, Escape (keyboard), Close, or swipe the keyboard
+   down: each commits. Text with nothing typed (or only spaces): nothing added, no Undo. Edit text and clear it: the
+   caption is deleted as one step ("Undo: Delete" brings it back).
+4. **Landing:** at 1.0 s on `text-check` (Classic sits at the top): a new caption goes to the bottom; another to the
+   middle. Near the end (8.5 s on a 9 s video) it ends at the end. Over another caption's time it goes on a new text
+   lane. A second caption takes the last style you picked.
+5. **Style panel:** select Classic, Style: five font tiles (each name in its own font; Classic white), ten colors, "No
+   outline" plus ten outline colors; the preview stays visible. Each tap shows at once and is one step ("Font", "Color",
+   "Outline"); tapping the selected one records nothing. Each font on the same caption: no jump or flash when the
+   preview takes over. Hindi app language: the tile names in each font's Devanagari (Classic in Teko).
+6. **Position panel:** Size − / + walk 25 · 33 · … · 500% (100% always reachable), Rotation steps of 15°, Move arrows 1%
+   (held: repeats after 400 ms, one undo step on release), Center. At 25%: "This is the smallest size."; at 500%: "This
+   is the biggest size."; a Move arrow with the center at the edge: "Your text can't go further this way." TalkBack:
+   "Size, 120%", "Rotation, 15 degrees", and the step is announced.
+7. **On the preview:** tap a caption: selected; tap it again: typing. Tap elsewhere on the stage: play/pause (the
+   selection stays). Drag a caption: it follows 1:1, the center snaps to the middle lines (one tick, guide). Two fingers
+   anywhere on the stage with a caption selected: size, turn and move together; the bubble reads "120% · 15°"; 100%
+   and quarter turns snap with a tick. The handle (bottom-right; another corner when that's off the stage): size and
+   turn. Release: one step, "Position" if only moved, else "Size and rotation"; no jump or double caption at the release.
+   Back during a drag: it goes back. Text outside the frame is clipped, as in the export.
+8. **Timeline:** label = first line; trim with no source limit; Move here; Split (same words and style, both pieces);
+   Duplicate (same place on the frame); Delete. A caption past the end is washed and not drawn.
+9. **Analytics** (`MemixAnalytics`): `tool_use` `add_text {font=anton}`, `text_font {font=kalam}`, `edit_text`,
+   `text_color`, `text_outline`, `position_text`, `transform_text`, and `split`/`trim`/`delete`/`duplicate`/`move` on
+   text, once per step; nothing for opening typing or a panel, selecting, an explanation, or re-tapping the selection.
+10. **TalkBack:** after "Preview, 9:16", each caption shown at the playhead, top to bottom ("Text: WHEN THE BUILD
+    PASSES", selected), with the actions Style and Position; double-tap selects, then opens typing. The handle isn't
+    reachable (the Position panel is the route). After Done, focus goes to the caption on the preview.
+11. **Hindi at 200% font, 360 dp:** the text tools (Edit text, Style, Position, Delete in view), both panels (rows wrap),
+    the entry bar. Captions on the preview don't grow with the font size.
+12. **Mixed scripts** (QA compares 6): `text-check` at 1.0 s: "जब BUILD PASS हो 😂" in Classic draws the Devanagari in
+    Teko and the emoji without an outline; change it to each font, with and without outline; nothing is cut above or
+    below. Screenshot one mixed line for the designer, who sets Teko's size factor before the gate.
+13. **Drift trial** (owner): on `timeline-check`, put a caption on a clip boundary, then trim clip 1's start by about 1 s:
+    the clips move, the caption keeps its time. Note whether that would bother you (the same open rule as sounds).
+
+**B. The Done when: preview and export match** (QA compares → Measured).
+1. On `text-check`, pause at 1.0 s, 4.0 s and 7.0 s and screenshot each (`adb exec-out screencap -p > p1.png`).
+2. Close the editor (it saves), then export at 1080p:
+   `adb shell am start -S -n app.memix/.android.MainActivity --ez memix.exportLatestDraft true`, and at 720p: the same
+   with `--ei memix.exportShortSide 720`. Pull each file (`adb exec-out run-as app.memix cat cache/exports/<file>.mp4 >
+   t1080.mp4`), then `ffmpeg -ss 1.0 -i t1080.mp4 -frames:v 1 f1080-1.png` (and 4.0, 7.0; the same for 720p).
+3. Crop each screenshot to the canvas frame, scale it to the export width, and compare side by side and as a 50%
+   overlay. Pass: the same line breaks, glyphs and fonts (Teko for Devanagari under Classic); position within 1% of the
+   width, size within 2%, rotation within 1°; the same colors sampled inside a letter; the outline the same; the
+   off-frame caption clipped at the same place; the overlap order the same; 720p and 1080p identical in layout.
+4. The three 1080p frames go to `docs/qa/references/P1-10-text/` (CLAUDE.md rule 5).
+
+**C. Responsiveness (benchmark build, the owner's phone).** Type a 100-character caption: no visible lag. Drag and pinch
+a caption for 10 s with `adb shell dumpsys gfxinfo app.memix reset`, then `... gfxinfo app.memix`: janky frames under
+5%. Screen-record at 60 fps a font tap, a Position step and a drag release: the preview shows each within 6 frames, and
+the caption never shows twice or jumps.
+
+**D. Leaks (debug build, LeakCanary 2.14).** Open the editor, add and style 5 captions, edit one, pinch one, close;
+repeat 5 times. Pass: no leak reported.
+
+**E. APK size:** the four caption fonts add 1,296,240 bytes of TTF, 596,227 bytes (582 KB) compressed in the debug APK
+(`unzip -lv`; Teko was already bundled).
+
+### States to screenshot for the design review (`docs/ux/reviews/P1-10/`)
+From the spec's QA compares and states, at 360 dp wide if possible, English unless noted: `typing-new-360x800`,
+`typing-new-360x640`, `typing-empty`, `typing-counter`, `text-selected`, `style-panel`, `style-fonts-1` … `style-fonts-5`
+(the same caption in each font), `position-panel-360x640` (scrolled), `position-panel-hi-200`, `mid-pinch` (bubble and
+guides), `mixed-scripts-<font>` (with and without outline), `explain-smallest`, `explain-biggest`, `explain-edge`,
+`text-past-end`, `long-text-250`, `main-tools-text`. P1-08's `text-tools` screenshot now shows the new text tool row.
 
 ## P1-17 · Hindi display face: hero and entry cards in Teko, nothing clipped, other languages unchanged
 

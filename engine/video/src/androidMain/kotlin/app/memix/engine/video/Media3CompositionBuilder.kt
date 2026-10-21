@@ -3,11 +3,13 @@ package app.memix.engine.video
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.C
+import androidx.media3.common.Effect
 import androidx.media3.common.MediaItem
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.ChannelMixingAudioProcessor
 import androidx.media3.common.audio.ChannelMixingMatrix
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.Presentation
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
@@ -37,6 +39,10 @@ internal class Media3CompositionBuilder(
      * exports. An item at 0% with a live gain gets no fixed volume step: its live gain starts at 0 and can raise it.
      */
     private val liveGains: Map<String, LiveGainProcessor> = emptyMap(),
+    /** The plan's captions over the composited video; null when the plan has none. */
+    private val captionOverlay: CaptionOverlay? = null,
+    /** The output's shorter side when it's smaller than the canvas's (the debug export hook's 720p, until P1-12). */
+    private val outputShortSidePx: Int? = null,
 ) {
     fun build(): Composition {
         val sequences = listOf(mainVideoSequence()) + plan.audioLanes.map(::audioSequence)
@@ -44,8 +50,24 @@ internal class Media3CompositionBuilder(
             // Exports are SDR: every chat app shows SDR right, and Media3 refuses SDR clips or photos
             // after an HDR video in one sequence. OpenGL tone mapping works from API 29, our minSdk.
             .setHdrMode(Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)
-        if (mixProcessors.isNotEmpty()) composition.setEffects(Effects(mixProcessors, emptyList()))
+        val videoEffects = compositionVideoEffects()
+        if (mixProcessors.isNotEmpty() || videoEffects.isNotEmpty()) composition.setEffects(Effects(mixProcessors, videoEffects))
         return composition.build()
+    }
+
+    // Captions are drawn at the canvas size first, then the whole frame is scaled to the output, so a lower resolution
+    // never re-lays out a caption (spec P1-10 → Geometry: layout resolution).
+    private fun compositionVideoEffects(): List<Effect> = listOfNotNull(
+        captionOverlay?.let { OverlayEffect(listOf(it)) },
+        scaledOutputHeightPx()?.let { Presentation.createForHeight(it) },
+    )
+
+    // The canvas scaled so its shorter side is outputShortSidePx, rounded to an even height for the encoder.
+    private fun scaledOutputHeightPx(): Int? {
+        val canvasShortSidePx = minOf(plan.canvasWidthPx, plan.canvasHeightPx)
+        val shortSidePx = outputShortSidePx?.takeIf { it in 1 until canvasShortSidePx } ?: return null
+        val heightPx = plan.canvasHeightPx.toLong() * shortSidePx / canvasShortSidePx
+        return (heightPx.toInt() / 2) * 2
     }
 
     private fun mainVideoSequence(): EditedMediaItemSequence {

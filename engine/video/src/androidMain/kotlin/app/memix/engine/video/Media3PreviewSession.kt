@@ -61,6 +61,7 @@ import kotlinx.coroutines.withContext
 internal class Media3PreviewSession(
     private val context: Context,
     private val sourceResolver: MediaSourceResolver,
+    private val captionRenderer: AndroidCaptionRenderer,
     private val logger: Logger,
     private val ioDispatcher: CoroutineDispatcher,
     project: Project,
@@ -101,6 +102,12 @@ internal class Media3PreviewSession(
 
     // The live gains of the composition on the player, with the volume it already applies per sound.
     private var liveVolumes = LiveVolumes(emptyMap(), emptyMap())
+
+    // The caption the editor draws itself (typing, a gesture), and the hide switch of the composition on the player.
+    // Each composition has its own switch, so a rebuild in flight never shows a caption the old frame hides, or the
+    // other way round.
+    private var requestedHiddenCaption: String? = null
+    private var shownCaptions: CaptionVisibility? = null
     private val positionTicker = FrameTicker(::publishPlayerPosition)
     private val headphonesUnplugged = HeadphonesUnpluggedReceiver(context, onUnplugged = ::pause)
     private val playSpan = PlaySpanLog(logger)
@@ -145,6 +152,7 @@ internal class Media3PreviewSession(
                     showTrimComposition(withContext(ioDispatcher) { prepare(trimProjectOf(next, clip)) })
                 } else {
                     val update = updateCount
+                    captionRenderer.prepare()
                     show(withContext(ioDispatcher) { prepare(next) }, update)
                 }
             }
@@ -183,6 +191,8 @@ internal class Media3PreviewSession(
     override fun update(project: Project) {
         // An equal project renders nothing new, so there is no edit to time.
         if (closed || project == projects.value) return
+        // A committed caption edit ends its stand-in: the new composition draws the caption itself.
+        requestedHiddenCaption = null
         showTiming.start(ShowTimingLog.Change.EDIT)
         lengthUs = project.videoLengthUs()
         updateCount++
@@ -207,6 +217,18 @@ internal class Media3PreviewSession(
         val committed = liveVolumes.committed[itemId] ?: return
         // The live gain multiplies the committed level; at 0% there's no fixed step, so it's the level itself.
         liveVolumes.gains[itemId]?.factor = if (committed > 0f) volume / committed else volume
+    }
+
+    override fun hideCaption(itemId: String?) {
+        if (closed) return
+        requestedHiddenCaption = itemId
+        val shown = shownCaptions ?: return
+        if (shown.hiddenItemId == itemId) return
+        shown.hiddenItemId = itemId
+        // Showing it again on a frame an update is about to replace would flash the old caption: leave that frame.
+        if (itemId == null && mutablePlayback.value.isCatchingUp) return
+        // Edits pause first. A seek to where it is renders the frame again through the overlay, without a rebuild.
+        if (!playerShowsTrim) mutablePlayer.value?.let { player -> player.seekTo(player.currentPosition) }
     }
 
     override fun endTrimFrames() {
@@ -242,8 +264,19 @@ internal class Media3PreviewSession(
             val volumes = itemsWithSoundOf(playablePlan)
             // A 0% item is silenced by its live gain (no fixed step), so that gain starts at 0.
             val liveGains = volumes.mapValues { (_, volume) -> LiveGainProcessor().apply { if (volume == 0f) factor = 0f } }
-            val composition = Media3CompositionBuilder(playablePlan, resolved.uriByMedia, ExportSettings.DEFAULT_FRAME_RATE, onsetLog, liveGains).build()
-            PreparedPreview.Ready(composition, plan.durationUs, missingMedia = unplayable.isNotEmpty(), LiveVolumes(liveGains, volumes))
+            val visibility = CaptionVisibility()
+            val captions = playablePlan.captions.takeIf { it.isNotEmpty() }?.let {
+                CaptionOverlay(it, captionRenderer, playablePlan.canvasWidthPx, playablePlan.canvasHeightPx, visibility)
+            }
+            val composition = Media3CompositionBuilder(
+                playablePlan,
+                resolved.uriByMedia,
+                ExportSettings.DEFAULT_FRAME_RATE,
+                onsetLog,
+                liveGains,
+                captionOverlay = captions,
+            ).build()
+            PreparedPreview.Ready(composition, plan.durationUs, missingMedia = unplayable.isNotEmpty(), LiveVolumes(liveGains, volumes), visibility)
         } catch (e: RuntimeException) {
             // Media3's own argument checks.
             PreparedPreview.Failed("the composition couldn't be built", e)
@@ -262,6 +295,9 @@ internal class Media3PreviewSession(
         lengthUs = prepared.lengthUs
         val startUs = mutablePosition.value.coerceIn(0, lengthUs)
         val player = mutablePlayer.value ?: newPlayer().also { mutablePlayer.value = it }
+        // A caption hidden while this composition was built (a gesture that began meanwhile) stays hidden on it.
+        prepared.captions.hiddenItemId = requestedHiddenCaption
+        shownCaptions = prepared.captions
         try {
             // Rebuilds every decoder (Media3 1.11.1), so it costs a re-prepare; the position and play state carry on.
             player.setComposition(prepared.composition, startUs / MICROS_PER_MILLI)
@@ -365,7 +401,13 @@ internal class Media3PreviewSession(
     private fun publish(change: (PreviewPlayback) -> PreviewPlayback) = mutablePlayback.update(change)
 
     private sealed interface PreparedPreview {
-        class Ready(val composition: Composition, val lengthUs: Long, val missingMedia: Boolean, val liveVolumes: LiveVolumes) : PreparedPreview
+        class Ready(
+            val composition: Composition,
+            val lengthUs: Long,
+            val missingMedia: Boolean,
+            val liveVolumes: LiveVolumes,
+            val captions: CaptionVisibility,
+        ) : PreparedPreview
 
         class Failed(val reason: String, val cause: Throwable?) : PreparedPreview
     }

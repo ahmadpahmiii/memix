@@ -12,6 +12,7 @@ Never guess class names or signatures from memory. If an API you expected doesn'
 
 ## Mapping
 
+- Captions (P1-10): `AndroidCaptionRenderer` is the one caption renderer (layout once in canvas pixels; bundled TTFs with `Typeface.CustomFallbackBuilder`, Classic → Teko → system). `CaptionOverlay` is a composition-level `CanvasOverlay` (composition time in both player and Transformer in 1.11.1) that redraws only when the shown set changes; a lower export resolution is a `Presentation` after it. `hideCaption` uses a per-composition switch plus a seek to the same position (no rebuild; `experimentalRedrawLastFrame` needs the replayable cache).
 - Mapping rules (order, gaps, trims, mute, detach, overlap lanes, cut at the main track's end) live in the shared `CompositionPlanner` → `CompositionPlan` (`:engine:video` commonMain). Change them there, never only in the Media3 builder, so iOS keeps matching.
 - One `Project` → one Media3 `Composition` (`Media3CompositionBuilder`).
 - Main video track → one `EditedMediaItemSequence` (clips in order, trims, speed, per-clip effects).

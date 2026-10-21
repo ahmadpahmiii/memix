@@ -13,10 +13,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -39,12 +40,14 @@ import app.memix.core.designsystem.MemixIcons
 import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.MemixTheme
 import app.memix.core.designsystem.Text
+import app.memix.core.designsystem.captionFontFamily
 import app.memix.core.designsystem.component.Button
 import app.memix.core.designsystem.component.ButtonVariant
 import app.memix.core.designsystem.component.Chip
 import app.memix.core.designsystem.component.CloseButton
 import app.memix.core.designsystem.component.EntryCard
 import app.memix.core.designsystem.component.FadingToast
+import app.memix.core.designsystem.component.FontTile
 import app.memix.core.designsystem.component.IconButton
 import app.memix.core.designsystem.component.Menu
 import app.memix.core.designsystem.component.MenuItem
@@ -53,6 +56,7 @@ import app.memix.core.designsystem.component.SegmentedTabs
 import app.memix.core.designsystem.component.Sheet
 import app.memix.core.designsystem.component.Slider
 import app.memix.core.designsystem.component.SoundRow
+import app.memix.core.designsystem.component.Swatch
 import app.memix.core.designsystem.component.Tabs
 import app.memix.core.designsystem.component.TemplateCard
 import app.memix.core.designsystem.component.Toast
@@ -106,6 +110,7 @@ fun ComponentCatalog(onClose: () -> Unit, modifier: Modifier = Modifier, appSect
             CardSection()
             TabSection()
             SliderAndToggleSection()
+            FontTileAndSwatchSection()
             ProgressBarSection()
             IconButtonSection()
             ToastSection()
@@ -262,6 +267,24 @@ private fun SliderAndToggleSection() = Section("Slider and Toggle") {
     Toggle("Show watermark preview", on, { on = it })
 }
 
+// The Style panel's choices (P1-10). The swatch colors are samples of the caption palette, which lives in :core:model.
+@Composable
+private fun FontTileAndSwatchSection() = Section("FontTile and Swatch") {
+    var font by remember { mutableStateOf("anton") }
+    Row(Modifier.horizontalScroll(rememberScrollState()).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space2)) {
+        listOf("anton" to "Classic", "poppins" to "Modern", "baloo2" to "Bubbly", "kalam" to "Handwritten", "rozha" to "Serif").forEach { (id, name) ->
+            FontTile(name, captionFontFamily(id), selected = font == id, onClick = { font = id })
+        }
+    }
+    var swatch by remember { mutableStateOf<Color?>(Color.White) }
+    Row(Modifier.horizontalScroll(rememberScrollState()).selectableGroup()) {
+        Swatch(null, "No outline", selected = swatch == null, onClick = { swatch = null })
+        listOf(Color.White to "White", Color.Black to "Black", Color(0xFFFFD60A) to "Yellow", Color(0xFF0A84FF) to "Blue").forEach { (color, name) ->
+            Swatch(color, name, selected = swatch == color, onClick = { swatch = color })
+        }
+    }
+}
+
 @Composable
 private fun ProgressBarSection() = Section("ProgressBar") {
     var progress by remember { mutableFloatStateOf(0.4f) }
@@ -394,7 +417,10 @@ private fun IconSection() = Section("Icons") {
         "undo" to MemixIcons.Undo, "redo" to MemixIcons.Redo, "edit" to MemixIcons.Edit, "split" to MemixIcons.Split,
         "delete" to MemixIcons.Delete, "duplicate" to MemixIcons.Duplicate, "reorder" to MemixIcons.Reorder,
         "volume" to MemixIcons.Volume, "move_here" to MemixIcons.MoveHere, "replace" to MemixIcons.Replace,
-        "volume_off" to MemixIcons.VolumeOff, "detach_audio" to MemixIcons.DetachAudio,
+        "volume_off" to MemixIcons.VolumeOff, "detach_audio" to MemixIcons.DetachAudio, "text" to MemixIcons.Text,
+        "edit_text" to MemixIcons.EditText, "style" to MemixIcons.Style, "position" to MemixIcons.Position,
+        "minus" to MemixIcons.Minus, "plus" to MemixIcons.Plus, "rotate_left" to MemixIcons.RotateLeft,
+        "rotate_right" to MemixIcons.RotateRight, "arrow" to MemixIcons.Arrow, "scale_rotate" to MemixIcons.ScaleRotate,
     )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space4), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4)) {
         icons.forEach { (name, icon) ->

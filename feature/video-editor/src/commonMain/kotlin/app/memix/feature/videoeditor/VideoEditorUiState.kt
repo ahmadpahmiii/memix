@@ -8,12 +8,13 @@ import app.memix.core.domain.project.TrimEdge
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.project.MediaOrigin
+import app.memix.core.model.project.Transform
 import app.memix.feature.videoeditor.importmedia.ImportIntent
 import app.memix.feature.videoeditor.importmedia.ImportUiState
 import app.memix.feature.videoeditor.timeline.ItemName
 import app.memix.feature.videoeditor.timeline.TimelineThumbnails
-import app.memix.feature.videoeditor.timeline.TrimRanges
 import app.memix.feature.videoeditor.timeline.TimelineUi
+import app.memix.feature.videoeditor.timeline.TrimRanges
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
@@ -64,6 +65,19 @@ data class VideoEditorUiState(
      * sound's Volume tool (spec P1-06 → Accessibility).
      */
     val returnFocus: ReturnFocus? = null,
+    /** The captions on the preview (P1-10), laid out by the engine's renderer; empty until the draft has opened. */
+    val captions: ImmutableList<CaptionUi> = persistentListOf(),
+    /** Measures a caption as it's typed, with the renderer that draws it; null until the draft has opened. */
+    val captionMeasure: EditorCaptionMeasure? = null,
+    /** Typing a caption over the keyboard (spec P1-10 → Typing); null otherwise. */
+    val textEntry: TextEntryUi? = null,
+    /** The Style or Position panel of the selected caption, or null when neither is open. */
+    val textPanel: TextPanel? = null,
+    /**
+     * A caption edit the preview hasn't shown yet: the editor's stand-in draws it from the commit until the preview's
+     * new frame takes over, so nothing jumps or flashes (spec P1-10 → Live editing). Null otherwise.
+     */
+    val captionStandIn: CaptionUi? = null,
     /** The thumbnail tiles of the timeline's strips, once the draft has opened. Compared by identity. */
     val thumbnails: TimelineThumbnails? = null,
     /** The play button shows Pause; switches as soon as play is asked for. */
@@ -95,9 +109,12 @@ data class VideoEditorUiState(
     val canPlay: Boolean get() = stage != StageContent.EMPTY && stage != StageContent.ERROR
 }
 
-/** The project's frame: its width-to-height ratio, and the ratio as screen readers hear it ("9:16"). */
+/**
+ * The project's frame: its width-to-height ratio, the ratio as screen readers hear it ("9:16"), and its size in pixels,
+ * which captions are laid out in.
+ */
 @Immutable
-data class CanvasUi(val aspectRatio: Float, val ratioLabel: String)
+data class CanvasUi(val aspectRatio: Float, val ratioLabel: String, val widthPx: Int = 0, val heightPx: Int = 0)
 
 /** What the canvas frame on the stage shows. */
 enum class StageContent {
@@ -128,7 +145,7 @@ enum class ClipTools {
     /** A photo clip on the main track: Split, Delete, Duplicate, Reorder, Replace (no sound, so no Volume or Detach audio). */
     PHOTO_CLIP,
 
-    /** A caption: Delete, Split, Move here, Duplicate (captions are deleted more often than cut). */
+    /** A caption: Edit text, Style, Position, Delete, Split, Move here, Duplicate (spec P1-10 → Text clip tools). */
     TEXT,
 
     /** A meme sound or detached audio: Volume, Split, Delete, Move here, Duplicate. */
@@ -223,6 +240,16 @@ enum class FocusTarget {
 
     /** The Volume tool of the selected sound. */
     VOLUME_TOOL,
+
+    /** The Text tool on the main tool bar (P1-10): after typing a blank new caption. */
+    TEXT_TOOL,
+
+    /** The selected caption's Style and Position tools, after their panels close. */
+    STYLE_TOOL,
+    POSITION_TOOL,
+
+    /** The selected caption's node on the preview, after typing commits (spec P1-10 → Accessibility). */
+    SELECTED_CAPTION,
 }
 
 /** Why a tool explains instead of acting (spec P1-06 → Clip tool bar: tools stay enabled and explain on tap). */
@@ -243,6 +270,11 @@ enum class Explanation {
 
     /** After detaching while every clip was muted: the new clip starts at 0%. */
     DETACHED_MUTED,
+
+    /** Position panel limits (P1-10): Smaller at 25%, Bigger at 500%, a Move arrow with the center at that edge. */
+    TEXT_SMALLEST,
+    TEXT_BIGGEST,
+    TEXT_EDGE,
 }
 
 /**
@@ -272,6 +304,12 @@ sealed interface ToastMessage {
 
     /** After a meme sound lands, for screen readers only: "Boom added at 3.2 seconds" ([atUs] is where it starts). */
     data class SoundAdded(val title: LocalizedText, val atUs: Long) : ToastMessage
+
+    /** After a new caption lands, for screen readers only: "Text added at 3.2 seconds" ([atUs] is where it starts). */
+    data class TextAdded(val atUs: Long) : ToastMessage
+
+    /** After a size or rotation step, for screen readers only: "120%, 15 degrees". */
+    data class TextTransformed(val scalePercent: Int, val degrees: Int) : ToastMessage
 
     /** After Add media lands, for screen readers only: "3 clips added". */
     data class MediaAdded(val count: Int) : ToastMessage
@@ -472,4 +510,49 @@ sealed interface VideoEditorIntent {
      * [fileMissing] when the screen knows the clip's file is gone (the thumbnails' missing sources): it explains instead.
      */
     data class DetachAudioSelected(val fileMissing: Boolean) : VideoEditorIntent
+
+    /** The Text tool: typing a new caption starts (spec P1-10 → Main tool bar). */
+    data object TextTool : VideoEditorIntent
+
+    /** Edit text on the selected caption, or a tap on it on the preview: typing its words starts. */
+    data object EditTextSelected : VideoEditorIntent
+
+    /** The words in the field changed to [text] (already within the 250-character limit); nothing is committed yet. */
+    data class TextEntryChanged(val text: String) : VideoEditorIntent
+
+    /** Done, back, Escape or the keyboard going away: the words are committed (spec P1-10 → Typing → commit). */
+    data object TextEntryDone : VideoEditorIntent
+
+    /** The Style or Position tool of the selected caption. */
+    data class OpenTextPanel(val panel: TextPanel) : VideoEditorIntent
+
+    /** Done, back or Escape on the Style or Position panel. */
+    data object CloseTextPanel : VideoEditorIntent
+
+    /** A font tile: caption font [fontId] for the selected caption. */
+    data class SetCaptionFont(val fontId: String) : VideoEditorIntent
+
+    /** A color swatch: the selected caption's letters in [argb]. */
+    data class SetCaptionColor(val argb: Long) : VideoEditorIntent
+
+    /** An outline swatch: the selected caption's outline in [argb], or none when it's null. */
+    data class SetCaptionOutline(val argb: Long?) : VideoEditorIntent
+
+    /** A Position panel tap, or the end of a held Move arrow ([repeats] steps in all). */
+    data class PositionStepped(val step: PositionStep, val repeats: Int = 1) : VideoEditorIntent
+
+    /** A held Move arrow repeated: the caption shows [repeats] steps along, nothing committed yet. */
+    data class PositionStepHeld(val step: PositionStep, val repeats: Int) : VideoEditorIntent
+
+    /** A tap on caption [itemId] on the preview: selects it, or opens typing when it's already selected. */
+    data class CaptionTapped(val itemId: String) : VideoEditorIntent
+
+    /** A drag, pinch or handle drag on caption [itemId] began: playback pauses, it's selected, the stand-in draws it. */
+    data class CaptionGestureStarted(val itemId: String) : VideoEditorIntent
+
+    /** The gesture on [itemId] ended at [transform]: one Position or Size and rotation step (none if unchanged). */
+    data class CaptionGestureEnded(val itemId: String, val transform: Transform) : VideoEditorIntent
+
+    /** The gesture was cancelled (system back, a lost gesture); nothing changes. */
+    data object CaptionGestureCancelled : VideoEditorIntent
 }

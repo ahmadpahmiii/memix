@@ -36,6 +36,11 @@ class MemixType(
     val label: TextStyle,
     val caption: TextStyle,
     val timecode: TextStyle,
+    /**
+     * A FontTile's name (P1-10): size and line height only; the tile sets the caption font it previews
+     * ([captionFontFamily]). Line height 28 leaves room for Devanagari marks in every caption font.
+     */
+    val captionSample: TextStyle,
 )
 
 @Composable
@@ -63,6 +68,13 @@ internal fun memixType(): MemixType {
         label = style(sans, FontWeight.Medium, 13.sp, 16.sp),
         caption = style(sans, FontWeight.Medium, 11.sp, 14.sp),
         timecode = style(mono, FontWeight.Normal, 12.sp, 16.sp),
+        captionSample = TextStyle(
+            fontSize = 18.sp,
+            lineHeight = 28.sp,
+            letterSpacing = 0.sp,
+            lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
+            color = MemixColors.text,
+        ),
     )
 }
 

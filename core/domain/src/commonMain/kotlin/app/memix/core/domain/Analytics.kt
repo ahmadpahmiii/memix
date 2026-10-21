@@ -26,11 +26,16 @@ sealed interface AnalyticsEvent {
 
     /**
      * A tool changed the project: one event per committed step, never during a drag (PM, 8 Oct 2026). [tool] must be
-     * one with a [EditorTool.eventValue].
+     * one with a [EditorTool.eventValue]. [font] is the caption font id, sent only with `add_text` and `text_font`
+     * (owner, 9 Oct 2026: PRD → Analytics).
      */
-    data class ToolUse(val editor: ProjectType, val tool: EditorTool) : AnalyticsEvent {
+    data class ToolUse(val editor: ProjectType, val tool: EditorTool, val font: String? = null) : AnalyticsEvent {
         override val name = "tool_use"
-        override val params = mapOf("editor" to editor.eventValue, "tool" to requireNotNull(tool.eventValue))
+        override val params = buildMap {
+            put("editor", editor.eventValue)
+            put("tool", requireNotNull(tool.eventValue))
+            if (font != null) put("font", font)
+        }
     }
 
     /** A meme sound landed on the timeline from the sounds sheet; not for duplicates (spec P1-06 → Analytics). */
@@ -72,6 +77,15 @@ enum class EditorTool(val eventValue: String?) {
     MUTE_ORIGINAL("mute_original"),
     UNMUTE_ORIGINAL("unmute_original"),
     DETACH_AUDIO("detach_audio"),
+
+    /** P1-10: captions (PM, 9 Oct; `move_text` became `position_text`). `add_text` and `text_font` also send `font`. */
+    ADD_TEXT("add_text"),
+    EDIT_TEXT("edit_text"),
+    TEXT_FONT("text_font"),
+    TEXT_COLOR("text_color"),
+    TEXT_OUTLINE("text_outline"),
+    POSITION_TEXT("position_text"),
+    TRANSFORM_TEXT("transform_text"),
 }
 
 /** `sound_add.tab` and `sound_preview.tab`: where in the sounds UI it happened. "starter" until P3-05 (PM, 8 Oct 2026). */
