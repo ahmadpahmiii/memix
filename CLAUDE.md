@@ -75,7 +75,7 @@ Six agents in `.claude/agents/`: five role agents plus the `security-reviewer`. 
 - **Branches and PRs:** one branch per phase (`phase-<n>`), one PR per phase, opened only when the phase is done. Tickets are commits on the phase branch.
 - **Per ticket:** PM ready check → designer spec (UI tickets) → engineer builds and checks by hand → principal code review → designer review (UI) → PM ticket check → commit on the phase branch (`<ID>: <ticket name>`, handoff in the commit message) and push.
 - **One builder at a time** (owner, 8 Oct 2026, to stay inside usage limits): only one agent builds code at once; small helpers (ready checks, reviews, research) may run alongside. Builders write their handoff file early and update it as they go.
-- **End of phase:** QA manual pass (emulator via adb + a short device checklist for the owner; cloud sessions have no emulator, so QA runs in Claude Code on the owner's Mac with the Android Studio emulator) → fixes → QA re-test → PM phase gate → `/retro` → internal-testing build → `security-reviewer` PASS on the pushed head → one PR from `phase-<n>` to `main`. The owner merges.
+- **End of phase:** QA manual pass (emulator via adb + a short device checklist for the owner; cloud sessions have no emulator, so QA runs in Claude Code on the owner's Mac with the Android Studio emulator) → fixes → QA re-test → PM phase gate → `/retro` → internal-testing build (the owner builds, signs and uploads it by hand; owner, 21 Oct 2026) → `security-reviewer` PASS on the pushed head → one PR from `phase-<n>` to `main`. The owner merges.
 - **Improving the team:** at every phase gate the PM runs `/retro` and proposes exact edits to agents, skills or rules. The owner approves; applied changes are logged in `.claude/agents/CHANGELOG.md`. Each agent keeps lessons in `.claude/agent-memory/<agent>/MEMORY.md`.
 
 ## Quality without automated tests
@@ -128,6 +128,12 @@ Settled by the owner on 14 Oct 2026:
 - Trending lists start with 5 countries, one per app language: Indonesia, United States, India, Brazil, Mexico. More can be added later without an app change.
 - The owner listens to the 10 starter sounds at phase-end QA, in the app; P1-08 doesn't wait for it.
 - P1-08 (meme sounds) is built before P1-16 (add media and replace).
+
+Settled by the owner on 21 Oct 2026:
+- Play release (P1-15): the owner sets up signing and the Play Console and uploads builds by hand. No upload key, keystore or service account goes into the repo or CI.
+- Background image behind clips: one Phase 2 ticket for both editors. Crop, rotate and flip a clip (plus per-clip Fit or Fill): a new Phase 4 ticket.
+- Analytics: an optional `value` on the canvas `tool_use` events (ratio or `custom`, `fit`/`fill`, `blur`/`color`), and a new `export_cancel` event.
+- P1-12: a simple Share button (system share sheet) on the result screen; notification permission is asked once, at the first tap on "Export video".
 
 Still open:
 - WhatsApp sticker-pack spec must be checked at P2-09.
