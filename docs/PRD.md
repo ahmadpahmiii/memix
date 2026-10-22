@@ -161,7 +161,7 @@ Exports have **no length limit**: video is encoded straight to the output file, 
 
 - **Before export:** show the estimated file size and time, and check free space.
 - **During export:** it keeps running in the background with a progress notification, and can be cancelled. On Android 13 and newer, Memix asks for notification permission once, at the first tap on Export video; the export starts at once, whatever the answer (owner, 21 Oct 2026).
-- **Watermark:** a small "Memix" text mark (no logo), top-left with a 3% margin, on every free export. Top-left avoids the buttons TikTok and Reels place on the right and bottom.
+- **Watermark:** a small "Memix" text mark (no logo), top-left with a 3% margin, on every free export. The margin is 3% of the output's shorter side, measured to the mark's drawn ink. Top-left avoids the buttons TikTok and Reels place on the right and bottom; the owner posts one private test at phase-end QA to see whether TikTok's top bar covers it, and decides then whether the top margin stays at 3% or becomes about 13% (22 Oct 2026).
 - **Remove watermark:** one rewarded ad removes it from that one export.
 - **After export:** a share row with TikTok, Instagram (Reels and Stories), WhatsApp, YouTube Shorts, Save to gallery, and More (system share sheet). Files also save to a "Memix" album. Until the share row lands (P5-05), the Exported screen has one Share button that opens the system share sheet (owner, 21 Oct 2026).
 
