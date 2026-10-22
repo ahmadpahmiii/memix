@@ -42,9 +42,13 @@ I don't edit code, so these are requests.
 4. **Catalog:** in the Type section, show `display-xl` and `display` with a Hindi sample ("मीम बनाएं", "वीडियो मीम") whenever the catalog runs in Hindi.
 5. **P1-10 shares this file:** in captions, Teko Bold draws the Devanagari runs that Anton can't (spec P1-10 → Fonts). Bundle it once, in `:core:designsystem`, where the text engine can reach it as well.
 
+## Status
+Built in ab13bca (requests 1 to 5 done; line heights 60/44). Design review: `docs/ux/reviews/P1-17.md`. Teko's size inside Classic captions is a separate, provisional value: P1-10 review → Decisions on the engineer's known limits, 5.
+
 ## QA compares
 1. Home in Hindi at 100% and 200% font, 360 dp: hero and entry cards in Teko, nothing clipped, wordmark still Anton.
 2. The Create sheet hero in Hindi at 200%.
 3. An empty state with a `display-xl` headline (Drafts) in Hindi at 200%.
 4. Home in English at 360 dp, compared with `docs/ux/reviews/P0-05/android-home-360.png`: unchanged.
 5. On the Hindi Home hero, check visual size and vertical centering against the English Anton hero. Teko may sit low in its line box; if it does, note it in the QA report and I'll adjust the line-height token.
+6. The Export sheet hero ("एक्सपोर्ट") at 200%, and the nukta words "फ़ोटो मीम" (Home card) and "ड्राफ़्ट" (Drafts headline): the dot sits under फ़, and the conjunct and virama in ड्राफ़्ट are intact.

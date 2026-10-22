@@ -2,6 +2,12 @@
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: Design decisions and their reasons, patterns that worked or failed, recurring review issues, competitor insights.
 
+- 2026-10-22 · P1-17 review (provisional, code only). Approved with polish, no must-fixes: Teko Bold file/OFL/hash, 60/44 roles, wordmark stays Anton, one switch (`usesHindiDisplayFace()` = `LocalLocale.language`) covers every `DisplayText` use. Lessons:
+  - **A locale-switched style rests on one unverified call:** make the first device frame the pass/fail (system face vs Teko), with the fix named in advance (platform locale source, one function).
+  - **Token files can drift from code in small ways:** `letterSpacing` 0.01em/0.02em in tokens, never applied by `MemixType` since P0-04. Compare token fields with `MemixType`, not just sizes and line heights. Set to 0 (code and shipped look win).
+  - **List every caller of a switched role in the review and in DESIGN_SYSTEM** (Create rows, Export hero and heading were missing from "where it applies").
+  - **The P1-10 Teko size factor is separate from P1-17** (captions only; token 1.0 provisional; set from `mixed-scripts-anton` before the gate). Applying a factor ≠ 1.0 needs size spans on Devanagari runs, no Kotlin reads the token yet.
+  - Test Devanagari headlines with nukta and conjunct words (फ़ोटो, ड्राफ़्ट). Android 14+ scales large sp less than linearly, so 200% numbers computed linearly are the worst case.
 - 2026-10-22 · P1-13 review (provisional, code only). Approved with polish, no must-fixes: constants, preview-free export, drafts untouched, row and five-language strings all matched the spec. Lessons:
   - **When the owner splits one value into two (margin left/top), the token group changes with the code**: I had one `marginOfShortSide`; fixed to two in both token files the same day.
   - **A content mark that is white at 80% relies on its shadow on white footage.** Spec a measurable bar and the fix order for the constants (shadow alpha first, then blur; never an outline or the fill) so QA's frame check is pass/fail.

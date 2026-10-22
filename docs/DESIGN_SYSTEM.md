@@ -202,7 +202,8 @@ When the app language is Hindi, `MemixType.displayXl` and `MemixType.display` us
 | `display-xl` | display-hi (Teko) | 40 / 60 | 700 | 0 |
 | `display` | display-hi (Teko) | 28 / 44 | 700 | 0 |
 
-- **Where it applies:** every `display-xl` and `display` use, which means the Home hero, entry-card titles, sheet heroes (Create) and empty-state headlines. The whole string is set in Teko, Latin letters included, so one headline never mixes two display faces.
+- **Where it applies:** every `display-xl` and `display` use, which means the Home hero, entry-card titles, the Create sheet's hero and its two editor rows, the Export sheet's hero, the Export screen's heading and empty-state headlines (all go through `DisplayText`). The whole string is set in Teko, Latin letters included, so one headline never mixes two display faces.
+- **Review:** `docs/ux/reviews/P1-17.md` (code only; the device screenshots in `docs/ux/reviews/P1-17/` close it). The caption fallback's size factor is a separate, provisional value (P1-10 review, decision 5).
 - **Where it doesn't:**
   - The `wordmark` (always Anton: it's the name, never translated).
   - Interface roles (Space Grotesk, where Devanagari falls back to the system face, Noto Sans Devanagari on Android).
