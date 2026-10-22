@@ -2,6 +2,8 @@
 
 > **Final, 21 Oct 2026.** Owner decision (8 Oct): a small "Memix" text mark, no logo, top-left, 3% margin, on every free export (PRD → Export and sharing). P5-02 adds the rewarded ad that removes it from one export.
 
+> **Owner, 22 Oct 2026:** the top margin stays 3%; the owner posts one private TikTok and Reels test at phase-end QA and decides then (option C below). Top and left margins are separate constants (`MARGIN_TOP_OF_SHORT_SIDE`, `MARGIN_LEFT_OF_SHORT_SIDE`; tokens `marginTopOfShortSide`, `marginLeftOfShortSide`), so the test moves only the top.
+
 Builds on `P1-12-export.md` (the sheet, the Exported screen) and `P1-10-text.md` (the one caption renderer that draws text over video in preview and export). Board: `design/screens/ExportDone.dc.html` shows the mark on the result. The `Export.dc.html` watermark row shows the P5-02 version, with Remove.
 
 ## Job
@@ -93,7 +95,7 @@ None in P1-13. `watermark_removed` arrives with P5-02.
 4. **Debug:** an extra on the export hook (for example `--ez memix.exportWatermarkFree true`) that marks one export watermark-free, for the Done when.
 5. **Sheet row:** as above, with the two strings in five languages. Tokens only.
 
-## Question for the owner (through the PM; it doesn't block the build)
+## Question for the owner (answered 22 Oct: keep 3% now, test at phase-end QA, option C)
 **Problem:** TikTok's own interface covers the top of a 9:16 video in the For You feed (status bar, the Following / For You tabs, the LIVE and search icons). Third-party safe-zone tools that measure TikTok's ad template give 130 to 260 px at the top of a 1080 × 1920 frame, most often 240 px. With a 3% margin, the mark covers roughly 32 to 65 px from the top, so on TikTok's feed it may be partly under the top-left LIVE icon. It shows fully in WhatsApp, the gallery, Reels' full-screen player and everywhere else.
 
 **Considerations and options:**

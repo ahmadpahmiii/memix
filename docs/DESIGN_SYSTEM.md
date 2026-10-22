@@ -259,7 +259,7 @@ Sources: [Media3 GaussianBlurWithFrameOverlaid](https://developer.android.com/re
 The "Memix" mark on free exports is drawn into the file, so it lives in `design/tokens.json` → `watermark`, next to the caption and canvas constants, never in `MemixTheme`. Full rules: `docs/ux/specs/P1-13-watermark.md`.
 
 - **Mark:** "Memix" in Anton (the wordmark face), never translated or uppercased; font size 4% of the output's shorter side (43 px at 1080p).
-- **Place:** top-left, the glyphs' ink box 3% of the shorter side from the left and top edges (owner, 8 Oct 2026); above every layer, for the whole video.
+- **Place:** top-left, the glyphs' ink box 3% of the shorter side from the left and top edges (owner, 8 Oct 2026; kept on 22 Oct, with one private TikTok and Reels test at phase-end QA); above every layer, for the whole video. The two margins are separate tokens (`marginLeftOfShortSide`, `marginTopOfShortSide`), so the test can move only the top (about 0.13 for option B).
 - **Look:** white at 80% with a soft black shadow at 50%, no offset, blur 15% of the font size. It's content, so the chrome's no-shadow rule doesn't apply, and it has no outline (the v1 look). Brand text has no WCAG contrast requirement; the shadow keeps it readable on bright footage anyway.
 - **Not in the editor preview.** Not saved in drafts, so a value change needs no schema bump.
 

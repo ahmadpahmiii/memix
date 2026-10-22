@@ -2,6 +2,12 @@
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: Design decisions and their reasons, patterns that worked or failed, recurring review issues, competitor insights.
 
+- 2026-10-22 · P1-13 review (provisional, code only). Approved with polish, no must-fixes: constants, preview-free export, drafts untouched, row and five-language strings all matched the spec. Lessons:
+  - **When the owner splits one value into two (margin left/top), the token group changes with the code**: I had one `marginOfShortSide`; fixed to two in both token files the same day.
+  - **A content mark that is white at 80% relies on its shadow on white footage.** Spec a measurable bar and the fix order for the constants (shadow alpha first, then blur; never an outline or the fill) so QA's frame check is pass/fail.
+  - **Check debug-sample labels in `ComponentCatalog`** for words the spec rules out ("Show watermark preview" was left over).
+  - Media3 `CanvasOverlay` keeps one bitmap and never clears it, so draw-once overlays (captions, watermark) are safe; read the source before calling it a bug.
+  - The owner's TikTok/Reels test is a script with a decision rule (visible in both: keep 3%; covered in either: top margin about 13%, then check a top caption).
 - 2026-10-22 · P1-12 review (provisional, code only, no renders). Changes requested: M1 Exporting/Exported/failure screens don't scroll, so Hindi 200% clips the last button and the result can shrink to 0 (the tail is measured first); M2 Free up space passed the missing bytes (sheet) and the flat 100 MB (failure) while `EXTRA_REQUESTED_BYTES` is the TOTAL wanted free (P1-02 passes its total); M3 Export + centered ratio pill overlap at 200% es/pt; M4 hidden `AnimatedVisibility` children still take `spacedBy` gaps (48 dp dead space in the sheet). Lessons:
   - **Every new element added to a bar that already has a centered item needs a collision rule at 200%** (compute label widths: ~0.55 em/char Latin, button padding `space-5`). I specced Export and said "the pill stays alone in the center" with no rule for when it doesn't fit.
   - **Every full screen that ends in buttons needs a scroll rule and a picture floor in the spec** (40%/30% of the screen), written when the spec is, not found at review. Pattern: `heightIn(min = screen)` column inside `verticalScroll`, weighted picture with its own `heightIn(min)`.
