@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -33,6 +34,8 @@ import org.jetbrains.compose.resources.DrawableResource
  * when the button sits on `surface-raised` itself (the × of a Toast): it then presses to `hairline`, the next step,
  * so the press stays visible.
  *
+ * [tint] is `text` unless the spec asks for a quieter icon (a list row's More options in `text-secondary`, P1-14).
+ *
  * Disabled ([enabled] false): the icon turns `text-muted`, taps do nothing, and screen readers say "disabled". Use
  * it only where greyed-out is the convention (undo and redo, play with nothing to play); elsewhere a control
  * explains why it can't act.
@@ -45,12 +48,13 @@ fun IconButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     onSurfaceRaised: Boolean = false,
+    tint: Color = MemixColors.text,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressedFill = if (onSurfaceRaised) MemixColors.hairline else MemixColors.surfaceRaised
     // Fades in from a see-through copy of the same gray, so the press never passes through black.
     val container = pressedColor(interactionSource, pressedFill.copy(alpha = 0f), pressedFill)
-    val tint = if (enabled) MemixColors.text else MemixColors.textMuted
+    val iconTint = if (enabled) tint else MemixColors.textMuted
     Box(
         modifier
             .focusRing(interactionSource, MemixShapes.radiusMd)
@@ -62,7 +66,7 @@ fun IconButton(
         contentAlignment = Alignment.Center,
     ) {
         Crossfade(icon, animationSpec = tween(MemixMotion.durationPress), label = "icon") { shown ->
-            Icon(shown, contentDescription = null, tint = tint)
+            Icon(shown, contentDescription = null, tint = iconTint)
         }
     }
 }

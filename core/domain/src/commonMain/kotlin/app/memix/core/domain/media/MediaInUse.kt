@@ -4,6 +4,7 @@ import app.memix.core.model.project.AudioClip
 import app.memix.core.model.project.EffectItem
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.MediaClip
+import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.StickerItem
 import app.memix.core.model.project.StickerLayer
@@ -36,4 +37,40 @@ internal fun Project.mediaCopyPaths(): Set<String> {
         source?.cachedCopyPath?.let(paths::add)
     }
     return paths
+}
+
+/**
+ * The same project with every media copy path passed through [rewrite]: clips, sounds and stickers on the video
+ * timeline and image and sticker layers in a photo scene. Media without a copy is left as it is.
+ */
+internal fun Project.withMediaCopyPaths(rewrite: (String) -> String): Project {
+    fun MediaRef.rewritten(): MediaRef = cachedCopyPath?.let { copy(cachedCopyPath = rewrite(it)) } ?: this
+    val rewrittenVideo = video?.let { timeline ->
+        timeline.copy(
+            tracks = timeline.tracks.map { track ->
+                track.copy(
+                    items = track.items.map { item ->
+                        when (item) {
+                            is MediaClip -> item.copy(source = item.source.rewritten())
+                            is AudioClip -> item.copy(source = item.source.rewritten())
+                            is StickerItem -> item.copy(source = item.source.rewritten())
+                            is TextItem, is EffectItem -> item
+                        }
+                    },
+                )
+            },
+        )
+    }
+    val rewrittenPhoto = photo?.let { scene ->
+        scene.copy(
+            layers = scene.layers.map { layer ->
+                when (layer) {
+                    is ImageLayer -> layer.copy(source = layer.source.rewritten())
+                    is StickerLayer -> layer.copy(source = layer.source.rewritten())
+                    is TextLayer -> layer
+                }
+            },
+        )
+    }
+    return copy(video = rewrittenVideo, photo = rewrittenPhoto)
 }

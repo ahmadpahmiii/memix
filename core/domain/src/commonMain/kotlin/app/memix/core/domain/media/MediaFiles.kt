@@ -29,6 +29,27 @@ interface MediaFiles {
      */
     suspend fun write(bytes: ByteArray, destination: String): CopyResult
 
+    /**
+     * Makes [destination] a hard link to [source], both app files: instant and free, since the two names share one
+     * file and deleting either leaves the other whole (a duplicated draft, P1-14). Returns false when the platform or
+     * the file system refuses, or [source] is missing; then copy with [copyFile]. Never replaces an existing file.
+     * Because a linked file belongs to two drafts, nothing may ever change a media copy in place: write a new file.
+     */
+    suspend fun link(source: String, destination: String): Boolean
+
+    /**
+     * Copies the app file [source] to [destination] the way [copy] copies a picked item: under a temporary name,
+     * renamed only once complete, [onBytesCopied] many times a second on the copying thread, and the unfinished
+     * file deleted on cancel. Returns [CopyResult.UNREADABLE] when [source] is missing or can't be read.
+     */
+    suspend fun copyFile(source: String, destination: String, onBytesCopied: (Long) -> Unit): CopyResult
+
+    /** The size of the app file at [path] in bytes, or null when it isn't there. */
+    suspend fun sizeOf(path: String): Long?
+
+    /** The whole app file at [path] (a thumbnail), or null when it's missing or can't be read. For small files only. */
+    suspend fun read(path: String): ByteArray?
+
     /** Deletes these files, then each folder they leave empty. Missing files are skipped. */
     suspend fun delete(paths: List<String>)
 

@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import app.memix.App
+import app.memix.debug.DraftsCheck
 import app.memix.debug.ExportCheck
 import app.memix.debug.ImportSaveFailure
 import kotlinx.coroutines.launch
@@ -42,6 +43,9 @@ class MainActivity : ComponentActivity() {
         // Debug and benchmark builds (P1-02 N2): --ez memix.failImportSave true makes the next import's first save fail as if
         // the phone were full. Steps: docs/qa/phase-1/engineer-hand-checks.md → P1-04.
         if (handChecks && savedInstanceState == null && intent.getBooleanExtra("memix.failImportSave", false)) ImportSaveFailure.arm()
+        // Debug and benchmark builds (P1-14): --ez memix.draftsCheck true saves 25 drafts for the Drafts list checks. Logcat tag
+        // MemixDraftsCheck; steps in docs/qa/phase-1/engineer-hand-checks.md → P1-14.
+        if (handChecks && savedInstanceState == null && intent.getBooleanExtra("memix.draftsCheck", false)) lifecycleScope.launch { DraftsCheck().run() }
         setContent { App(isDebugBuild, debugEditorProject = editorCheck) }
     }
 }

@@ -4,4 +4,48 @@
     <string name="drafts_empty_title">अभी कोई ड्राफ़्ट नहीं</string>
     <string name="drafts_empty_body">जाओ, कुछ बेहद धमाकेदार बनाओ।</string>
     <string name="drafts_empty_action">मीम बनाएं</string>
+    <!-- P1-14 Drafts screen (spec docs/ux/specs/P1-14-drafts.md -> Copy). -->
+    <string name="drafts_untitled_video">बिना नाम का वीडियो मीम</string>
+    <string name="drafts_untitled_photo">बिना नाम का फ़ोटो मीम</string>
+    <string name="drafts_type_video">वीडियो मीम</string>
+    <string name="drafts_type_photo">फ़ोटो मीम</string>
+    <string name="drafts_edited_now">अभी-अभी एडिट किया</string>
+    <plurals name="drafts_edited_minutes">
+        <item quantity="one">%1$d मिनट पहले एडिट किया</item>
+        <item quantity="other">%1$d मिनट पहले एडिट किया</item>
+    </plurals>
+    <plurals name="drafts_edited_hours">
+        <item quantity="one">%1$d घंटा पहले एडिट किया</item>
+        <item quantity="other">%1$d घंटे पहले एडिट किया</item>
+    </plurals>
+    <string name="drafts_edited_yesterday">कल एडिट किया</string>
+    <plurals name="drafts_edited_days">
+        <item quantity="one">%1$d दिन पहले एडिट किया</item>
+        <item quantity="other">%1$d दिन पहले एडिट किया</item>
+    </plurals>
+    <string name="drafts_edited_date">%1$s को एडिट किया</string>
+    <string name="drafts_needs_update">Memix का नया वर्ज़न चाहिए</string>
+    <string name="drafts_more_a11y">और विकल्प</string>
+    <string name="drafts_rename">नाम बदलें</string>
+    <string name="drafts_duplicate">डुप्लिकेट</string>
+    <string name="drafts_delete">हटाएं</string>
+    <string name="drafts_rename_title">ड्राफ़्ट का नाम बदलें</string>
+    <string name="drafts_rename_label">नाम</string>
+    <string name="drafts_rename_save">सेव करें</string>
+    <string name="drafts_name_count">%1$d/%2$d</string>
+    <string name="drafts_copy_name">%1$s (कॉपी)</string>
+    <string name="drafts_copy_name_n">%1$s (कॉपी %2$d)</string>
+    <string name="drafts_deleted">ड्राफ़्ट हटाया गया।</string>
+    <string name="drafts_undo">पूर्ववत करें</string>
+    <string name="drafts_duplicated">ड्राफ़्ट डुप्लिकेट किया गया।</string>
+    <string name="drafts_duplicating_title">आपका ड्राफ़्ट कॉपी हो रहा है</string>
+    <string name="drafts_cant_open">यह ड्राफ़्ट नहीं खुल सकता। Memix अपडेट करें, या इसे हटाएं।</string>
+    <string name="drafts_load_error">आपके ड्राफ़्ट लोड नहीं हो सके।</string>
+    <string name="drafts_try_again">फिर कोशिश करें</string>
+    <string name="a11y_draft_row">%1$s, %2$s, %3$s</string>
+    <string name="drafts_copy_percent">%1$d%</string>
+    <string name="drafts_copy_cancel">रद्द करें</string>
+    <string name="drafts_storage_title">पर्याप्त जगह नहीं है</string>
+    <string name="drafts_storage_body">आपकी मीडिया को %1$s चाहिए, और आपके फ़ोन में %2$s खाली है। जगह खाली करें, फिर जारी रखने के लिए वापस आएं।</string>
+    <string name="drafts_free_up_space">जगह खाली करें</string>
 </resources>

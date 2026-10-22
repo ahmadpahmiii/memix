@@ -29,6 +29,7 @@ import memix.core.designsystem.generated.resources.ic_heart
 import memix.core.designsystem.generated.resources.ic_heart_filled
 import memix.core.designsystem.generated.resources.ic_home
 import memix.core.designsystem.generated.resources.ic_minus
+import memix.core.designsystem.generated.resources.ic_more
 import memix.core.designsystem.generated.resources.ic_move_here
 import memix.core.designsystem.generated.resources.ic_pause
 import memix.core.designsystem.generated.resources.ic_photo
@@ -77,6 +78,7 @@ object MemixIcons {
     val HeartFilled = Res.drawable.ic_heart_filled
     val Home = Res.drawable.ic_home
     val Minus = Res.drawable.ic_minus
+    val More = Res.drawable.ic_more
     val MoveHere = Res.drawable.ic_move_here
     val Pause = Res.drawable.ic_pause
     val Photo = Res.drawable.ic_photo

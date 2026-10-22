@@ -14,6 +14,7 @@ import app.memix.core.domain.AppError
 import app.memix.core.domain.DeviceRegion
 import app.memix.core.domain.Logger
 import app.memix.core.domain.Outcome
+import app.memix.core.domain.drafts.LocalCalendar
 import app.memix.core.domain.media.MediaFiles
 import app.memix.core.domain.media.MediaInspector
 import app.memix.core.domain.share.Sharer
@@ -45,6 +46,7 @@ actual val platformServicesModule = module {
     single<ExportForeground> { AndroidExportForeground(androidContext(), get()) }
     single<Sharer> { AndroidSharer(androidContext()) }
     single<AppExitReasons> { AndroidAppExitReasons(androidContext(), Dispatchers.IO) }
+    single<LocalCalendar> { AndroidLocalCalendar() }
 }
 
 private class AndroidDeviceRegion(private val context: Context) : DeviceRegion {

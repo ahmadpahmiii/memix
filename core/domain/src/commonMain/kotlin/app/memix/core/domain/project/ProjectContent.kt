@@ -15,6 +15,12 @@ fun Project.hasNoClips(): Boolean = type == ProjectType.VIDEO && mainVideoClips(
 /** How long a video project plays: where its last main video clip ends, in µs. 0 when it has no clip. */
 fun Project.videoLengthUs(): Long = mainVideoClips().maxOfOrNull { it.startUs + it.durationUs } ?: 0L
 
+/**
+ * The clip a draft's thumbnail shows (P1-14): the first main video clip, at its trim-in. Null for a project with no
+ * clip, and for photo projects until the photo editor has its own cover (P2).
+ */
+fun Project.coverClip(): MediaClip? = mainVideoClips().minByOrNull { it.startUs }
+
 private fun Project.mainVideoClips(): List<MediaClip> =
     video?.tracks.orEmpty()
         .filter { it.kind == TrackKind.MAIN_VIDEO }

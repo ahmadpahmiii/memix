@@ -1214,6 +1214,55 @@ adb shell wm size 1080x2400 && adb shell wm density 480        # 360 dp wide; ba
 ### States to screenshot for the design review (`docs/ux/reviews/P1-17/`)
 `home-hi-100`, `home-hi-200` (360 dp), `create-sheet-hi-200`, `drafts-empty-hi-200`, `home-en-360`, `catalog-type-hi`.
 
+## P1-14 · drafts sort by last edited; opening or renaming isn't an edit; a duplicate sits above its original
+
+Built without a phone or emulator, and without a local build (CI compiles it). Spec: `docs/ux/specs/P1-14-drafts.md`; what was built: `docs/TECHNICAL_DESIGN.md` → Drafts list. Use a **debug** build for A to E and the **benchmark** build for F.
+
+```sh
+./gradlew :androidApp:installDebug
+# The clip every check draft uses (P1-03's test media): push it first if it isn't there.
+adb push clip-a.mp4 /data/local/tmp/ && adb shell run-as app.memix sh -c 'mkdir -p files/debug-media && cp /data/local/tmp/clip-a.mp4 files/debug-media/'
+adb shell am start -S -n app.memix/.android.MainActivity --ez memix.draftsCheck true
+adb logcat -s MemixDraftsCheck MediaImport Drafts MemixPreview
+```
+
+**A. The Done when: order (spec → Measured; PM must-knows 1 to 3).**
+1. After `Saved 25 of 25 drafts`, open Drafts. Pass: 25 rows, newest edit first, reading "Edited just now", "Edited 1 minute ago", "Edited 5 minutes ago", "Edited 50 minutes ago", "Edited 2 hours ago", "Edited 8 hours ago", "Edited 22 hours ago", then "Edited yesterday" (or "2 days ago" past midnight), days, then dates ("12 Oct"; the oldest with a year). Row 3 reads "Untitled video meme"; row 4's long name stops after two lines with an ellipsis; row 5 says "Needs a newer version of Memix"; row 6 ("Media folder missing") has the placeholder thumbnail. The rest show the clip's first frame with the video badge.
+2. Edit three drafts in a known order (open, split, back): rows 10, 7, 12. Pass: the list reads 12, 7, 10 at the top, and each time you come back the list is at the top with focus on that row.
+3. Open row 3 and go back without changing anything. Pass: nothing moves, focus returns to its row (TalkBack on: it's announced).
+4. Rename the middle row (row 13) to "Renamed". Pass: it keeps its place and its edit time; the keyboard opened with the whole name selected; the counter appears from 50 characters ("52/60"); a 70-character paste keeps 60; Enter can't make a new line; Done on the keyboard saves; Close, back and a drag down change nothing. Rename it to nothing: "Untitled video meme" again.
+5. Duplicate row 8 twice. Pass: "Check draft 8 (copy 2)" then "Check draft 8 (copy)" directly above "Check draft 8", both reading the original's edit time; "Draft duplicated." each time; no `project_create` in `adb logcat -s MemixAnalytics`. Duplicate a copy: "(copy) (copy)" above both. Duplicate the unnamed row: the copy is unnamed too.
+6. Edit a copy: it moves to the top. Open the original: its clip still plays (the copy has its own files).
+7. Delete row 2: it collapses, "Draft deleted." with Undo above the bottom nav for 8 s. Undo: it's back in its place with its thumbnail and name. Delete it again and wait 8 s: `run-as app.memix ls files/media/drafts-check-02` fails (folder gone).
+8. Delete row 9, then row 11 while the first toast shows: the first one's folder goes at once (`ls`), the new toast replaces the old one.
+9. Row 5 (newer Memix): tap, Rename and Duplicate each show "This draft can't be opened. Update Memix, or delete it."; Delete works and Undo brings it back.
+
+**B. Kill during the delete toast (must-know 7).** Delete row 14, and within 8 s `adb shell am force-stop app.memix`; start again. Pass: the row is gone and `ls files/media/drafts-check-14` fails after the start (MediaImport logs "Deleted the media of 1 unsaved or deleted projects").
+
+**C. Duplicate's files (must-knows 4 to 6).** Duplicate row 15 and look at logcat tag `Drafts`. On Android expect `Hard link refused (EACCES); copying instead` once, then `Duplicate: clip-a.mp4 needs a copy` / `copied` and the thumbnail's lines. Write down the route on the API 29 emulator and on the owner's phone (if any phone says `linked`, tell the principal engineer). Then `run-as app.memix ls -l files/media/<copy id>/`: `clip-a.mp4` and `thumb-clip-a-0.jpg` are there. Duplicate row 6 (media folder missing): it works, the copy opens in the missing-media state. For the copying sheet: duplicate a draft with a large clip (push a 500 MB video and use it in a draft): "Copying your draft" with a bar appears after 300 ms; Cancel removes the half-made folder (`ls files/media`).
+
+**D. Thumbnails (must-know 9).** Import a new video meme (Create → Video meme): back on Drafts its row shows the first frame. Trim the first clip's start, go Home (app to background) and back: the thumbnail follows. Reorder so another clip is first and close the editor: it follows again. A draft saved before this build shows the placeholder until it's opened and left once.
+
+**E. The P1-12 cross-ticket edge.** With an unfinished-export toast showing "Open draft" (P1-12 hand checks), delete that draft from Drafts, then tap Open draft. Pass: the editor closes at once and "This draft can't be opened..." shows above the nav; no crash.
+
+**F. Numbers (benchmark build; must-knows 10 and 11).**
+1. **Cleaner with 25 drafts:** run the drafts check, `adb shell am force-stop app.memix`, then start the app 5 times (force-stop between). Read `Cleanup checked 25 drafts in N ms` (tag `MediaImport`). Bar: under 300 ms. Then the first import's sheet must appear with no visible wait.
+2. **Cold start:** `adb shell am start -W -n app.memix/.android.MainActivity` after `am force-stop`, 5 runs with 25 drafts and 5 runs after `adb shell pm clear app.memix` plus one draft. TotalTime must not grow.
+3. **Opening a draft:** tap a row; the time from `Draft opened from the drafts list` to `Preview opened in N ms` (tag `MemixPreview`, logcat timestamps) is the PRD's open time. Bar: under 1 s. Write the median of 5.
+4. **LeakCanary:** open and close 5 drafts from the list (debug build); no leak report.
+
+**G. Accessibility.** TalkBack: each row is one stop ("Cat fail, Video meme, Edited 2 hours ago"); the actions menu offers Rename, Duplicate, Delete; More options is its own stop. After Delete, focus is on the next row; after Undo, on the restored row; after Rename, on the row; after Duplicate, it stays put and "Draft duplicated." is announced. A keyboard (or `adb shell input keyevent`): Tab moves row → More options → next row, Enter opens, Shift+F10 or the Menu key opens the menu, Escape closes it and the sheet.
+
+### States to screenshot for the design review (`docs/ux/reviews/P1-14/`)
+The spec's QA compares 1 to 6, at 360 dp wide, English unless noted:
+1. `list-360`: three drafts sorted by last edit, thumbnails with the badge, one "Untitled video meme", the edit times.
+2. `after-edit-oldest`: back from editing the oldest draft: it's first and focused. `after-rename-middle`: renamed middle row, not moved.
+3. `menu-open`: the menu from More options. `rename-sheet`: the rename sheet with the keyboard up and the whole name selected; `rename-counter`: the counter at 52/60.
+4. `deleted-toast`: the row gone and "Draft deleted." with Undo; `undo-restored`: the row back in place.
+5. `duplicated`: "{name} (copy)" directly above the original, with the toast.
+6. `hi-200-list`, `hi-200-menu`, `hi-200-rename`: Hindi at 200% font, 360 dp; `needs-update-row`: the newer-Memix row.
+Also: `empty` (no drafts), `load-error` (not reachable by hand; skip unless the database is made unreadable), `copying-sheet` (step C's large duplicate), `not-enough-space` (fill the phone, then duplicate a large draft), `more-icon-zoom` (the new `more` icon, for the icon review).
+
 ## P1-07 · killing the app mid-edit restores the draft
 
 Pass bar (PM, reworded 8 Oct): the save starts 500 ms after the last edit and needs a few ms to write, so the device check kills at 700 ms (last edit reopens) and at 300 ms (previous save reopens). Neither may ever reopen a damaged draft.

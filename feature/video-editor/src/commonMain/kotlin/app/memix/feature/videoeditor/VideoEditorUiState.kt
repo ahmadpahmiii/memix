@@ -121,6 +121,8 @@ data class VideoEditorUiState(
     val unsavedSheetOpen: Boolean = false,
     /** The editor is done; the app closes the screen. */
     val isClosing: Boolean = false,
+    /** Closing because the draft couldn't be opened (damaged, from a newer app, or deleted meanwhile): the app says so. */
+    val couldntOpen: Boolean = false,
     /** Debug and benchmark builds: a long-press on the timecode makes one test edit, for the P1-07 hand checks. */
     val canMakeDebugEdit: Boolean = false,
 ) {

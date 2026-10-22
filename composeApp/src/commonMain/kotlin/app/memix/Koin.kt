@@ -4,6 +4,12 @@ import app.memix.core.data.dataModule
 import app.memix.core.designsystem.readCaptionFontFile
 import app.memix.core.domain.GetPhoneRegionUseCase
 import app.memix.core.domain.RefreshAppConfigUseCase
+import app.memix.core.domain.drafts.DeleteDraftUseCase
+import app.memix.core.domain.drafts.DescribeEditTimeUseCase
+import app.memix.core.domain.drafts.DuplicateDraftUseCase
+import app.memix.core.domain.drafts.ReadDraftThumbnailUseCase
+import app.memix.core.domain.drafts.RenameDraftUseCase
+import app.memix.core.domain.drafts.UpdateDraftThumbnailUseCase
 import app.memix.core.domain.media.ImportMediaUseCase
 import app.memix.core.domain.media.LeftoverMediaCleaner
 import app.memix.core.domain.media.SaveGalleryProjectUseCase
@@ -35,6 +41,7 @@ import app.memix.debug.EditorSaveDiffLog
 import app.memix.debug.ImportSaveFailure
 import app.memix.engine.video.HAND_CHECKS_PROPERTY
 import app.memix.engine.video.videoEngineModule
+import app.memix.feature.drafts.DraftsViewModel
 import app.memix.feature.export.ExportViewModel
 import app.memix.feature.home.HomeViewModel
 import app.memix.feature.videoeditor.EditorCaptionRendering
@@ -77,6 +84,13 @@ private val appModule = module {
     single(createdAtStart = true) { LeftoverMediaCleaner(get(), get(), get(), get(), get(appScope)) }
     factoryOf(::ImportMediaUseCase)
     factoryOf(::SaveGalleryProjectUseCase)
+    // Drafts list (P1-14). The thumbnail writer and the delete with undo outlive every screen: singles in the app's scope.
+    single { UpdateDraftThumbnailUseCase(get(), get(), get(), get(), get(appScope)) }
+    single { DeleteDraftUseCase(get(), get(), get(), get(appScope)) }
+    factoryOf(::RenameDraftUseCase)
+    factoryOf(::DuplicateDraftUseCase)
+    factoryOf(::DescribeEditTimeUseCase)
+    factoryOf(::ReadDraftThumbnailUseCase)
     factoryOf(::LoadStarterSoundsUseCase)
     factoryOf(::PrepareSoundUseCase)
     factoryOf(::OpenSoundPlayerUseCase)
@@ -100,6 +114,7 @@ private val appModule = module {
     viewModelOf(::HomeViewModel)
     viewModelOf(::ExportViewModel)
     viewModelOf(::MediaImportViewModel)
+    viewModel { DraftsViewModel(get(), get(), get(), get(), get(), get(), decodeDispatcher = Dispatchers.Default) }
     viewModel { params ->
         VideoEditorViewModel(
             projectId = params.get(),
@@ -111,6 +126,7 @@ private val appModule = module {
             captionRendering = get(),
             export = get(),
             importMedia = get(),
+            updateDraftThumbnail = get(),
             decodeDispatcher = Dispatchers.Default,
             // Bound only in builds with hand checks (handCheckModule).
             debugEdit = getOrNull(),
@@ -124,7 +140,7 @@ private val appModule = module {
 // the plain ones.
 private val handCheckModule = module {
     single<EditorDebugEdit> { DebugEdits.shortenLastClip }
-    factory { SaveGalleryProjectUseCase(SaveProjectUseCase(ImportSaveFailure.around(get()), get()), get()) }
+    factory { SaveGalleryProjectUseCase(SaveProjectUseCase(ImportSaveFailure.around(get()), get()), get(), get()) }
     factory { StartEditSessionUseCase(SaveProjectUseCase(EditorSaveDiffLog.around(get(), get()), get()), get(), get(), get(appScope)) }
 }
 

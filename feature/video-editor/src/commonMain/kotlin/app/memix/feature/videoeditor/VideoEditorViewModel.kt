@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import app.memix.core.designsystem.MemixMotion
 import app.memix.core.domain.AppError
 import app.memix.core.domain.Outcome
+import app.memix.core.domain.drafts.UpdateDraftThumbnailUseCase
 import app.memix.core.domain.media.ImportMediaUseCase
 import app.memix.core.domain.project.MediaPlace
 import app.memix.core.domain.project.OpenVideoDraftUseCase
@@ -95,6 +96,7 @@ class VideoEditorViewModel(
     private val captionRendering: EditorCaptionRendering,
     private val export: EditorExport,
     importMedia: ImportMediaUseCase,
+    private val updateDraftThumbnail: UpdateDraftThumbnailUseCase,
     private val decodeDispatcher: CoroutineDispatcher,
     private val debugEdit: EditorDebugEdit?,
 ) : MemixViewModel<VideoEditorUiState, VideoEditorIntent>(VideoEditorUiState(canMakeDebugEdit = debugEdit != null)) {
@@ -138,9 +140,9 @@ class VideoEditorViewModel(
         viewModelScope.launch {
             when (val opened = openVideoDraft(projectId)) {
                 is Outcome.Success -> startEditing(opened.value)
-                // Not reachable from P1 flows (the import opens the draft it just saved); P1-14 specs what an
-                // unreadable draft says. The repository has logged why.
-                is Outcome.Failure -> updateState { it.copy(isClosing = true) }
+                // A damaged draft, one from a newer app, or one deleted meanwhile (P1-12's "Open draft" toast): the app
+                // shows "This draft can't be opened" (spec P1-14 → States). The repository has logged why.
+                is Outcome.Failure -> updateState { it.copy(isClosing = true, couldntOpen = true) }
             }
         }
     }
@@ -259,6 +261,8 @@ class VideoEditorViewModel(
     private fun startEditing(project: Project) {
         val session = startEditSession(project)
         addCloseable(session)
+        // The drafts list's thumbnail follows the first clip; it's checked as the editor goes, after the last save starts.
+        addCloseable(AutoCloseable { currentProject()?.takeUnless { it.hasNoClips() }?.let { updateDraftThumbnail(it) } })
         editSession = session
         draftOpened.complete(session)
         exportSheet.warmUp(project)
@@ -775,6 +779,7 @@ class VideoEditorViewModel(
         soundTools.stopPreview()
         // Android may end a background app without warning, so the newest change is written now.
         editSession?.saveNow()
+        currentProject()?.takeUnless { it.hasNoClips() }?.let { updateDraftThumbnail(it) }
     }
 
     // Back from the storage manager, or from anywhere else: a failed save tries again.

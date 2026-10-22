@@ -14,6 +14,11 @@ internal class NoMediaFiles : MediaFiles {
     override suspend fun describe(origin: MediaOrigin): PickedFile? = null
     override suspend fun copy(origin: MediaOrigin, destination: String, onBytesCopied: (Long) -> Unit) = CopyResult.UNREADABLE
     override suspend fun write(bytes: ByteArray, destination: String) = CopyResult.UNREADABLE
+    // TODO(P7-08): FileManager.linkItem(at:to:), which makes a hard link inside the app's container, then copyItem.
+    override suspend fun link(source: String, destination: String): Boolean = false
+    override suspend fun copyFile(source: String, destination: String, onBytesCopied: (Long) -> Unit) = CopyResult.UNREADABLE
+    override suspend fun sizeOf(path: String): Long? = null
+    override suspend fun read(path: String): ByteArray? = null
     override suspend fun delete(paths: List<String>) = Unit
     override suspend fun listFolders(parent: String): List<String> = emptyList()
     override suspend fun listFiles(folder: String): List<String> = emptyList()

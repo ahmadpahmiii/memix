@@ -6,6 +6,7 @@ import app.memix.core.domain.AppConfig
 import app.memix.core.domain.DeviceRegion
 import app.memix.core.domain.Logger
 import app.memix.core.domain.Outcome
+import app.memix.core.domain.drafts.LocalCalendar
 import app.memix.core.domain.media.MediaFiles
 import app.memix.core.domain.media.MediaInspector
 import app.memix.core.domain.share.Sharer
@@ -31,6 +32,7 @@ actual val platformServicesModule = module {
     single<ExportForeground> { NoExportForeground() }
     single<Sharer> { NoSharer() }
     single<AppExitReasons> { NoAppExitReasons() }
+    single<LocalCalendar> { IosLocalCalendar() }
 }
 
 // iOS keeps the system region in currentLocale even when the app has its own language.

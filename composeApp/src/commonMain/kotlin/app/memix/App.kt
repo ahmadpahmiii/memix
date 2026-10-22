@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +49,7 @@ import app.memix.core.designsystem.component.NavDestination
 import app.memix.core.designsystem.component.FadingToast
 import app.memix.core.designsystem.component.Scrim
 import app.memix.core.designsystem.component.coveredByModal
+import app.memix.core.domain.Logger
 import app.memix.core.domain.RefreshAppConfigUseCase
 import app.memix.core.domain.text.CaptionMeasurer
 import app.memix.core.domain.video.ExportJobState
@@ -61,7 +64,12 @@ import app.memix.feature.export.ExportExit
 import app.memix.feature.export.ExportScreen
 import app.memix.feature.export.ExportViewModel
 import app.memix.feature.export.LastExportStoppedToast
+import app.memix.feature.drafts.DraftsIntent
 import app.memix.feature.drafts.DraftsScreen
+import app.memix.feature.drafts.DraftsSheets
+import app.memix.feature.drafts.DraftsToastHost
+import app.memix.feature.drafts.DraftsUiState
+import app.memix.feature.drafts.DraftsViewModel
 import app.memix.feature.home.HomeScreen
 import app.memix.feature.home.HomeViewModel
 import app.memix.feature.photoeditor.PhotoEditorPlaceholder
@@ -97,7 +105,10 @@ fun App(isDebugBuild: Boolean, debugEditorProject: String? = null) {
     LaunchedEffect(Unit) { refreshAppConfig() }
     MemixTheme {
         val navController = rememberNavController()
+        val logger = koinInject<Logger>()
         var createSheetOpen by rememberSaveable { mutableStateOf(false) }
+        // Goes up each time an editor couldn't open its draft; the drafts toast says so (spec P1-14 → States).
+        var editorCouldntOpenCount by rememberSaveable { mutableStateOf(0L) }
         // Registered here, outside the navigation, so a picker result after Android restarted the app still lands.
         val videoMemeImport = rememberVideoMemeImport(
             closeCreateSheet = { createSheetOpen = false },
@@ -129,12 +140,20 @@ fun App(isDebugBuild: Boolean, debugEditorProject: String? = null) {
                         videoMemeImport = videoMemeImport,
                         onOpenPhotoEditor = { navController.navigate(PhotoEditorRoute) },
                         onOpenCatalog = { navController.navigate(CatalogRoute) },
+                        onOpenDraft = { draftId ->
+                            // Start of the PRD's "open an editor" time; the engine logs "Preview opened" under the same tag.
+                            logger.debug(OPEN_TIMING_TAG, "Draft opened from the drafts list")
+                            navController.navigate(VideoEditorRoute(draftId))
+                        },
+                        editorCouldntOpenCount = editorCouldntOpenCount,
+                        onEditorCouldntOpenShown = { editorCouldntOpenCount = 0L },
                     )
                 }
                 fullScreen<VideoEditorRoute>(reduceMotion) { entry ->
                     VideoEditorDestination(
                         entry.toRoute<VideoEditorRoute>().projectId,
                         onClose = { navController.popBackStack() },
+                        onCouldntOpen = { editorCouldntOpenCount++ },
                         onOpenExport = { navController.navigate(ExportRoute) },
                     )
                 }
@@ -171,23 +190,44 @@ private fun MainShell(
     videoMemeImport: VideoMemeImport,
     onOpenPhotoEditor: () -> Unit,
     onOpenCatalog: () -> Unit,
+    onOpenDraft: (draftId: String) -> Unit,
+    editorCouldntOpenCount: Long,
+    onEditorCouldntOpenShown: () -> Unit,
 ) {
     val tabsController = rememberNavController()
     val backStackEntry by tabsController.currentBackStackEntryAsState()
     val currentTab = tabRoutes.firstOrNull { route -> backStackEntry?.destination?.hasRoute(route::class) == true } ?: HomeRoute
+    // The Drafts tab's ViewModel lives with the tabs, so its sheets and toast can sit over the bottom nav (P1-14). Its
+    // state is read where it's shown; here only whether a sheet is up.
+    val drafts = koinViewModel<DraftsViewModel>()
+    val draftsState = drafts.state.collectAsStateWithLifecycle()
+    val draftsSheetUp by remember { derivedStateOf { draftsState.value.sheetUp } }
+    val freeUpSpace = rememberFreeUpSpaceLauncher()
+    LaunchedEffect(editorCouldntOpenCount) {
+        if (editorCouldntOpenCount == 0L) return@LaunchedEffect
+        drafts.onIntent(DraftsIntent.EditorCouldntOpen(editorCouldntOpenCount))
+        onEditorCouldntOpenShown()
+    }
     // While a sheet or its scrim is up, the tabs and nav behind it are hidden from TalkBack and the keyboard (P1-08
     // review, F1). The scrim's own rule decides, so the hand-over from Create to the import stays covered throughout.
     val sheetUp = createSheetOpen || videoMemeImport.needsScrim
     Box(Modifier.fillMaxSize().background(MemixColors.canvas)) {
-        Column(Modifier.fillMaxSize().coveredByModal(sheetUp)) {
-            TabsNavHost(
-                tabsController,
-                onOpenCreate = { onCreateSheetOpenChange(true) },
-                onStartVideoMeme = { videoMemeImport.start(fromCreateSheet = false) },
-                onOpenPhotoEditor = onOpenPhotoEditor,
-                onOpenCatalog = if (isDebugBuild) onOpenCatalog else null,
-                modifier = Modifier.weight(1f),
-            )
+        Column(Modifier.fillMaxSize().coveredByModal(sheetUp || draftsSheetUp)) {
+            Box(Modifier.weight(1f)) {
+                TabsNavHost(
+                    tabsController,
+                    drafts = draftsState,
+                    onDraftsIntent = drafts::onIntent,
+                    onOpenCreate = { onCreateSheetOpenChange(true) },
+                    onStartVideoMeme = { videoMemeImport.start(fromCreateSheet = false) },
+                    onOpenPhotoEditor = onOpenPhotoEditor,
+                    onOpenDraft = onOpenDraft,
+                    onOpenCatalog = if (isDebugBuild) onOpenCatalog else null,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                // Above the bottom nav (spec P1-14 → States: Deleted).
+                DraftsToast(draftsState, drafts::onIntent, Modifier.align(Alignment.BottomCenter).padding(MemixSpacing.space4))
+            }
             MemixBottomNav(currentTab, onSelect = { tabsController.navigateToTab(it) }, onCreate = { onCreateSheetOpenChange(true) })
         }
         // One scrim for both sheets, so it stays up when the Create sheet hands over to the import (spec P1-02).
@@ -209,15 +249,30 @@ private fun MainShell(
             },
         )
         VideoMemeImportSheet(videoMemeImport)
+        DraftsSheetsOver(draftsState, drafts::onIntent, onFreeUpSpace = { requestedBytes ->
+            if (!freeUpSpace.launch(requestedBytes)) drafts.onIntent(DraftsIntent.FreeUpSpaceUnavailable)
+        })
     }
 }
+
+// The drafts state is read in these two small scopes, so a change to it redraws the toast or the sheets, not MainShell.
+@Composable
+private fun DraftsToast(state: State<DraftsUiState>, onIntent: (DraftsIntent) -> Unit, modifier: Modifier) =
+    DraftsToastHost(state.value, onIntent, modifier)
+
+@Composable
+private fun DraftsSheetsOver(state: State<DraftsUiState>, onIntent: (DraftsIntent) -> Unit, onFreeUpSpace: (Long) -> Unit) =
+    DraftsSheets(state.value, onIntent, onFreeUpSpace)
 
 @Composable
 private fun TabsNavHost(
     navController: NavHostController,
+    drafts: State<DraftsUiState>,
+    onDraftsIntent: (DraftsIntent) -> Unit,
     onOpenCreate: () -> Unit,
     onStartVideoMeme: () -> Unit,
     onOpenPhotoEditor: () -> Unit,
+    onOpenDraft: (String) -> Unit,
     onOpenCatalog: (() -> Unit)?,
     modifier: Modifier,
 ) {
@@ -238,7 +293,9 @@ private fun TabsNavHost(
         }
         composable<TemplatesRoute> { TemplatesScreen() }
         composable<SoundsRoute> { SoundsScreen() }
-        composable<DraftsRoute> { DraftsScreen(onMakeMeme = onOpenCreate) }
+        composable<DraftsRoute> {
+            DraftsScreen(drafts.value, onDraftsIntent, onMakeMeme = onOpenCreate, onOpenDraft = onOpenDraft)
+        }
     }
 }
 
@@ -247,7 +304,7 @@ private fun TabsNavHost(
  * and Replace (P1-16) plugged in.
  */
 @Composable
-private fun VideoEditorDestination(projectId: String, onClose: () -> Unit, onOpenExport: () -> Unit) {
+private fun VideoEditorDestination(projectId: String, onClose: () -> Unit, onCouldntOpen: () -> Unit, onOpenExport: () -> Unit) {
     val viewModel = koinViewModel<VideoEditorViewModel> { parametersOf(projectId) }
     // The engine's caption renderer, which its stand-in draws with (P1-10).
     val captionMeasurer = koinInject<CaptionMeasurer>()
@@ -256,7 +313,12 @@ private fun VideoEditorDestination(projectId: String, onClose: () -> Unit, onOpe
     LockPortraitOnPhones()
     EditorMediaPickers(state.mediaPicker, viewModel::onIntent)
     val currentOnClose by rememberUpdatedState(onClose)
-    LaunchedEffect(state.isClosing) { if (state.isClosing) currentOnClose() }
+    val currentOnCouldntOpen by rememberUpdatedState(onCouldntOpen)
+    LaunchedEffect(state.isClosing) {
+        if (!state.isClosing) return@LaunchedEffect
+        if (state.couldntOpen) currentOnCouldntOpen()
+        currentOnClose()
+    }
     // Export video started an export: the Exporting screen covers the editor (spec P1-12 → Entry and exit).
     val currentOnOpenExport by rememberUpdatedState(onOpenExport)
     LaunchedEffect(state.openExportScreen) {
@@ -350,6 +412,9 @@ private fun NavHostController.leaveExport(exit: ExportExit) {
         ExportExit.HOME, ExportExit.MAKE_ANOTHER -> popBackStack(MainRoute, inclusive = false)
     }
 }
+
+/** Logcat tag of the editor-open timing: the drafts list's tap here, the engine's "Preview opened" (P1-14 must-know 11). */
+private const val OPEN_TIMING_TAG = "MemixPreview"
 
 private inline fun <reified T : Any> NavGraphBuilder.fullScreen(
     reduceMotion: Boolean,

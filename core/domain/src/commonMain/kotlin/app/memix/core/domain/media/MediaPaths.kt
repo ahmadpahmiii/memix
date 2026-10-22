@@ -24,6 +24,27 @@ object MediaPaths {
         return "${projectFolder(projectId)}/${Uuid.random()}.$safeExtension"
     }
 
+    /**
+     * Where a draft's thumbnail goes: named after the cover's file and trim-in, so a thumbnail path that still matches
+     * says the cover hasn't changed (P1-14). A duplicate keeps its media's file names, so its copied thumbnail matches
+     * too. [coverFile] is the cover's own path; anything outside letters, digits, `-` and `_` is dropped from its name.
+     */
+    internal fun thumbnail(projectId: String, coverFile: String, trimInUs: Long): String {
+        val coverName = coverFile.substringAfterLast('/').substringBeforeLast('.').filter { it.isSafeNameChar() }.take(MAX_COVER_NAME)
+        return "${projectFolder(projectId)}/$THUMBNAIL_PREFIX$coverName-$trimInUs.jpg"
+    }
+
+    /** The same file name in [projectId]'s folder: where a duplicate's copy of [path] goes. */
+    internal fun inFolderOf(projectId: String, path: String): String = "${projectFolder(projectId)}/${path.substringAfterLast('/')}"
+
+    /** Whether [path] is inside [projectId]'s own folder (a copy the draft owns, not a shared catalog file). */
+    internal fun isInFolderOf(projectId: String, path: String): Boolean = path.startsWith("${projectFolder(projectId)}/")
+
+    private fun Char.isSafeNameChar(): Boolean = this in 'a'..'z' || this in 'A'..'Z' || this in '0'..'9' || this == '-' || this == '_'
+
+    private const val THUMBNAIL_PREFIX = "thumb-"
+    private const val MAX_COVER_NAME = 40
+
     // The engine finds photos by the file extension, so every copy needs one that matches its kind.
     private fun defaultExtension(kind: MediaKind): String = when (kind) {
         MediaKind.VIDEO -> "mp4"

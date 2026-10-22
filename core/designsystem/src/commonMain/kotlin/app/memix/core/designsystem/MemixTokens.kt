@@ -82,6 +82,9 @@ object MemixSize {
 
     /** The play disc over a video that isn't playing (the Exported screen, P1-12); `play-disc-size` in design/tokens.json. */
     val playDiscSize = 56.dp
+
+    /** The square thumbnail at the start of a list row (a draft's first frame, P1-14); `list-thumb-size` in design/tokens.json. */
+    val listThumbSize = 56.dp
 }
 
 object MemixElevation {

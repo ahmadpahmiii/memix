@@ -7,6 +7,7 @@ import app.memix.core.domain.project.nowEpochUs
 import app.memix.core.model.project.ProjectSummary
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
+import kotlin.time.TimeSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
@@ -39,6 +40,7 @@ class LeftoverMediaCleaner(
     suspend fun awaitDone() = cleanup.join()
 
     private suspend fun deleteLeftovers() {
+        val started = TimeSource.Monotonic.markNow()
         try {
             mediaFiles.deleteUnfinishedCopies(MediaPaths.ROOT)
             val projectFolders = mediaFiles.listFolders(MediaPaths.ROOT)
@@ -50,6 +52,8 @@ class LeftoverMediaCleaner(
             if (unsaved.isNotEmpty()) logger.debug(TAG, "Deleted the media of ${unsaved.size} unsaved or deleted projects")
             val unusedCount = projectFolders.mapNotNull(savedDrafts::get).sumOf { deleteUnusedCopies(it) }
             if (unusedCount > 0) logger.debug(TAG, "Deleted $unusedCount media copies no draft uses")
+            // Imports and drafts-list actions wait for this, so its time matters (P1-14 bar: under 300 ms with 25 drafts).
+            logger.debug(TAG, "Cleanup checked ${savedDrafts.size} drafts in ${started.elapsedNow().inWholeMilliseconds} ms")
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

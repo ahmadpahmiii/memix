@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.storage.StorageManager
 import android.provider.OpenableColumns
 import android.system.ErrnoException
+import android.system.Os
 import android.system.OsConstants
 import android.webkit.MimeTypeMap
 import app.memix.core.domain.Logger
@@ -37,6 +38,10 @@ internal class AndroidMediaFiles(
     private val resolver: ContentResolver get() = context.contentResolver
     private val filesDir: File get() = context.filesDir
     private val storageManager: StorageManager get() = context.getSystemService(StorageManager::class.java)
+
+    // Set once the system has refused a hard link, so a duplicate tries only one link per run.
+    @Volatile
+    private var linksRefused = false
 
     override suspend fun describe(origin: MediaOrigin): PickedFile? = withContext(ioDispatcher) {
         val uri = origin.contentUri() ?: return@withContext null
@@ -102,6 +107,61 @@ internal class AndroidMediaFiles(
             if (e.isOutOfSpace()) return@withContext CopyResult.STORAGE_FULL
             logger.error(TAG, "Writing a file failed: ${e::class.simpleName}")
             CopyResult.UNREADABLE
+        }
+    }
+
+    override suspend fun link(source: String, destination: String): Boolean = withContext(ioDispatcher) {
+        if (linksRefused) return@withContext false
+        val from = File(filesDir, source)
+        if (!from.isFile) return@withContext false
+        val to = File(filesDir, destination)
+        try {
+            to.parentFile?.mkdirs()
+            Os.link(from.path, to.path)
+            true
+        } catch (e: ErrnoException) {
+            // SELinux denies hard links to apps (AOSP sepolicy: neverallow all_untrusted_apps file_type:file link), so
+            // EACCES is expected on every phone; after the first refusal the rest go straight to copying.
+            if (e.errno == OsConstants.EACCES || e.errno == OsConstants.EPERM) linksRefused = true
+            logger.debug(TAG, "Hard link refused (${OsConstants.errnoName(e.errno)}); copying instead")
+            false
+        }
+    }
+
+    override suspend fun copyFile(source: String, destination: String, onBytesCopied: (Long) -> Unit): CopyResult =
+        withContext(ioDispatcher) {
+            val from = File(filesDir, source)
+            if (!from.isFile) return@withContext CopyResult.UNREADABLE
+            val target = File(filesDir, destination)
+            val unfinished = File(target.path + UNFINISHED_SUFFIX)
+            var complete = false
+            try {
+                target.parentFile?.mkdirs()
+                from.inputStream().use { input -> FileOutputStream(unfinished).use { sink -> copyAndSync(input, sink, onBytesCopied) } }
+                if (!unfinished.renameTo(target)) throw IOException("Couldn't rename the finished copy")
+                complete = true
+                CopyResult.COPIED
+            } catch (e: IOException) {
+                if (e.isOutOfSpace() || filesDir.usableSpace < COPY_BUFFER_BYTES) {
+                    CopyResult.STORAGE_FULL
+                } else {
+                    logger.error(TAG, "App file copy failed: ${e::class.simpleName}")
+                    CopyResult.UNREADABLE
+                }
+            } finally {
+                if (!complete) unfinished.delete()
+            }
+        }
+
+    override suspend fun sizeOf(path: String): Long? = withContext(ioDispatcher) {
+        File(filesDir, path).takeIf { it.isFile }?.length()
+    }
+
+    override suspend fun read(path: String): ByteArray? = withContext(ioDispatcher) {
+        try {
+            File(filesDir, path).takeIf { it.isFile }?.readBytes()
+        } catch (e: IOException) {
+            null
         }
     }
 

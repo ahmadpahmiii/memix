@@ -103,7 +103,7 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
 - **Color:** a single color per icon, applied as a tint: `text-secondary` (inactive), `text` (current nav item), `primary` (active tool), `on-primary` on blue fills. No two-tone icons.
 - **Meaning first:** every icon names a real action or place and always comes with a visible label or a screen-reader label. No sparkle, magic or robot glyphs.
 
-**The set so far** (`MemixIcons`, 43 icons after P1-12; more listed below to draw with their tickets):
+**The set so far** (`MemixIcons`, 44 icons after P1-14; more listed below to draw with their tickets):
 - Navigation and chrome: `home`, `templates`, `create` (plus; also Add media and every "add"), `sounds`, `drafts`, `arrow_back`, `chevron_right`, `close`, `globe`.
 - Media and playback: `video`, `photo`, `play`, `pause`, `undo`, `redo`, `heart`, `heart_filled`.
 - Editor tools (P1-06): `edit` (scissor blades, finger loops as the core), `split` (two outlined clips around a solid bar), `delete` (lid and handle strokes over a solid can), `duplicate` (open back outline behind a solid front clip), `reorder` (an arc with two solid arrowheads over two outlined clips).
@@ -130,7 +130,7 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
   - `blur`: a solid 7px dot (the core) inside four 4px strokes at its top, bottom, left and right, 2.5px clear. Shown at `icon-small` inside the Blur swatch.
   - `ratio_custom`: a stroked 20 × 16px rectangle (1px corners) with a solid 8 × 8px square (1px corners) over its bottom-right corner, flush with the outer edge: a resize handle.
   - The ratio tiles' rectangles are drawn from the ratio (solid, 1px corners, long side 20px), not icon files (`RatioShape`).
-- Drafts (P1-14, to draw with the ticket): `more`: three solid 3 × 3px dots in a row, 4px apart (all core, like play).
+- Drafts (P1-14, as built, for the design review): `more`: three solid 3px dots (circles) in a row at x = 5, 12 and 19 on the center line, 4px apart (all core, like play). The row's More options button tints it `text-secondary` (IconButton's `tint`).
 - Export (P1-12, as built, approved in the P1-12 review; spec `docs/ux/specs/P1-12-export.md`):
   - `share`: Android's familiar three-node share glyph in the grammar: a solid 6px dot at the left middle (the core, the thing being shared) joined by two strokes to two stroked 6px rings at the top right and bottom right. Used at 20 dp in the Share button. P5-05's More tile reuses it.
   - `check`: one stroked check mark (short leg down-right, long leg up-right), no core, like `close`. For the export status pill (at `icon-small`), and P5-02's "No watermark on this export".
