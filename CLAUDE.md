@@ -135,9 +135,12 @@ Settled by the owner on 21 Oct 2026:
 - Analytics: an optional `value` on the canvas `tool_use` events (ratio or `custom`, `fit`/`fill`, `blur`/`color`), and a new `export_cancel` event.
 - P1-12: a simple Share button (system share sheet) on the result screen; notification permission is asked once, at the first tap on "Export video".
 
+Settled by the owner on 22 Oct 2026 ("use your recommendation"):
+- Watermark top margin: built at 3% (separate top/left constants); the owner posts one private test to TikTok and Reels at phase-end QA and decides then (moving it is one constant).
+- Agents run on a model outside the weekly Opus allowance (Sonnet) from now on, to keep the weekly limit free.
+
 Still open:
 - WhatsApp sticker-pack spec must be checked at P2-09.
-- Watermark top margin: TikTok's top bar may cover a mark 3% from the top. P1-13 is built at 3% with separate top/left constants; the owner decides A (keep), B (about 13%) or C (test one private post at phase-end QA, recommended).
 
 ## Skills in this repo (`.claude/skills/`)
 
