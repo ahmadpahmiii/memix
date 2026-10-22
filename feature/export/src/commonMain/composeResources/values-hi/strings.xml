@@ -19,7 +19,7 @@
     <string name="export_back_to_editor">एडिटर पर वापस</string>
     <string name="export_make_another">एक और बनाएँ</string>
     <string name="export_done">हो गया</string>
-    <string name="export_fail_title">एक्सपोर्ट पूरा नहीं हुआ</string>
+    <string name="export_fail_heading">एक्सपोर्ट नहीं हुआ</string>
     <string name="export_fail_space">आपके फ़ोन में जगह खत्म हो गई। जगह खाली करके फिर कोशिश करें।</string>
     <string name="export_fail_encoder">यह फ़ोन इस सेटिंग पर वीडियो एनकोड नहीं कर सका। कम रिज़ॉल्यूशन आज़माएँ।</string>
     <string name="export_try_lower">%1$s में एक्सपोर्ट करें</string>

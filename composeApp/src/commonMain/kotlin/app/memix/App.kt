@@ -52,7 +52,6 @@ import app.memix.core.domain.text.CaptionMeasurer
 import app.memix.core.domain.video.ExportJobState
 import app.memix.core.domain.video.ExportVideoUseCase
 import app.memix.core.domain.video.RecoverUnfinishedExportUseCase
-import app.memix.core.domain.video.EXPORT_HEADROOM_BYTES
 import app.memix.debug.DebugComponentCatalog
 import app.memix.debug.openDebugEditorProject
 import app.memix.engine.video.CaptionStandIn
@@ -296,7 +295,7 @@ private fun ExportDestination(onExit: (ExportExit) -> Unit) {
         onIntent = viewModel::onIntent,
         resultSurface = { player, modifier -> VideoResultSurface(player, modifier) },
         requestNotificationPermission = notificationPermission::request,
-        onFreeUpSpace = if (canFreeUpSpace) ({ if (!freeUpSpace.launch(EXPORT_HEADROOM_BYTES)) canFreeUpSpace = false }) else null,
+        onFreeUpSpace = if (canFreeUpSpace) ({ neededBytes -> if (!freeUpSpace.launch(neededBytes)) canFreeUpSpace = false }) else null,
         onExit = onExit,
     )
 }

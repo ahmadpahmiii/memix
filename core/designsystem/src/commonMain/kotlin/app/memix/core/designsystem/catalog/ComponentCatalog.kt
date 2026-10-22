@@ -274,7 +274,7 @@ private fun SliderAndToggleSection() = Section("Slider and Toggle") {
         snapDistance = 0.03f,
     )
     var on by remember { mutableStateOf(false) }
-    Toggle("Show watermark preview", on, { on = it })
+    Toggle("Mute original audio", on, { on = it })
 }
 
 // The Style panel's choices (P1-10). The swatch colors are samples of the caption palette, which lives in :core:model.

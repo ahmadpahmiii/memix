@@ -79,6 +79,9 @@ object MemixSize {
 
     /** A color swatch's circle, drawn in a [touchTarget] square. */
     val swatchSize = 32.dp
+
+    /** The play disc over a video that isn't playing (the Exported screen, P1-12); `play-disc-size` in design/tokens.json. */
+    val playDiscSize = 56.dp
 }
 
 object MemixElevation {

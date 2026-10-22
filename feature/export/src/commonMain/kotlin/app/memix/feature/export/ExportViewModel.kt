@@ -3,6 +3,7 @@ package app.memix.feature.export
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
 import app.memix.core.domain.Outcome
+import app.memix.core.domain.project.videoLengthUs
 import app.memix.core.domain.share.ShareVideoUseCase
 import app.memix.core.domain.video.ExportCapabilities
 import app.memix.core.domain.video.ExportChoice
@@ -12,6 +13,9 @@ import app.memix.core.domain.video.ExportJobState
 import app.memix.core.domain.video.ExportNotificationPermissionUseCase
 import app.memix.core.domain.video.ExportResolution
 import app.memix.core.domain.video.ExportVideoUseCase
+import app.memix.core.domain.video.EXPORT_HEADROOM_BYTES
+import app.memix.core.domain.video.estimateExport
+import app.memix.core.domain.video.exportSpaceNeededBytes
 import app.memix.core.domain.video.GetExportCapabilitiesUseCase
 import app.memix.core.domain.video.OpenResultPlayerUseCase
 import app.memix.core.domain.video.ResultPlayer
@@ -116,17 +120,29 @@ class ExportViewModel(
 
     private fun showFailure(job: ExportJob, error: ExportError) {
         loadFrame(job.project)
-        updateState { it.copy(phase = ExportPhase.Failed(error, lowerResolution = null), stopSheetOpen = false) }
-        if (error != ExportError.ENCODER) return
-        // "Export at 720p": the next lower resolution the check allows for this canvas (spec → Failed: encoder).
+        updateState { it.copy(phase = ExportPhase.Failed(error, lowerResolution = null, spaceNeededBytes = EXPORT_HEADROOM_BYTES), stopSheetOpen = false) }
+        if (error != ExportError.ENCODER && error != ExportError.STORAGE_FULL) return
         viewModelScope.launch {
             val canvas = PixelSize(job.project.canvas.widthPx, job.project.canvas.heightPx)
-            val lower = lowerChoiceOf(capabilities(canvas), job.choice)
+            val known = capabilities(canvas)
+            // "Export at 720p": the next lower resolution the check allows for this canvas (spec → Failed: encoder).
+            val lower = if (error == ExportError.ENCODER) lowerChoiceOf(known, job.choice) else null
+            val needed = if (error == ExportError.STORAGE_FULL) spaceNeededBytes(known, job) else null
             updateState { state ->
                 val failed = state.phase as? ExportPhase.Failed ?: return@updateState state
-                state.copy(phase = failed.copy(lowerResolution = lower?.resolution?.label), retryChoice = lower)
+                state.copy(
+                    phase = failed.copy(lowerResolution = lower?.resolution?.label, spaceNeededBytes = needed ?: failed.spaceNeededBytes),
+                    retryChoice = lower,
+                )
             }
         }
+    }
+
+    // What the failed choice needs free in total, for the storage screen (spec → Free space: the total, never what's missing).
+    private fun spaceNeededBytes(known: ExportCapabilities, job: ExportJob): Long {
+        val option = known.optionFor(job.choice) ?: return EXPORT_HEADROOM_BYTES
+        val estimate = estimateExport(option, job.choice.resolution, job.project.videoLengthUs(), secondsPerMegapixelSecond = null)
+        return exportSpaceNeededBytes(estimate, known.writesStraightToGallery)
     }
 
     private fun back() {
@@ -222,8 +238,11 @@ sealed interface ExportPhase {
     /** In the gallery at [location], [durationUs] long, at [resolutionLabel] ("1080p"). */
     data class Exported(val location: String, val durationUs: Long, val resolutionLabel: String) : ExportPhase
 
-    /** Ended with [error]; [lowerResolution] ("720p") is offered after an encoder failure when the check allows one. */
-    data class Failed(val error: ExportError, val lowerResolution: String?) : ExportPhase
+    /**
+     * Ended with [error]; [lowerResolution] ("720p") is offered after an encoder failure when the check allows one;
+     * [spaceNeededBytes] is the total the failed export needs free, which Free up space asks the storage screen for.
+     */
+    data class Failed(val error: ExportError, val lowerResolution: String?, val spaceNeededBytes: Long) : ExportPhase
 }
 
 /** Where the screen goes when it's left. */

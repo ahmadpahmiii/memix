@@ -120,10 +120,8 @@ internal class ExportSheetControl(private val host: EditorHost, private val expo
         val project = host.currentProject() ?: return
         val option = capabilities.optionFor(choice)
         val estimate = option?.let { estimateExport(it, choice.resolution, project.videoLengthUs(), export.facts.secondsPerMegapixelSecond(choice.resolution)) }
-        val shortBytes = estimate?.let {
-            val needed = exportSpaceNeededBytes(it, capabilities.writesStraightToGallery)
-            (needed - export.facts.freeBytes()).takeIf { missing -> missing > 0 }?.let(::roundedUpToTenMegabytes)
-        }
+        val needed = estimate?.let { exportSpaceNeededBytes(it, capabilities.writesStraightToGallery) }
+        val shortBytes = needed?.let { (it - export.facts.freeBytes()).takeIf { missing -> missing > 0 }?.let(::roundedUpToTenMegabytes) }
         host.updateUiState { state ->
             if (state.exportSheet == null) return@updateUiState state
             state.copy(
@@ -133,6 +131,7 @@ internal class ExportSheetControl(private val host: EditorHost, private val expo
                     estimate = estimate,
                     loweredTo = loweredTo,
                     spaceShortBytes = shortBytes,
+                    spaceNeededBytes = needed ?: 0L,
                     nothingPossible = nothingPossible,
                 ),
             )

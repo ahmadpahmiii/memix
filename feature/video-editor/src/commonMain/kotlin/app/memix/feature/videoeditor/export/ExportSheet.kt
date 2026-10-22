@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +14,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -39,6 +44,7 @@ import app.memix.feature.videoeditor.ExportSheetUi
 import app.memix.feature.videoeditor.VideoEditorIntent
 import memix.feature.video_editor.generated.resources.Res
 import memix.feature.video_editor.generated.resources.export_estimate
+import memix.feature.video_editor.generated.resources.export_facts_a11y
 import memix.feature.video_editor.generated.resources.export_facts_format
 import memix.feature.video_editor.generated.resources.export_fps
 import memix.feature.video_editor.generated.resources.export_fps_a11y
@@ -66,22 +72,28 @@ internal fun ExportSheet(
     onIntent: (VideoEditorIntent) -> Unit,
     onFreeUpSpace: ((Long) -> Unit)?,
 ) {
+    // The last content stays while the sheet slides away, not an empty panel (spec → While it closes).
+    var lastSheet by remember { mutableStateOf(sheet) }
+    if (sheet != null) lastSheet = sheet
     Sheet(
         visible = sheet != null,
         onDismiss = { onIntent(VideoEditorIntent.CloseExportSheet) },
         title = stringResource(Res.string.export_title),
         heroTitle = true,
     ) {
-        if (sheet == null) return@Sheet
+        val shown = lastSheet ?: return@Sheet
         // The middle scrolls at 200% font; the hero and Export video stay put (Sheet rule).
         Column(
             Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4),
         ) {
-            Settings(sheet, onIntent)
+            Settings(shown, onIntent)
             WatermarkRow()
-            FactsLine(sheet)
-            Notices(sheet, missingMedia, onFreeUpSpace)
+            // One Column without spacing: a hidden notice takes no room, a shown one brings its own gap (spec → Spacing).
+            Column {
+                FactsLine(shown)
+                Notices(shown, missingMedia, onFreeUpSpace)
+            }
         }
         Button(
             stringResource(Res.string.export_start),
@@ -114,8 +126,9 @@ private fun Settings(sheet: ExportSheetUi, onIntent: (VideoEditorIntent) -> Unit
     )
 }
 
-// "Memix watermark" with where it goes, in one raised container. Information, not a control: no press state. P5-02 adds
-// its rewarded-ad Remove here (spec P1-13 → Export sheet row).
+// "Memix watermark" with where it goes, in one raised container. Information, not a control: no press state, one
+// merged, non-clickable node that TalkBack reads title then line with each language's own pauses. P5-02 adds its
+// rewarded-ad Remove here (spec P1-13 → Export sheet row).
 @Composable
 private fun WatermarkRow() {
     val title = stringResource(Res.string.export_watermark_title)
@@ -126,7 +139,7 @@ private fun WatermarkRow() {
             .clip(MemixShapes.radiusMd)
             .background(MemixColors.surfaceRaised)
             .padding(MemixSpacing.space3)
-            .clearAndSetSemantics { contentDescription = "$title. $body." },
+            .semantics(mergeDescendants = true) {},
         verticalArrangement = Arrangement.spacedBy(MemixSpacing.space1),
     ) {
         Text(title, MemixTheme.type.bodyStrong)
@@ -143,11 +156,17 @@ private fun Heading(text: String) {
 @Composable
 private fun FactsLine(sheet: ExportSheetUi) {
     val format = stringResource(Res.string.export_facts_format, sheet.codec.label)
-    val estimate = sheet.estimate?.let {
-        stringResource(Res.string.export_estimate, fileSizeText(it.maxSizeBytes, SizeRounding.UP), shortDurationText(it.seconds))
+    val size = sheet.estimate?.let { fileSizeText(it.maxSizeBytes, SizeRounding.UP) }
+    val time = sheet.estimate?.let { shortDurationText(it.seconds) }
+    val estimate = if (size != null && time != null) stringResource(Res.string.export_estimate, size, time) else null
+    // Spoken without the middle dots: "MP4, H.264, AAC. Up to 18 MB, about 20 s".
+    val spoken = if (size != null && time != null) {
+        stringResource(Res.string.export_facts_a11y, sheet.codec.label, size, time)
+    } else {
+        format.replace(" · ", ", ")
     }
     FlowRow(
-        Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = listOfNotNull(format, estimate).joinToString(". ") },
+        Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = spoken },
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(format, MemixTheme.type.timecode, color = MemixColors.textSecondary)
@@ -167,7 +186,8 @@ private fun Notices(sheet: ExportSheetUi, missingMedia: Boolean, onFreeUpSpace: 
         Column(verticalArrangement = Arrangement.spacedBy(MemixSpacing.space1)) {
             NoticeText(stringResource(Res.string.export_no_space, fileSizeText(shortBytes, SizeRounding.UP), sheet.choice.resolution.label))
             if (onFreeUpSpace != null) {
-                Button(stringResource(Res.string.import_free_up_space), { onFreeUpSpace(shortBytes) }, variant = ButtonVariant.Quiet)
+                // The storage screen is asked for the total the export needs, not the amount missing (spec → Free space).
+                Button(stringResource(Res.string.import_free_up_space), { onFreeUpSpace(sheet.spaceNeededBytes) }, variant = ButtonVariant.Quiet)
             }
         }
     }
@@ -176,7 +196,9 @@ private fun Notices(sheet: ExportSheetUi, missingMedia: Boolean, onFreeUpSpace: 
 
 @Composable
 private fun Notice(visible: Boolean, content: @Composable () -> Unit) {
-    AnimatedVisibility(visible, enter = fadeIn(tween(MemixMotion.durationPress)), exit = fadeOut(tween(MemixMotion.durationPress))) { content() }
+    AnimatedVisibility(visible, enter = fadeIn(tween(MemixMotion.durationPress)), exit = fadeOut(tween(MemixMotion.durationPress))) {
+        Box(Modifier.padding(top = MemixSpacing.space4)) { content() }
+    }
 }
 
 @Composable

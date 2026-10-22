@@ -1145,16 +1145,19 @@ Test draft: Create -> Video meme -> pick a 60 s 1080p video with sound from the 
 2. P1-11: a landscape clip in 9:16 with the Blur background, exported at 720p and 1080p: the blur is equally soft in both, full brightness, no dark band at the clip's edges (the preview draws it at 720).
 
 ### States to screenshot for the design review (`docs/ux/reviews/P1-12/`)
-From the spec's QA compares 1–6, at 360 × 640 (and 360 × 800 for the Exported screen), English unless noted:
-1. `sheet-360x640`: the Export sheet over the editor, five resolutions, three frame rates, the facts line ("Up to … · about …"), Export video and the watermark row. Then `sheet-no-space`: the "Not enough space" notice with Free up space (storage filled).
-2. `sheet-phone-cant-4k` (the toast "This phone can't export 4K." over the sheet), `sheet-shape-cant` (the shape toast on a custom 31:13 canvas), `sheet-fps-lowered` (4K at 60: both segments changed, the toast), `sheet-lowered-notice` (a project reopened with 4K remembered).
-3. `exporting-40`: progress, "About … left", the leave line and Cancel; `exporting-notification` (the shade with the progress notification and its Cancel); `exporting-permission` (a fresh Android 13+ install, the permission dialog over the Exporting screen with the progress moving behind it).
-4. `stop-exporting`: the "Stop exporting?" sheet after a back gesture.
-5. `exported`: the result with the play disc, the status pill, Share, Make another and Done; `exported-playing` (disc gone mid-playback); `exported-share-sheet` (the system share sheet with the video); `exported-gallery` (the file in the gallery's Memix album, playing).
-6. `failed-space`, `failed-encoder` ("Export at 720p"), `failed-other`: the failure states on the Exporting screen.
-7. `last-export-stopped`: the next-start toast with Open draft on Home.
-8. `topbar-export`: the editor's top bar (Close, the ratio pill, Export) at 360 dp.
-9. In Hindi at 200% font: `topbar-export-hi-200` (nothing overlaps or is cut), `sheet-hi-200-360x640` (segments in two rows, the middle scrolls) and `exported-hi-200` (the result shrunk, Share and the footer stacked, Make another above Done).
+The design review's list (`docs/ux/reviews/P1-12.md` → Device screenshots), at 360 dp wide if possible, English unless noted, taken after the fixes:
+1. `topbar-export`: the editor with the ratio pill and **Export** in the top bar at 100%.
+2. `sheet-360x640`: the Export sheet at 1080p 30 fps, the watermark row, the facts line "Up to … · about …", Export video, no notice. The gap above Export video is the same with and without a notice (M4).
+3. `sheet-no-space`: the not-enough-space notice with Free up space (fill the emulator's storage); then `sheet-free-up`, the system storage screen opened from it, asking for the total (M2).
+4. `sheet-toast-fps` ("This phone exports 4K at up to 30 fps…", both segments changed), `sheet-toast-phone` ("This phone can't export 4K."), `sheet-toast-shape` (a custom 31:13 canvas), `sheet-lowered-notice` (reopen a custom project with 4K remembered).
+5. `exporting-40`: the Exporting screen at about 40%, then `exporting-shade`, the notification in the shade, then `exporting-permission` on a fresh Android 13+ install (the dialog over the screen with the progress moving behind it).
+6. `stop-sheet`: "Stop exporting?" after a back gesture.
+7. `exported`: the result with the play disc, the status pill, **Share (secondary)**, Make another and Done (the only blue button besides the disc); `exported-playing` (disc gone); `exported-share-sheet` (the system chooser with the video); `gallery-memix-album` (the file playing upright).
+8. `failed-space` (out of space mid-export: "NOT EXPORTED", the message, Free up space primary) and `failed-encoder` ("Export at 720p" primary).
+9. `hi-200-sheet`, `hi-200-exporting`, `hi-200-exported`, `hi-200-failed`, each with its last button reachable (M1; scroll to it for the second shot if it scrolls), and `pt-200-topbar` and `es-150-topbar`: Export clear of the ratio pill (M3).
+10. `toast-last-stopped`: the next-start toast after stopping Memix from the Task Manager mid-export.
+
+Also check by hand after the review fixes: Hindi at 200% (`adb shell settings put system font_scale 2.0`) on each of the Exporting, Exported and failure screens: the last button scrolls fully into view, Exported keeps a result of at least 256 dp on 360 × 640, and at 100% nothing scrolls; the sheet at 360 × 640 doesn't scroll at 100% with no notice or with the space notice; closing the sheet shows no empty panel; TalkBack says "Play your video" once, reads the facts line without "dot", and lands on "Not exported" on a failure.
 
 ## P1-13 · the watermark shows by default and is absent when the export is marked watermark-free
 
@@ -1166,7 +1169,7 @@ Built without a phone: compiled, linted and the constants checked in a JVM harne
 3. The editor preview never shows the mark, with and without playing; the draft is unchanged (open it after an export: no undo step, nothing saved about the mark).
 
 **B. Size and place (QA compares 3, 4; Measured).**
-1. On the 1080 × 1920 frame from A1 (a white frame and a dark frame: use a draft whose first second is a plain white or black picture), measure the ink box in an image editor or with `python3 -c` and Pillow (`getbbox` of pixels brighter than the background): the left and top edges are **32 px ± 2 px** from the frame's edges and the letter height matches Anton at 43 px (the cap "M" about 31 px tall). The mark reads on the white frame and on the dark one.
+1. On the 1080 × 1920 frame from A1 (a white frame and a dark frame: use a draft whose first second is a plain white or black picture), measure the ink box of the **whole word** "Memix" (the highest and lowest pixel row of any letter, including the dot of the "i", not just the "M") in an image editor or with `python3 -c` and Pillow (`getbbox` of pixels brighter than the background): the left and top edges are **32 px ± 2 px** from the frame's edges and the font size is 43 px. Write the measured heights of the "M" and the "i" dot into the reference README (within 2 px of each other is fine). The mark reads on the white frame and on the dark one.
 2. 16:9 1080p (1920 × 1080), 1:1 at 480p and 9:16 at 4K (where the phone can): the mark has the same look relative to the shorter side (43, 19 and 86 px font; 32, 14 and 65 px margins).
 3. If the ink is not 32 px, check Anton's ink bounds against the `Paint.getTextBounds` placement in `WatermarkOverlay` and tell the principal engineer.
 4. The reference frames (9:16 1080p, white and dark) go to `docs/qa/references/P1-13-watermark/` for iOS parity.
@@ -1176,12 +1179,16 @@ Built without a phone: compiled, linted and the constants checked in a JVM harne
 **D. The owner's TikTok test (phase-end QA, spec → Question for the owner).** Export one 9:16 meme, post it privately to TikTok and Reels. If the mark hides under TikTok's top band, move the top margin with the one constant `WatermarkCatalog.MARGIN_TOP_OF_SHORT_SIDE` (about 0.13 for option B); the left margin stays.
 
 ### States to screenshot for the design review (`docs/ux/reviews/P1-13/`)
-1. `sheet-watermark-row-360x640`: the Export sheet with the row (also in P1-12's `sheet-360x640`).
-2. `exported-watermark`: the Exported screen's result with the mark in the top-left corner.
-3. `frame-white`, `frame-dark`: the 1080 × 1920 export frames (ffmpeg) with the mark.
-4. `shape-16-9`, `shape-1-1-480p`, `shape-9-16-4k` (where the phone can): the same look relative to the shorter side.
-5. `watermark-free`: a frame from the debug export marked watermark-free (no mark).
-6. `sheet-watermark-hi-200`: Hindi at 200% font, the row wrapped.
+The design review's list (`docs/ux/reviews/P1-13.md` → Device screenshots), at 360 dp wide where it's a screen, English unless noted; the first two also serve P1-12's `sheet-360x640` and `exported`:
+1. `sheet-watermark-row-360x640`: the Export sheet at 100% font, the row between Frame rate and the facts line, Export video visible, no notice. Check: raised block with rounded corners, no ripple, a tap does nothing.
+2. `exported-watermark`: the Exported screen's result playing, the mark in the top-left corner.
+3. `frame-white`, `frame-dark`: 1080 × 1920 frames pulled with ffmpeg from a draft whose first second is plain white or plain black. The mark must read on both.
+4. `frame-first`, `frame-last`: the first and last frame of a normal 9:16 export: the mark on both, above a caption that reaches the top-left area.
+5. `shape-16-9`, `shape-1-1-480p`, `shape-9-16-4k` (where the phone can): the same look relative to the shorter side (font 43, 19, 86 px; margins 32, 14, 65 px).
+6. `watermark-free`: a frame from the debug export marked watermark-free (no mark).
+7. `sheet-watermark-hi-200`: Hindi at 200% font, the row wrapped, nothing cut.
+8. `preview-clean`: the editor preview paused on the same project, no mark (the mark is only in the file).
+9. `tiktok-test`, `reels-test`: the owner's private posts as they appear in the feed (step D).
 
 ## P1-17 · Hindi display face: hero and entry cards in Teko, nothing clipped, other languages unchanged
 

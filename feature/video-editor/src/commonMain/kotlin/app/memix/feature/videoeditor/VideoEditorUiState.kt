@@ -161,6 +161,8 @@ data class ExportSheetUi(
     val estimate: ExportEstimate? = null,
     val loweredTo: ExportChoice? = null,
     val spaceShortBytes: Long? = null,
+    /** The total the export needs free: what Free up space asks the storage screen for (never [spaceShortBytes]). */
+    val spaceNeededBytes: Long = 0L,
     val nothingPossible: Boolean = false,
 )
 

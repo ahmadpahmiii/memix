@@ -19,7 +19,7 @@
     <string name="export_back_to_editor">Back to editor</string>
     <string name="export_make_another">Make another</string>
     <string name="export_done">Done</string>
-    <string name="export_fail_title">The export didn't finish</string>
+    <string name="export_fail_heading">Not exported</string>
     <string name="export_fail_space">Your phone ran out of space. Free up space and try again.</string>
     <string name="export_fail_encoder">This phone couldn't encode the video at this setting. Try a lower resolution.</string>
     <string name="export_try_lower">Export at %1$s</string>

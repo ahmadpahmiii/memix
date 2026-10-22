@@ -15,11 +15,11 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -49,6 +49,8 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -89,7 +91,7 @@ import memix.feature.export.generated.resources.export_fail_media
 import memix.feature.export.generated.resources.export_fail_other
 import memix.feature.export.generated.resources.export_fail_space
 import memix.feature.export.generated.resources.export_fail_system
-import memix.feature.export.generated.resources.export_fail_title
+import memix.feature.export.generated.resources.export_fail_heading
 import memix.feature.export.generated.resources.export_free_up_space
 import memix.feature.export.generated.resources.export_keep
 import memix.feature.export.generated.resources.export_leave_ok
@@ -113,8 +115,8 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * The Exporting screen and, in its place when the file is saved, the Exported screen (spec P1-12). [resultSurface]
  * draws the saved file's player (the engine's, from the composition root); [requestNotificationPermission] shows the phone's
- * permission dialog and calls back when it's gone; [onFreeUpSpace] opens the storage screen, null when the phone has
- * none; [onExit] leaves the screen.
+ * permission dialog and calls back when it's gone; [onFreeUpSpace] opens the storage screen asking for the total the export
+ * needs free, null when the phone has none; [onExit] leaves the screen.
  */
 @Composable
 fun ExportScreen(
@@ -122,7 +124,7 @@ fun ExportScreen(
     onIntent: (ExportIntent) -> Unit,
     resultSurface: @Composable (player: ResultPlayer, modifier: Modifier) -> Unit,
     requestNotificationPermission: (onClosed: () -> Unit) -> Unit,
-    onFreeUpSpace: (() -> Unit)?,
+    onFreeUpSpace: ((neededBytes: Long) -> Unit)?,
     onExit: (ExportExit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -145,32 +147,78 @@ fun ExportScreen(
     }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { onIntent(ExportIntent.LeftScreen) }
     FinishedHaptic(phase)
-    Box(modifier.fillMaxSize().background(MemixColors.canvas)) {
+    BoxWithConstraints(modifier.fillMaxSize().background(MemixColors.canvas)) {
+        // The picture's floors are shares of the whole screen's height, not of what is left inside the insets.
+        val screenHeight = maxHeight
         Column(
             Modifier
                 .fillMaxSize()
                 .coveredByModal(state.stopSheetOpen)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(MemixSpacing.space4),
-            verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4),
         ) {
-            // Exporting → Exported cross-fades the content; the frame keeps its place (spec → Motion).
-            AnimatedContent(
-                targetState = phase.screen(),
-                transitionSpec = { fadeIn(tween(MemixMotion.durationSheet)) togetherWith fadeOut(tween(MemixMotion.durationSheet)) },
-                modifier = Modifier.weight(1f),
-                label = "export phase",
-            ) { screen ->
-                Column(verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4)) {
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                val sizes = ScreenSizes(area = maxHeight, screen = screenHeight)
+                // Exporting → Exported cross-fades the content; the frame keeps its place (spec → Motion).
+                AnimatedContent(
+                    targetState = phase.screen(),
+                    transitionSpec = { fadeIn(tween(MemixMotion.durationSheet)) togetherWith fadeOut(tween(MemixMotion.durationSheet)) },
+                    modifier = Modifier.fillMaxSize(),
+                    label = "export phase",
+                ) { screen ->
                     when (screen) {
-                        PhaseScreen.EXPORTING -> Exporting(state, exportingFocus, onIntent)
-                        PhaseScreen.EXPORTED -> Exported(state, exportedFocus, resultSurface, onIntent)
-                        PhaseScreen.FAILED -> Failed(state, failedFocus, onIntent, onFreeUpSpace)
+                        PhaseScreen.EXPORTING -> Exporting(state, sizes, exportingFocus, onIntent)
+                        PhaseScreen.EXPORTED -> Exported(state, sizes, exportedFocus, resultSurface, onIntent)
+                        PhaseScreen.FAILED -> Failed(state, sizes, failedFocus, onIntent, onFreeUpSpace)
                     }
                 }
             }
         }
         StopSheet(state.stopSheetOpen, onIntent)
+    }
+}
+
+/** The room a screen has: [area] inside the insets and padding, and the whole [screen] height its picture floors are shares of. */
+private class ScreenSizes(val area: Dp, val screen: Dp)
+
+/**
+ * The shape of the Exporting, Exported and failure screens at every font size (spec P1-12 → Large font; review M1): the
+ * [title], then the [picture] taking all the room that is left, then [rest]. The picture never gets less than [floor] of
+ * the screen's height; when the three don't fit, the whole screen scrolls, so no button is ever cut off. At 100% font the
+ * picture fills the middle exactly and nothing scrolls.
+ */
+@Composable
+private fun PictureScreen(
+    sizes: ScreenSizes,
+    floor: Float,
+    title: @Composable () -> Unit,
+    picture: @Composable () -> Unit,
+    rest: @Composable ColumnScope.() -> Unit,
+) {
+    val gap = MemixSpacing.space4
+    Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Layout(
+            content = {
+                title()
+                Box(contentAlignment = Alignment.Center) { picture() }
+                Column(verticalArrangement = Arrangement.spacedBy(gap)) { rest() }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) { measurables, constraints ->
+            val gapPx = gap.roundToPx()
+            val width = constraints.maxWidth
+            val fullWidth = Constraints(minWidth = width, maxWidth = width)
+            val titlePlaceable = measurables[0].measure(fullWidth)
+            val restPlaceable = measurables[2].measure(fullWidth)
+            val left = sizes.area.roundToPx() - titlePlaceable.height - restPlaceable.height - gapPx * 2
+            val pictureHeight = maxOf(left, (sizes.screen * floor).roundToPx())
+            val picturePlaceable = measurables[1].measure(Constraints.fixed(width, pictureHeight))
+            layout(width, titlePlaceable.height + pictureHeight + restPlaceable.height + gapPx * 2) {
+                titlePlaceable.place(0, 0)
+                picturePlaceable.place(0, titlePlaceable.height + gapPx)
+                restPlaceable.place(0, titlePlaceable.height + pictureHeight + gapPx * 2)
+            }
+        }
     }
 }
 
@@ -191,13 +239,18 @@ private fun FinishedHaptic(phase: ExportPhase) {
 }
 
 @Composable
-private fun ColumnScope.Exporting(state: ExportUiState, titleFocus: FocusRequester, onIntent: (ExportIntent) -> Unit) {
+private fun Exporting(state: ExportUiState, sizes: ScreenSizes, titleFocus: FocusRequester, onIntent: (ExportIntent) -> Unit) {
     val exporting = state.phase as? ExportPhase.Exporting ?: ExportPhase.Exporting(0, null)
-    Title(stringResource(Res.string.export_progress_title), titleFocus)
-    MemeFrame(state.frame, Modifier.weight(1f).fillMaxWidth())
-    Progress(exporting)
-    Text(stringResource(Res.string.export_leave_ok), MemixTheme.type.body, color = MemixColors.textSecondary)
-    Button(stringResource(Res.string.export_cancel), { onIntent(ExportIntent.Cancel) }, Modifier.fillMaxWidth())
+    PictureScreen(
+        sizes,
+        floor = FRAME_FLOOR,
+        title = { Title(stringResource(Res.string.export_progress_title), titleFocus) },
+        picture = { MemeFrame(state.frame, Modifier.fillMaxSize()) },
+    ) {
+        Progress(exporting)
+        Text(stringResource(Res.string.export_leave_ok), MemixTheme.type.body, color = MemixColors.textSecondary)
+        Button(stringResource(Res.string.export_cancel), { onIntent(ExportIntent.Cancel) }, Modifier.fillMaxWidth())
+    }
 }
 
 @Composable
@@ -207,50 +260,62 @@ private fun Title(text: String, focus: FocusRequester, modifier: Modifier = Modi
     DisplayText(text, modifier.focusRequester(focus).focusable().semantics { heading() })
 }
 
-// "42%" and "About 12 s left" beside the bar; the time shows after 2 s and only when it's over 10 s (P1-02's rule).
+// The bar with "42%" and "About 12 s left" under it, `space-2` apart as one group. The time shows after 2 s and only when
+// it's over 10 s (P1-02's rule).
 @Composable
 private fun Progress(exporting: ExportPhase.Exporting) {
-    val percentText = stringResource(Res.string.export_percent, exporting.percent)
-    ProgressBar(exporting.percent / PERCENT, stringResource(Res.string.export_percent_a11y, exporting.percent))
-    // Screen readers hear milestones only (25, 50, 75%), never every percent (spec → Accessibility): the row's spoken
-    // text changes only when a milestone is passed, as a polite live region.
-    val milestone = (exporting.percent / MILESTONE) * MILESTONE
-    val milestoneText = stringResource(Res.string.export_percent_a11y, milestone)
-    Row(
-        Modifier.clearAndSetSemantics {
-            liveRegion = LiveRegionMode.Polite
-            contentDescription = milestoneText
-        },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space3),
-    ) {
-        Text(percentText, MemixTheme.type.title)
-        val secondsLeft = exporting.secondsLeft?.takeIf { it > TIME_LEFT_FROM_SECONDS }
-        if (secondsLeft != null) {
-            Text(stringResource(Res.string.export_time_left, shortDurationText(secondsLeft)), MemixTheme.type.body, color = MemixColors.textSecondary)
+    Column(verticalArrangement = Arrangement.spacedBy(MemixSpacing.space2)) {
+        ProgressBar(exporting.percent / PERCENT, stringResource(Res.string.export_percent_a11y, exporting.percent))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space3)) {
+            // The bar says the percent to screen readers.
+            Text(stringResource(Res.string.export_percent, exporting.percent), MemixTheme.type.title, Modifier.clearAndSetSemantics { })
+            val secondsLeft = exporting.secondsLeft?.takeIf { it > TIME_LEFT_FROM_SECONDS }
+            if (secondsLeft != null) {
+                Text(stringResource(Res.string.export_time_left, shortDurationText(secondsLeft)), MemixTheme.type.body, color = MemixColors.textSecondary)
+            }
         }
+        MilestoneAnnouncement(exporting.percent)
     }
 }
 
+// Screen readers hear milestones only (25, 50 and 75%), never every percent (spec → Accessibility): an empty node whose
+// spoken text changes only when a milestone is passed, as a polite live region. It takes no room and no focus.
 @Composable
-private fun ColumnScope.Exported(
+private fun MilestoneAnnouncement(percent: Int) {
+    val milestone = (percent / MILESTONE) * MILESTONE
+    val text = stringResource(Res.string.export_percent_a11y, milestone)
+    Box(
+        Modifier.size(0.dp).clearAndSetSemantics {
+            liveRegion = LiveRegionMode.Polite
+            contentDescription = text
+        },
+    )
+}
+
+@Composable
+private fun Exported(
     state: ExportUiState,
+    sizes: ScreenSizes,
     titleFocus: FocusRequester,
     resultSurface: @Composable (ResultPlayer, Modifier) -> Unit,
     onIntent: (ExportIntent) -> Unit,
 ) {
     val exported = state.phase as? ExportPhase.Exported ?: return
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Title(stringResource(Res.string.export_done_title), titleFocus, Modifier.weight(1f))
-        IconButton(MemixIcons.Close, stringResource(Res.string.export_back_to_editor), { onIntent(ExportIntent.BackToEditor) })
-    }
-    // The result shrinks before anything else (spec → 200% font), down to 40% of the screen, then the rest scrolls.
-    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-        val aspect = state.frame?.aspectRatio ?: 1f
-        val player = state.resultPlayer
-        if (player != null) Result(player, resultSurface, { onIntent(ExportIntent.ToggleResultPlayback) }, Modifier.aspectRatio(aspect, matchHeightConstraintsFirst = aspect < 1f))
-    }
-    Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4)) {
+    PictureScreen(
+        sizes,
+        floor = RESULT_FLOOR,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Title(stringResource(Res.string.export_done_title), titleFocus, Modifier.weight(1f))
+                IconButton(MemixIcons.Close, stringResource(Res.string.export_back_to_editor), { onIntent(ExportIntent.BackToEditor) })
+            }
+        },
+        picture = {
+            val aspect = state.frame?.aspectRatio ?: 1f
+            val player = state.resultPlayer
+            if (player != null) Result(player, resultSurface, { onIntent(ExportIntent.ToggleResultPlayback) }, Modifier.aspectRatio(aspect, matchHeightConstraintsFirst = aspect < 1f))
+        },
+    ) {
         StatusPill(stringResource(Res.string.export_saved, lengthLabelOf(exported.durationUs), exported.resolutionLabel))
         val chooserTitle = stringResource(Res.string.export_share_sheet_title)
         Button(
@@ -280,7 +345,7 @@ private fun Result(
         modifier
             .clip(MemixShapes.radiusLg)
             .background(MemixColors.stage)
-            .clickable(interactionSource = null, indication = null, role = Role.Button, onClickLabel = label, onClick = onToggle)
+            .clickable(interactionSource = null, indication = null, role = Role.Button, onClick = onToggle)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
@@ -298,7 +363,7 @@ private fun StatusPill(text: String) {
         Modifier
             .clip(MemixShapes.radiusFull)
             .background(MemixColors.success)
-            .semantics { liveRegion = LiveRegionMode.Polite }
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
             .padding(horizontal = MemixSpacing.space3, vertical = MemixSpacing.space2),
         horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space2),
         verticalAlignment = Alignment.CenterVertically,
@@ -336,18 +401,19 @@ private fun Footer(first: @Composable (Modifier) -> Unit, last: @Composable (Mod
 }
 
 @Composable
-private fun ColumnScope.Failed(state: ExportUiState, titleFocus: FocusRequester, onIntent: (ExportIntent) -> Unit, onFreeUpSpace: (() -> Unit)?) {
+private fun Failed(
+    state: ExportUiState,
+    sizes: ScreenSizes,
+    titleFocus: FocusRequester,
+    onIntent: (ExportIntent) -> Unit,
+    onFreeUpSpace: ((neededBytes: Long) -> Unit)?,
+) {
     val failed = state.phase as? ExportPhase.Failed ?: return
-    Title(stringResource(Res.string.export_progress_title), titleFocus)
-    MemeFrame(state.frame, Modifier.weight(1f).fillMaxWidth())
-    Column(Modifier.semantics { liveRegion = LiveRegionMode.Polite }, verticalArrangement = Arrangement.spacedBy(MemixSpacing.space2)) {
-        Text(stringResource(Res.string.export_fail_title), MemixTheme.type.title)
-        Text(stringResource(failed.error.message()), MemixTheme.type.body, color = MemixColors.textSecondary)
-    }
     val back = Action(stringResource(Res.string.export_back_to_editor)) { onIntent(ExportIntent.BackToEditor) }
     val tryAgain = Action(stringResource(Res.string.export_try_again)) { onIntent(ExportIntent.TryAgain) }
+    val freeUpSpace = onFreeUpSpace?.let { Action(stringResource(Res.string.export_free_up_space)) { it(failed.spaceNeededBytes) } }
     val (primary, secondary) = when (failed.error) {
-        ExportError.STORAGE_FULL -> (onFreeUpSpace?.let { Action(stringResource(Res.string.export_free_up_space), it) } ?: tryAgain) to back
+        ExportError.STORAGE_FULL -> (freeUpSpace ?: tryAgain) to back
         ExportError.ENCODER -> {
             val lower = failed.lowerResolution?.let { Action(stringResource(Res.string.export_try_lower, it)) { onIntent(ExportIntent.TryLower) } }
             (lower ?: tryAgain) to back
@@ -355,8 +421,21 @@ private fun ColumnScope.Failed(state: ExportUiState, titleFocus: FocusRequester,
         ExportError.MISSING_MEDIA, ExportError.DECODER -> back to tryAgain
         ExportError.SYSTEM_STOPPED, ExportError.PROCESS_DEATH, ExportError.UNKNOWN -> tryAgain to back
     }
-    Button(primary.label, primary.onClick, Modifier.fillMaxWidth(), ButtonVariant.Primary)
-    Button(secondary.label, secondary.onClick, Modifier.fillMaxWidth())
+    PictureScreen(
+        sizes,
+        floor = FRAME_FLOOR,
+        title = { Title(stringResource(Res.string.export_fail_heading), titleFocus) },
+        picture = { MemeFrame(state.frame, Modifier.fillMaxSize()) },
+    ) {
+        Text(
+            stringResource(failed.error.message()),
+            MemixTheme.type.body,
+            Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+            color = MemixColors.textSecondary,
+        )
+        Button(primary.label, primary.onClick, Modifier.fillMaxWidth(), ButtonVariant.Primary)
+        Button(secondary.label, secondary.onClick, Modifier.fillMaxWidth())
+    }
 }
 
 private class Action(val label: String, val onClick: () -> Unit)
@@ -415,6 +494,9 @@ private fun StopSheet(open: Boolean, onIntent: (ExportIntent) -> Unit) {
     }
 }
 
+/** The least of the screen's height the frame keeps on Exporting and the failure state, and the result on Exported (spec P1-12 → Large font). */
+private const val FRAME_FLOOR = 0.3f
+private const val RESULT_FLOOR = 0.4f
 private const val PERCENT = 100f
 private const val TIME_LEFT_FROM_SECONDS = 10L
 private const val MILESTONE = 25

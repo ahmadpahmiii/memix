@@ -377,28 +377,47 @@ private fun selectedIsMissing(state: VideoEditorUiState): Boolean {
 /**
  * Close at the start, the ratio pill in the center of the screen (spec P1-11 → The ratio pill) and Export at the end
  * (spec P1-12, the screen's one primary action). The pill shows a custom ratio in lowest terms, also while its stepper
- * is held.
+ * is held. A custom [Layout], not overlapping aligns: the pill stays at the true center until a long Export label (es
+ * "Exportar" at 200% font) would cover it, then it moves left to clear its neighbors by `space-2`; Close and Export
+ * never move or shrink (spec P1-12 → Export button, at large font).
  */
 @Composable
 private fun TopBar(canvas: CanvasUi?, canvasPanel: CanvasPanelUi?, focusTargets: EditorFocusTargets, onIntent: (VideoEditorIntent) -> Unit) {
-    Box(Modifier.fillMaxWidth().padding(horizontal = MemixSpacing.space2, vertical = MemixSpacing.space1)) {
-        IconButton(MemixIcons.Close, stringResource(Res.string.editor_close), { onIntent(VideoEditorIntent.Close) }, Modifier.align(Alignment.CenterStart))
-        if (canvas != null) {
-            val label = canvasPanel?.shownTerms?.lowest()?.toString() ?: canvas.ratioLabel
-            SettingPill(
-                label,
-                stringResource(Res.string.canvas_pill_a11y, label),
-                expanded = canvasPanel != null,
-                onClick = { onIntent(VideoEditorIntent.RatioPill) },
-                modifier = Modifier.align(Alignment.Center).focusRequester(focusTargets.ratioPill),
-            )
+    val gap = MemixSpacing.space2
+    Layout(
+        content = {
+            IconButton(MemixIcons.Close, stringResource(Res.string.editor_close), { onIntent(VideoEditorIntent.Close) })
+            Button(stringResource(Res.string.editor_export), { onIntent(VideoEditorIntent.ExportTool) }, variant = ButtonVariant.Primary)
+            if (canvas != null) {
+                val label = canvasPanel?.shownTerms?.lowest()?.toString() ?: canvas.ratioLabel
+                SettingPill(
+                    label,
+                    stringResource(Res.string.canvas_pill_a11y, label),
+                    expanded = canvasPanel != null,
+                    onClick = { onIntent(VideoEditorIntent.RatioPill) },
+                    modifier = Modifier.focusRequester(focusTargets.ratioPill),
+                )
+            }
+        },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = MemixSpacing.space2, vertical = MemixSpacing.space1),
+    ) { measurables, constraints ->
+        val gapPx = gap.roundToPx()
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val close = measurables[0].measure(loose)
+        val export = measurables[1].measure(loose)
+        val pill = measurables.getOrNull(2)?.measure(loose)
+        val width = constraints.maxWidth
+        val height = maxOf(close.height, export.height, pill?.height ?: 0)
+        layout(width, height) {
+            close.place(0, (height - close.height) / 2)
+            export.place(width - export.width, (height - export.height) / 2)
+            if (pill != null) {
+                val centered = (width - pill.width) / 2
+                val rightmost = width - export.width - gapPx - pill.width
+                val leftmost = close.width + gapPx
+                pill.place(centered.coerceAtMost(rightmost).coerceAtLeast(leftmost), (height - pill.height) / 2)
+            }
         }
-        Button(
-            stringResource(Res.string.editor_export),
-            { onIntent(VideoEditorIntent.ExportTool) },
-            Modifier.align(Alignment.CenterEnd),
-            ButtonVariant.Primary,
-        )
     }
 }
 

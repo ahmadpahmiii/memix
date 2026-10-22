@@ -19,9 +19,9 @@
     <string name="export_back_to_editor">Voltar ao editor</string>
     <string name="export_make_another">Criar outro</string>
     <string name="export_done">Pronto</string>
-    <string name="export_fail_title">A exportação não terminou</string>
+    <string name="export_fail_heading">Não exportado</string>
     <string name="export_fail_space">Seu celular ficou sem espaço. Libere espaço e tente de novo.</string>
-    <string name="export_fail_encoder">Este celular não conseguiu codificar o vídeo nesta configuração. Tente uma resolução menor.</string>
+    <string name="export_fail_encoder">Este celular não conseguiu codificar o vídeo nesta configuração. Tente baixar a resolução.</string>
     <string name="export_try_lower">Exportar em %1$s</string>
     <string name="export_fail_media">Não foi possível ler um dos seus clipes. Substitua no editor e exporte de novo.</string>
     <string name="export_fail_system">O Android parou a exportação. Seu rascunho está seguro. Tente de novo.</string>

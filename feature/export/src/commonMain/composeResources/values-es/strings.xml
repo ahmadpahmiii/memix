@@ -2,7 +2,7 @@
 <resources>
     <!-- Export screen (P1-12). Budgets and translator notes: docs/ux/specs/P1-12-export.md -> Copy. Compose resources keep ' and % as written: use plain apostrophes and a single %. export_try_again repeats the editor's editor_preview_retry. -->
     <string name="export_progress_title">Exportando</string>
-    <string name="export_percent">%1$d %</string>
+    <string name="export_percent">%1$d %</string>
     <string name="export_percent_a11y">%1$d por ciento</string>
     <string name="export_time_left">Quedan unos %1$s</string>
     <string name="export_leave_ok">Puedes salir de Memix. Tu video se sigue exportando y se guarda en tu galería.</string>
@@ -19,7 +19,7 @@
     <string name="export_back_to_editor">Volver al editor</string>
     <string name="export_make_another">Crear otro</string>
     <string name="export_done">Listo</string>
-    <string name="export_fail_title">La exportación no terminó</string>
+    <string name="export_fail_heading">No exportado</string>
     <string name="export_fail_space">Tu teléfono se quedó sin espacio. Libera espacio y vuelve a intentarlo.</string>
     <string name="export_fail_encoder">Este teléfono no pudo codificar el video con este ajuste. Prueba una resolución menor.</string>
     <string name="export_try_lower">Exportar en %1$s</string>

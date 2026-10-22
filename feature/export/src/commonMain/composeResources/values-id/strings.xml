@@ -10,7 +10,7 @@
     <string name="export_stop_title">Hentikan ekspor?</string>
     <string name="export_keep">Lanjutkan ekspor</string>
     <string name="export_stop">Hentikan</string>
-    <string name="export_done_title">Selesai</string>
+    <string name="export_done_title">Diekspor</string>
     <string name="export_saved">Tersimpan di galeri · %1$s · %2$s</string>
     <string name="export_share">Bagikan</string>
     <string name="export_share_sheet_title">Bagikan meme kamu</string>
@@ -19,9 +19,9 @@
     <string name="export_back_to_editor">Kembali ke editor</string>
     <string name="export_make_another">Buat lagi</string>
     <string name="export_done">Selesai</string>
-    <string name="export_fail_title">Ekspor tidak selesai</string>
+    <string name="export_fail_heading">Tidak diekspor</string>
     <string name="export_fail_space">Ruang ponsel habis. Kosongkan ruang dan coba lagi.</string>
-    <string name="export_fail_encoder">Ponsel ini tidak bisa mengode video dengan pengaturan ini. Coba resolusi lebih rendah.</string>
+    <string name="export_fail_encoder">Ponsel ini tidak bisa memproses video dengan pengaturan ini. Coba resolusi lebih rendah.</string>
     <string name="export_try_lower">Ekspor %1$s</string>
     <string name="export_fail_media">Salah satu klip tidak bisa dibaca. Ganti di editor, lalu ekspor lagi.</string>
     <string name="export_fail_system">Android menghentikan ekspor. Draf kamu aman. Coba lagi.</string>
