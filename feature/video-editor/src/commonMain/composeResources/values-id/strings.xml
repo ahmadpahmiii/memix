@@ -248,4 +248,25 @@
     <string name="edit_canvas_fit">Pas</string>
     <string name="edit_canvas_fill">Penuh</string>
     <string name="edit_canvas_background">Latar</string>
+    <!-- Export sheet (P1-12). Budgets and translator notes: docs/ux/specs/P1-12-export.md → Copy. Resolutions, fps, MP4, H.264, AAC are never translated. -->
+    <string name="editor_export">Ekspor</string>
+    <string name="export_title">Ekspor</string>
+    <string name="export_resolution">Resolusi</string>
+    <string name="export_frame_rate">Frame rate</string>
+    <string name="export_fps">%1$d fps</string>
+    <string name="export_fps_a11y">%1$d frame per detik</string>
+    <string name="export_facts_format">MP4 · %1$s · AAC</string>
+    <string name="export_estimate">Maks. %1$s · sekitar %2$s</string>
+    <string name="export_start">Ekspor video</string>
+    <string name="toast_export_fps_lowered">Ponsel ini mengekspor %1$s hingga %2$s, jadi diatur ke %2$s.</string>
+    <string name="toast_export_res_lowered">Ponsel ini mengekspor %1$s hingga %2$s, jadi diatur ke %2$s.</string>
+    <string name="explain_export_no_res">Ponsel ini tidak bisa mengekspor %1$s.</string>
+    <string name="explain_export_shape">Ponsel ini tidak bisa mengekspor %1$s dengan bentuk ini. Coba %2$s, atau ubah bentuknya di Kanvas.</string>
+    <string name="export_lowered_notice">Pengaturan terakhir kamu tidak berlaku di sini, jadi diatur ke %1$s · %2$s.</string>
+    <string name="explain_export_no_shape">Ponsel ini tidak bisa mengekspor bentuk ini. Ubah bentuknya di Kanvas, lalu coba lagi.</string>
+    <string name="export_no_space">Ruang tidak cukup. Kosongkan sekitar %1$s untuk mengekspor %2$s.</string>
+    <string name="explain_export_no_space">Kosongkan ruang dulu, atau pilih resolusi lebih rendah.</string>
+    <string name="export_missing_media">File klip hilang, jadi diekspor hitam.</string>
+    <string name="explain_export_empty">Tambahkan video atau foto dulu.</string>
+    <string name="export_stopped_toast">Ekspor dihentikan.</string>
 </resources>

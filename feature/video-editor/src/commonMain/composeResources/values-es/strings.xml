@@ -249,4 +249,25 @@
     <string name="edit_canvas_fit">Ajustar</string>
     <string name="edit_canvas_fill">Rellenar</string>
     <string name="edit_canvas_background">Fondo</string>
+    <!-- Export sheet (P1-12). Budgets and translator notes: docs/ux/specs/P1-12-export.md → Copy. Resolutions, fps, MP4, H.264, AAC are never translated. -->
+    <string name="editor_export">Exportar</string>
+    <string name="export_title">Exportar</string>
+    <string name="export_resolution">Resolución</string>
+    <string name="export_frame_rate">Fotogramas</string>
+    <string name="export_fps">%1$d fps</string>
+    <string name="export_fps_a11y">%1$d fotogramas por segundo</string>
+    <string name="export_facts_format">MP4 · %1$s · AAC</string>
+    <string name="export_estimate">Hasta %1$s · unos %2$s</string>
+    <string name="export_start">Exportar video</string>
+    <string name="toast_export_fps_lowered">Este teléfono exporta %1$s hasta %2$s, así que se fijó en %2$s.</string>
+    <string name="toast_export_res_lowered">Este teléfono exporta %1$s hasta %2$s, así que se fijó en %2$s.</string>
+    <string name="explain_export_no_res">Este teléfono no puede exportar en %1$s.</string>
+    <string name="explain_export_shape">Este teléfono no puede exportar en %1$s con esta forma. Prueba %2$s o cambia la forma en Lienzo.</string>
+    <string name="export_lowered_notice">Tu último ajuste no funciona aquí, así que se fijó en %1$s · %2$s.</string>
+    <string name="explain_export_no_shape">Este teléfono no puede exportar esta forma. Cámbiala en Lienzo y vuelve a intentarlo.</string>
+    <string name="export_no_space">No hay espacio. Libera unos %1$s para exportar en %2$s.</string>
+    <string name="explain_export_no_space">Libera espacio primero o elige una resolución menor.</string>
+    <string name="export_missing_media">Falta el archivo de un clip; se exporta en negro.</string>
+    <string name="explain_export_empty">Agrega un video o una foto primero.</string>
+    <string name="export_stopped_toast">Exportación detenida.</string>
 </resources>

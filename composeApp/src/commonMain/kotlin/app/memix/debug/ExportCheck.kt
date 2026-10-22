@@ -4,6 +4,7 @@ import app.memix.core.domain.Logger
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.project.ProjectRepository
 import app.memix.core.domain.project.videoLengthUs
+import app.memix.core.domain.video.ExportOutcome
 import app.memix.core.domain.video.ExportSettings
 import app.memix.core.domain.video.ExportedVideo
 import app.memix.core.domain.video.VideoEngine
@@ -24,7 +25,9 @@ import org.koin.core.component.inject
  * - [runLatestDraft] (P1-08 export sync) exports the draft edited last, after logging where each of its sounds starts;
  *   the `memix.exportLatestDraft` extra starts it, and `memix.exportShortSide` (P1-10: 720 for 720p) lowers its
  *   resolution.
- * Debug builds only; the steps are in docs/qa/phase-1/engineer-hand-checks.md.
+ * The file goes to `cache/exports/` (never the gallery), where the owner steps pull it. A test file that isn't pushed
+ * exports black, logged by the engine (MemixVideoEngine: "Exporting … missing clip(s) as black"; test files go in
+ * `files/debug-media/`). Debug builds only; the steps are in docs/qa/phase-1/engineer-hand-checks.md.
  */
 class ExportCheck : KoinComponent {
     private val videoEngine: VideoEngine by inject()
@@ -75,11 +78,8 @@ class ExportCheck : KoinComponent {
             }
         }
         when (outcome) {
-            is Outcome.Success -> logResult(outcome.value, started.elapsedNow())
-            is Outcome.Failure -> logger.error(
-                TAG,
-                "export: failed with ${outcome.error}. NotFound means a media file is missing (test files go in files/${ExportCheckProject.MEDIA_DIR}).",
-            )
+            is ExportOutcome.Done -> logResult(outcome.video, started.elapsedNow())
+            is ExportOutcome.Failed -> logger.error(TAG, "export: failed with ${outcome.error}")
         }
     }
 
@@ -87,7 +87,7 @@ class ExportCheck : KoinComponent {
         val tracks = if (video.hasAudio) "2 (video, audio)" else "1 (video only)"
         logger.debug(
             TAG,
-            "export: done in ${elapsed.inWholeMilliseconds} ms. path=${video.path} duration=${seconds(video.durationUs)} " +
+            "export: done in ${elapsed.inWholeMilliseconds} ms. path=${video.location} duration=${seconds(video.durationUs)} " +
                 "size=${video.sizeBytes} bytes tracks=$tracks",
         )
     }

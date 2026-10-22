@@ -1,6 +1,7 @@
 package app.memix.core.domain
 
 import app.memix.core.model.project.ProjectType
+import kotlin.math.roundToLong
 
 /**
  * Product analytics (Firebase Analytics on Android). Implemented in :platform:services.
@@ -52,7 +53,52 @@ sealed interface AnalyticsEvent {
         override val name = "sound_preview"
         override val params = mapOf("sound_id" to soundId, "tab" to tab.eventValue)
     }
+
+    /** Export video was tapped and the export started (PM, 20 Oct 2026). [resolution] as named ("1080p"). */
+    data class ExportStart(val editor: ProjectType, val resolution: String, val fps: Int, val lengthSeconds: Long) : AnalyticsEvent {
+        override val name = "export_start"
+        override val params = mapOf(
+            "editor" to editor.eventValue,
+            "format" to MP4,
+            "resolution" to resolution,
+            "fps" to fps.toString(),
+            "length_s" to lengthSeconds.toString(),
+        )
+    }
+
+    /** The file is in the gallery: [timeMs] from encode start to saved, [sizeMb] its size. */
+    data class ExportComplete(val editor: ProjectType, val timeMs: Long, val sizeMb: Double) : AnalyticsEvent {
+        override val name = "export_complete"
+        override val params = mapOf(
+            "editor" to editor.eventValue,
+            "format" to MP4,
+            "time_ms" to timeMs.toString(),
+            // One decimal, as the sheet shows sizes.
+            "size_mb" to ((sizeMb * TENTHS).roundToLong() / TENTHS).toString(),
+        )
+    }
+
+    /** The export failed; [errorCode] is one of `ExportError`'s values (spec P1-12 → Analytics). */
+    data class ExportFail(val editor: ProjectType, val errorCode: String) : AnalyticsEvent {
+        override val name = "export_fail"
+        override val params = mapOf("editor" to editor.eventValue, "error_code" to errorCode)
+    }
+
+    /** The user stopped an export at [progress] whole percent (owner, 21 Oct 2026). */
+    data class ExportCancel(val editor: ProjectType, val progress: Int) : AnalyticsEvent {
+        override val name = "export_cancel"
+        override val params = mapOf("editor" to editor.eventValue, "progress" to progress.toString())
+    }
+
+    /** A share target was opened; P1-12's one Share button is `more` (owner, 21 Oct 2026; P5-05 adds the others). */
+    data class ShareTarget(val target: String) : AnalyticsEvent {
+        override val name = "share_target"
+        override val params = mapOf("target" to target)
+    }
 }
+
+private const val MP4 = "mp4"
+private const val TENTHS = 10.0
 
 /**
  * `tool_use.tool`: lowercase ids, the same id for the same action in both editors (PM acceptance log, 8 Oct

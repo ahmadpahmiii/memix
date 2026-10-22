@@ -17,7 +17,12 @@ import kotlin.math.roundToInt
 internal fun frameSizeOf(canvas: PixelSize, shortSidePx: Int?): PixelSize {
     val canvasShortSide = min(canvas.widthPx, canvas.heightPx)
     if (shortSidePx == null || shortSidePx >= canvasShortSide || shortSidePx <= 0) return canvas
-    val scale = shortSidePx.toFloat() / canvasShortSide
+    return scaledToShortSide(canvas, shortSidePx)
+}
+
+/** [canvas] scaled up or down so its shorter side is [shortSidePx], both sides even (an export resolution, P1-12). */
+internal fun scaledToShortSide(canvas: PixelSize, shortSidePx: Int): PixelSize {
+    val scale = shortSidePx.toFloat() / min(canvas.widthPx, canvas.heightPx)
     return PixelSize(evenAtLeastTwo(canvas.widthPx * scale), evenAtLeastTwo(canvas.heightPx * scale))
 }
 

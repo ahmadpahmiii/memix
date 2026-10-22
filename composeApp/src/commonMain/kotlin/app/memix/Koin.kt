@@ -14,6 +14,7 @@ import app.memix.core.domain.project.ObserveProjectSummariesUseCase
 import app.memix.core.domain.project.OpenVideoDraftUseCase
 import app.memix.core.domain.project.SaveProjectUseCase
 import app.memix.core.domain.project.StartEditSessionUseCase
+import app.memix.core.domain.share.ShareVideoUseCase
 import app.memix.core.domain.sound.LoadStarterSoundsUseCase
 import app.memix.core.domain.sound.LogSoundEventsUseCase
 import app.memix.core.domain.sound.OpenSoundPlayerUseCase
@@ -21,6 +22,12 @@ import app.memix.core.domain.sound.PrepareSoundUseCase
 import app.memix.core.domain.text.CaptionFontSource
 import app.memix.core.domain.text.MeasureCaptionUseCase
 import app.memix.core.domain.text.PrepareCaptionsUseCase
+import app.memix.core.domain.video.ExportNotificationPermissionUseCase
+import app.memix.core.domain.video.ExportSheetFactsUseCase
+import app.memix.core.domain.video.ExportVideoUseCase
+import app.memix.core.domain.video.GetExportCapabilitiesUseCase
+import app.memix.core.domain.video.OpenResultPlayerUseCase
+import app.memix.core.domain.video.RecoverUnfinishedExportUseCase
 import app.memix.core.domain.video.StartPreviewUseCase
 import app.memix.core.domain.video.StartThumbnailsUseCase
 import app.memix.debug.DebugEdits
@@ -28,9 +35,11 @@ import app.memix.debug.EditorSaveDiffLog
 import app.memix.debug.ImportSaveFailure
 import app.memix.engine.video.HAND_CHECKS_PROPERTY
 import app.memix.engine.video.videoEngineModule
+import app.memix.feature.export.ExportViewModel
 import app.memix.feature.home.HomeViewModel
 import app.memix.feature.videoeditor.EditorCaptionRendering
 import app.memix.feature.videoeditor.EditorDebugEdit
+import app.memix.feature.videoeditor.EditorExport
 import app.memix.feature.videoeditor.EditorSounds
 import app.memix.feature.videoeditor.VideoEditorViewModel
 import app.memix.feature.videoeditor.importmedia.MediaImportViewModel
@@ -78,7 +87,18 @@ private val appModule = module {
     factoryOf(::PrepareCaptionsUseCase)
     factoryOf(::MeasureCaptionUseCase)
     factoryOf(::EditorCaptionRendering)
+    // The one export at a time outlives every screen (the Exporting screen, the editor, the notification), so it's a
+    // single in the app's scope (P1-12). Its state moves on the main thread.
+    single { ExportVideoUseCase(get(), get(), get(), get(), get(appScope), Dispatchers.Main) }
+    factoryOf(::GetExportCapabilitiesUseCase)
+    factoryOf(::ExportSheetFactsUseCase)
+    factoryOf(::ExportNotificationPermissionUseCase)
+    factoryOf(::RecoverUnfinishedExportUseCase)
+    factoryOf(::OpenResultPlayerUseCase)
+    factoryOf(::ShareVideoUseCase)
+    factoryOf(::EditorExport)
     viewModelOf(::HomeViewModel)
+    viewModelOf(::ExportViewModel)
     viewModelOf(::MediaImportViewModel)
     viewModel { params ->
         VideoEditorViewModel(
@@ -89,6 +109,7 @@ private val appModule = module {
             startThumbnails = get(),
             sounds = get(),
             captionRendering = get(),
+            export = get(),
             importMedia = get(),
             decodeDispatcher = Dispatchers.Default,
             // Bound only in builds with hand checks (handCheckModule).
@@ -115,7 +136,7 @@ fun initKoin(handChecks: Boolean = false, platformSetup: KoinAppDeclaration = {}
     startKoin {
         platformSetup()
         properties(mapOf(HAND_CHECKS_PROPERTY to handChecks))
-        modules(platformServicesModule, databaseDriverModule, dataModule, videoEngineModule, appModule)
+        modules(platformServicesModule, databaseDriverModule, settingsModule, dataModule, videoEngineModule, appModule)
         if (handChecks) modules(handCheckModule)
     }
 }

@@ -8,6 +8,7 @@ kotlin {
         implementation(projects.core.domain)
         implementation(libs.kotlinx.serialization.json)
         implementation(libs.sqldelight.coroutines)
+        api(libs.multiplatform.settings)
         implementation(project.dependencies.platform(libs.koin.bom))
         implementation(libs.koin.core)
     }

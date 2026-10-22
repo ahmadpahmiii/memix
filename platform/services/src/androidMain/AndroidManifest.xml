@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Exports keep running when the user leaves Memix (P1-12): a foreground service of type mediaProcessing on
+         Android 15+ and dataSync on 10–14. Notifications show its progress when the user allows them (Android 13+). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROCESSING" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application>
+        <service
+            android:name="app.memix.platform.services.ExportForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync|mediaProcessing" />
+    </application>
+</manifest>

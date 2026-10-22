@@ -249,4 +249,25 @@
     <string name="edit_canvas_fit">Ajustar</string>
     <string name="edit_canvas_fill">Preencher</string>
     <string name="edit_canvas_background">Fundo</string>
+    <!-- Export sheet (P1-12). Budgets and translator notes: docs/ux/specs/P1-12-export.md → Copy. Resolutions, fps, MP4, H.264, AAC are never translated. -->
+    <string name="editor_export">Exportar</string>
+    <string name="export_title">Exportar</string>
+    <string name="export_resolution">Resolução</string>
+    <string name="export_frame_rate">Taxa de quadros</string>
+    <string name="export_fps">%1$d fps</string>
+    <string name="export_fps_a11y">%1$d quadros por segundo</string>
+    <string name="export_facts_format">MP4 · %1$s · AAC</string>
+    <string name="export_estimate">Até %1$s · cerca de %2$s</string>
+    <string name="export_start">Exportar vídeo</string>
+    <string name="toast_export_fps_lowered">Este celular exporta %1$s até %2$s, então foi definido em %2$s.</string>
+    <string name="toast_export_res_lowered">Este celular exporta %1$s até %2$s, então foi definido em %2$s.</string>
+    <string name="explain_export_no_res">Este celular não exporta em %1$s.</string>
+    <string name="explain_export_shape">Este celular não exporta em %1$s neste formato. Tente %2$s ou mude o formato em Tela.</string>
+    <string name="export_lowered_notice">Sua última configuração não funciona aqui, então foi definida em %1$s · %2$s.</string>
+    <string name="explain_export_no_shape">Este celular não exporta este formato. Mude o formato em Tela e tente de novo.</string>
+    <string name="export_no_space">Falta espaço. Libere cerca de %1$s para exportar em %2$s.</string>
+    <string name="explain_export_no_space">Libere espaço antes ou escolha uma resolução menor.</string>
+    <string name="export_missing_media">Falta o arquivo de um clipe; ele sai preto.</string>
+    <string name="explain_export_empty">Adicione um vídeo ou foto antes.</string>
+    <string name="export_stopped_toast">Exportação interrompida.</string>
 </resources>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Export screen (P1-12). Budgets and translator notes: docs/ux/specs/P1-12-export.md -> Copy. Compose resources keep ' and % as written: use plain apostrophes and a single %. export_try_again repeats the editor's editor_preview_retry. -->
+    <string name="export_progress_title">Exportando</string>
+    <string name="export_percent">%1$d%</string>
+    <string name="export_percent_a11y">%1$d por cento</string>
+    <string name="export_time_left">Faltam cerca de %1$s</string>
+    <string name="export_leave_ok">Você pode sair do Memix. Seu vídeo continua exportando e é salvo na galeria.</string>
+    <string name="export_cancel">Cancelar</string>
+    <string name="export_stop_title">Parar a exportação?</string>
+    <string name="export_keep">Continuar exportando</string>
+    <string name="export_stop">Parar</string>
+    <string name="export_done_title">Exportado</string>
+    <string name="export_saved">Salvo na galeria · %1$s · %2$s</string>
+    <string name="export_share">Compartilhar</string>
+    <string name="export_share_sheet_title">Compartilhe seu meme</string>
+    <string name="export_play_a11y">Reproduzir seu vídeo</string>
+    <string name="export_pause_a11y">Pausar seu vídeo</string>
+    <string name="export_back_to_editor">Voltar ao editor</string>
+    <string name="export_make_another">Criar outro</string>
+    <string name="export_done">Pronto</string>
+    <string name="export_fail_title">A exportação não terminou</string>
+    <string name="export_fail_space">Seu celular ficou sem espaço. Libere espaço e tente de novo.</string>
+    <string name="export_fail_encoder">Este celular não conseguiu codificar o vídeo nesta configuração. Tente uma resolução menor.</string>
+    <string name="export_try_lower">Exportar em %1$s</string>
+    <string name="export_fail_media">Não foi possível ler um dos seus clipes. Substitua no editor e exporte de novo.</string>
+    <string name="export_fail_system">O Android parou a exportação. Seu rascunho está seguro. Tente de novo.</string>
+    <string name="export_fail_other">Algo deu errado. Seu rascunho está seguro. Tente de novo.</string>
+    <string name="export_try_again">Tentar de novo</string>
+    <string name="export_free_up_space">Liberar espaço</string>
+    <string name="export_last_stopped">Sua última exportação não terminou. Nada foi salvo.</string>
+    <string name="export_open_draft">Abrir rascunho</string>
+    <string name="export_dismiss">Fechar</string>
+</resources>

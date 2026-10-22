@@ -12,6 +12,7 @@ import memix.core.designsystem.generated.resources.Res
 import memix.core.designsystem.generated.resources.ic_arrow
 import memix.core.designsystem.generated.resources.ic_arrow_back
 import memix.core.designsystem.generated.resources.ic_blur
+import memix.core.designsystem.generated.resources.ic_check
 import memix.core.designsystem.generated.resources.ic_chevron_right
 import memix.core.designsystem.generated.resources.ic_close
 import memix.core.designsystem.generated.resources.ic_create
@@ -41,6 +42,7 @@ import memix.core.designsystem.generated.resources.ic_replace
 import memix.core.designsystem.generated.resources.ic_rotate_left
 import memix.core.designsystem.generated.resources.ic_rotate_right
 import memix.core.designsystem.generated.resources.ic_scale_rotate
+import memix.core.designsystem.generated.resources.ic_share
 import memix.core.designsystem.generated.resources.ic_sounds
 import memix.core.designsystem.generated.resources.ic_split
 import memix.core.designsystem.generated.resources.ic_style
@@ -58,6 +60,7 @@ object MemixIcons {
     val Arrow = Res.drawable.ic_arrow
     val ArrowBack = Res.drawable.ic_arrow_back
     val Blur = Res.drawable.ic_blur
+    val Check = Res.drawable.ic_check
     val ChevronRight = Res.drawable.ic_chevron_right
     val Close = Res.drawable.ic_close
     val Create = Res.drawable.ic_create
@@ -87,6 +90,7 @@ object MemixIcons {
     val RotateLeft = Res.drawable.ic_rotate_left
     val RotateRight = Res.drawable.ic_rotate_right
     val ScaleRotate = Res.drawable.ic_scale_rotate
+    val Share = Res.drawable.ic_share
     val Sounds = Res.drawable.ic_sounds
     val Split = Res.drawable.ic_split
     val Style = Res.drawable.ic_style

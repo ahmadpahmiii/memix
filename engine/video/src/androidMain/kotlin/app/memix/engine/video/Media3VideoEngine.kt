@@ -7,18 +7,21 @@ import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
-import app.memix.core.domain.AppError
 import app.memix.core.domain.Logger
-import app.memix.core.domain.Outcome
 import app.memix.core.domain.sound.SoundPlayer
+import app.memix.core.domain.video.EXPORT_AUDIO_BITRATE_BPS
+import app.memix.core.domain.video.ExportCapabilities
+import app.memix.core.domain.video.ExportError
+import app.memix.core.domain.video.ExportOutcome
 import app.memix.core.domain.video.ExportSettings
 import app.memix.core.domain.video.ExportedVideo
 import app.memix.core.domain.video.PreviewSession
+import app.memix.core.domain.video.ResultPlayer
 import app.memix.core.domain.video.ThumbnailReader
 import app.memix.core.domain.video.VideoEngine
 import app.memix.core.model.project.MediaRef
+import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
-import java.io.File
 import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.TimeSource
@@ -43,6 +46,7 @@ internal class Media3VideoEngine(
 ) : VideoEngine {
     private val sourceResolver = MediaSourceResolver(context.filesDir)
     private val transformerExport = TransformerExport(context)
+    private val capabilityScanner = ExportCapabilityScanner(ioDispatcher, GalleryVideoFile.WRITES_STRAIGHT_TO_GALLERY)
 
     override fun createPreview(project: Project): PreviewSession =
         Media3PreviewSession(context, sourceResolver, captionRenderer, logger, ioDispatcher, project, measureSoundOnsets)
@@ -51,43 +55,51 @@ internal class Media3VideoEngine(
 
     override fun openSoundPlayer(): SoundPlayer = Media3SoundPlayer(context, logger)
 
+    override fun openResultPlayer(location: String): ResultPlayer = Media3ResultPlayer(context, location, logger)
+
+    override suspend fun exportCapabilities(canvasSize: PixelSize): ExportCapabilities = capabilityScanner.capabilitiesFor(canvasSize)
+
+    override suspend fun discardUnfinishedExports() = withContext(ioDispatcher) {
+        try {
+            GalleryVideoFile.discardUnfinished(context)
+        } catch (e: RuntimeException) {
+            // The gallery deletes pending items itself after a week; a refused query costs nothing else.
+            logger.error(TAG, "Unfinished exports couldn't be cleaned up", e)
+        }
+    }
+
     override suspend fun export(
         project: Project,
         settings: ExportSettings,
         onProgress: (Float) -> Unit,
-    ): Outcome<ExportedVideo> = when (val planned = CompositionPlanner.plan(project)) {
+    ): ExportOutcome = when (val planned = CompositionPlanner.plan(project)) {
         is PlanResult.Unplayable -> unplayable(planned.problem)
         is PlanResult.Ready -> exportPlan(planned.plan, settings, onProgress)
     }
 
-    private suspend fun exportPlan(
-        plan: CompositionPlan,
-        settings: ExportSettings,
-        onProgress: (Float) -> Unit,
-    ): Outcome<ExportedVideo> {
+    private suspend fun exportPlan(plan: CompositionPlan, settings: ExportSettings, onProgress: (Float) -> Unit): ExportOutcome {
         plan.notRendered.forEach { logger.debug(TAG, it) }
         val resolved = withContext(ioDispatcher) { sourceResolver.resolve(plan) }
-        val firstMissing = resolved.missingItemIds.firstOrNull()
-        if (firstMissing != null) {
-            logger.debug(TAG, "Export stopped: the media for item $firstMissing isn't on the phone")
-            return Outcome.Failure(AppError.NotFound)
-        }
-        val sources = resolved.uriByMedia
-        val outputFile = try {
-            withContext(ioDispatcher) { newOutputFile() }
+        // A clip already missing exports black and silent, as the preview plays it (the sheet said so first).
+        if (resolved.missingItemIds.isNotEmpty()) logger.debug(TAG, "Exporting ${resolved.missingItemIds.size} missing clip(s) as black")
+        val playable = plan.withGapsFor(resolved.missingItemIds.toSet())
+        val output = try {
+            withContext(ioDispatcher) { ExportOutput.create(context, settings.destination) }
         } catch (e: IOException) {
-            return Outcome.Failure(failureFor(e))
+            return failed(e)
+        } catch (e: SecurityException) {
+            return failed(e)
         }
-        return writeFile(plan, sources, settings, outputFile, onProgress)
+        return writeFile(playable, resolved.uriByMedia, settings, output, onProgress)
     }
 
     private suspend fun writeFile(
         plan: CompositionPlan,
         sources: Map<MediaRef, Uri>,
         settings: ExportSettings,
-        outputFile: File,
+        output: ExportOutput,
         onProgress: (Float) -> Unit,
-    ): Outcome<ExportedVideo> {
+    ): ExportOutcome {
         val started = TimeSource.Monotonic.markNow()
         var succeeded = false
         try {
@@ -101,75 +113,81 @@ internal class Media3VideoEngine(
                 settings.frameRate,
                 captionOverlay = captions,
                 frameShortSidePx = settings.shortSidePx,
+                frameSizePx = settings.frameSize,
             ).build()
-            val result = transformerExport.run(composition, outputFile.path, onProgress)
-            val video = withContext(ioDispatcher) { exportedVideo(outputFile, result, plan) }
-            logger.debug(TAG, "Exported ${plan.durationUs} µs of video in ${started.elapsedNow().inWholeMilliseconds} ms")
+            val result = transformerExport.run(
+                composition,
+                output.transformerPath,
+                settings.codec.mimeType(),
+                settings.videoBitrateBps,
+                output.muxerFactory(),
+                onProgress,
+            )
+            val video = withContext(ioDispatcher) { exportedVideo(output.finish(), result, plan) }
+            logEstimateCheck(plan, settings, video, started.elapsedNow().inWholeMilliseconds)
             succeeded = true
-            return Outcome.Success(video)
+            return ExportOutcome.Done(video)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            // ExportException from Media3, or IllegalArgumentException/IllegalStateException from its input checks.
-            return Outcome.Failure(failureFor(e))
+            // ExportException from Media3, IOException from the gallery, or IllegalArgumentException/IllegalStateException
+            // from Media3's input checks.
+            return failed(e)
         } finally {
             // Media3 leaves a failed or cancelled file behind.
-            if (!succeeded) withContext(NonCancellable + ioDispatcher) { outputFile.delete() }
+            if (!succeeded) withContext(NonCancellable + ioDispatcher) { output.discard() }
         }
     }
 
-    // Exports go to the cache, which the OS may clear; P1-12 moves each finished file to the gallery.
-    private fun newOutputFile(): File {
-        val exportsDir = File(context.cacheDir, EXPORTS_DIR).apply { mkdirs() }
-        return File.createTempFile(FILE_PREFIX, FILE_SUFFIX, exportsDir)
+    // QA's "never larger than shown" reads this line (spec P1-12 → Measured). The estimate's formula is the sheet's.
+    private fun logEstimateCheck(plan: CompositionPlan, settings: ExportSettings, video: ExportedVideo, tookMs: Long) {
+        val estimateBytes = settings.videoBitrateBps?.let { videoBps ->
+            ((videoBps.toLong() + EXPORT_AUDIO_BITRATE_BPS) * plan.durationUs / MICROS_PER_SECOND * CONTAINER_ALLOWANCE / BITS_PER_BYTE).toLong()
+        }
+        logger.debug(
+            TAG,
+            "Exported ${plan.durationUs} µs in $tookMs ms: ${video.sizeBytes} bytes (estimate $estimateBytes), " +
+                "averageVideoBitrate=${video.averageVideoBitrateBps}, requested=${settings.videoBitrateBps}, " +
+                "${settings.codec} ${settings.frameSize} at ${settings.frameRate} fps",
+        )
     }
 
-    private fun exportedVideo(file: File, result: ExportResult, plan: CompositionPlan) = ExportedVideo(
-        path = file.path,
+    private fun exportedVideo(finished: FinishedFile, result: ExportResult, plan: CompositionPlan) = ExportedVideo(
+        location = finished.location,
         // Media3 reports whole milliseconds, or nothing when it can't tell; the plan has the intended length.
         durationUs = if (result.approximateDurationMs == C.TIME_UNSET) {
             plan.durationUs
         } else {
             result.approximateDurationMs * MICROS_PER_MILLI
         },
-        sizeBytes = file.length(),
+        sizeBytes = finished.sizeBytes,
         hasAudio = result.audioMimeType != null,
+        averageVideoBitrateBps = result.averageVideoBitrate.takeIf { it != C.RATE_UNSET_INT },
     )
 
-    private fun unplayable(problem: PlanProblem): Outcome<ExportedVideo> {
+    private fun unplayable(problem: PlanProblem): ExportOutcome {
         val reason = when (problem) {
             PlanProblem.EmptyMainTrack -> "the main video track is empty"
             is PlanProblem.MainClipOutOfPlace -> "main video clip ${problem.itemId} starts before the clip in front of it ends"
         }
-        val error = IllegalArgumentException("Can't export: $reason")
-        logger.error(TAG, "Export refused", error)
-        return Outcome.Failure(AppError.Unexpected(error))
+        logger.error(TAG, "Export refused", IllegalArgumentException("Can't export: $reason"))
+        return ExportOutcome.Failed(ExportError.UNKNOWN)
     }
 
-    private fun failureFor(e: Exception): AppError {
-        val error = when {
-            e is ExportException && e.errorCode in UNREADABLE_MEDIA_ERRORS -> AppError.NotFound
-            e.isOutOfSpace() -> AppError.StorageFull
-            else -> AppError.Unexpected(e)
-        }
+    private fun failed(e: Exception): ExportOutcome.Failed {
+        val error = exportErrorOf(e)
         val code = (e as? ExportException)?.errorCodeName ?: e::class.simpleName
         // A deleted file or a full disk isn't a bug, so only the rest goes to Crashlytics as an error.
-        if (error is AppError.Unexpected) logger.error(TAG, "Export failed: $code", e) else logger.debug(TAG, "Export stopped: $code")
-        return error
+        val expected = error == ExportError.STORAGE_FULL || error == ExportError.MISSING_MEDIA
+        if (expected) logger.debug(TAG, "Export stopped: $code") else logger.error(TAG, "Export failed: $code", e)
+        return ExportOutcome.Failed(error)
     }
-
-    // A full disk surfaces as ENOSPC somewhere down the cause chain, usually an ErrnoException under an IOException.
-    private fun Throwable.isOutOfSpace(): Boolean =
-        generateSequence(this) { it.cause }.take(MAX_CAUSE_DEPTH).any { it.message?.contains(NO_SPACE_ERRNO) == true }
 
     private companion object {
         const val TAG = "MemixVideoEngine"
-        const val EXPORTS_DIR = "exports"
-        const val FILE_PREFIX = "export-"
-        const val FILE_SUFFIX = ".mp4"
         const val MICROS_PER_MILLI = 1_000L
-        const val NO_SPACE_ERRNO = "ENOSPC"
-        const val MAX_CAUSE_DEPTH = 10
-        val UNREADABLE_MEDIA_ERRORS = setOf(ExportException.ERROR_CODE_IO_FILE_NOT_FOUND, ExportException.ERROR_CODE_IO_NO_PERMISSION)
+        const val MICROS_PER_SECOND = 1_000_000L
+        const val CONTAINER_ALLOWANCE = 1.05
+        const val BITS_PER_BYTE = 8
     }
 }

@@ -16,7 +16,10 @@ import app.memix.core.domain.Logger
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.media.MediaFiles
 import app.memix.core.domain.media.MediaInspector
+import app.memix.core.domain.share.Sharer
 import app.memix.core.domain.sound.SoundLibrary
+import app.memix.core.domain.video.AppExitReasons
+import app.memix.core.domain.video.ExportForeground
 import com.google.android.gms.tasks.Task
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -39,6 +42,9 @@ actual val platformServicesModule = module {
     single<MediaFiles> { AndroidMediaFiles(androidContext(), Dispatchers.IO, get()) }
     single<MediaInspector> { AndroidMediaInspector(androidContext(), Dispatchers.IO, get()) }
     single<SoundLibrary> { BundledSoundLibrary(get(), get(), Dispatchers.IO) }
+    single<ExportForeground> { AndroidExportForeground(androidContext(), get()) }
+    single<Sharer> { AndroidSharer(androidContext()) }
+    single<AppExitReasons> { AndroidAppExitReasons(androidContext(), Dispatchers.IO) }
 }
 
 private class AndroidDeviceRegion(private val context: Context) : DeviceRegion {

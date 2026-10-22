@@ -116,6 +116,7 @@ import app.memix.feature.videoeditor.captions.CaptionTouchSizes
 import app.memix.feature.videoeditor.captions.TextEntryBar
 import app.memix.feature.videoeditor.captions.TextPanels
 import app.memix.feature.videoeditor.captions.detectCaptionGestures
+import app.memix.feature.videoeditor.export.ExportSheet
 import app.memix.feature.videoeditor.importmedia.ImportSheet
 import app.memix.feature.videoeditor.importmedia.showsSheet
 import app.memix.feature.videoeditor.timeline.Timeline
@@ -167,6 +168,7 @@ import memix.feature.video_editor.generated.resources.editor_close
 import memix.feature.video_editor.generated.resources.editor_dismiss
 import memix.feature.video_editor.generated.resources.editor_empty_body_add
 import memix.feature.video_editor.generated.resources.editor_empty_title
+import memix.feature.video_editor.generated.resources.editor_export
 import memix.feature.video_editor.generated.resources.editor_leave_anyway
 import memix.feature.video_editor.generated.resources.editor_missing_media
 import memix.feature.video_editor.generated.resources.editor_pause
@@ -191,6 +193,11 @@ import memix.feature.video_editor.generated.resources.explain_canvas_tallest
 import memix.feature.video_editor.generated.resources.explain_canvas_widest
 import memix.feature.video_editor.generated.resources.explain_detached
 import memix.feature.video_editor.generated.resources.explain_detached_muted
+import memix.feature.video_editor.generated.resources.explain_export_empty
+import memix.feature.video_editor.generated.resources.explain_export_no_res
+import memix.feature.video_editor.generated.resources.explain_export_no_shape
+import memix.feature.video_editor.generated.resources.explain_export_no_space
+import memix.feature.video_editor.generated.resources.explain_export_shape
 import memix.feature.video_editor.generated.resources.explain_last_clip
 import memix.feature.video_editor.generated.resources.explain_no_sound
 import memix.feature.video_editor.generated.resources.explain_reorder_first
@@ -203,8 +210,12 @@ import memix.feature.video_editor.generated.resources.explain_split
 import memix.feature.video_editor.generated.resources.explain_text_biggest
 import memix.feature.video_editor.generated.resources.explain_text_edge
 import memix.feature.video_editor.generated.resources.explain_text_smallest
+import memix.feature.video_editor.generated.resources.export_fps
+import memix.feature.video_editor.generated.resources.export_stopped_toast
 import memix.feature.video_editor.generated.resources.import_free_up_space
 import memix.feature.video_editor.generated.resources.position_size_value
+import memix.feature.video_editor.generated.resources.toast_export_fps_lowered
+import memix.feature.video_editor.generated.resources.toast_export_res_lowered
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -236,14 +247,14 @@ fun VideoEditorScreen(
         onBackCompleted = { onIntent(VideoEditorIntent.Back) },
     )
     // The sounds sheet, the import sheet and the Volume panel take back and Escape themselves while they're open.
-    val ownsEscape = !state.unsavedSheetOpen && !state.sounds.isOpen && !state.isImporting
+    val ownsEscape = !state.unsavedSheetOpen && !state.sounds.isOpen && !state.isImporting && state.exportSheet == null
     LifecycleEventEffect(Lifecycle.Event.ON_START) { onIntent(VideoEditorIntent.AppStarted) }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { onIntent(VideoEditorIntent.AppStopped) }
     // A save needs little room; ask for the import's headroom, so the next import fits too (spec P1-04 → Saving).
     val freeUpSpaceForSave = remember(onFreeUpSpace) { { onFreeUpSpace(ImportMediaUseCase.HEADROOM_BYTES) } }
     val focusTargets = remember { EditorFocusTargets() }
     val panelOpen = state.volumePanel != null || state.textPanel != null || state.canvasPanel != null
-    val sheetOpen = state.sounds.isOpen || state.unsavedSheetOpen || importSheetShown(state.mediaImport)
+    val sheetOpen = state.sounds.isOpen || state.unsavedSheetOpen || state.exportSheet != null || importSheetShown(state.mediaImport)
     ReturnFocus(state.returnFocus, focusTargets)
     // Typing (spec P1-10 → Typing): the field's words live here, so only the field and the stand-in redraw per key.
     val entry = state.textEntry
@@ -310,6 +321,7 @@ fun VideoEditorScreen(
         MemeSoundsSheet(state.sounds, onIntent)
         state.mediaImport?.let { EditorImportSheet(it, onIntent, onFreeUpSpace) }
         UnsavedChangesSheet(state.unsavedSheetOpen, onIntent, freeUpSpaceForSave.takeIf { state.canFreeUpSpace })
+        ExportSheet(state.exportSheet, state.missingMedia, onIntent, onFreeUpSpace.takeIf { state.canFreeUpSpace })
     }
 }
 
@@ -363,8 +375,9 @@ private fun selectedIsMissing(state: VideoEditorUiState): Boolean {
 }
 
 /**
- * Close at the start and the ratio pill in the center of the screen (spec P1-11 → The ratio pill); P1-12's Export joins
- * at the end. The pill shows a custom ratio in lowest terms, also while its stepper is held.
+ * Close at the start, the ratio pill in the center of the screen (spec P1-11 → The ratio pill) and Export at the end
+ * (spec P1-12, the screen's one primary action). The pill shows a custom ratio in lowest terms, also while its stepper
+ * is held.
  */
 @Composable
 private fun TopBar(canvas: CanvasUi?, canvasPanel: CanvasPanelUi?, focusTargets: EditorFocusTargets, onIntent: (VideoEditorIntent) -> Unit) {
@@ -380,6 +393,12 @@ private fun TopBar(canvas: CanvasUi?, canvasPanel: CanvasPanelUi?, focusTargets:
                 modifier = Modifier.align(Alignment.Center).focusRequester(focusTargets.ratioPill),
             )
         }
+        Button(
+            stringResource(Res.string.editor_export),
+            { onIntent(VideoEditorIntent.ExportTool) },
+            Modifier.align(Alignment.CenterEnd),
+            ButtonVariant.Primary,
+        )
     }
 }
 
@@ -721,7 +740,10 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
             is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition, is ToastMessage.SoundAdded,
             is ToastMessage.MediaAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned,
             -> WHAT_HAPPENED_TOAST_MILLIS
-            is ToastMessage.RatioStepped -> WHAT_HAPPENED_TOAST_MILLIS
+            is ToastMessage.RatioStepped, ToastMessage.ExportStopped -> WHAT_HAPPENED_TOAST_MILLIS
+            is ToastMessage.ExportFrameRateLowered, is ToastMessage.ExportResolutionLowered, is ToastMessage.ExportCantDo,
+            is ToastMessage.ExportShapeCantDo,
+            -> EXPLANATION_TOAST_MILLIS
             // An unexpected move, so it stays as long as an explanation.
             ToastMessage.MissingMedia, is ToastMessage.Explain, is ToastMessage.ReplaceTooShort, ToastMessage.LayersMoved -> EXPLANATION_TOAST_MILLIS
         }
@@ -753,6 +775,14 @@ private fun toastText(message: ToastMessage): String = when (message) {
     ToastMessage.LayersMoved -> stringResource(Res.string.canvas_layers_moved)
     // Ratios are never translated (spec P1-11 → Copy).
     is ToastMessage.RatioStepped -> message.label
+    is ToastMessage.ExportFrameRateLowered ->
+        stringResource(Res.string.toast_export_fps_lowered, message.resolutionLabel, stringResource(Res.string.export_fps, message.frameRate))
+    is ToastMessage.ExportResolutionLowered ->
+        stringResource(Res.string.toast_export_res_lowered, stringResource(Res.string.export_fps, message.frameRate), message.resolutionLabel)
+    is ToastMessage.ExportCantDo ->
+        stringResource(Res.string.explain_export_no_res, message.resolutionLabel ?: stringResource(Res.string.export_fps, message.frameRate ?: 0))
+    is ToastMessage.ExportShapeCantDo -> stringResource(Res.string.explain_export_shape, message.resolutionLabel, message.highestLabel)
+    ToastMessage.ExportStopped -> stringResource(Res.string.export_stopped_toast)
 }
 
 @Composable
@@ -806,6 +836,9 @@ private fun explanationText(explanation: Explanation): String = stringResource(
         Explanation.CANVAS_MIN -> Res.string.explain_canvas_min
         Explanation.CANVAS_MAX -> Res.string.explain_canvas_max
         Explanation.CANVAS_REORDER -> Res.string.explain_canvas_reorder
+        Explanation.EXPORT_EMPTY -> Res.string.explain_export_empty
+        Explanation.EXPORT_NO_SHAPE -> Res.string.explain_export_no_shape
+        Explanation.EXPORT_NO_SPACE -> Res.string.explain_export_no_space
     },
 )
 

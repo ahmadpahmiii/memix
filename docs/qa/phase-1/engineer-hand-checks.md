@@ -1057,11 +1057,103 @@ preview size under Blur (`BLUR_PREVIEW_SHORT_SIDE_PX`, now 720).
 colors, close the editor; repeat 5 times. Pass: no leak reported.
 
 ### States to screenshot for the design review (`docs/ux/reviews/P1-11/`)
-From the spec's QA compares 1–6, at 360 dp wide: `panel-open-360x800` (default project: pill open, 9:16 and Fit white,
-Black ringed, frame edge, swatch row cut at the bottom), `ratio-1-1`, `ratio-4-5`, `ratio-3-4`, `ratio-16-9-toast`
-(the top caption pulled in, the off-frame one unchanged), `custom-2-3`, `custom-widest-toast` (12:5), `custom-5-8-pill`
-(after 10:16), `background-blur`, `background-yellow`, `fill-hint`, `panel-hi-200-360x640-1` … `-3` (each row, Clips
-tiles wrapped), `caption-drag-edge` (black background, edge visible).
+The design review's list (`docs/ux/reviews/P1-11.md` → Device screenshots), at 360 dp wide, English unless noted:
+1. `pill-closed`: the editor with "9:16" in the top bar, no frame edge.
+2. `panel-open-360x800`: the pill in its blue open look, 9:16 white, Fit white, Black ringed, the frame edge around
+   the fitted clip, the swatch row cut at the bottom. Then `panel-open-scrolled`: the Ratio and Background rows
+   scrolled, items sliding out at the screen edge.
+3. `ratio-1-1`, `ratio-4-5`, `ratio-3-4`, `ratio-16-9-toast`: the frame's shape and the captions; after 16:9 the "Text
+   moved…" toast, the top caption pulled in, the off-frame caption unchanged.
+4. `custom-2-3`, `custom-widest-toast` (12:5), `custom-5-8-pill` (steppers at 10 and 16, the pill "5:8").
+5. `background-blur`: a landscape clip over its own blurred copy in 9:16 (the blur check: soft, full brightness, no
+   sharp copy, no dark band at the clip's edges). Also `background-blur-icon`, a close crop of the swatch row.
+6. `background-yellow`; then `fill-hint` (Fill selected, panel scrolled to the "background doesn't show" line).
+7. `caption-drag-edge`: a caption being dragged on a black background, the frame edge visible;
+   `caption-drag-released`: the edge gone.
+8. `panel-hi-200-360x640`, scrolled to each row; `panel-hi-200-custom`: Custom selected and in view.
+9. `panel-pt-200`: the Clips row in Portuguese at 200%.
+10. `reorder-explain`: the toast over the reorder-mode timeline.
+
+## P1-12 · export: 60 s at 1080p30 in 60 s or less, plays in the gallery, no leaks after an export and a cancel
+
+Built without a phone (no emulator, no KVM in the build session): compiled, linted and read against the Media3 1.11.1 and Android sources, never run. Every step below is the owner's first run of it. Spec: `docs/ux/specs/P1-12-export.md`; the facts it builds on: `docs/research/P1-12-encoder-facts.md`; what was built and why: `docs/TECHNICAL_DESIGN.md` → Export.
+
+Use a **benchmark build** for the timing (A, B) and a debug build for the rest (LeakCanary, logs). Debug and benchmark builds print every analytics event under logcat tag `MemixAnalytics` (collection is off until P5-01, so Firebase gets nothing).
+
+```sh
+./gradlew :androidApp:installBenchmark          # A, B: timing
+./gradlew :androidApp:installDebug              # C to H: LeakCanary, logs
+adb logcat -c
+adb logcat -s MemixVideoEngine:* MemixExport:* MemixAnalytics:* LeakCanary:*
+```
+Test draft: Create -> Video meme -> pick a 60 s 1080p video with sound from the gallery (any phone camera clip), then Export.
+
+**A. Done when: 60 s of 1080p30 exports in 60 s or less (benchmark build, the owner's phone).**
+1. Export -> 1080p, 30 fps -> Export video. Write down the sheet's "Up to … MB · about … s".
+2. Logcat: `MemixAnalytics` has `export_start` (editor video, format mp4, resolution 1080p, fps 30, length_s 60) and, at the end, `export_complete` with `time_ms` and `size_mb`. **Pass: `time_ms` is 60000 or less.** Run it 3 times; report the median and worst `time_ms`, the phone, the Android version and the build type.
+3. The Exported screen shows the first frame, the play disc, "Saved to your gallery · 1:00 · 1080p", Share, Make another and Done. A haptic tick when it appears.
+4. Pull the file and check it:
+   ```sh
+   adb shell ls /sdcard/Movies/Memix/                       # Memix_<yyyyMMdd_HHmmss>.mp4, no pending ".pending-" file left
+   adb pull /sdcard/Movies/Memix/Memix_<time>.mp4 memix-p1-12.mp4
+   ffprobe -v error -show_entries stream=codec_type,codec_name,width,height,r_frame_rate,duration:stream_side_data=rotation -of compact memix-p1-12.mp4
+   ```
+   Pass: one h264 video and one aac audio stream; `r_frame_rate=30/1`; 1080 × 1920 (a 9:16 draft), or 1920 × 1080 with `rotation=90` or `-90`; both durations within one frame (33 ms) of 60.0 s. Then open it in the phone's gallery (Photos or Files -> Movies -> Memix): it plays **upright** with sound, in the Memix album.
+5. Tap the play disc on the Exported screen: plays once with sound and stops at the end (back at the first frame with the disc); a tap while playing pauses. No autoplay, no loop.
+
+**B. The estimate, for QA (benchmark build).** Per export, `MemixVideoEngine` logs one line: `Exported … µs in … ms: <bytes> bytes (estimate <bytes>), averageVideoBitrate=…, requested=…, H264 … at … fps`. Pass: the file is **never larger** than the sheet's "Up to"; on live footage it is within 25% under it (a stills draft, such as a photo with a caption, may be far under). Time: the second export of the same length is within 30% of "about …". Write the three numbers per export in the QA notes.
+
+**C. What the phone can do** (an emulator without a 4K encoder, or a custom 31:13 canvas on a phone).
+1. 4K at a phone that can't: tap 4K -> toast "This phone can't export 4K." and the selection stays.
+2. A custom 31:13 canvas (Canvas panel -> Custom 31 and 13): tap 4K -> "This phone can't export 4K in this shape. Try 2K, or change the shape in Canvas." (the second resolution is the best this canvas gets).
+3. 4K at 60 fps on a phone whose 4K stops at 30: set 60 fps, tap 4K -> 4K selected, 30 fps selected, toast "This phone exports 4K at up to 30 fps, so it's set to 30 fps." Then tap 60 fps at 4K: the resolution steps down with its own toast.
+4. Remember 4K, open a custom-shape draft where it doesn't work: the sheet opens on the nearest lower setting with "Your last setting doesn't work here, so it's set to 2K · 30 fps." until you pick anything.
+5. Open the sheet right after the editor opens (before the scan ends): the options act as possible; once the scan finishes the rules apply.
+6. If a size ever fails anyway, the failure screen shows "This phone couldn't encode the video at this setting. Try a lower resolution." with "Export at 720p" (the next lower resolution the scan allows) and logcat shows `ERROR_CODE_ENCODING_FORMAT_UNSUPPORTED` (4003) under `MemixVideoEngine`. Report the phone and the size.
+
+**D. Notifications and the service (Android 13+ and one Android 10 to 12 phone).**
+1. Fresh install on Android 13+, first Export video: the Exporting screen appears, progress already moving, and Android's notification dialog shows over it, once. Answer Allow, export again later: no dialog. Uninstall, reinstall, answer Don't allow: the export still runs; no dialog the next time either.
+2. Allowed: leave the app during a long export (a 4K or a 5 min one). The shade shows "Exporting your meme", "42% · about 12 s left", a Cancel button; the bar moves about once a second. Tap the notification: Memix opens on the Exporting screen. Tap Cancel in the shade: the export stops, the Memix screen (if opened) goes back to the editor with "Export stopped.", no file in the gallery.
+3. Not allowed: leave the app mid-export. Nothing in the shade; the bottom of the shade (Task Manager, "Active apps") lists Memix. Return: the screen shows the current progress, or Exported if it finished meanwhile.
+4. Finished while away, allowed: "Your meme is saved / In your gallery · 0:08 · 1080p"; tap it: the Exported screen. Finished while Memix is in front: no notification (the screen says it).
+5. Swipe the ongoing notification away (Android 14+): the export continues; the Exporting screen is unchanged.
+6. Task Manager -> Stop on Memix mid-export, then open Memix: the toast "Your last export didn't finish. Nothing was saved." with Open draft and ×; Open draft opens that draft. Gallery: no new file and no pending item (`adb shell ls -a /sdcard/Movies/Memix`). Logcat (`MemixAnalytics`): `export_cancel` with the last percent. `adb shell am force-stop app.memix` mid-export counts as a user stop too (`export_cancel`). On Android 10 there are no exit records, so any stop counts as `export_fail` with `process_death`. A crash or the system killing Memix logs `export_fail` `process_death`.
+7. `adb shell dumpsys activity services app.memix` while exporting lists `ExportForegroundService` with its foreground service type: `0x2000` (mediaProcessing) on Android 15+, `0x1` (dataSync) on 10 to 14. `0x0` means the type was dropped: report it.
+
+**E. The gallery write (the one switch). Run on one Android 10 phone and one Android 11+ phone.**
+1. A portrait export (9:16) and a landscape one (16:9), 1080p30, each 10 s or longer. The gallery shows each in the Memix album, playing **upright**, with the right length, and seeking works (drag the gallery's scrubber): this checks that the file descriptor seeks (the muxer writes the index at the end and goes back to the start) and that the orientation data is there.
+2. `ffprobe` on each opens the file. A file that is 0 bytes, sideways or truncated means the direct write failed.
+3. **The decision.** All passed: nothing to do, the build keeps writing straight into the gallery (space needed = estimate + 100 MB). Any failed: set `GalleryVideoFile.WRITES_STRAIGHT_TO_GALLERY = false` (`engine/video/.../GalleryVideoFile.kt`), rebuild, run D1 and E1 again; the sheet then asks for twice the estimate plus 100 MB and the finish copies the file in. Tell the principal engineer which phone failed and how.
+
+**F. Cancel, Stop exporting?, leaks, space.**
+1. During an export press the system back gesture: the "Stop exporting?" sheet. Keep exporting, the scrim and back keep exporting; Stop works as Cancel: the editor with "Export stopped.", no file, `export_cancel` with the percent. The Cancel button does the same without the question.
+2. **LeakCanary (debug build):** one export to the end, one export cancelled at about 40%, then back to Home and wait 10 s. Pass: no "LeakCanary" notification and `adb logcat -d -s LeakCanary:*` shows no leak. The result player and the export state must not be retained.
+3. **Out of space:** fill the phone (the P1-02 steps: `fallocate` files under `/data/local/tmp`, or push a large file) until the sheet's notice shows "Not enough space. Free up about N MB to export at 1080p." with Free up space (opens the storage screen); Export video explains "Free up space first, or pick a lower resolution." Return from the storage screen with space freed: the notice goes at once. Then let an export start with just enough space and fill the disk during it: the failure screen "Your phone ran out of space…" with Free up space and Back to editor; no partial file in the gallery.
+4. A clip's file missing (`missing-media` hand project): the sheet shows "A clip's file is missing, so it exports black."; the export runs and that part is black; no `export_fail`.
+5. Export from other editor states: while typing a caption (the words are in the file), with a panel open, with a clip selected, in reorder mode (the toast "Tap Done to finish reordering first." and no sheet), in an empty draft (the toast "Add a video or photo first."). Playback pauses when the sheet opens.
+6. Retry from a failure: Try again restarts at the same setting; after an encoder failure "Export at 720p" restarts one resolution lower.
+
+**G. Share and the footer.**
+1. Share opens the system share sheet titled "Share your meme" with the video; pick an app that shows the video (Messages, Drive): the video arrives. Back from the share sheet lands on the Exported screen as it was. Logcat: `share_target` with `target=more`.
+2. Make another: Home with the Create sheet open. Done: Home. × and back: the editor with the draft unchanged (open it: nothing changed, the export did not add an undo step).
+3. The result keeps the settings: export at 720p / 24 fps, open the sheet again: 720p / 24 fps selected. A second project shows the same. Watermark-free is not remembered (P1-13).
+4. The debug export hook still writes to the cache, not the gallery: the P1-03 steps (`--ez memix.exportCheck true`) log a `cache/exports/export-….mp4` path and nothing appears in the gallery.
+
+**H. Also checked here (PM, 20 Oct): the preview = export comparisons through the real sheet.**
+1. P1-10: export a draft with each caption font at **720p** and **1080p**; compare the preview's captions and the files' (size, position, outline). They match as in the P1-10 steps.
+2. P1-11: a landscape clip in 9:16 with the Blur background, exported at 720p and 1080p: the blur is equally soft in both, full brightness, no dark band at the clip's edges (the preview draws it at 720).
+
+### States to screenshot for the design review (`docs/ux/reviews/P1-12/`)
+From the spec's QA compares 1–6, at 360 × 640 (and 360 × 800 for the Exported screen), English unless noted:
+1. `sheet-360x640`: the Export sheet over the editor, five resolutions, three frame rates, the facts line ("Up to … · about …"), Export video (the watermark row arrives with P1-13). Then `sheet-no-space`: the "Not enough space" notice with Free up space (storage filled).
+2. `sheet-phone-cant-4k` (the toast "This phone can't export 4K." over the sheet), `sheet-shape-cant` (the shape toast on a custom 31:13 canvas), `sheet-fps-lowered` (4K at 60: both segments changed, the toast), `sheet-lowered-notice` (a project reopened with 4K remembered).
+3. `exporting-40`: progress, "About … left", the leave line and Cancel; `exporting-notification` (the shade with the progress notification and its Cancel); `exporting-permission` (a fresh Android 13+ install, the permission dialog over the Exporting screen with the progress moving behind it).
+4. `stop-exporting`: the "Stop exporting?" sheet after a back gesture.
+5. `exported`: the result with the play disc, the status pill, Share, Make another and Done; `exported-playing` (disc gone mid-playback); `exported-share-sheet` (the system share sheet with the video); `exported-gallery` (the file in the gallery's Memix album, playing).
+6. `failed-space`, `failed-encoder` ("Export at 720p"), `failed-other`: the failure states on the Exporting screen.
+7. `last-export-stopped`: the next-start toast with Open draft on Home.
+8. `topbar-export`: the editor's top bar (Close, the ratio pill, Export) at 360 dp.
+9. In Hindi at 200% font: `topbar-export-hi-200` (nothing overlaps or is cut), `sheet-hi-200-360x640` (segments in two rows, the middle scrolls) and `exported-hi-200` (the result shrunk, Share and the footer stacked, Make another above Done).
 
 ## P1-17 · Hindi display face: hero and entry cards in Teko, nothing clipped, other languages unchanged
 

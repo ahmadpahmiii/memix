@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The export notification (P1-12), Android only. Copy: docs/ux/specs/P1-12-export.md → Notification. -->
+<resources>
+    <string name="notif_channel_exports">Exportaciones</string>
+    <string name="notif_exporting_title">Exportando tu meme</string>
+    <string name="notif_exporting_text">%1$s · faltan unos %2$s</string>
+    <string name="notif_percent">%1$d %%</string>
+    <string name="notif_seconds">%1$d s</string>
+    <string name="notif_minutes">%1$d min</string>
+    <string name="notif_cancel">Cancelar</string>
+    <string name="notif_done_title">Tu meme está guardado</string>
+    <string name="notif_done_text">En tu galería · %1$s · %2$s</string>
+    <string name="notif_failed_title">La exportación no terminó</string>
+    <string name="notif_failed_text">Abre Memix para intentarlo de nuevo.</string>
+    <string name="notif_stopped_title">Exportación detenida</string>
+    <string name="notif_stopped_text">Abre Memix para exportar de nuevo.</string>
+</resources>

@@ -14,6 +14,9 @@ kotlin {
         implementation(libs.media3.transformer)
         implementation(libs.media3.effect)
         implementation(libs.media3.common)
+        // The export's gallery muxer (P1-12): Mp4Muxer over the gallery item's file descriptor, with orientation data.
+        implementation(libs.media3.muxer)
+        implementation(libs.media3.container)
         implementation(libs.media3.ui.compose)
         implementation(libs.kotlinx.coroutines.android)
         implementation(libs.koin.android)

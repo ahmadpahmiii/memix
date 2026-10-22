@@ -252,4 +252,25 @@
     <string name="edit_canvas_fit">Fit</string>
     <string name="edit_canvas_fill">Fill</string>
     <string name="edit_canvas_background">Background</string>
+    <!-- Export sheet (P1-12). Budgets and translator notes: docs/ux/specs/P1-12-export.md → Copy. Resolutions, fps, MP4, H.264, AAC are never translated. -->
+    <string name="editor_export">Export</string>
+    <string name="export_title">Export</string>
+    <string name="export_resolution">Resolution</string>
+    <string name="export_frame_rate">Frame rate</string>
+    <string name="export_fps">%1$d fps</string>
+    <string name="export_fps_a11y">%1$d frames per second</string>
+    <string name="export_facts_format">MP4 · %1$s · AAC</string>
+    <string name="export_estimate">Up to %1$s · about %2$s</string>
+    <string name="export_start">Export video</string>
+    <string name="toast_export_fps_lowered">This phone exports %1$s at up to %2$s, so it's set to %2$s.</string>
+    <string name="toast_export_res_lowered">This phone exports %1$s at up to %2$s, so it's set to %2$s.</string>
+    <string name="explain_export_no_res">This phone can't export %1$s.</string>
+    <string name="explain_export_shape">This phone can't export %1$s in this shape. Try %2$s, or change the shape in Canvas.</string>
+    <string name="export_lowered_notice">Your last setting doesn't work here, so it's set to %1$s · %2$s.</string>
+    <string name="explain_export_no_shape">This phone can't export this shape. Change the shape in Canvas, then try again.</string>
+    <string name="export_no_space">Not enough space. Free up about %1$s to export at %2$s.</string>
+    <string name="explain_export_no_space">Free up space first, or pick a lower resolution.</string>
+    <string name="export_missing_media">A clip's file is missing, so it exports black.</string>
+    <string name="explain_export_empty">Add a video or photo first.</string>
+    <string name="export_stopped_toast">Export stopped.</string>
 </resources>

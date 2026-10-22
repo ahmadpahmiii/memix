@@ -48,9 +48,11 @@ internal class Media3CompositionBuilder(
      * debug export hook's 720p until P1-12), or the preview's while a blur background plays. Null draws at canvas size.
      */
     private val frameShortSidePx: Int? = null,
+    /** The exact frame size of an export from the sheet (P1-12: the resolution, aligned to the encoder); wins over [frameShortSidePx]. */
+    private val frameSizePx: PixelSize? = null,
 ) {
     // The size every main clip is drawn at, the canvas's shape: captions and output come out at this size too.
-    private val frame: PixelSize = frameSizeOf(PixelSize(plan.canvasWidthPx, plan.canvasHeightPx), frameShortSidePx)
+    private val frame: PixelSize = frameSizePx ?: frameSizeOf(PixelSize(plan.canvasWidthPx, plan.canvasHeightPx), frameShortSidePx)
 
     fun build(): Composition {
         val sequences = listOf(mainVideoSequence()) + plan.audioLanes.map(::audioSequence)

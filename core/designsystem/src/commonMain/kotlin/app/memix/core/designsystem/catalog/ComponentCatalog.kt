@@ -53,8 +53,11 @@ import app.memix.core.designsystem.component.Menu
 import app.memix.core.designsystem.component.MenuItem
 import app.memix.core.designsystem.component.OptionTile
 import app.memix.core.designsystem.component.OptionTileLayout
+import app.memix.core.designsystem.component.PlayDisc
 import app.memix.core.designsystem.component.ProgressBar
 import app.memix.core.designsystem.component.RatioShape
+import app.memix.core.designsystem.component.Segment
+import app.memix.core.designsystem.component.SegmentedChoice
 import app.memix.core.designsystem.component.SegmentedTabs
 import app.memix.core.designsystem.component.SettingPill
 import app.memix.core.designsystem.component.Sheet
@@ -116,6 +119,8 @@ fun ComponentCatalog(onClose: () -> Unit, modifier: Modifier = Modifier, appSect
             SliderAndToggleSection()
             FontTileAndSwatchSection()
             SettingPillAndOptionTileSection()
+            SegmentedChoiceSection()
+            PlayDiscSection()
             ProgressBarSection()
             IconButtonSection()
             ToastSection()
@@ -314,6 +319,18 @@ private fun SettingPillAndOptionTileSection() = Section("SettingPill and OptionT
     }
 }
 
+// The Export sheet's settings (P1-12): five resolutions and three frame rates; at 200% font the segments wrap.
+@Composable
+private fun SegmentedChoiceSection() = Section("SegmentedChoice") {
+    var resolution by remember { mutableIntStateOf(2) }
+    SegmentedChoice(listOf("480p", "720p", "1080p", "2K", "4K").map { Segment(it) }, resolution, { resolution = it }, "Resolution")
+    var rate by remember { mutableIntStateOf(1) }
+    SegmentedChoice(listOf(24, 30, 60).map { Segment("$it fps", "$it frames per second") }, rate, { rate = it }, "Frame rate")
+}
+
+@Composable
+private fun PlayDiscSection() = Section("PlayDisc") { PlayDisc() }
+
 @Composable
 private fun ProgressBarSection() = Section("ProgressBar") {
     var progress by remember { mutableFloatStateOf(0.4f) }
@@ -451,6 +468,7 @@ private fun IconSection() = Section("Icons") {
         "minus" to MemixIcons.Minus, "plus" to MemixIcons.Plus, "rotate_left" to MemixIcons.RotateLeft,
         "rotate_right" to MemixIcons.RotateRight, "arrow" to MemixIcons.Arrow, "scale_rotate" to MemixIcons.ScaleRotate,
         "fit" to MemixIcons.Fit, "fill" to MemixIcons.Fill, "blur" to MemixIcons.Blur, "ratio_custom" to MemixIcons.RatioCustom,
+        "share" to MemixIcons.Share, "check" to MemixIcons.Check,
     )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space4), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4)) {
         icons.forEach { (name, icon) ->

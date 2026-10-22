@@ -34,9 +34,9 @@ Never guess class names or signatures from memory. If an API you expected doesn'
 
 ## Export
 
-- `Transformer` export inside a foreground service with a progress notification and Cancel.
-- Before export: check `capabilities()` (max resolution/fps per codec, HEVC support) and free space; show the estimate.
-- Encode straight to the output file (no length limit); save to the "Memix" album; return duration and size.
+- `Transformer` export (`TransformerExport`) under a foreground service with a progress notification and Cancel (`:platform:services`, `AndroidExportForeground`): `mediaProcessing` on Android 15+ through `Service.startForeground` (not `ServiceCompat`, which drops it), `dataSync` on 10 to 14.
+- Before export: `exportCapabilities(canvasSize)` (per resolution and frame rate: H.264 hardware, else HEVC, else software H.264; sizes aligned to the encoder, long side as width) and free space; show the estimate. Export with `setEnableFormatFallback(false)` and a VBR bitrate clamped to the encoder's range.
+- Encode straight into a MediaStore pending item in `Movies/Memix` (`GalleryVideoFile`, a custom `Muxer.Factory` with `Mp4OrientationData`); return location, duration and size. `WRITES_STRAIGHT_TO_GALLERY` switches back to a temporary file plus copy.
 - Watermark: small "Memix" text top-left with a 3% margin, unless the export is marked watermark-free.
 
 ## Rules

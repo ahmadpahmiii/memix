@@ -8,7 +8,12 @@ import app.memix.core.domain.Logger
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.media.MediaFiles
 import app.memix.core.domain.media.MediaInspector
+import app.memix.core.domain.share.Sharer
 import app.memix.core.domain.sound.SoundLibrary
+import app.memix.core.domain.video.AppExitReasons
+import app.memix.core.domain.video.ExportControls
+import app.memix.core.domain.video.ExportForeground
+import app.memix.core.domain.video.ExportNotice
 import kotlinx.coroutines.Dispatchers
 import org.koin.dsl.module
 import platform.Foundation.NSLocale
@@ -23,6 +28,9 @@ actual val platformServicesModule = module {
     single<MediaFiles> { NoMediaFiles() }
     single<MediaInspector> { NoMediaInspector() }
     single<SoundLibrary> { BundledSoundLibrary(get(), get(), Dispatchers.Default) }
+    single<ExportForeground> { NoExportForeground() }
+    single<Sharer> { NoSharer() }
+    single<AppExitReasons> { NoAppExitReasons() }
 }
 
 // iOS keeps the system region in currentLocale even when the app has its own language.
@@ -53,4 +61,22 @@ private class DefaultAppConfig : AppConfig {
 // TODO(P7-08): Firebase Analytics on iOS; until then nothing is logged.
 private class NoAnalytics : Analytics {
     override fun log(event: AnalyticsEvent) = Unit
+}
+
+// TODO(P7-05): iOS exports run as a background task (beginBackgroundTask). Until then nothing exports on iOS.
+private class NoExportForeground : ExportForeground {
+    override fun start(controls: ExportControls): Boolean = false
+
+    override fun showProgress(percent: Int, secondsLeft: Long?) = Unit
+
+    override fun finish(notice: ExportNotice?) = Unit
+}
+
+// TODO(P7-09): UIActivityViewController.
+private class NoSharer : Sharer {
+    override fun shareVideo(location: String, chooserTitle: String): Boolean = false
+}
+
+private class NoAppExitReasons : AppExitReasons {
+    override suspend fun lastRunStoppedByUser(): Boolean? = null
 }

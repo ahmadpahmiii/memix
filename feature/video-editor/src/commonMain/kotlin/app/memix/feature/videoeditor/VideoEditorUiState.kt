@@ -5,7 +5,10 @@ import androidx.compose.runtime.Stable
 import app.memix.core.domain.project.LaneTarget
 import app.memix.core.domain.project.MediaPlace
 import app.memix.core.domain.project.TrimEdge
+import app.memix.core.domain.video.ExportChoice
+import app.memix.core.domain.video.ExportEstimate
 import app.memix.core.domain.video.PreviewSession
+import app.memix.core.domain.video.VideoCodec
 import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.FrameFit
@@ -56,6 +59,12 @@ data class VideoEditorUiState(
     val volumePanel: VolumePanelUi? = null,
     /** The Canvas panel over the timeline and tool bar, or null when it's closed (spec P1-11). */
     val canvasPanel: CanvasPanelUi? = null,
+    /** The Export sheet (spec P1-12), or null when it's closed. */
+    val exportSheet: ExportSheetUi? = null,
+    /** An export just started: the app opens the Exporting screen, then sends [VideoEditorIntent.ExportScreenOpened]. */
+    val openExportScreen: Boolean = false,
+    /** At least one clip's media file is missing (the preview plays it black); the Export sheet says so. */
+    val missingMedia: Boolean = false,
     /**
      * The original audio (the sound in the user's own videos, P1-09): whether every clip's is muted. Null when no main
      * clip plays its own sound, so there's nothing to mute and the timeline shows no toggle.
@@ -138,6 +147,22 @@ data class CanvasUi(
 )
 
 private const val BLACK_ARGB = 0xFF000000
+
+/**
+ * The Export sheet (spec P1-12 → Export sheet): the [choice] shown (the remembered one, stepped down to what the phone can
+ * do for this canvas), the codec the facts line names, the estimate (null while unknown), and the notices: the
+ * setting [loweredTo] when the remembered one isn't possible here, the bytes to free ([spaceShortBytes], rounded up to
+ * 10 MB), and nothing possible for this canvas at all. A missing clip's notice reads [VideoEditorUiState.missingMedia].
+ */
+@Immutable
+data class ExportSheetUi(
+    val choice: ExportChoice,
+    val codec: VideoCodec = VideoCodec.H264,
+    val estimate: ExportEstimate? = null,
+    val loweredTo: ExportChoice? = null,
+    val spaceShortBytes: Long? = null,
+    val nothingPossible: Boolean = false,
+)
 
 /**
  * The Canvas panel's own state for this visit (spec P1-11 → Interactions). [customTerms]: the Custom tile is selected
@@ -319,8 +344,13 @@ enum class Explanation {
     CANVAS_MIN,
     CANVAS_MAX,
 
-    /** The ratio pill in reorder mode. */
+    /** The ratio pill or Export in reorder mode: "Tap Done to finish reordering first." */
     CANVAS_REORDER,
+
+    /** Export (P1-12): an empty draft, no resolution for this shape, not enough space. */
+    EXPORT_EMPTY,
+    EXPORT_NO_SHAPE,
+    EXPORT_NO_SPACE,
 }
 
 /**
@@ -371,6 +401,21 @@ sealed interface ToastMessage {
 
     /** After a custom ratio step, for screen readers only: the new ratio in lowest terms ("5:8"). */
     data class RatioStepped(val label: String) : ToastMessage
+
+    /** A resolution was tapped and the frame rate stepped down to [frameRate] to make it work (P1-12). */
+    data class ExportFrameRateLowered(val resolutionLabel: String, val frameRate: Int) : ToastMessage
+
+    /** A frame rate was tapped and the resolution stepped down to [resolutionLabel]. */
+    data class ExportResolutionLowered(val frameRate: Int, val resolutionLabel: String) : ToastMessage
+
+    /** The phone can't export this resolution, or this frame rate, at all. One of the two is set. */
+    data class ExportCantDo(val resolutionLabel: String?, val frameRate: Int?) : ToastMessage
+
+    /** The phone exports [resolutionLabel] at 16:9 but not in this shape; [highestLabel] is the best this shape gets. */
+    data class ExportShapeCantDo(val resolutionLabel: String, val highestLabel: String) : ToastMessage
+
+    /** Back from a cancelled export: "Export stopped." */
+    data object ExportStopped : ToastMessage
 }
 
 /**
@@ -631,4 +676,22 @@ sealed interface VideoEditorIntent {
 
     /** A background swatch: the color [argb] (0xAARRGGBB), or blur when it's null. */
     data class SetCanvasBackground(val argb: Long?) : VideoEditorIntent
+
+    /** Export in the top bar: opens the Export sheet (spec P1-12). */
+    data object ExportTool : VideoEditorIntent
+
+    /** The Export sheet's close, scrim, drag, back or Escape. */
+    data object CloseExportSheet : VideoEditorIntent
+
+    /** A resolution segment, by its index in ExportResolution order. */
+    data class ExportResolutionTapped(val index: Int) : VideoEditorIntent
+
+    /** A frame rate segment, by its index in EXPORT_FRAME_RATES. */
+    data class ExportFrameRateTapped(val index: Int) : VideoEditorIntent
+
+    /** Export video in the sheet. */
+    data object ExportVideo : VideoEditorIntent
+
+    /** The app opened the Exporting screen for [VideoEditorUiState.openExportScreen]. */
+    data object ExportScreenOpened : VideoEditorIntent
 }

@@ -27,6 +27,7 @@ import app.memix.core.domain.project.splitItem
 import app.memix.core.domain.project.trimItem
 import app.memix.core.domain.project.trimRange
 import app.memix.core.domain.project.videoLengthUs
+import app.memix.core.domain.video.ExportJobState
 import app.memix.core.domain.video.ExportSettings
 import app.memix.core.domain.video.PreviewPlayback
 import app.memix.core.domain.video.PreviewSession
@@ -80,7 +81,8 @@ import kotlinx.coroutines.launch
  *
  * Tool areas live in helpers that reach the editor through one [EditorHost]: meme sounds ([EditorSoundTools]), the
  * Volume panel ([VolumePanelControl]), Move ([MoveControl]), original audio ([OriginalAudioControl]) and captions
- * ([CaptionControl], measured with [captionRendering]) and the Canvas panel ([CanvasPanelControl]); Add media and Replace copy through [importMedia]
+ * ([CaptionControl], measured with [captionRendering]), the Canvas panel ([CanvasPanelControl]) and the Export sheet
+ * ([ExportSheetControl]); Add media and Replace copy through [importMedia]
  * ([EditorMediaImport]).
  */
 class VideoEditorViewModel(
@@ -91,6 +93,7 @@ class VideoEditorViewModel(
     private val startThumbnails: StartThumbnailsUseCase,
     private val sounds: EditorSounds,
     private val captionRendering: EditorCaptionRendering,
+    private val export: EditorExport,
     importMedia: ImportMediaUseCase,
     private val decodeDispatcher: CoroutineDispatcher,
     private val debugEdit: EditorDebugEdit?,
@@ -122,6 +125,7 @@ class VideoEditorViewModel(
     private val originalAudio = OriginalAudioControl(host)
     private val captions = CaptionControl(host)
     private val canvasPanel = CanvasPanelControl(host) { text, style, widthPx, heightPx -> captionRendering.measure(text, style, widthPx, heightPx) }
+    private val exportSheet = ExportSheetControl(host, export)
     // The canvas size of the picture on screen, as the preview last reported it.
     private var shownCanvasSize: PixelSize? = null
 
@@ -130,6 +134,7 @@ class VideoEditorViewModel(
         addCloseable(AutoCloseable { preview?.close() })
         addCloseable(soundTools)
         viewModelScope.launch { loadStarterSounds() }
+        viewModelScope.launch { export.export.state.collect(::showExportEnded) }
         viewModelScope.launch {
             when (val opened = openVideoDraft(projectId)) {
                 is Outcome.Success -> startEditing(opened.value)
@@ -155,7 +160,10 @@ class VideoEditorViewModel(
             }
             VideoEditorIntent.RetryPreview -> retryPreview()
             is VideoEditorIntent.ToastTimedOut -> updateState { if (it.toast?.id == intent.id) it.copy(toast = null) else it }
-            VideoEditorIntent.AppStarted -> retryFailedSave()
+            VideoEditorIntent.AppStarted -> {
+                retryFailedSave()
+                exportSheet.recheckSpace()
+            }
             VideoEditorIntent.AppStopped -> goToBackground()
             VideoEditorIntent.DebugEdit -> makeDebugEdit()
             VideoEditorIntent.TimelineTouched -> preview?.pause()
@@ -235,6 +243,16 @@ class VideoEditorViewModel(
             is VideoEditorIntent.CanvasStepHeld -> canvasPanel.stepHeld(intent.step, intent.repeats)
             is VideoEditorIntent.SetClipsFit -> canvasPanel.setFit(intent.fit)
             is VideoEditorIntent.SetCanvasBackground -> canvasPanel.setBackground(intent.argb)
+            VideoEditorIntent.ExportTool -> {
+                // Typing commits first, so the export has the words (spec P1-12 → Export from other editor states).
+                captions.commitEntry()
+                exportSheet.open()
+            }
+            VideoEditorIntent.CloseExportSheet -> exportSheet.close()
+            is VideoEditorIntent.ExportResolutionTapped -> exportSheet.tapResolution(intent.index)
+            is VideoEditorIntent.ExportFrameRateTapped -> exportSheet.tapFrameRate(intent.index)
+            VideoEditorIntent.ExportVideo -> exportSheet.exportVideo()
+            VideoEditorIntent.ExportScreenOpened -> updateState { it.copy(openExportScreen = false) }
         }
     }
 
@@ -243,6 +261,7 @@ class VideoEditorViewModel(
         addCloseable(session)
         editSession = session
         draftOpened.complete(session)
+        exportSheet.warmUp(project)
         val thumbnails = TimelineThumbnails(startThumbnails(), viewModelScope, decodeDispatcher)
         addCloseable(thumbnails)
         updateState { it.copy(canvas = canvasUiOf(project), thumbnails = thumbnails) }
@@ -325,13 +344,28 @@ class VideoEditorViewModel(
             else -> StageContent.OPENING
         }
         shownCanvasSize = playback.shownCanvasSize
-        updateState { it.copy(stage = stage, isPlaying = playback.isPlaying, pictureOutOfShape = isOutOfShape(playback.shownCanvasSize, currentProject())) }
+        updateState {
+            it.copy(
+                stage = stage,
+                isPlaying = playback.isPlaying,
+                pictureOutOfShape = isOutOfShape(playback.shownCanvasSize, currentProject()),
+                missingMedia = playback.missingMedia,
+            )
+        }
         showCatchingUp(playback.isCatchingUp)
         captions.onPreviewCatchingUp(playback.isCatchingUp)
         if (playback.missingMedia && !missingMediaShown) {
             missingMediaShown = true
             showToast(ToastMessage.MissingMedia)
         }
+    }
+
+    // Back in the editor after Cancel or Stop: "Export stopped." (spec P1-12 → Cancel). The editor is the one place a
+    // cancelled export returns to, so it clears the ended state.
+    private fun showExportEnded(state: ExportJobState) {
+        if (state !is ExportJobState.Cancelled || state.job.project.id != editSession?.state?.value?.project?.id) return
+        showToast(ToastMessage.ExportStopped)
+        export.export.dismiss()
     }
 
     private fun togglePlayback() {
@@ -378,6 +412,7 @@ class VideoEditorViewModel(
         when {
             // Back while typing keeps the words: it commits (spec P1-10 → Typing → commit).
             state.value.textEntry != null -> captions.commitEntry()
+            state.value.exportSheet != null -> exportSheet.close()
             state.value.textPanel != null -> captions.closePanel()
             state.value.volumePanel != null -> volumePanel.close()
             state.value.canvasPanel != null -> canvasPanel.close()

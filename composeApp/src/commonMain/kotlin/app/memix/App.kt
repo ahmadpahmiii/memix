@@ -8,15 +8,22 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,17 +40,28 @@ import androidx.navigation.toRoute
 import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixIcons
 import app.memix.core.designsystem.MemixMotion
+import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.MemixTheme
 import app.memix.core.designsystem.component.BottomNav
 import app.memix.core.designsystem.component.NavDestination
+import app.memix.core.designsystem.component.FadingToast
 import app.memix.core.designsystem.component.Scrim
 import app.memix.core.designsystem.component.coveredByModal
 import app.memix.core.domain.RefreshAppConfigUseCase
 import app.memix.core.domain.text.CaptionMeasurer
+import app.memix.core.domain.video.ExportJobState
+import app.memix.core.domain.video.ExportVideoUseCase
+import app.memix.core.domain.video.RecoverUnfinishedExportUseCase
+import app.memix.core.domain.video.EXPORT_HEADROOM_BYTES
 import app.memix.debug.DebugComponentCatalog
 import app.memix.debug.openDebugEditorProject
 import app.memix.engine.video.CaptionStandIn
 import app.memix.engine.video.VideoPreviewSurface
+import app.memix.engine.video.VideoResultSurface
+import app.memix.feature.export.ExportExit
+import app.memix.feature.export.ExportScreen
+import app.memix.feature.export.ExportViewModel
+import app.memix.feature.export.LastExportStoppedToast
 import app.memix.feature.drafts.DraftsScreen
 import app.memix.feature.home.HomeScreen
 import app.memix.feature.home.HomeViewModel
@@ -55,6 +73,7 @@ import app.memix.feature.videoeditor.VideoEditorScreen
 import app.memix.feature.videoeditor.VideoEditorViewModel
 import app.memix.platform.services.LockPortraitOnPhones
 import app.memix.platform.services.rememberFreeUpSpaceLauncher
+import app.memix.platform.services.rememberNotificationPermissionRequest
 import memix.composeapp.generated.resources.Res
 import memix.composeapp.generated.resources.nav_create
 import memix.composeapp.generated.resources.nav_drafts
@@ -92,33 +111,50 @@ fun App(isDebugBuild: Boolean, debugEditorProject: String? = null) {
             }
         }
         val reduceMotion = MemixTheme.reduceMotion
-        NavHost(
-            navController,
-            startDestination = MainRoute,
-            modifier = Modifier.fillMaxSize().background(MemixColors.canvas),
-            // Only full screens (editors, catalog) slide; see fullScreen().
-            enterTransition = { EnterTransition.None },
-            exitTransition = { ExitTransition.None },
-            popEnterTransition = { EnterTransition.None },
-            popExitTransition = { ExitTransition.None },
-        ) {
-            composable<MainRoute> {
-                MainShell(
-                    isDebugBuild = isDebugBuild,
-                    createSheetOpen = createSheetOpen,
-                    onCreateSheetOpenChange = { createSheetOpen = it },
-                    videoMemeImport = videoMemeImport,
-                    onOpenPhotoEditor = { navController.navigate(PhotoEditorRoute) },
-                    onOpenCatalog = { navController.navigate(CatalogRoute) },
-                )
+        Box(Modifier.fillMaxSize()) {
+            NavHost(
+                navController,
+                startDestination = MainRoute,
+                modifier = Modifier.fillMaxSize().background(MemixColors.canvas),
+                // Only full screens (editors, catalog) slide; see fullScreen().
+                enterTransition = { EnterTransition.None },
+                exitTransition = { ExitTransition.None },
+                popEnterTransition = { EnterTransition.None },
+                popExitTransition = { ExitTransition.None },
+            ) {
+                composable<MainRoute> {
+                    MainShell(
+                        isDebugBuild = isDebugBuild,
+                        createSheetOpen = createSheetOpen,
+                        onCreateSheetOpenChange = { createSheetOpen = it },
+                        videoMemeImport = videoMemeImport,
+                        onOpenPhotoEditor = { navController.navigate(PhotoEditorRoute) },
+                        onOpenCatalog = { navController.navigate(CatalogRoute) },
+                    )
+                }
+                fullScreen<VideoEditorRoute>(reduceMotion) { entry ->
+                    VideoEditorDestination(
+                        entry.toRoute<VideoEditorRoute>().projectId,
+                        onClose = { navController.popBackStack() },
+                        onOpenExport = { navController.navigate(ExportRoute) },
+                    )
+                }
+                fullScreen<ExportRoute>(reduceMotion) {
+                    ExportDestination(
+                        onExit = { exit ->
+                            navController.leaveExport(exit)
+                            // Make another: Home with the Create sheet open (spec P1-12 → Exported screen).
+                            if (exit == ExportExit.MAKE_ANOTHER) createSheetOpen = true
+                        },
+                    )
+                }
+                fullScreen<PhotoEditorRoute>(reduceMotion) { PhotoEditorPlaceholder(onClose = { navController.popBackStack() }) }
+                if (isDebugBuild) {
+                    fullScreen<CatalogRoute>(reduceMotion) { DebugComponentCatalog(onClose = { navController.popBackStack() }) }
+                }
             }
-            fullScreen<VideoEditorRoute>(reduceMotion) { entry ->
-                VideoEditorDestination(entry.toRoute<VideoEditorRoute>().projectId, onClose = { navController.popBackStack() })
-            }
-            fullScreen<PhotoEditorRoute>(reduceMotion) { PhotoEditorPlaceholder(onClose = { navController.popBackStack() }) }
-            if (isDebugBuild) {
-                fullScreen<CatalogRoute>(reduceMotion) { DebugComponentCatalog(onClose = { navController.popBackStack() }) }
-            }
+            ReopenRunningExport(navController)
+            LastExportStoppedNotice(onOpenDraft = { projectId -> navController.navigate(VideoEditorRoute(projectId)) })
         }
     }
 }
@@ -212,7 +248,7 @@ private fun TabsNavHost(
  * and Replace (P1-16) plugged in.
  */
 @Composable
-private fun VideoEditorDestination(projectId: String, onClose: () -> Unit) {
+private fun VideoEditorDestination(projectId: String, onClose: () -> Unit, onOpenExport: () -> Unit) {
     val viewModel = koinViewModel<VideoEditorViewModel> { parametersOf(projectId) }
     // The engine's caption renderer, which its stand-in draws with (P1-10).
     val captionMeasurer = koinInject<CaptionMeasurer>()
@@ -222,6 +258,13 @@ private fun VideoEditorDestination(projectId: String, onClose: () -> Unit) {
     EditorMediaPickers(state.mediaPicker, viewModel::onIntent)
     val currentOnClose by rememberUpdatedState(onClose)
     LaunchedEffect(state.isClosing) { if (state.isClosing) currentOnClose() }
+    // Export video started an export: the Exporting screen covers the editor (spec P1-12 → Entry and exit).
+    val currentOnOpenExport by rememberUpdatedState(onOpenExport)
+    LaunchedEffect(state.openExportScreen) {
+        if (!state.openExportScreen) return@LaunchedEffect
+        currentOnOpenExport()
+        viewModel.onIntent(VideoEditorIntent.ExportScreenOpened)
+    }
     VideoEditorScreen(
         state = state,
         onIntent = viewModel::onIntent,
@@ -234,6 +277,79 @@ private fun VideoEditorDestination(projectId: String, onClose: () -> Unit) {
             if (!freeUpSpace.launch(requestedBytes)) viewModel.onIntent(VideoEditorIntent.FreeUpSpaceUnavailable)
         },
     )
+}
+
+/**
+ * The Exporting and Exported screens (P1-12) with the engine's result surface, the phone's notification dialog and its
+ * storage screen plugged in. [onExit] leaves the screen.
+ */
+@Composable
+private fun ExportDestination(onExit: (ExportExit) -> Unit) {
+    val viewModel = koinViewModel<ExportViewModel>()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val notificationPermission = rememberNotificationPermissionRequest()
+    val freeUpSpace = rememberFreeUpSpaceLauncher()
+    // After a full disk the storage screen opens; when none exists the button goes away.
+    var canFreeUpSpace by remember { mutableStateOf(true) }
+    ExportScreen(
+        state = state,
+        onIntent = viewModel::onIntent,
+        resultSurface = { player, modifier -> VideoResultSurface(player, modifier) },
+        requestNotificationPermission = notificationPermission::request,
+        onFreeUpSpace = if (canFreeUpSpace) ({ if (!freeUpSpace.launch(EXPORT_HEADROOM_BYTES)) canFreeUpSpace = false }) else null,
+        onExit = onExit,
+    )
+}
+
+/**
+ * Brings the Exporting screen back when Memix is opened (from the notification or the recents screen) while an export is
+ * running, or ended while the app was away: the screen is current on return (spec P1-12 → App in the background).
+ * Android keeps the export alive without the activity, so the editor and its draft go behind it again.
+ */
+@Composable
+private fun ReopenRunningExport(navController: NavHostController) {
+    val export = koinInject<ExportVideoUseCase>()
+    LaunchedEffect(Unit) {
+        val job = when (val state = export.state.value) {
+            is ExportJobState.Running -> state.job
+            is ExportJobState.Done -> state.job
+            is ExportJobState.Failed -> state.job
+            ExportJobState.Idle, is ExportJobState.Cancelled -> return@LaunchedEffect
+        }
+        // Nothing to do when the screen is already there (Android recreated the activity and restored the screens).
+        if (navController.currentDestination?.hasRoute(ExportRoute::class) == true) return@LaunchedEffect
+        navController.navigate(VideoEditorRoute(job.project.id))
+        navController.navigate(ExportRoute)
+    }
+}
+
+/**
+ * After Memix was stopped mid-export: once, at the first screen, a toast with Open draft (spec P1-12 → Next start). The
+ * use case also deletes the unfinished file and counts the event.
+ */
+@Composable
+private fun BoxScope.LastExportStoppedNotice(onOpenDraft: (projectId: String) -> Unit) {
+    val recover = koinInject<RecoverUnfinishedExportUseCase>()
+    // Saved, so a rotation right after the start doesn't lose it (the use case answers once per run).
+    var draftId by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) { recover()?.let { draftId = it.projectId } }
+    val placement = Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.safeDrawing).padding(MemixSpacing.space4)
+    FadingToast(draftId, placement) { projectId ->
+        LastExportStoppedToast(
+            onOpenDraft = {
+                draftId = null
+                onOpenDraft(projectId)
+            },
+            onDismiss = { draftId = null },
+        )
+    }
+}
+
+private fun NavHostController.leaveExport(exit: ExportExit) {
+    when (exit) {
+        ExportExit.EDITOR -> popBackStack()
+        ExportExit.HOME, ExportExit.MAKE_ANOTHER -> popBackStack(MainRoute, inclusive = false)
+    }
 }
 
 private inline fun <reified T : Any> NavGraphBuilder.fullScreen(

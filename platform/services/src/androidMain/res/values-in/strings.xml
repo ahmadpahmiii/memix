@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The export notification (P1-12), Android only. Copy: docs/ux/specs/P1-12-export.md → Notification. -->
+<resources>
+    <string name="notif_channel_exports">Ekspor</string>
+    <string name="notif_exporting_title">Mengekspor meme kamu</string>
+    <string name="notif_exporting_text">%1$s · sekitar %2$s lagi</string>
+    <string name="notif_percent">%1$d%%</string>
+    <string name="notif_seconds">%1$d dtk</string>
+    <string name="notif_minutes">%1$d mnt</string>
+    <string name="notif_cancel">Batal</string>
+    <string name="notif_done_title">Meme kamu tersimpan</string>
+    <string name="notif_done_text">Di galeri kamu · %1$s · %2$s</string>
+    <string name="notif_failed_title">Ekspor tidak selesai</string>
+    <string name="notif_failed_text">Buka Memix untuk mencoba lagi.</string>
+    <string name="notif_stopped_title">Ekspor dihentikan</string>
+    <string name="notif_stopped_text">Buka Memix untuk mengekspor lagi.</string>
+</resources>
