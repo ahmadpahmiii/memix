@@ -37,7 +37,7 @@ Never guess class names or signatures from memory. If an API you expected doesn'
 - `Transformer` export (`TransformerExport`) under a foreground service with a progress notification and Cancel (`:platform:services`, `AndroidExportForeground`): `mediaProcessing` on Android 15+ through `Service.startForeground` (not `ServiceCompat`, which drops it), `dataSync` on 10 to 14.
 - Before export: `exportCapabilities(canvasSize)` (per resolution and frame rate: H.264 hardware, else HEVC, else software H.264; sizes aligned to the encoder, long side as width) and free space; show the estimate. Export with `setEnableFormatFallback(false)` and a VBR bitrate clamped to the encoder's range.
 - Encode straight into a MediaStore pending item in `Movies/Memix` (`GalleryVideoFile`, a custom `Muxer.Factory` with `Mp4OrientationData`); return location, duration and size. `WRITES_STRAIGHT_TO_GALLERY` switches back to a temporary file plus copy.
-- Watermark: small "Memix" text top-left with a 3% margin, unless the export is marked watermark-free.
+- Watermark (P1-13): `WatermarkOverlay`, a `CanvasOverlay` last in the composition `OverlayEffect` (after the captions), Anton from the caption renderer, constants in `WatermarkCatalog` (4% of the shorter side, ink box 3% from the left and the top, separate constants); exports only (`ExportSettings.watermark`, default on), never the preview.
 
 ## Rules
 

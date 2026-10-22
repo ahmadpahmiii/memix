@@ -270,4 +270,7 @@
     <string name="export_missing_media">Falta o arquivo de um clipe; ele sai preto.</string>
     <string name="explain_export_empty">Adicione um vídeo ou foto antes.</string>
     <string name="export_stopped_toast">Exportação interrompida.</string>
+    <!-- Watermark row (P1-13). "Memix" never translates. -->
+    <string name="export_watermark_title">Marca d'água do Memix</string>
+    <string name="export_watermark_body">Texto pequeno no canto superior esquerdo do seu vídeo</string>
 </resources>

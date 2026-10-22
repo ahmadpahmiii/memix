@@ -103,7 +103,7 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
 - **Color:** a single color per icon, applied as a tint: `text-secondary` (inactive), `text` (current nav item), `primary` (active tool), `on-primary` on blue fills. No two-tone icons.
 - **Meaning first:** every icon names a real action or place and always comes with a visible label or a screen-reader label. No sparkle, magic or robot glyphs.
 
-**The set so far** (`MemixIcons`, 41 icons after P1-11; more listed below to draw with their tickets):
+**The set so far** (`MemixIcons`, 43 icons after P1-12; more listed below to draw with their tickets):
 - Navigation and chrome: `home`, `templates`, `create` (plus; also Add media and every "add"), `sounds`, `drafts`, `arrow_back`, `chevron_right`, `close`, `globe`.
 - Media and playback: `video`, `photo`, `play`, `pause`, `undo`, `redo`, `heart`, `heart_filled`.
 - Editor tools (P1-06): `edit` (scissor blades, finger loops as the core), `split` (two outlined clips around a solid bar), `delete` (lid and handle strokes over a solid can), `duplicate` (open back outline behind a solid front clip), `reorder` (an arc with two solid arrowheads over two outlined clips).
@@ -131,9 +131,9 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
   - `ratio_custom`: a stroked 20 × 16px rectangle (1px corners) with a solid 8 × 8px square (1px corners) over its bottom-right corner, flush with the outer edge: a resize handle.
   - The ratio tiles' rectangles are drawn from the ratio (solid, 1px corners, long side 20px), not icon files (`RatioShape`).
 - Drafts (P1-14, to draw with the ticket): `more`: three solid 3 × 3px dots in a row, 4px apart (all core, like play).
-- Export (P1-12, to draw with the ticket; specs in `docs/ux/specs/P1-12-export.md` → Requests 9):
-  - `share`: Android's familiar three-node share glyph in the grammar: a solid 6px dot at the left middle (the core, the thing being shared) joined by two strokes to two stroked 6px rings at the top right and bottom right. P5-05's More tile reuses it.
-  - `check`: one stroked check mark (short leg down-right, long leg up-right), no core, like `close`. For the export status pill, and P5-02's "No watermark on this export".
+- Export (P1-12, as built, approved in the P1-12 review; spec `docs/ux/specs/P1-12-export.md`):
+  - `share`: Android's familiar three-node share glyph in the grammar: a solid 6px dot at the left middle (the core, the thing being shared) joined by two strokes to two stroked 6px rings at the top right and bottom right. Used at 20 dp in the Share button. P5-05's More tile reuses it.
+  - `check`: one stroked check mark (short leg down-right, long leg up-right), no core, like `close`. For the export status pill (at `icon-small`), and P5-02's "No watermark on this export".
 - Later, drawn with its ticket: `lock` (L-02).
 
 Source files are Android vector drawables in `:core:designsystem` `composeResources/drawable/` (`ic_<name>.xml`), path-only so Compose Multiplatform renders them the same on Android and iOS. There is no Memix logo yet: until one exists, write the name "Memix" in Anton; the launcher icon is a plain placeholder built from that wordmark, not a logo.
@@ -330,6 +330,7 @@ Fixed sizes used across screens (dp on Android).
 | `canvas-handle-size` | `MemixSize.canvasHandleSize` | `24px` | The white scale-and-rotate handle on a selected caption on the preview (later stickers and layers), with a 1px `on-primary` edge and an `icon-small` icon in `on-primary` (18.9:1). Its target is still `touch-target`. |
 | `swatch-size` | `MemixSize.swatchSize` | `32px` | A color swatch (caption text and outline; later brush colors), drawn inside a `touch-target` square. Selected: a `stroke-selection` white ring 2px outside it (17.2:1 on surface). |
 | `list-thumb-size` | `MemixSize.listThumbSize` | `56px` | Square thumbnail at the start of a list row (a draft's first frame, P1-14), `radius-sm`, with the type badge (`scrim`, `icon-small` in `text`) in its corner. The row is at least this plus `space-2` above and below. |
+| `play-disc-size` | `MemixSize.playDiscSize` | `56px` | The big play button centered on a video that isn't playing (the Exported screen, P1-12): a `radius-full` disc in `primary` with a 24px `play` icon in `on-primary` (7.9:1). It only draws; the tap belongs to the whole video, so its target is far above `touch-target`. Not for icon controls: those are IconButtons. |
 
 ### Motion
 

@@ -4,20 +4,24 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixMotion
+import app.memix.core.designsystem.MemixShapes
 import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.MemixTheme
 import app.memix.core.designsystem.Text
@@ -44,6 +48,8 @@ import memix.feature.video_editor.generated.resources.export_missing_media
 import memix.feature.video_editor.generated.resources.export_no_space
 import memix.feature.video_editor.generated.resources.export_resolution
 import memix.feature.video_editor.generated.resources.export_start
+import memix.feature.video_editor.generated.resources.export_watermark_body
+import memix.feature.video_editor.generated.resources.export_watermark_title
 import memix.feature.video_editor.generated.resources.export_title
 import memix.feature.video_editor.generated.resources.import_free_up_space
 import org.jetbrains.compose.resources.stringResource
@@ -73,7 +79,7 @@ internal fun ExportSheet(
             verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4),
         ) {
             Settings(sheet, onIntent)
-            // P1-13 places the watermark row here.
+            WatermarkRow()
             FactsLine(sheet)
             Notices(sheet, missingMedia, onFreeUpSpace)
         }
@@ -106,6 +112,26 @@ private fun Settings(sheet: ExportSheetUi, onIntent: (VideoEditorIntent) -> Unit
         frameRateHeading,
         Modifier.fillMaxWidth(),
     )
+}
+
+// "Memix watermark" with where it goes, in one raised container. Information, not a control: no press state. P5-02 adds
+// its rewarded-ad Remove here (spec P1-13 → Export sheet row).
+@Composable
+private fun WatermarkRow() {
+    val title = stringResource(Res.string.export_watermark_title)
+    val body = stringResource(Res.string.export_watermark_body)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(MemixShapes.radiusMd)
+            .background(MemixColors.surfaceRaised)
+            .padding(MemixSpacing.space3)
+            .clearAndSetSemantics { contentDescription = "$title. $body." },
+        verticalArrangement = Arrangement.spacedBy(MemixSpacing.space1),
+    ) {
+        Text(title, MemixTheme.type.bodyStrong)
+        Text(body, MemixTheme.type.label, color = MemixColors.textSecondary)
+    }
 }
 
 @Composable

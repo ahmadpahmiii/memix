@@ -25,6 +25,7 @@ import org.koin.core.component.inject
  * - [runLatestDraft] (P1-08 export sync) exports the draft edited last, after logging where each of its sounds starts;
  *   the `memix.exportLatestDraft` extra starts it, and `memix.exportShortSide` (P1-10: 720 for 720p) lowers its
  *   resolution.
+ * Both take `memix.exportWatermarkFree` (P1-13) to leave the "Memix" mark out, which every export carries otherwise.
  * The file goes to `cache/exports/` (never the gallery), where the owner steps pull it. A test file that isn't pushed
  * exports black, logged by the engine (MemixVideoEngine: "Exporting … missing clip(s) as black"; test files go in
  * `files/debug-media/`). Debug builds only; the steps are in docs/qa/phase-1/engineer-hand-checks.md.
@@ -34,16 +35,17 @@ class ExportCheck : KoinComponent {
     private val repository: ProjectRepository by inject()
     private val logger: Logger by inject()
 
-    suspend fun run() {
+    suspend fun run(watermark: Boolean = true) {
         logger.debug(TAG, "export: starting ${ExportCheckProject.ID}, expected length ${seconds(ExportCheckProject.LENGTH_US)}")
-        export(ExportCheckProject.build())
+        export(ExportCheckProject.build(), ExportSettings(watermark = watermark))
     }
 
     /**
      * Exports the draft edited last, with one line per meme sound and audio clip: where it starts and what of it plays.
-     * [shortSidePx] exports at a lower resolution (720 for 720p); null at the canvas size.
+     * [shortSidePx] exports at a lower resolution (720 for 720p); null at the canvas size. [watermark] false marks the
+     * export watermark-free, so a frame can be compared with the preview (`memix.exportWatermarkFree`, P1-13).
      */
-    suspend fun runLatestDraft(shortSidePx: Int? = null) {
+    suspend fun runLatestDraft(shortSidePx: Int? = null, watermark: Boolean = true) {
         val latest = repository.observeSummaries().first().firstOrNull() ?: return logger.error(TAG, "exportLatestDraft: there are no drafts")
         val project = when (val loaded = repository.get(latest.id)) {
             is Outcome.Success -> loaded.value
@@ -63,13 +65,13 @@ class ExportCheck : KoinComponent {
                         "${seconds(clip.durationUs)} long, volume ${(clip.volume * PERCENT).roundToInt()}%$pastEnd",
                 )
             }
-        export(project, ExportSettings(shortSidePx = shortSidePx))
+        export(project, ExportSettings(shortSidePx = shortSidePx, watermark = watermark))
     }
 
     private suspend fun export(project: Project, settings: ExportSettings = ExportSettings()) {
         val started = TimeSource.Monotonic.markNow()
         var loggedQuarters = 0
-        logger.debug(TAG, "export: ${settings.shortSidePx?.let { "short side $it px" } ?: "canvas size"}")
+        logger.debug(TAG, "export: ${settings.shortSidePx?.let { "short side $it px" } ?: "canvas size"}, watermark ${if (settings.watermark) "on" else "off"}")
         val outcome = videoEngine.export(project, settings) { progress ->
             val quarters = (progress * QUARTERS).toInt()
             if (quarters > loggedQuarters) {

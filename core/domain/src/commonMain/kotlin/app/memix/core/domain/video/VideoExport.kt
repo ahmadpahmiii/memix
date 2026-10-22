@@ -2,7 +2,7 @@ package app.memix.core.domain.video
 
 import app.memix.core.model.project.PixelSize
 
-/** How [VideoEngine.export] renders, and where the file goes. P1-13 adds the watermark. */
+/** How [VideoEngine.export] renders, and where the file goes. */
 data class ExportSettings(
     /** Frames per second. Photos render at this rate; sources with more frames drop down to it. */
     val frameRate: Int = DEFAULT_FRAME_RATE,
@@ -18,6 +18,12 @@ data class ExportSettings(
     /** The video bitrate, bits per second (VBR); null lets the encoder pick. */
     val videoBitrateBps: Int? = null,
     val destination: ExportDestination = ExportDestination.APP_CACHE,
+    /**
+     * Draws the "Memix" mark ([app.memix.core.model.project.WatermarkCatalog]) into the file. On for every export; only
+     * the debug export hook turns it off until P5-02's rewarded ad does, for one export. Never remembered between
+     * exports and never saved in a draft (spec P1-13 → States).
+     */
+    val watermark: Boolean = true,
 ) {
     init {
         require(frameRate > 0) { "Frame rate must be positive: $frameRate" }

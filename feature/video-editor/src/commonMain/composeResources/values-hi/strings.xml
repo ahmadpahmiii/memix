@@ -270,4 +270,7 @@
     <string name="export_missing_media">एक क्लिप की फ़ाइल नहीं मिली, इसलिए वह काली एक्सपोर्ट होगी।</string>
     <string name="explain_export_empty">पहले कोई वीडियो या फ़ोटो जोड़ें।</string>
     <string name="export_stopped_toast">एक्सपोर्ट रोका गया।</string>
+    <!-- Watermark row (P1-13). "Memix" never translates. -->
+    <string name="export_watermark_title">Memix वॉटरमार्क</string>
+    <string name="export_watermark_body">आपके वीडियो के ऊपरी बाएँ कोने में छोटा टेक्स्ट</string>
 </resources>

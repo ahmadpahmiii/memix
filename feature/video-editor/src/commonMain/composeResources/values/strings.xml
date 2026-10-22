@@ -273,4 +273,7 @@
     <string name="export_missing_media">A clip's file is missing, so it exports black.</string>
     <string name="explain_export_empty">Add a video or photo first.</string>
     <string name="export_stopped_toast">Export stopped.</string>
+    <!-- Watermark row (P1-13). "Memix" never translates. -->
+    <string name="export_watermark_title">Memix watermark</string>
+    <string name="export_watermark_body">Small text in the top-left corner of your video</string>
 </resources>

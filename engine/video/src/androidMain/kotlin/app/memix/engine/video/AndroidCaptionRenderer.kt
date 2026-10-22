@@ -84,7 +84,8 @@ internal class AndroidCaptionRenderer(
         return CaptionLayout(staticLayout, paint, style, canvasWidthPx, canvasHeightPx)
     }
 
-    private fun typefaceOf(fontId: String): Typeface {
+    /** The bundled font [fontId] (Classic when unknown); call [prepare] first. Any thread. The watermark draws with it too. */
+    fun typefaceOf(fontId: String): Typeface {
         val loaded = typefaces
         return loaded[fontId] ?: loaded[CaptionCatalog.classic.id] ?: Typeface.DEFAULT_BOLD
     }

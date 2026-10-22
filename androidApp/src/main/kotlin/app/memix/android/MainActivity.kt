@@ -25,13 +25,15 @@ class MainActivity : ComponentActivity() {
         val projectCheckStep = intent.getStringExtra("memix.projectCheck")
         if (isDebugBuild && projectCheckStep != null && savedInstanceState == null) startProjectCheck(projectCheckStep)
         // Debug-only export (P1-03): push the test media first (TECHNICAL_DESIGN), then --ez memix.exportCheck true. Logcat tag MemixExportCheck.
-        if (isDebugBuild && intent.getBooleanExtra("memix.exportCheck", false)) lifecycleScope.launch { ExportCheck().run() }
+        // P1-13: add --ez memix.exportWatermarkFree true to leave out the "Memix" mark (for frame comparisons with the preview).
+        val watermark = !intent.getBooleanExtra("memix.exportWatermarkFree", false)
+        if (isDebugBuild && intent.getBooleanExtra("memix.exportCheck", false)) lifecycleScope.launch { ExportCheck().run(watermark) }
         // Debug-only (P1-08 export sync): --ez memix.exportLatestDraft true exports the draft edited last and logs where its
         // sounds start. Logcat tag MemixExportCheck; steps in docs/qa/phase-1/engineer-hand-checks.md → P1-08. P1-10: add
         // --ei memix.exportShortSide 720 for a 720p file (captions laid out at the canvas size either way).
         if (isDebugBuild && savedInstanceState == null && intent.getBooleanExtra("memix.exportLatestDraft", false)) {
             val shortSide = intent.getIntExtra("memix.exportShortSide", 0).takeIf { it > 0 }
-            lifecycleScope.launch { ExportCheck().runLatestDraft(shortSide) }
+            lifecycleScope.launch { ExportCheck().runLatestDraft(shortSide, watermark) }
         }
         // Debug and benchmark builds (P1-04): --es memix.openEditor <project> opens a hand-check project in the editor.
         // Projects and steps: docs/qa/phase-1/engineer-hand-checks.md → P1-04. Logcat tag MemixEditorCheck.

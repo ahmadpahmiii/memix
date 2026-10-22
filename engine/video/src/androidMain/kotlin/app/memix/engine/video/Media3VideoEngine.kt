@@ -112,6 +112,7 @@ internal class Media3VideoEngine(
                 sources,
                 settings.frameRate,
                 captionOverlay = captions,
+                watermarkOverlay = if (settings.watermark) WatermarkOverlay(captionRenderer) else null,
                 frameShortSidePx = settings.shortSidePx,
                 frameSizePx = settings.frameSize,
             ).build()

@@ -10,6 +10,7 @@ import androidx.media3.common.audio.ChannelMixingAudioProcessor
 import androidx.media3.common.audio.ChannelMixingMatrix
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.OverlayEffect
+import androidx.media3.effect.TextureOverlay
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.EditedMediaItemSequence
@@ -43,6 +44,8 @@ internal class Media3CompositionBuilder(
     private val liveGains: Map<String, LiveGainProcessor> = emptyMap(),
     /** The plan's captions over the composited video; null when the plan has none. */
     private val captionOverlay: CaptionOverlay? = null,
+    /** The "Memix" mark of a free export, drawn above the captions; null in previews and watermark-free exports (P1-13). */
+    private val watermarkOverlay: WatermarkOverlay? = null,
     /**
      * The shorter side every frame is drawn at, when it's smaller than the canvas's: an export's lower resolution (the
      * debug export hook's 720p until P1-12), or the preview's while a blur background plays. Null draws at canvas size.
@@ -66,8 +69,12 @@ internal class Media3CompositionBuilder(
     }
 
     // Captions are laid out at the canvas size and drawn scaled to the frame, so a lower resolution never re-lays out a
-    // caption (spec P1-10 → Geometry: layout resolution).
-    private fun compositionVideoEffects(): List<Effect> = listOfNotNull(captionOverlay?.let { OverlayEffect(listOf(it)) })
+    // caption (spec P1-10 → Geometry: layout resolution). One effect draws its overlays in list order, so the watermark
+    // goes last: above everything (spec P1-13 → The mark).
+    private fun compositionVideoEffects(): List<Effect> {
+        val overlays: List<TextureOverlay> = listOfNotNull(captionOverlay, watermarkOverlay)
+        return if (overlays.isEmpty()) emptyList() else listOf(OverlayEffect(overlays))
+    }
 
     private fun mainVideoSequence(): EditedMediaItemSequence {
         // With the audio track type, Media3 fills photos, gaps and silenced clips with silence, so the

@@ -931,8 +931,9 @@ adb logcat -s MemixAnalytics:* MemixCaptions:* MemixExportCheck:*      # second 
 **B. The Done when: preview and export match** (QA compares → Measured).
 1. On `text-check`, pause at 1.0 s, 4.0 s and 7.0 s and screenshot each (`adb exec-out screencap -p > p1.png`).
 2. Close the editor (it saves), then export at 1080p:
-   `adb shell am start -S -n app.memix/.android.MainActivity --ez memix.exportLatestDraft true`, and at 720p: the same
-   with `--ei memix.exportShortSide 720`. Pull each file (`adb exec-out run-as app.memix cat cache/exports/<file>.mp4 >
+   `adb shell am start -S -n app.memix/.android.MainActivity --ez memix.exportLatestDraft true --ez memix.exportWatermarkFree true`
+   (without the last extra the file carries the "Memix" mark in its top-left corner, P1-13, and the comparison is off),
+   and at 720p: the same with `--ei memix.exportShortSide 720`. Pull each file (`adb exec-out run-as app.memix cat cache/exports/<file>.mp4 >
    t1080.mp4`), then `ffmpeg -ss 1.0 -i t1080.mp4 -frames:v 1 f1080-1.png` (and 4.0, 7.0; the same for 720p).
 3. Crop each screenshot to the canvas frame, scale it to the export width, and compare side by side and as a 50%
    overlay. Pass: the same line breaks, glyphs and fonts (Teko for Devanagari under Classic); position within 1% of the
@@ -1039,12 +1040,12 @@ restores the previous ratio and every caption exactly. (Off-device: the same seq
 JVM checks with a stand-in measurer.)
 
 **C. Preview = export.** Set and export `canvas-check` three times at 1080p (close the editor, then
-`adb shell am start -S -n app.memix/.android.MainActivity --ez memix.exportLatestDraft true`): 9:16 Blur, 1:1 Yellow,
-16:9 Fill. Pause the preview at 1.0 s, 4.0 s and 7.0 s and screenshot; pull each file and
+`adb shell am start -S -n app.memix/.android.MainActivity --ez memix.exportLatestDraft true --ez memix.exportWatermarkFree true`,
+the last extra leaves out P1-13's "Memix" mark so the frames compare with the preview): 9:16 Blur, 1:1 Yellow, 16:9 Fill. Pause the preview at 1.0 s, 4.0 s and 7.0 s and screenshot; pull each file and
 `ffmpeg -ss 1.0 -i c.mp4 -frames:v 1 c-1.png` (4.0, 7.0). Crop the screenshots to the frame, scale to the export
 width, compare: same crop and placement within 1% of the width, same background color sampled outside the clip, the blur
 alike (no sharp copy, no darkening). The preview draws at a 720 short side under Blur, so compare softness against the
-720p export too (`--ei memix.exportShortSide 720`): the same softness at 720p and 1080p. The three 1080p frames of each
+720p export too (`--ei memix.exportShortSide 720`, also watermark-free): the same softness at 720p and 1080p. The three 1080p frames of each
 go to `docs/qa/references/P1-11-canvas/` (CLAUDE.md rule 5).
 
 **D. Responsiveness (benchmark build, the owner's phone).** Screen-record at 60 fps a ratio tap, a Fill tap and a Blur
@@ -1145,7 +1146,7 @@ Test draft: Create -> Video meme -> pick a 60 s 1080p video with sound from the 
 
 ### States to screenshot for the design review (`docs/ux/reviews/P1-12/`)
 From the spec's QA compares 1–6, at 360 × 640 (and 360 × 800 for the Exported screen), English unless noted:
-1. `sheet-360x640`: the Export sheet over the editor, five resolutions, three frame rates, the facts line ("Up to … · about …"), Export video (the watermark row arrives with P1-13). Then `sheet-no-space`: the "Not enough space" notice with Free up space (storage filled).
+1. `sheet-360x640`: the Export sheet over the editor, five resolutions, three frame rates, the facts line ("Up to … · about …"), Export video and the watermark row. Then `sheet-no-space`: the "Not enough space" notice with Free up space (storage filled).
 2. `sheet-phone-cant-4k` (the toast "This phone can't export 4K." over the sheet), `sheet-shape-cant` (the shape toast on a custom 31:13 canvas), `sheet-fps-lowered` (4K at 60: both segments changed, the toast), `sheet-lowered-notice` (a project reopened with 4K remembered).
 3. `exporting-40`: progress, "About … left", the leave line and Cancel; `exporting-notification` (the shade with the progress notification and its Cancel); `exporting-permission` (a fresh Android 13+ install, the permission dialog over the Exporting screen with the progress moving behind it).
 4. `stop-exporting`: the "Stop exporting?" sheet after a back gesture.
@@ -1154,6 +1155,33 @@ From the spec's QA compares 1–6, at 360 × 640 (and 360 × 800 for the Exporte
 7. `last-export-stopped`: the next-start toast with Open draft on Home.
 8. `topbar-export`: the editor's top bar (Close, the ratio pill, Export) at 360 dp.
 9. In Hindi at 200% font: `topbar-export-hi-200` (nothing overlaps or is cut), `sheet-hi-200-360x640` (segments in two rows, the middle scrolls) and `exported-hi-200` (the result shrunk, Share and the footer stacked, Make another above Done).
+
+## P1-13 · the watermark shows by default and is absent when the export is marked watermark-free
+
+Built without a phone: compiled, linted and the constants checked in a JVM harness (43.2 px font and 32.4 px margins at 1080p, 19.2 and 86.4 px at 480p and 4K, the default on); the drawing itself has never run. Spec: `docs/ux/specs/P1-13-watermark.md`; what was built: `docs/TECHNICAL_DESIGN.md` → Export → Watermark. Every export carries the mark now, so the older frame comparisons (P1-03, P1-08 and the others) show "Memix" in the top-left corner; P1-10 B and P1-11 C use `--ez memix.exportWatermarkFree true` and say so.
+
+**A. Done when: on by default, absent when marked watermark-free (debug build).**
+1. Create a 9:16 draft with a clip (and a caption in the top-left area, to see the layering). Export 1080p30 from the sheet (Export -> Export video). Pull the file from `/sdcard/Movies/Memix/` and `ffmpeg -ss 0 -i m.mp4 -frames:v 1 w-first.png`, `ffmpeg -sseof -0.2 -i m.mp4 -frames:v 1 w-last.png`. Pass: "Memix" in white, soft glow, top-left, in both frames, above the caption if they overlap, no outline, no hard edge. The Exported screen's player shows it too.
+2. The same draft with `adb shell am start -S -n app.memix/.android.MainActivity --ez memix.exportLatestDraft true --ez memix.exportWatermarkFree true` (close the editor first): `cache/exports/<file>.mp4` has no mark. Logcat (`MemixExportCheck`): `watermark off`; without the extra, `watermark on`.
+3. The editor preview never shows the mark, with and without playing; the draft is unchanged (open it after an export: no undo step, nothing saved about the mark).
+
+**B. Size and place (QA compares 3, 4; Measured).**
+1. On the 1080 × 1920 frame from A1 (a white frame and a dark frame: use a draft whose first second is a plain white or black picture), measure the ink box in an image editor or with `python3 -c` and Pillow (`getbbox` of pixels brighter than the background): the left and top edges are **32 px ± 2 px** from the frame's edges and the letter height matches Anton at 43 px (the cap "M" about 31 px tall). The mark reads on the white frame and on the dark one.
+2. 16:9 1080p (1920 × 1080), 1:1 at 480p and 9:16 at 4K (where the phone can): the mark has the same look relative to the shorter side (43, 19 and 86 px font; 32, 14 and 65 px margins).
+3. If the ink is not 32 px, check Anton's ink bounds against the `Paint.getTextBounds` placement in `WatermarkOverlay` and tell the principal engineer.
+4. The reference frames (9:16 1080p, white and dark) go to `docs/qa/references/P1-13-watermark/` for iOS parity.
+
+**C. The sheet row (QA compares 1, 6).** Between Frame rate and the facts line: "Memix watermark" and "Small text in the top-left corner of your video" in a raised container with rounded corners; no press state, nothing happens on a tap. In Hindi at 200% font both lines wrap and nothing is cut; TalkBack reads one node, "Memix watermark. Small text in the top-left corner of your video.", and it isn't a control.
+
+**D. The owner's TikTok test (phase-end QA, spec → Question for the owner).** Export one 9:16 meme, post it privately to TikTok and Reels. If the mark hides under TikTok's top band, move the top margin with the one constant `WatermarkCatalog.MARGIN_TOP_OF_SHORT_SIDE` (about 0.13 for option B); the left margin stays.
+
+### States to screenshot for the design review (`docs/ux/reviews/P1-13/`)
+1. `sheet-watermark-row-360x640`: the Export sheet with the row (also in P1-12's `sheet-360x640`).
+2. `exported-watermark`: the Exported screen's result with the mark in the top-left corner.
+3. `frame-white`, `frame-dark`: the 1080 × 1920 export frames (ffmpeg) with the mark.
+4. `shape-16-9`, `shape-1-1-480p`, `shape-9-16-4k` (where the phone can): the same look relative to the shorter side.
+5. `watermark-free`: a frame from the debug export marked watermark-free (no mark).
+6. `sheet-watermark-hi-200`: Hindi at 200% font, the row wrapped.
 
 ## P1-17 · Hindi display face: hero and entry cards in Teko, nothing clipped, other languages unchanged
 
