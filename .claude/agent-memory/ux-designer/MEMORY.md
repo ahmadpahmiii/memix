@@ -2,6 +2,16 @@
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: Design decisions and their reasons, patterns that worked or failed, recurring review issues, competitor insights.
 
+- 2026-10-22 · P1-12 review (provisional, code only, no renders). Changes requested: M1 Exporting/Exported/failure screens don't scroll, so Hindi 200% clips the last button and the result can shrink to 0 (the tail is measured first); M2 Free up space passed the missing bytes (sheet) and the flat 100 MB (failure) while `EXTRA_REQUESTED_BYTES` is the TOTAL wanted free (P1-02 passes its total); M3 Export + centered ratio pill overlap at 200% es/pt; M4 hidden `AnimatedVisibility` children still take `spacedBy` gaps (48 dp dead space in the sheet). Lessons:
+  - **Every new element added to a bar that already has a centered item needs a collision rule at 200%** (compute label widths: ~0.55 em/char Latin, button padding `space-5`). I specced Export and said "the pill stays alone in the center" with no rule for when it doesn't fit.
+  - **Every full screen that ends in buttons needs a scroll rule and a picture floor in the spec** (40%/30% of the screen), written when the spec is, not found at review. Pattern: `heightIn(min = screen)` column inside `verticalScroll`, weighted picture with its own `heightIn(min)`.
+  - **For any "free up space" call, say which number the system gets (total needed, not missing).** Spec the amount shown and the amount requested separately.
+  - **`spacedBy` + optional children = ghost gaps.** Ask for padding inside the optional child, or one Column for the group.
+  - **A live region on an unmerged container announces nothing reliably;** spec `mergeDescendants` with it. `clearAndSetSemantics` on a row of numbers hides the values from swipe navigation.
+  - **Don't set both `onClickLabel` and `contentDescription` to the same text** (TalkBack says it twice).
+  - Decisions: `export_res_*` are constants (never translated, one place); `play-disc-size` 56px token; the failure screen gets its own heading ("Not exported"), not "Exporting"; after Free up space a Try again button is wanted (P1-12b, optional); Share stays secondary.
+  - No Bash in the designer session: can't run `git show`; read the working tree instead (check the engineer's in-progress work doesn't mix in).
+
 - 2026-10-21 · P1-11 review (provisional, code + renders 180–197, stand-in picture, no real blur). Changes requested, all screen-reader: M1 SettingPill set only `expand`/`collapse` actions, so no open/closed state is spoken (add `stateDescription` "Expanded"/"Collapsed"); M2 OptionTile put the Fit/Fill hint in `stateDescription`, which replaces the spoken "selected" (my spec asked for it; hint now goes in the name after the label); M3 caption TalkBack nodes kept onClick + Style/Position actions under the Canvas panel, so panels could stack. Lessons:
   - **Never spec extra words as a state description on a selectable/checkable control.** Extra meaning goes in the name, after the visible label.
   - **Expanded/collapsed needs a spoken state, not just actions.** Every disclosure control gets state strings.

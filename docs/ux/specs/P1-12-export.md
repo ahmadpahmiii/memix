@@ -2,6 +2,8 @@
 
 > **Final, 21 Oct 2026.** Draft of 20 Oct finished with the owner's answers (21 Oct: one Share button, notification permission at the first Export video, `export_cancel`; `docs/pm/decision-log.md`), the PM's clarifications (20 Oct: Make another, `export_start` timing) and the engineer's encoder facts (`docs/research/P1-12-encoder-facts.md`, 21 Oct). The watermark row is specified in `P1-13-watermark.md` and only placed here.
 
+> **Corrected after the design review, 22 Oct 2026** (`docs/ux/reviews/P1-12.md`): the Top bar at large font rule, the 200% rules for the Exporting, Exported and failure screens, the Free up space request, the frame rate "can't" toast, the failure heading, spoken facts line and progress, and `export_res_*` as constants. Each change is marked "(review)".
+
 Builds on `P1-04-editor-and-preview.md` (top bar, the reserved Export slot), `P1-02-gallery-picker.md` ("Not enough space", Free up space) and `P1-11-canvas.md` (canvas sizes: the shorter side is about 1080 px; custom shapes up to 2.39:1). Boards: `design/screens/Export.dc.html` (the sheet) and `design/screens/ExportDone.dc.html` (the result; its share grid is P5-05's).
 
 ## Job
@@ -28,6 +30,7 @@ Turn the draft into a video file the user can post, fast and without surprises: 
 ### Export button (editor top bar, right)
 - Primary Button, label "Export", `touch-target` tall, `radius-md`, `space-2` from the screen edge. P1-04's open question (top-right is a stretch for one thumb) is settled: every competitor puts the final action there, it's used once per meme, and a bottom placement would take tool bar room used many times per meme (Assumption).
 - **The board's "1080p" quality pill is dropped** (PM, 20 Oct). It opened the same settings as Export and crowded the bar; quality is chosen right before exporting, in the sheet. The ratio pill (P1-11) stays alone in the center.
+- **At large font (review):** the pill stays at the true center while it clears both neighbors by `space-2`; when it doesn't (the Export label is long: es "Exportar" at 200% is about 170 dp wide and would cover the pill by about 40 dp), the pill moves left by the overlap and nothing else moves. Close and Export never move or shrink, and a label never gets a line cap. Build as a custom `Layout` in the top bar, not a `Box` with overlapping aligns.
 
 ### Export sheet
 Standard Sheet (grabber, close button), as on the board, from the top:
@@ -44,23 +47,30 @@ Standard Sheet (grabber, close button), as on the board, from the top:
 
 - **Defaults:** 1080p, 30 fps the first time; afterwards the last choice. If the last choice isn't possible for this canvas and phone, the nearest possible one below it, with the "lowered" notice.
 - The sheet doesn't scroll at 100% font on 360 × 640 (with the watermark row and one notice); at 200% it grows to the long-content height and the middle scrolls (Sheet rule).
+- **Spacing (review):** the facts line and the notices sit in one Column with no `spacedBy`; each notice carries `space-4` of top padding inside its fade, so a hidden notice takes no space (a hidden `AnimatedVisibility` still takes its `spacedBy` gap: three hidden notices added 48 dp of blank under the facts line).
+- **While it closes (review):** the sheet keeps showing its last content during the 200 ms slide-out (Export video, close), not an empty panel.
 
 ### Exporting screen
 Full screen on `canvas`, pushed over the editor (320 ms), status bar as usual.
 - Title "EXPORTING" in `display` at the top start, no close button.
-- The meme's frame: the canvas shape on `stage`-black, the largest that fits the middle of the screen, showing the draft's first frame (as the Drafts thumbnail, P1-14) at the canvas ratio. Static.
-- Under it: the ProgressBar (determinate), with "42%" in `title` `text` and "About 12 s left" in `body` `text-secondary` beside it. The time appears after 2 s and only when it's over 10 s (P1-02's rule).
+- The meme's frame: the canvas shape, the largest that fits the middle of the screen, showing the draft's first frame (as the Drafts thumbnail, P1-14) at the canvas ratio. Static. Its fill is the canvas color the user chose (`stage` black for Blur, which isn't drawn here), as built (review: accepted; it matches the file better than a fixed black).
+- Under it: the ProgressBar (determinate), then, `space-2` below it, "42%" in `title` `text` with "About 12 s left" in `body` `text-secondary` beside it (review: `space-2`, not `space-4`, so the bar and its numbers read as one group). The time appears after 2 s and only when it's over 10 s (P1-02's rule).
 - "You can leave Memix. Your video keeps exporting and saves to your gallery." in `body` `text-secondary`. True with or without notification permission, so it needs no variant.
 - **Cancel:** a secondary Button, full width at the bottom, in thumb reach.
+- **Large font (review):** the frame shrinks first, down to 30% of the screen height; below that the whole screen scrolls, so Cancel is always reachable. The same rule for the failure state below. Never a clipped button (estimate from the type sizes: Hindi at 200% needs about 570 dp where a 360 × 640 phone leaves about 548 dp; the failure state needs about 700 dp; confirm on the owner's screenshots).
+
+### Failure state (the Exporting screen after an error)
+Same frame and rules as above. Title "NOT EXPORTED" (`export_fail_heading`, `display`), the frame, the error message in `body` `text-secondary` (the message names the problem, so no second headline; review: the title no longer says "EXPORTING" over a failure), then the two buttons stacked, primary above secondary (States table). The message is a polite live region with its text merged into one node.
 
 ### Exported screen (the ExportDone board)
 From the top:
 - Title "EXPORTED" in `display`, × (IconButton, "Back to editor") at the top end.
-- **The result:** the exported file in the canvas shape, `radius-lg`, with a centered play disc (`primary`, `on-primary` icon). Tap plays it once with sound and stops at the end; tap again pauses. No autoplay, no loop (MOTION 2). The watermark shows in it because it's in the file (P1-13).
+- **The result:** the exported file in the canvas shape, `radius-lg`, with a centered play disc (PlayDisc: `play-disc-size` 56, `primary`, `on-primary` icon; new token, review). Tap plays it once with sound and stops at the end; tap again pauses. No autoplay, no loop (MOTION 2). The disc fades out while it plays and back when it stops (120 ms). The watermark shows in it because it's in the file (P1-13). The whole picture is the target, named "Play your video", or "Pause your video" while playing (`export_pause_a11y`, added in the build and approved).
 - **Status:** a `success` pill with the new `check` icon and `on-track` text: "Saved to your gallery · 0:08 · 1080p". The board said "Memix album"; "gallery" is the word users know on Android, and the album name appears in the gallery itself.
 - **Share** (owner, 21 Oct): one secondary Button, full width, in the place of the board's share grid, `space-4` below the pill: the new `share` icon plus "Share". It opens the Android share sheet with the video attached. P5-05 replaces this button with the share row (the board's grid); the place and order stay, so the screen doesn't jump when it lands.
   - Why secondary and not blue: Done stays the one primary, as on the board and after P5-05, whose six targets are neutral tiles too. A blue Share now would move the screen's primary and then take it away again (Assumption; QA notes whether testers find Share at once).
 - **Footer:** Make another (secondary) and Done (primary), side by side, `space-3` apart; they stack at 200% font, Make another above Done, so Done stays last in reading order and lowest, nearest the thumb.
+- **Large font (review):** the result keeps at least 40% of the screen height; the title row, result, status, Share and footer then scroll together as one screen when they don't fit. The result never shrinks to nothing and the footer is never cut.
 
 ## Settings rules
 
@@ -78,6 +88,7 @@ How the sheet shows it. Options keep their normal look (SegmentedChoice: never d
 | Possible with the other setting | Selected | none |
 | Possible, but not with the other setting (4K at 60 fps on a phone that does 4K only up to 30) | **The tapped option wins** and the other setting steps down to the nearest value that works; both changes are visible in the sheet | "This phone exports 4K at up to 30 fps, so it's set to 30 fps." / "This phone exports 60 fps at up to 2K, so it's set to 2K." |
 | Not possible at any frame rate, and the **phone** is the limit (the resolution fails at the standard 16:9 size too) | Selection unchanged | "This phone can't export 4K." |
+| A **frame rate** the phone can't do at any resolution (review: the build handles it; the draft table had no row) | Selection unchanged | "This phone can't export 60 fps." (same string, %1$s = "60 fps") |
 | Not possible at any frame rate, and the **shape** is the limit (the same resolution works at 16:9, but not at this canvas's size) | Selection unchanged | "This phone can't export 4K in this shape. Try 2K, or change the shape in Canvas." (%2 = the highest resolution that works for this canvas) |
 
 - **Why the tapped option wins:** the tap is the user's newest intent. Refusing it with "pick 30 fps first" turns one tap into a read-and-two-taps dance; changing the other setting with a toast that says so is visible and undone with one tap (Forgiving; Assumption). The draft's "explain and keep" is replaced.
@@ -97,7 +108,8 @@ Clips smaller than the chosen resolution are allowed without a warning: some pla
 ### Free space
 - **Needed:** the size estimate plus P1-02's 100 MB headroom, when the encoder writes straight into the gallery item (encoder facts → 4, the recommended build). If the device check of that direct write fails and the build falls back to a temporary file plus a copy, twice the estimate plus 100 MB. The check follows whichever is built (request 4).
 - **When it isn't there:**
-  - The notice "Not enough space. Free up about 240 MB to export at 1080p." with **Free up space** (Quiet button, P1-02's intent; hidden when the phone has no storage screen). The amount is needed minus free, rounded up to the next 10 MB.
+  - The notice "Not enough space. Free up about 240 MB to export at 1080p." with **Free up space** (Quiet button, P1-02's intent; hidden when the phone has no storage screen). The amount **shown** is needed minus free, rounded up to the next 10 MB.
+  - **What the button asks the storage screen for (review):** the **total** the export needs free (the estimate plus the 100 MB headroom, or twice the estimate plus it), never the missing amount. Android's `EXTRA_REQUESTED_BYTES` is "the total size that an application is interested in allocating", so asking for 240 MB when 300 MB is already free tells Android there is nothing to do (P1-02 passes its total the same way). The same on the failure state: the needed total for the failed choice, not the flat headroom.
   - Export video stays enabled and explains on tap ("Free up space first, or pick a lower resolution."), as every blocked control does.
   - The check runs again when the sheet opens, when a setting changes and when the app returns to the foreground.
 
@@ -118,11 +130,11 @@ Clips smaller than the chosen resolution are allowed without a warning: some pla
 | Back pressed while exporting | Sheet "Stop exporting?": Keep exporting (secondary), Stop (danger). Close, scrim and back keep exporting. | `export_stop_title`, `export_keep`, `export_stop` |
 | Cancelled | Back in the editor; toast | `export_stopped_toast` |
 | Exported | Result, status pill, Share, footer | `export_done_title`, `export_saved`, `export_share`, `export_make_another`, `export_done`, `export_back_to_editor`, `export_play_a11y` |
-| Failed: out of space mid-export | Error state on the Exporting screen: message, Free up space (primary), Back to editor (secondary). The partial file is deleted. | `export_fail_title`, `export_fail_space` |
-| Failed: encoder (incl. a size the encoder refused) | Message, "Export at 720p" (primary; the next lower resolution that the check allows), Back to editor. At 480p: Try again instead. | `export_fail_title`, `export_fail_encoder`, `export_try_lower`, `export_try_again` |
-| Failed: a clip couldn't be read (`missing_media`, `decoder`) | Message, Back to editor (primary), Try again (secondary) | `export_fail_title`, `export_fail_media` |
-| Stopped by Android (time limit or a refused service start) | Message, Try again (primary), Back to editor | `export_fail_title`, `export_fail_system` |
-| Failed: unknown | Message, Try again (primary), Back to editor | `export_fail_title`, `export_fail_other` |
+| Failed: out of space mid-export | Error state on the Exporting screen: heading, message, Free up space (primary), Back to editor (secondary). The partial file is deleted. | `export_fail_heading`, `export_fail_space`, `export_free_up_space` |
+| Failed: encoder (incl. a size the encoder refused) | Message, "Export at 720p" (primary; the next lower resolution that the check allows), Back to editor. At 480p: Try again instead. | `export_fail_heading`, `export_fail_encoder`, `export_try_lower`, `export_try_again` |
+| Failed: a clip couldn't be read (`missing_media`, `decoder`) | Message, Back to editor (primary), Try again (secondary) | `export_fail_heading`, `export_fail_media` |
+| Stopped by Android (time limit or a refused service start) | Message, Try again (primary), Back to editor | `export_fail_heading`, `export_fail_system` |
+| Failed: unknown | Message, Try again (primary), Back to editor | `export_fail_heading`, `export_fail_other` |
 | App in the background | Progress notification when allowed (below); the screen is current on return, including Exported or a failure that happened meanwhile | notification copy |
 | Notifications not allowed | Nothing in the shade; the export shows only in Android's Task Manager (Active apps). The Exporting screen is unchanged; on return it shows the current state. No in-app nag. | none |
 | Memix stopped mid-export (killed, crashed, or Stop in the Task Manager) | Next start: nothing in the gallery, the partial deleted; a persistent toast on the first screen with Open draft | `export_last_stopped`, `export_open_draft` |
@@ -174,7 +186,14 @@ English source; machine drafts until P5. Budgets in characters.
 | `export_title` | Export | 14 | Sheet hero, shown uppercase in Anton |
 | `export_resolution` | Resolution | 20 | |
 | `export_frame_rate` | Frame rate | 20 | |
-| `export_res_480` … `export_res_4k` | 480p, 720p, 1080p, 2K, 4K | 6 | Not translated |
+| ~~`export_res_480` … `export_res_4k`~~ | 480p, 720p, 1080p, 2K, 4K | 6 | **Constants, not strings** (review, confirmed): `ExportResolution.label`, one place in `:core:domain`, never translated, like "MP4" and "H.264". Any new resolution name is added there. |
+| `export_fps_a11y` | %1$d frames per second | 30 | Spoken name of a frame-rate segment (added in the build) |
+| `export_facts_a11y` | MP4, %1$s, AAC. Up to %2$s, about %3$s. | 60 | Spoken facts line (review); %1$s = "H.264"/"HEVC", %2$s = size, %3$s = time. No "·" in speech. Units are written out ("18 megabytes", "20 seconds") if TalkBack reads "MB" or "s" badly on the phone (device check); until then the visible size and time strings may be reused |
+| `export_fail_heading` | Not exported | 20 | Failure screen title, uppercase in Anton (review); replaces `export_fail_title` on the screen |
+| `export_percent_a11y` | %1$d percent | 16 | Progress bar and milestone announcement (added in the build) |
+| `export_pause_a11y` | Pause your video | 24 | The result's name while it plays (added in the build) |
+| `export_free_up_space` | Free up space | 18 | The failure state's primary; same words as the sheet's `import_free_up_space` |
+| `export_dismiss` | Dismiss | 14 | The next-start toast's × label |
 | `export_fps` | %1$d fps | 8 | "30 fps"; "fps" stays as is unless your language's video apps translate it |
 | `export_facts_format` | MP4 · %1$s · AAC | 24 | %1$s = "H.264" or "HEVC"; not translated |
 | `export_estimate` | Up to %1$s · about %2$s | 32 | %1$s = size ("18 MB"), %2$s = time ("20 s", "2 min"). "Up to": the file is this size or smaller. |
@@ -206,7 +225,7 @@ English source; machine drafts until P5. Budgets in characters.
 | `export_back_to_editor` | Back to editor | 20 | × label and error-state button |
 | `export_make_another` | Make another | 18 | |
 | `export_done` | Done | 12 | |
-| `export_fail_title` | The export didn't finish | 40 | |
+| `export_fail_title` | The export didn't finish | 40 | Replaced on the screen by `export_fail_heading` (review); kept for the notification title family only if the engineer wants one source |
 | `export_fail_space` | Your phone ran out of space. Free up space and try again. | 80 | |
 | `export_fail_encoder` | This phone couldn't encode the video at this setting. Try a lower resolution. | 90 | |
 | `export_try_lower` | Export at %1$s | 20 | %1$s = "720p" |
@@ -232,11 +251,12 @@ Translator notes: "Export" means making the final video file (CapCut's word in y
 
 ## Accessibility
 - **Sheet:** the title is the pane title; Resolution and Frame rate are single-choice groups ("1080p, selected, 3 of 5"). Toasts are announced politely; a stepped-down setting is announced through its toast, and the changed segment reads "selected" when focused. The facts line is one node ("MP4, H.264, AAC. Up to 18 megabytes, about 20 seconds": spoken strings, not the symbols). Notices are read in order before Export video.
-- **Exporting:** focus lands on the title (and returns there after the notification dialog); the progress is a range with "42 percent"; milestones (25, 50, 75%) and the finish are announced politely; never every percent.
-- **Exported:** focus on the title; the status pill is announced; the player is a button "Play your video"; Share reads "Share". Reading order: title, ×, player, status, Share, Make another, Done.
+- **Exporting:** focus lands on the title (and returns there after the notification dialog); the progress is a range with "42 percent"; milestones (25, 50, 75%) and the finish are announced politely; never every percent. **Review:** the milestone announcement is its own live-region node that is read-only for TalkBack's swipe order (not a second "25 percent" next to the bar's "42 percent"), and "About 12 s left" is a separate, ordinary text node so it can still be read by swiping (it was hidden by the percent row's `clearAndSetSemantics`). The live node isn't focusable.
+- **Exported:** focus on the title; the status pill is announced (one merged node: `semantics(mergeDescendants = true)` plus the live region, review: a live region on an unmerged Row has no text of its own); the player is a button named "Play your video" (one name, set once: the `contentDescription` only, not also `onClickLabel`, which made TalkBack say it twice); Share reads "Share". Reading order: title, ×, player, status, Share, Make another, Done.
+- **Failure state:** focus lands on the heading when it appears; the message is announced politely (merged node).
 - **Touch targets:** every button, segment and the × are 48 dp or more.
 - **Contrast:** segment labels `text` on `canvas` 16.9:1, selected `on-primary` on white 18.9:1; facts and notices `text-secondary` on `surface` 7.1:1; status pill `on-track` on `success` 9.3:1; play disc `on-primary` on `primary` 7.9:1; Share `text` on `surface-raised` 12.4:1.
-- **200% font:** segments wrap into two rows (SegmentedChoice rule), the facts line wraps, notices wrap, footer buttons stack (Make another above Done, so Done stays last and lowest); nothing cut. On the Exported screen the result shrinks before anything else, down to 40% of the screen height, then the content scrolls.
+- **200% font:** segments wrap into two rows (SegmentedChoice rule), the facts line wraps, notices wrap, footer buttons stack (Make another above Done, so Done stays last and lowest); nothing cut. On the Exported screen the result shrinks before anything else, down to 40% of the screen height, then the content scrolls; on Exporting and the failure state the frame shrinks to 30% and the screen scrolls (Layout). The top bar's Export never covers the ratio pill (Layout → Export button).
 - **Reduce motion:** see Motion.
 
 ## Analytics
@@ -265,7 +285,8 @@ No event for the notification permission answer (not in the PRD). Analytics stay
 3. **Exporting** at 40%: progress, time left, Cancel; the notification in the shade; on a fresh Android 13+ install, the permission dialog over the Exporting screen with the progress already moving behind it.
 4. **Stop exporting?** after a back gesture.
 5. **Exported:** the result with the play disc, the status pill, Share, the footer; then the system share sheet open with the video; then the file in the gallery's Memix album, playing.
-6. **Hindi at 200% font:** the sheet (segments in two rows) and the Exported screen with Share and the footer stacked.
+6. **Hindi at 200% font:** the sheet (segments in two rows), the Exported screen with Share and the footer stacked, the Exporting screen with Cancel reachable, and the failure state with both buttons reachable (review). Also Portuguese or Spanish at 200%: the editor's top bar with Export clear of the ratio pill.
+7. **A failure state** (review): the heading "NOT EXPORTED", the message and the two buttons, with one blue primary (the out-of-space one is easiest to reach by filling the emulator's storage).
 
 **Measured (the Done when):** 60 s 1080p30 `preview-check`-style draft, release-type build on the owner's phone: Export video to `export_complete` ≤ 60 s; ffprobe shows 1080 × 1920 (or 1920 × 1080 with rotation ±90; the canvas's shape at 1080 short side), 30 fps, H.264, AAC, the expected length within one frame; the file plays in the gallery. Estimate vs actual: the file is **never larger than the shown size**; on live footage it's within 25% under it (log `ExportResult.averageVideoBitrate`, the file size and the estimate for every export; note stills drafts separately). Time within 30% after the first export. LeakCanary after one export and one cancel: no leak.
 

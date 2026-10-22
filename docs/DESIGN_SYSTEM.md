@@ -354,6 +354,9 @@ Fixed sizes used across screens (dp on Android).
 - Pressed states: `primary` → `primary-pressed`; neutral controls go one value step lighter (`surface-raised` → `hairline`). No translate/scale on press; the 240 ms "bonk" scale is only for content landing on the timeline.
 - Icons: Memix-drawn vector drawables in `composeResources/drawable/` (see Iconography), 24 dp, 2 dp flat-cap stroke, tinted per state.
 - Tool bars: each tool is at least `toolItemWidth` wide and `touchTarget` tall. Its label is never cut: two lines is the copy budget, not a line cap, so at 200% font a long translation takes a third line and the bar grows (WCAG 2.2 SC 1.4.4).
+- Full screens that end in buttons (Exporting, Exported and failure, P1-12) must never clip them: the picture area (`weight(1f)`) shrinks to a stated minimum share of the screen height, and below that the whole screen scrolls (give the scrolling column `heightIn(min = viewport)` so the weighted area still fills it at 100% font). A bottom button that can be pushed off screen at 200% font is a bug (P1-12 review).
+- A video that isn't playing gets a `PlayDisc` (`play-disc-size`) centered on it; the tap belongs to the whole video (name "Play your video", "Pause your video" while playing).
+- Never put spacing between children with `Arrangement.spacedBy` when some children can be zero-size (an `AnimatedVisibility` that is hidden still takes its gap). Put the gap inside the child as padding, or group the optional children in one Column (P1-12 review).
 - Build a component catalog screen (debug builds only) showing every component in every state; the UX designer reviews it from screenshots. No automated screenshot tests in this project.
 
 ## Screens in the design canvas
