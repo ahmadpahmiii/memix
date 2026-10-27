@@ -24,14 +24,8 @@ import org.jetbrains.compose.resources.stringResource
 fun TemplatesScreen(modifier: Modifier = Modifier) {
     Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars)) {
         ScreenTitle(stringResource(Res.string.templates_title))
-        Box(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()),
-            contentAlignment = Alignment.Center
-        ) {
-            EmptyState(
-                stringResource(Res.string.templates_empty_title),
-                stringResource(Res.string.templates_empty_body)
-            )
+        Box(Modifier.weight(1f).verticalScroll(rememberScrollState()), contentAlignment = Alignment.Center) {
+            EmptyState(stringResource(Res.string.templates_empty_title), stringResource(Res.string.templates_empty_body))
         }
     }
 }

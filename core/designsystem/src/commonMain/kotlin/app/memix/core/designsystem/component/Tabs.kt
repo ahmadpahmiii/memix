@@ -32,12 +32,7 @@ import app.memix.core.designsystem.focusRing
 
 /** Four or more sibling views of one screen; the row scrolls when it overflows. Fewer than four: [SegmentedTabs]. */
 @Composable
-fun Tabs(
-    labels: List<String>,
-    selectedIndex: Int,
-    onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun Tabs(labels: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier.horizontalScroll(rememberScrollState()).selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space5),
@@ -49,29 +44,15 @@ fun Tabs(
                 Modifier
                     .focusRing(interactionSource, MemixShapes.radiusSm)
                     .defaultMinSize(minHeight = MemixSize.touchTarget)
-                    .selectable(
-                        selected,
-                        interactionSource,
-                        indication = null,
-                        role = Role.Tab
-                    ) { onSelect(index) }
+                    .selectable(selected, interactionSource, indication = null, role = Role.Tab) { onSelect(index) }
                     .drawBehind {
                         if (!selected) return@drawBehind
                         val line = MemixStroke.strokeSelection.toPx()
-                        drawRect(
-                            MemixColors.selection,
-                            Offset(0f, size.height - line),
-                            Size(size.width, line)
-                        )
+                        drawRect(MemixColors.selection, Offset(0f, size.height - line), Size(size.width, line))
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    label,
-                    MemixTheme.type.label,
-                    color = if (selected) MemixColors.text else MemixColors.textSecondary,
-                    maxLines = 1
-                )
+                Text(label, MemixTheme.type.label, color = if (selected) MemixColors.text else MemixColors.textSecondary, maxLines = 1)
             }
         }
     }
@@ -79,12 +60,7 @@ fun Tabs(
 
 /** A two- or three-way switch between parallel views, such as Video / Photo. */
 @Composable
-fun SegmentedTabs(
-    labels: List<String>,
-    selectedIndex: Int,
-    onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun SegmentedTabs(labels: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier
             .clip(MemixShapes.radiusFull)
@@ -102,21 +78,11 @@ fun SegmentedTabs(
                     .defaultMinSize(minHeight = 40.dp)
                     .clip(MemixShapes.radiusFull)
                     .drawBehind { drawRect(if (selected) MemixColors.surfaceRaised else Color.Transparent) }
-                    .selectable(
-                        selected,
-                        interactionSource,
-                        indication = null,
-                        role = Role.Tab
-                    ) { onSelect(index) }
+                    .selectable(selected, interactionSource, indication = null, role = Role.Tab) { onSelect(index) }
                     .padding(horizontal = MemixSpacing.space4, vertical = MemixSpacing.space2),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    label,
-                    MemixTheme.type.label,
-                    color = if (selected) MemixColors.text else MemixColors.textSecondary,
-                    maxLines = 1
-                )
+                Text(label, MemixTheme.type.label, color = if (selected) MemixColors.text else MemixColors.textSecondary, maxLines = 1)
             }
         }
     }

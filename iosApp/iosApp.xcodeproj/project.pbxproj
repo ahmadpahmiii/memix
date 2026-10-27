@@ -221,6 +221,7 @@
 					"$(inherited)",
 					"-framework",
 					ComposeApp,
+					"-lsqlite3",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = app.memix;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -252,6 +253,7 @@
 					"$(inherited)",
 					"-framework",
 					ComposeApp,
+					"-lsqlite3",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = app.memix;
 				PRODUCT_NAME = "$(TARGET_NAME)";

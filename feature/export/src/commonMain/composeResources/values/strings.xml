@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Export screen (P1-12). Budgets and translator notes: docs/ux/specs/P1-12-export.md -> Copy. Compose resources keep ' and % as written: use plain apostrophes and a single %. export_try_again repeats the editor's editor_preview_retry. -->
+    <string name="export_progress_title">Exporting</string>
+    <string name="export_percent">%1$d%</string>
+    <string name="export_percent_a11y">%1$d percent</string>
+    <string name="export_time_left">About %1$s left</string>
+    <string name="export_leave_ok">You can leave Memix. Your video keeps exporting and saves to your gallery.</string>
+    <string name="export_cancel">Cancel</string>
+    <string name="export_stop_title">Stop exporting?</string>
+    <string name="export_keep">Keep exporting</string>
+    <string name="export_stop">Stop</string>
+    <string name="export_done_title">Exported</string>
+    <string name="export_saved">Saved to your gallery · %1$s · %2$s</string>
+    <string name="export_share">Share</string>
+    <string name="export_share_sheet_title">Share your meme</string>
+    <string name="export_play_a11y">Play your video</string>
+    <string name="export_pause_a11y">Pause your video</string>
+    <string name="export_back_to_editor">Back to editor</string>
+    <string name="export_make_another">Make another</string>
+    <string name="export_done">Done</string>
+    <string name="export_fail_heading">Not exported</string>
+    <string name="export_fail_space">Your phone ran out of space. Free up space and try again.</string>
+    <string name="export_fail_encoder">This phone couldn't encode the video at this setting. Try a lower resolution.</string>
+    <string name="export_try_lower">Export at %1$s</string>
+    <string name="export_fail_media">One of your clips couldn't be read. Replace it in the editor, then export again.</string>
+    <string name="export_fail_system">Android stopped the export. Your draft is safe. Try again.</string>
+    <string name="export_fail_other">Something went wrong. Your draft is safe. Try again.</string>
+    <string name="export_try_again">Try again</string>
+    <string name="export_free_up_space">Free up space</string>
+    <string name="export_last_stopped">Your last export didn't finish. Nothing was saved.</string>
+    <string name="export_open_draft">Open draft</string>
+    <string name="export_dismiss">Dismiss</string>
+</resources>

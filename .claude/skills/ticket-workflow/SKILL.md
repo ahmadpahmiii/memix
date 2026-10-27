@@ -9,17 +9,17 @@ The main session orchestrates. Each step names the agent to delegate to. Memix h
 
 ## Per ticket
 
-| # | Step                                                                                                                                                                                         | Agent                       | Output                                                                                                                          |
-|---|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------|
-| 1 | **Pick.** The ticket the user named, or the next one in the current phase whose `Needs` are merged (`docs/TICKETS.md`, `docs/pm/STATUS.md`).                                                 | main                        | one line: which ticket and why                                                                                                  |
-| 2 | **Ready check.** Testable "Done when", dependencies met, size ≤ L, spec needed?                                                                                                              | `product-manager`           | Ready / Not ready in `docs/pm/STATUS.md`                                                                                        |
-| 3 | **Spec** (UI tickets only). All states, copy, motion, accessibility.                                                                                                                         | `ux-designer`               | `docs/ux/specs/<ID>-<screen>.md`                                                                                                |
-| 4 | **Build** on the phase branch `phase-<n>` (create it from `main` at the phase's first ticket). App code → `principal-mobile-engineer`; Supabase/R2/scripts/remote data → `backend-engineer`. | engineer                    | code + handoff (what changed, what was checked by hand, numbers) for the commit message; screenshots in `docs/ux/reviews/<ID>/` |
-| 5 | **Build checks:** Android debug build, lint, iOS framework compile.                                                                                                                          | engineer                    | green CI                                                                                                                        |
-| 6 | **Code review** with the `code-standards` checklist. The principal reviews all Kotlin, including the backend engineer's.                                                                     | `principal-mobile-engineer` | review notes in the commit message; fixes applied                                                                               |
-| 7 | **Design review** (UI tickets) from the screenshots in `docs/ux/reviews/<ID>/`.                                                                                                              | `ux-designer`               | `docs/ux/reviews/<ID>.md`                                                                                                       |
-| 8 | **Ticket check.** "Done when" items vs the handoff evidence; provisional verdict.                                                                                                            | `product-manager`           | `docs/pm/acceptance-log.md`                                                                                                     |
-| 9 | **Commit and push** to `phase-<n>`: title `<ID>: <ticket name>`; body = handoff + code review + design verdict. CI runs on the push. No per-ticket PR.                                       | main                        | commit on the phase branch                                                                                                      |
+| # | Step | Agent | Output |
+| --- | --- | --- | --- |
+| 1 | **Pick.** The ticket the user named, or the next one in the current phase whose `Needs` are merged (`docs/TICKETS.md`, `docs/pm/STATUS.md`). | main | one line: which ticket and why |
+| 2 | **Ready check.** Testable "Done when", dependencies met, size ≤ L, spec needed? | `product-manager` | Ready / Not ready in `docs/pm/STATUS.md` |
+| 3 | **Spec** (UI tickets only). All states, copy, motion, accessibility. | `ux-designer` | `docs/ux/specs/<ID>-<screen>.md` |
+| 4 | **Build** on the phase branch `phase-<n>` (create it from `main` at the phase's first ticket). App code → `principal-mobile-engineer`; Supabase/R2/scripts/remote data → `backend-engineer`. | engineer | code + handoff (what changed, what was checked by hand, numbers) for the commit message; screenshots in `docs/ux/reviews/<ID>/` |
+| 5 | **Build checks:** Android debug build, lint, iOS framework compile. | engineer | green CI |
+| 6 | **Code review** with the `code-standards` checklist. The principal reviews all Kotlin, including the backend engineer's. | `principal-mobile-engineer` | review notes in the commit message; fixes applied |
+| 7 | **Design review** (UI tickets) from the screenshots in `docs/ux/reviews/<ID>/`. | `ux-designer` | `docs/ux/reviews/<ID>.md` |
+| 8 | **Ticket check.** "Done when" items vs the handoff evidence; provisional verdict. | `product-manager` | `docs/pm/acceptance-log.md` |
+| 9 | **Commit and push** to `phase-<n>`: title `<ID>: <ticket name>`; body = handoff + code review + design verdict. CI runs on the push. No per-ticket PR. | main | commit on the phase branch |
 
 Rules:
 - Don't start step 4 on a Not-ready ticket or a UI ticket without a spec.
@@ -29,14 +29,10 @@ Rules:
 ## End of phase
 
 1. **PM** confirms every ticket in the phase is built (or explicitly moved by an approved proposal) and asks QA to start.
-2. **QA** (`qa-engineer`): writes the phase test plan, runs the manual pass on the emulator, files
-   bugs, and hands the owner a short device-only checklist. If the owner skips the pass, the phase
-   report says so, verdicts rest on the hand checks, and the next phase's test plan also covers the
-   skipped phase's tickets.
+2. **QA** (`qa-engineer`): writes the phase test plan, runs the manual pass on the emulator, files bugs, and hands the owner a short device-only checklist. If the owner skips the pass, the phase report says so, verdicts rest on the hand checks, and the next phase's test plan also covers the skipped phase's tickets.
 3. **Fix loop.** Engineers fix S1/S2 bugs (S3/S4 as the PM prioritizes); QA re-tests.
 4. **Phase gate.** The PM writes `docs/pm/phase-reports/P<n>.md` with final verdicts per ticket and the decisions the owner needs to make.
 5. **Retro.** The PM runs `/retro` and proposes agent, skill and rule changes. The owner approves, the main session applies them, and logs them in `.claude/agents/CHANGELOG.md`.
-6. Upload the phase build to Play internal testing (`/play-release`, internal track). Update `CLAUDE.md` → Current phase.
-7. **Open the phase PR** from `phase-<n>` to `main`: title `Phase <n>: <name>`; body = the ticket
-   list with verdicts, links to the QA report and phase report, and the owner's decisions. The owner
-   merges; the next phase branches from the updated `main`.
+6. The owner builds, signs and uploads the phase build to Play internal testing by hand (`/play-release` prepares the checklist and steps; owner, 21 Oct 2026). Until his Play Console app exists, the phase closes without it. Update `CLAUDE.md` → Current phase.
+7. **Security review.** Push the phase branch, then run `security-reviewer` on the pushed head. BLOCK means no PR: fix (rotate a leaked credential first), push and review again. `.claude/hooks/pr_security_gate.py` refuses to open a pull request without a PASS for the exact pushed commit, and the same applies to any other pull request.
+8. **Open the phase PR** from `phase-<n>` to `main`: title `Phase <n>: <name>`; body = the ticket list with verdicts, links to the QA report and phase report, and the owner's decisions. The owner merges; the next phase branches from the updated `main`.

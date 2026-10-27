@@ -23,18 +23,12 @@ fun EmptyState(
     action: (@Composable () -> Unit)? = null,
 ) {
     Column(
-        modifier.fillMaxWidth()
-            .padding(horizontal = MemixSpacing.space4, vertical = MemixSpacing.space10),
+        modifier.fillMaxWidth().padding(horizontal = MemixSpacing.space4, vertical = MemixSpacing.space10),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(MemixSpacing.space3),
     ) {
         DisplayText(title, style = MemixTheme.type.displayXl, textAlign = TextAlign.Center)
-        Text(
-            body,
-            MemixTheme.type.body,
-            color = MemixColors.textSecondary,
-            textAlign = TextAlign.Center
-        )
+        Text(body, MemixTheme.type.body, color = MemixColors.textSecondary, textAlign = TextAlign.Center)
         if (action != null) Column(Modifier.padding(top = MemixSpacing.space3)) { action() }
     }
 }

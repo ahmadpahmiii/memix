@@ -1,6 +1,5 @@
 package app.memix.core.designsystem.component
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -32,6 +32,7 @@ import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixIcons
 import app.memix.core.designsystem.MemixShapes
 import app.memix.core.designsystem.MemixSize
+import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.MemixStroke
 import app.memix.core.designsystem.MemixTheme
 import app.memix.core.designsystem.Text
@@ -61,12 +62,7 @@ fun BottomNav(
             .fillMaxWidth()
             .drawBehind {
                 drawRect(MemixColors.surface)
-                drawLine(
-                    MemixColors.hairline,
-                    Offset(0f, 0f),
-                    Offset(size.width, 0f),
-                    MemixStroke.strokeHairline.toPx()
-                )
+                drawLine(MemixColors.hairline, Offset(0f, 0f), Offset(size.width, 0f), MemixStroke.strokeHairline.toPx())
             }
             .windowInsetsPadding(WindowInsets.navigationBars)
             .height(MemixSize.navHeight)
@@ -81,11 +77,7 @@ fun BottomNav(
 }
 
 @Composable
-private fun NavItem(
-    destination: NavDestination,
-    selected: Boolean,
-    onSelect: (NavDestination) -> Unit
-) {
+private fun NavItem(destination: NavDestination, selected: Boolean, onSelect: (NavDestination) -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val color = if (selected) MemixColors.text else MemixColors.textSecondary
     Column(
@@ -93,11 +85,7 @@ private fun NavItem(
             .focusRing(interactionSource, MemixShapes.radiusMd)
             .width(64.dp)
             .defaultMinSize(minHeight = MemixSize.touchTarget)
-            .selectable(selected, interactionSource, indication = null, role = Role.Tab) {
-                onSelect(
-                    destination
-                )
-            },
+            .selectable(selected, interactionSource, indication = null, role = Role.Tab) { onSelect(destination) },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
     ) {

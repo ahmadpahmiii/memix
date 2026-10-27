@@ -43,8 +43,7 @@ fun Button(
     val colors = variant.colors()
     val container = pressedColor(interactionSource, colors.container, colors.containerPressed)
     val content by pressedColor(interactionSource, colors.content, colors.contentPressed)
-    val horizontalPadding =
-        if (variant == ButtonVariant.Quiet) MemixSpacing.space2 else MemixSpacing.space5
+    val horizontalPadding = if (variant == ButtonVariant.Quiet) MemixSpacing.space2 else MemixSpacing.space5
     Row(
         modifier
             .focusRing(interactionSource, MemixShapes.radiusMd)
@@ -53,62 +52,20 @@ fun Button(
             .drawBehind { drawRect(container.value) }
             .clickable(interactionSource, indication = null, role = Role.Button, onClick = onClick)
             .padding(horizontal = horizontalPadding, vertical = MemixSpacing.space3),
-        horizontalArrangement = Arrangement.spacedBy(
-            MemixSpacing.space2,
-            Alignment.CenterHorizontally
-        ),
+        horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space2, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (leadingIcon != null) Icon(
-            leadingIcon,
-            contentDescription = null,
-            tint = content,
-            size = 20.dp
-        )
+        if (leadingIcon != null) Icon(leadingIcon, contentDescription = null, tint = content, size = 20.dp)
         Text(text, MemixTheme.type.bodyStrong, color = content, textAlign = TextAlign.Center)
     }
 }
 
-private class ButtonColors(
-    val container: Color,
-    val containerPressed: Color,
-    val content: Color,
-    val contentPressed: Color
-)
+private class ButtonColors(val container: Color, val containerPressed: Color, val content: Color, val contentPressed: Color)
 
 private fun ButtonVariant.colors() = when (this) {
-    ButtonVariant.Primary -> ButtonColors(
-        MemixColors.primary,
-        MemixColors.primaryPressed,
-        MemixColors.onPrimary,
-        MemixColors.onPrimary
-    )
-
-    ButtonVariant.Secondary -> ButtonColors(
-        MemixColors.surfaceRaised,
-        MemixColors.hairline,
-        MemixColors.text,
-        MemixColors.text
-    )
-
-    ButtonVariant.Danger -> ButtonColors(
-        MemixColors.danger,
-        MemixColors.dangerPressed,
-        MemixColors.onPrimary,
-        MemixColors.onPrimary
-    )
-
-    ButtonVariant.Ghost -> ButtonColors(
-        Color.Transparent,
-        MemixColors.surfaceRaised,
-        MemixColors.text,
-        MemixColors.text
-    )
-
-    ButtonVariant.Quiet -> ButtonColors(
-        Color.Transparent,
-        Color.Transparent,
-        MemixColors.primary,
-        MemixColors.primaryPressed
-    )
+    ButtonVariant.Primary -> ButtonColors(MemixColors.primary, MemixColors.primaryPressed, MemixColors.onPrimary, MemixColors.onPrimary)
+    ButtonVariant.Secondary -> ButtonColors(MemixColors.surfaceRaised, MemixColors.hairline, MemixColors.text, MemixColors.text)
+    ButtonVariant.Danger -> ButtonColors(MemixColors.danger, MemixColors.dangerPressed, MemixColors.onPrimary, MemixColors.onPrimary)
+    ButtonVariant.Ghost -> ButtonColors(Color.Transparent, MemixColors.surfaceRaised, MemixColors.text, MemixColors.text)
+    ButtonVariant.Quiet -> ButtonColors(Color.Transparent, Color.Transparent, MemixColors.primary, MemixColors.primaryPressed)
 }

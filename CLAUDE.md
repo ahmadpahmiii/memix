@@ -15,10 +15,7 @@ Memix ("Memix: Meme Video & Photo" on the stores) is a meme maker with **two sep
 | Screen spec for a UI ticket | `docs/ux/specs/` |
 | Bugs and QA results | `docs/qa/` |
 
-The Claude Docs / design artifacts linked at the top of each doc are the source of truth; these
-files are exports. If code and docs disagree, stop and ask — don't silently pick one. When behavior,
-a module or a command changes, update the docs in the same ticket commit, including any skill or
-agent file that names it (grep `.claude/` for the old name).
+**The repo files are the source of truth** (owner, 8 Oct 2026). The Claude Docs and design artifacts linked at the top of some docs are the original plan, kept for reference only; don't sync changes back to them. If code and docs disagree, stop and ask — don't silently pick one. When behavior, a module or a command changes, update the docs in the same ticket commit, including any skill or agent file that names it (grep `.claude/` for the old name).
 
 ## Stack (pin latest stable in `gradle/libs.versions.toml` on project creation)
 
@@ -33,12 +30,11 @@ agent file that names it (grep `.claude/` for the old name).
 
 1. `:core:model` and `:core:domain` are pure `commonMain` — no Android/iOS imports, no Ktor/SQLDelight types.
 2. Features (`:feature:*`) call **use cases only**. Never a repository, engine or SDK directly.
-3. Platform code lives only in `androidMain` / `iosMain` of `:engine:*` and `:platform:services`, behind interfaces declared in `:core:domain`.
+3. Platform code lives only in `androidMain` / `iosMain` of `:engine:*` and `:platform:services`, behind interfaces declared in `:core:domain`, plus the composition root (`:androidApp`, `:composeApp`) for app entry and wiring (for example creating the SQLDelight driver and debug hand-check hooks). No feature logic in the composition root.
 4. Time is **microseconds (`Long`)** everywhere in the project model. Clips are positioned by time, never by index.
 5. Effects, filters and transitions are **declarative specs** (id + params) in `:core:model`; each engine renders the same spec. Every new spec gets a reference render in `docs/qa/references/`.
 6. `Project` is immutable; every edit returns a new `Project` (undo keeps 100). Autosave 500 ms after the last change. Bump `schemaVersion` + add a migration for any persisted shape change, and check by opening an old draft.
-7. The iOS framework must compile on every push to a phase branch and every PR, even before iOS work
-   starts (keeps Android-only APIs out of shared code).
+7. The iOS framework must compile on every push to a phase branch and every PR, even before iOS work starts (keeps Android-only APIs out of shared code).
 
 ## Design rules (v2 — "neutral chrome, one blue")
 
@@ -55,17 +51,15 @@ agent file that names it (grep `.claude/` for the old name).
 ## Hard "don'ts"
 
 - No FFmpeg / FFmpegKit or any GPL/LGPL library inside the app (desktop content scripts may use ffmpeg).
-- No secrets or account config in the repo. Every credential, where it lives and how CI gets it:
-  `docs/CREDENTIALS.md`. Secrets live in `.env` (template `.env.example`), `local.properties` and CI
-  secrets. The app ships only the Supabase publishable key (RLS: read active rows, insert
-  `reports`). Turn on the secret check once per clone: `git config core.hooksPath .githooks`.
+- No secrets or account config in the repo. Every credential, where it lives and how CI gets it: `docs/CREDENTIALS.md`. Secrets live in `.env` (template `.env.example`), `local.properties` and CI secrets. The app ships only the Supabase publishable key (RLS: read active rows, insert `reports`). Turn on the secret check once per clone: `git config core.hooksPath .githooks`.
+- No pull request without a security review. `.claude/hooks/pr_security_gate.py` (registered in `.claude/settings.json`) blocks every pull request until `scripts/check-secrets.sh` is clean for the files and every commit since `main`, the branch is pushed, and the `security-reviewer` agent passed that exact commit. The repo is public, so a key deleted in a later commit is still exposed: rotate it first.
 - No catalog content without a recorded license (`source_url`, `license_type`, `license_proof`, `credit`). No YouTube rips.
 - No ads inside the editors or during export; interstitial max 1 per 3 exports and never on the first; rewarded ad removes the watermark for one export; no banners.
 - No accounts, no uploads of user media, no cloud rendering in v1.
 
 ## Team
 
-Five role agents in `.claude/agents/`. The main session orchestrates them with the `ticket-workflow` skill.
+Six agents in `.claude/agents/`: five role agents plus the `security-reviewer`. The main session orchestrates them with the `ticket-workflow` skill.
 
 | Agent | Owns | May edit |
 | --- | --- | --- |
@@ -74,25 +68,21 @@ Five role agents in `.claude/agents/`. The main session orchestrates them with t
 | `principal-mobile-engineer` | All app code, architecture, performance, code review of every Kotlin change | app modules, Gradle, CI |
 | `backend-engineer` | Supabase, R2, content scripts, remote data layer, cost and security | `supabase/`, `scripts/`, `:core:data` remote |
 | `qa-engineer` | Manual QA at the end of every phase: design + result, bugs, phase verdict | `docs/qa/` (hook-enforced) |
+| `security-reviewer` | Scans every commit a pull request would add for credentials, keys and files that must stay local; PASS or BLOCK per pushed commit | Its verdict in `.git/` and its memory (hook-enforced); never code |
 
 - **Authority:** the PM proposes scope, priority and date changes; **the owner decides**. Nobody changes scope silently.
-- **Branches and PRs:** one branch per phase (`phase-<n>`), one PR per phase, opened only when the
-  phase is done. Tickets are commits on the phase branch.
-- **Per ticket:** PM ready check → designer spec (UI tickets) → engineer builds and checks by hand →
-  principal code review → designer review (UI) → PM ticket check → commit on the phase branch
-  (`<ID>: <ticket name>`, handoff in the commit message) and push.
-- **End of phase:** QA manual pass (emulator via adb + a short device checklist for the owner) →
-  fixes → QA re-test → PM phase gate → `/retro` → internal-testing build → one PR from `phase-<n>`
-  to `main`. The owner merges.
+- **Asking the owner to decide** (owner, 8 Oct 2026): for each decision give the **problem** (what's wrong or missing, in plain words), the **considerations** (what each option costs and gives: time, money, risk, user impact), and the **suggested fixes** as lettered options with one recommendation. Keep the language simple; the owner answers in short form ("1A, 2B").
+- **Branches and PRs:** one branch per phase (`phase-<n>`), one PR per phase, opened only when the phase is done. Tickets are commits on the phase branch.
+- **Per ticket:** PM ready check → designer spec (UI tickets) → engineer builds and checks by hand → principal code review → designer review (UI) → PM ticket check → commit on the phase branch (`<ID>: <ticket name>`, handoff in the commit message) and push.
+- **One builder at a time** (owner, 8 Oct 2026, to stay inside usage limits): only one agent builds code at once; small helpers (ready checks, reviews, research) may run alongside. Builders write their handoff file early and update it as they go.
+- **End of phase:** QA manual pass (emulator via adb + a short device checklist for the owner; cloud sessions have no emulator, so QA runs in Claude Code on the owner's Mac with the Android Studio emulator) → fixes → QA re-test → PM phase gate → `/retro` → internal-testing build (the owner builds, signs and uploads it by hand; owner, 21 Oct 2026) → `security-reviewer` PASS on the pushed head → one PR from `phase-<n>` to `main`. The owner merges.
 - **Improving the team:** at every phase gate the PM runs `/retro` and proposes exact edits to agents, skills or rules. The owner approves; applied changes are logged in `.claude/agents/CHANGELOG.md`. Each agent keeps lessons in `.claude/agent-memory/<agent>/MEMORY.md`.
 
 ## Quality without automated tests
 
 - The project has **no automated tests**: no unit, UI, screenshot or golden-frame tests. Don't write them or ask for them.
-- Every push to a phase branch and every PR builds Android, runs lint and compiles the iOS framework
-  in CI.
-- Every ticket is run by hand on an emulator or phone. The ticket's commit message lists what was
-  checked and measured; screenshots of UI states go in `docs/ux/reviews/<ID>/`.
+- Every push to a phase branch and every PR builds Android, runs lint and compiles the iOS framework in CI.
+- Every ticket is run by hand on an emulator or phone. The ticket's commit message lists what was checked and measured; screenshots of UI states go in `docs/ux/reviews/<ID>/`.
 - New effects get a reference render in `docs/qa/references/` for visual comparison and iOS parity.
 - **Definition of done:**
   - CI green
@@ -106,37 +96,52 @@ Five role agents in `.claude/agents/`. The main session orchestrates them with t
 
 ## Commands
 
-Run from the repo root. The Gradle daemon runs on JDK 21 (`gradle/gradle-daemon-jvm.properties`;
-Gradle finds or downloads it, and CI sets up Temurin 21); app bytecode still targets JVM 17.
-`local.properties` (not committed) holds `sdk.dir`.
+Run from the repo root. The Gradle daemon runs on JDK 21 (`gradle/gradle-daemon-jvm.properties`; Gradle finds or downloads it, and CI sets up Temurin 21); app bytecode still targets JVM 17. `local.properties` (not committed) holds `sdk.dir`.
 
 ```bash
 ./gradlew :androidApp:assembleDebug                       # Android debug build
 ./gradlew lint                                            # Android lint; covers the KMP library modules through checkDependencies
 ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 # iOS framework compiles (needs macOS)
 ./gradlew :androidApp:installDebug                        # install on the running emulator/phone for hand checks
+./gradlew :androidApp:installBenchmark                    # release code (R8-minified) signed with the debug key, for fps, cold-start and device checks (never uploaded)
+./gradlew :androidApp:bundleRelease -Pmemix.mappingUpload=none  # unsigned release bundle: runs R8 as CI does; the owner signs and uploads from Android Studio (see the play-release skill)
 xcodebuild -project iosApp/iosApp.xcodeproj -target iosApp -sdk iphonesimulator -arch arm64 SYMROOT="$PWD/iosApp/build" build  # iOS app for the simulator
 ```
 
-Since AGP 9, the Android app is its own module (`:androidApp`); `:composeApp` is the shared KMP
-module that builds the `ComposeApp` framework for `iosApp/`. Shared Gradle setup lives in
-`build-logic/` (`memix.kmp.library`, `memix.kmp.compose`).
+Since AGP 9, the Android app is its own module (`:androidApp`); `:composeApp` is the shared KMP module that builds the `ComposeApp` framework for `iosApp/`. Shared Gradle setup lives in `build-logic/` (`memix.kmp.library`, `memix.kmp.compose`).
 
-The first iOS link after adding a library takes up to 15 minutes while Kotlin/Native builds its
-caches; later links take under a minute. After the JDK changes, or on a "spawn helper" error, run
-`./gradlew --stop`.
+The first iOS link after adding a library takes up to 15 minutes while Kotlin/Native builds its caches; later links take under a minute. After the JDK changes, or on a "spawn helper" error, run `./gradlew --stop`.
 
 ## Current phase
 
-P0 · Foundation is closing (built 7–8 Oct 2026, P0-07 moved; phase PR open). Next: P1 · Core and
-video editor on `phase-1`, branched from `main` after the Phase 0 PR merges. Keep this line updated
-as phases advance.
+P1 · Core and video editor: all 17 tickets built (CI green) and merged to `main` on 27 Oct 2026 **before** the phase-end QA pass (owner decision, decision log). Still owed for Phase 1: the QA pass on the owner's Mac (emulator) and phone (`docs/qa/phase-1/engineer-hand-checks.md`), fixes, the gate report and /retro. Next: P2, on a new phase branch from `main` (cloud sessions use `claude/phase-<n>-*`, which CI builds). Keep this line updated as phases advance.
 
 ## Open items that affect code
 
-- Video background removal is **people only** in v1 (pending the owner's final OK).
-- Watermark: small "Memix" text, top-left, 3% margin (position still to be confirmed).
-- WhatsApp sticker-pack spec must be checked at P2-09. Launch countries for trending lists are not final.
+Settled by the owner on 8 Oct 2026 (decision log):
+- Video background removal is **people only** in v1.
+- Watermark: small "Memix" text, **top-left**, 3% margin.
+- Media files live in **Supabase Storage for now** and move to Cloudflare R2 before launch. Read the media base URL from Remote Config (`media_base_url`), never hardcode it, so the move needs no app change.
+- Performance bar: **no visible lag and no memory leaks, on Android and iOS**. There is no named reference phone; the numbers in the tickets (30 fps preview, 60 fps timeline, 100 ms edits, export time) are measured on the owner's own phone.
+- Hindi uses a Devanagari display font (the designer picks an OFL face, e.g. Teko) where Anton has no glyphs.
+
+Settled by the owner on 14 Oct 2026:
+- Trending lists start with 5 countries, one per app language: Indonesia, United States, India, Brazil, Mexico. More can be added later without an app change.
+- The owner listens to the 10 starter sounds at phase-end QA, in the app; P1-08 doesn't wait for it.
+- P1-08 (meme sounds) is built before P1-16 (add media and replace).
+
+Settled by the owner on 21 Oct 2026:
+- Play release (P1-15): the owner sets up signing and the Play Console and uploads builds by hand. No upload key, keystore or service account goes into the repo or CI.
+- Background image behind clips: one Phase 2 ticket for both editors. Crop, rotate and flip a clip (plus per-clip Fit or Fill): a new Phase 4 ticket.
+- Analytics: an optional `value` on the canvas `tool_use` events (ratio or `custom`, `fit`/`fill`, `blur`/`color`), and a new `export_cancel` event.
+- P1-12: a simple Share button (system share sheet) on the result screen; notification permission is asked once, at the first tap on "Export video".
+
+Settled by the owner on 22 Oct 2026 ("use your recommendation"):
+- Watermark top margin: built at 3% (separate top/left constants); the owner posts one private test to TikTok and Reels at phase-end QA and decides then (moving it is one constant).
+- Agents run on a model outside the weekly Opus allowance (Sonnet) from now on, to keep the weekly limit free.
+
+Still open:
+- WhatsApp sticker-pack spec must be checked at P2-09.
 
 ## Skills in this repo (`.claude/skills/`)
 

@@ -17,7 +17,7 @@ description: Performance budgets and techniques for a smooth, native-feeling Mem
 | Export 60 s @ 1080p30 | ≤ 60 s | timestamp from start to file written (logcat) |
 | Crash-free users | ≥ 99.5% | Crashlytics |
 
-Always measure release (or `benchmark`) builds, never debug. Report device, OS, build type, median and worst run. There are no automated benchmark suites in this project; these are manual measurements.
+Always measure release (or `benchmark`, which is minified by R8 like release since P1-15) builds, never debug. Report device, OS, build type, median and worst run. There are no automated benchmark suites in this project; these are manual measurements.
 
 ## Compose
 

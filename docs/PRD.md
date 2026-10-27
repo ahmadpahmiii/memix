@@ -1,6 +1,6 @@
 # Memix — Product Requirements
 
-Source of truth: the "Memix — Product Requirements" Claude Doc (https://claude.ai/code/artifact/c81028c0-e543-4488-ace3-100bdcbb9e10). This file is an export from Oct 7, 2026; if the two disagree, ask the owner which one wins.
+Source of truth: this file (owner, 8 Oct 2026). The "Memix — Product Requirements" Claude Doc (https://claude.ai/code/artifact/c81028c0-e543-4488-ace3-100bdcbb9e10) is the original plan, kept for reference only; changes aren't synced back to it.
 
 ## Summary
 
@@ -66,7 +66,7 @@ The video editor ships the core toolset of common mobile editors in v1, plus mem
 | Media | Import videos and photos from the gallery (multi-select), add more at any time, replace a clip |
 | Basic edits | Split, trim, delete, duplicate, reorder, crop, rotate, flip, freeze frame, reverse |
 | Speed | Constant 0.1× to 10×; speed curves with presets (ramp, bullet, flash) and a custom curve |
-| Canvas | Ratios 9:16, 1:1, 4:5, 3:4, 16:9 and custom; fit or fill; background color, blur or image |
+| Canvas | Ratios 9:16, 1:1, 4:5, 3:4, 16:9 and custom; fit or fill (for all clips, or per clip: P4-16); background color, blur or image (image: P2-12, owner 21 Oct 2026) |
 | Layers | Unlimited video and photo overlays (picture-in-picture), opacity, blend modes, shape masks (rectangle, circle, linear, mirror), green screen keying (pick color, strength, edge softness) |
 | Keyframes | Position, scale, rotation, opacity and volume, with easing |
 | Text | Meme fonts including Anton, outline, shadow, background box, in / out / loop animations, text presets |
@@ -93,7 +93,7 @@ The photo editor is a separate editor tuned for still images. It shares the text
 | Draw | Brush sizes and colors, eraser |
 | Censor | Blur, pixelate, black bar |
 | Background removal | People, pets and objects, free; refine brush; save the cut-out as a sticker |
-| Canvas | Ratios and custom size, background color or image |
+| Canvas | Ratios and custom size, background color or image (image: P2-12, owner 21 Oct 2026) |
 | Project | Undo / redo, auto-save, drafts |
 | Make it a video meme | Opens the photo in the Video editor as a clip with its layers, then opens the sound picker |
 
@@ -122,7 +122,7 @@ The ML Kit API is in beta and may change, so it sits behind our own interface wi
 The sound library is the main reason to choose Memix: **500 licensed sounds at launch, about 100 added each month**, served from the backend so the list changes without an app update.
 
 - **Tabs:** Trending (monthly, per region plus global), Local (the phone's region), Global, Favorites, My sounds.
-- **Regions:** the phone's region picks the Local tab. Launch with trending lists for 5 to 10 countries (see open items).
+- **Regions:** the phone's region picks the Local tab. Launch with trending lists for 5 countries, one per app language: Indonesia, United States, India, Brazil and Mexico (owner, 14 Oct 2026). More countries, such as the Philippines and Spain, are added later in the catalog with no app change.
 - **Categories:** Reactions, Impacts and hits, Fails, Suspense, Cartoon, Voice lines (recreated), Animals, Gaming, Local, Trending.
 - **Search:** by name, tag and category, tolerant of typos.
 - **Preview:** tap to play, with waveform and duration. Sound details show the source credit.
@@ -133,7 +133,7 @@ The sound library is the main reason to choose Memix: **500 licensed sounds at l
 - **Audio spec:** AAC (.m4a), 128 kbps, loudness-normalized to −16 LUFS with peaks at −1 dBTP, so sounds don't jump in volume.
 - **Report:** every sound has a Report option that sends a takedown request to the team.
 
-Prefer CC0 sounds. A CC-BY sound is accepted only when an in-app credit satisfies its license.
+Prefer CC0 sounds. A CC-BY sound is accepted only when an in-app credit satisfies its license. The starter sounds bundled in phase 1 are free to use (CC0 or equivalent), and the owner approves each license before it ships (8 Oct 2026).
 
 ## Templates
 
@@ -160,10 +160,10 @@ Exports have **no length limit**: video is encoded straight to the output file, 
 | Stickers | WhatsApp sticker pack |
 
 - **Before export:** show the estimated file size and time, and check free space.
-- **During export:** it keeps running in the background with a progress notification, and can be cancelled.
-- **Watermark:** a small "Memix" text mark (no logo), top-left with a 3% margin, on every free export. Top-left avoids the buttons TikTok and Reels place on the right and bottom.
+- **During export:** it keeps running in the background with a progress notification, and can be cancelled. On Android 13 and newer, Memix asks for notification permission once, at the first tap on Export video; the export starts at once, whatever the answer (owner, 21 Oct 2026).
+- **Watermark:** a small "Memix" text mark (no logo), top-left with a 3% margin, on every free export. The margin is 3% of the output's shorter side, measured to the mark's drawn ink. Top-left avoids the buttons TikTok and Reels place on the right and bottom; the owner posts one private test at phase-end QA to see whether TikTok's top bar covers it, and decides then whether the top margin stays at 3% or becomes about 13% (22 Oct 2026).
 - **Remove watermark:** one rewarded ad removes it from that one export.
-- **After export:** a share row with TikTok, Instagram (Reels and Stories), WhatsApp, YouTube Shorts, Save to gallery, and More (system share sheet). Files also save to a "Memix" album.
+- **After export:** a share row with TikTok, Instagram (Reels and Stories), WhatsApp, YouTube Shorts, Save to gallery, and More (system share sheet). Files also save to a "Memix" album. Until the share row lands (P5-05), the Exported screen has one Share button that opens the system share sheet (owner, 21 Oct 2026).
 
 Direct sharing uses Android share intents aimed at each app. TikTok's own share SDK can come later if intents prove too limited.
 
@@ -208,15 +208,16 @@ Android 10 and up ships first. iOS 17 and up follows from the same codebase; iOS
 
 | Target | Value |
 | --- | --- |
-| Cold start to Home | under 1.5 s on the reference phone |
+| Cold start to Home | under 1.5 s |
 | Open an editor | under 1 s |
 | Preview playback, 1080p, 6 tracks | 30 fps minimum; 60 fps where the phone allows |
 | Scrub response | under 100 ms per frame update |
-| Export, 60 s at 1080p30 | 60 s or less on the reference phone (about real time) |
+| Export, 60 s at 1080p30 | 60 s or less (about real time) |
+| Memory leaks | none in the editors or export (LeakCanary on Android debug builds; Xcode Instruments Leaks on iOS) |
 | Crash-free users | 99.5% or more |
 | Download size | under 50 MB (ML models downloaded on demand) |
 
-- **Reference phone:** a 2023 or newer upper-mid or flagship Android. Older phones still run every feature, just slower.
+- **Where it's measured:** no named reference phone (owner, 8 Oct 2026). The bar is no visible lag and no memory leaks on Android and iOS; the numbers above are the yardstick, measured on the owner's own phone with a release-type build. LeakCanary is a debug-only tool, not a test. Older phones still run every feature, just slower.
 - **Stack:** Kotlin Multiplatform; Compose Multiplatform for shared UI; native video engines (Media3 on Android, AVFoundation on iOS); no FFmpeg.
 - **Offline:** everything except catalog browsing and downloads works offline.
 - **Accessibility:** touch targets of 48 dp or more, WCAG AA contrast, screen-reader labels on every tool.
@@ -229,15 +230,16 @@ The north-star metric is **DAU, with a target of 5,000 by month 3 after the Andr
 | Event | Fires when | Parameters |
 | --- | --- | --- |
 | `onboarding_complete` | Language and region confirmed | language, region |
-| `project_create` | A project starts | editor (video, photo), source (blank, template) |
+| `project_create` | A project starts | editor (video, photo), source (blank, template, gallery); `gallery` for picked media, `blank` only for the photo editor's blank layout. Duplicating a draft doesn't fire it (PM, 20 Oct 2026) |
 | `template_open` | A template opens | template\_id, type |
 | `sound_preview` | A sound plays in the library | sound\_id, tab |
 | `sound_add` | A sound lands on a timeline | sound\_id, tab, editor |
-| `tool_use` | A tool is applied | editor, tool |
+| `tool_use` | A tool is applied | editor, tool; font (font id: anton, poppins, baloo2, kalam, rozha) when tool is add_text or text_font; value when tool is a canvas tool (owner, 21 Oct 2026): `canvas_ratio` → 9:16, 1:1, 4:5, 3:4, 16:9 or custom (never the custom numbers), `canvas_fit` → fit or fill, `canvas_background` → blur or color (never the color itself) |
 | `bg_remove` | Background removal finishes | editor, success, duration\_ms |
-| `export_start` | The user taps Export | editor, format, resolution, fps, length\_s |
+| `export_start` | The user starts an export (Export video in the export sheet, PM 20 Oct 2026) | editor, format, resolution, fps, length\_s |
 | `export_complete` | The file is saved | editor, format, time\_ms, size\_mb |
 | `export_fail` | Export errors | editor, error\_code |
+| `export_cancel` | The user cancels a running export (owner, 21 Oct 2026) | editor, progress (percent done, 0–100) |
 | `watermark_removed` | A rewarded ad completes | editor |
 | `share_target` | A share target is chosen | target |
 | `sound_report` | A sound is reported | sound\_id |
@@ -256,7 +258,7 @@ The store title becomes **"Memix: Meme Video & Photo" (25 characters)**. "Memix 
 | Privacy policy and support | Hosted on the app's domain, linked from both stores and the app |
 | AdMob | Publish app-ads.txt on the same domain |
 | Play Console | Target audience 13+, "contains ads", Data safety form (advertising ID, analytics, crash data), content rating questionnaire |
-| Play testing gate | The account was created before 13 Nov 2023, so the 12-tester closed-test rule for new personal accounts doesn't apply ([Google Play help](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en-GB)). Internal testing is still used |
+| Play testing gate | The developer account is personal (owner, 8 Oct 2026), so Google's closed test applies before production access: currently at least 12 testers opted in for 14 days in a row, then an application that Google reviews ([Google Play help](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en-GB); re-check when P5-08 starts). Ticket P5-08 starts it around 25 Jan 2027 with 15–20 testers the owner recruits. Internal testing is still used. (Corrects the 7 Oct entry, which said the rule didn't apply.) |
 | Consent | Google UMP for EEA, UK and Switzerland; Apple's tracking prompt (ATT) on iOS later |
 | Credits screen | Open-source licenses, font licenses, sound credits |
 
@@ -277,14 +279,14 @@ Android launches around **7 March 2027** and iOS around **2 May 2027**, if the f
 | P6 | 20–21 | Feb 22 – Mar 7 | Android QA and release → **Android launch ≈ Mar 7, 2027** |
 | P7 | 22–29 | Mar 8 – May 2 | iOS → **iOS launch ≈ May 2, 2027** |
 
-Each phase ends with a build in internal testing and a manual QA pass, so problems surface early. What each phase delivers:
+Each phase ends with a build in internal testing and a manual QA pass, so problems surface early. The owner sets up Play signing and the Play Console and builds, signs and uploads each internal-testing build by hand; no signing key or Play credential goes into the repo or CI, and nothing uploads from CI (owner, 21 Oct 2026). Until the owner's first upload, phases close without it and QA uses debug builds. What each phase delivers:
 
-- **0 · Foundation (1 week):** KMP project, CI, design system in Compose, Supabase and R2 set up.
+- **0 · Foundation (1 week):** KMP project, CI, design system in Compose, Supabase set up. Media storage moved (8 Oct 2026): Supabase Storage in phase 3, Cloudflare R2 before launch.
 - **1 · Core + video editor (4 weeks):** project model, timeline, Android engine preview and export, meme sounds on the timeline, text, watermark. First internal test build.
 - **2 · Photo editor (3 weeks):** meme formats, image tools, layers, photo background removal, PNG / JPG / GIF / WhatsApp stickers, Make it a video meme.
 - **3 · Sounds and audio (3 weeks):** full library with search, tabs, favorites, offline pack and imports; voiceover; audio effects.
 - **4 · Pro video tools (6 weeks):** overlays, keyframes, masks, blend modes, green screen and templates, transitions, effects, filters, text animation, speed curves, video background removal. The late-December holidays fall here.
-- **5 · Ads, analytics, sharing, languages (2 weeks).**
+- **5 · Ads, analytics, sharing, languages (2 weeks).** The closed test for production access (P5-08) starts around 25 Jan 2027, during phase 4, and production access must be granted before phase 6's rollout.
 - **6 · Android QA and release (2 weeks):** device testing, store listing, production rollout.
 - **7 · iOS (8 weeks):** AVFoundation engine, iOS platform pieces, TestFlight, App Review.
 
@@ -300,14 +302,15 @@ Each phase ends with a build in internal testing and a manual QA pass, so proble
 | Video background removal quality | Rough edges | People only in v1, refine brush, low-res preview |
 | ML Kit subject segmentation is beta | API changes | Behind our own interface, MediaPipe fallback |
 | Name conflict | Costly rename later | Trademark search before launch |
-| File download costs | Bill grows with users | Cloudflare R2 from day one (free egress), on-device caching |
+| File download costs | Bill grows with users | Supabase Storage while only the team downloads, Cloudflare R2 (free egress) before launch, on-device caching |
 | Supabase Free limits | Backend restricted when over quota | Monitor usage, move to Pro at about 1,500 DAU |
+| Closed test before production (personal Play account) | Launch slips about 3 weeks if testers drop below 12 or Google refuses the application | Recruit 15–20 testers; start around 25 Jan 2027 (P5-08) so one rerun still fits before 7 Mar; the owner's Play Console app and first manual upload before then (owner, 21 Oct 2026) |
 
 **Open items**
 
-- [ ] Pick the 5 to 10 launch countries for trending lists (proposed: Indonesia, United States, India, Brazil, Mexico, Philippines, Spain)
+- [x] Pick the launch countries for trending lists: 5 to start, one per app language: Indonesia, United States, India, Brazil, Mexico (owner, 14 Oct 2026). The Philippines and Spain can come later as new `trending` rows, with no app change
 - [ ] Trademark search for "Memix" and buy the domain
-- [ ] Confirm watermark position (proposed top-left)
+- [x] Confirm watermark position: top-left, 3% margin (owner, 8 Oct 2026)
 - [ ] Verify WhatsApp sticker spec during the photo export ticket
 - [ ] Book the IP lawyer review before launch
 
@@ -320,14 +323,14 @@ Each phase ends with a build in internal testing and a manual QA pass, so proble
 | Editors | Two separate editors: video and photo |
 | Background removal | Free in both editors |
 | Accounts | None in v1 |
-| Backend | Supabase (Free, then Pro at about 1,500 DAU) + Cloudflare R2 for files; Supabase dashboard as the first CMS |
+| Backend | Supabase (Free, then Pro at about 1,500 DAU) + Cloudflare R2 for files; Supabase dashboard as the first CMS. Revised 8 Oct: files on Supabase Storage until P6, then R2 before launch |
 | Crash and analytics | Firebase Crashlytics and Analytics |
 | Money | Ads only; rewarded ad removes the watermark; capped interstitial after export |
-| Watermark | Small "Memix" text, no logo |
+| Watermark | Small "Memix" text, no logo; top-left, 3% margin (confirmed 8 Oct) |
 | Look | Dark only; neutral Adobe Spectrum grays in CapCut's layout, sky-blue accent #2BB3F3, white selection (revised 7 Oct after the first draft's yellow and pink) |
 | Name | Memix |
 | Goal | 5,000 DAU by month 3 after launch |
-| Languages | English, Indonesian, Spanish, Portuguese, Hindi |
+| Languages | English, Indonesian, Spanish, Portuguese, Hindi; Hindi gets an OFL Devanagari display face in Anton's place (8 Oct) |
 | Testing | No automated tests; manual QA at the end of each phase by the QA agent, with device-only checks done by the owner |
 
 How it's built: [TECHNICAL_DESIGN.md](TECHNICAL_DESIGN.md) · What to build, phase by phase: [TICKETS.md](TICKETS.md) · Look and feel: [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md)

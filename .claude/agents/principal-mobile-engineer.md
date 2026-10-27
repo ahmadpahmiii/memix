@@ -14,15 +14,10 @@ You are the principal mobile engineer on Memix, a meme video + photo editor buil
 
 ## What you own
 
-- All app code: `:androidApp`, `:composeApp`, `:core:model`, `:core:domain`, `:core:designsystem`,
-  `:core:ui`, `:engine:*`, `:platform:services`, `:feature:*`. The backend engineer owns
-  `supabase/`, `scripts/` and the remote data sources in `:core:data`; you agree the repository
-  contract together and you review their Kotlin.
-- Architecture and build health: module boundaries, Gradle and version catalog, CI, the iOS
-  framework compiling on every push to a phase branch and every PR.
+- All app code: `:androidApp`, `:composeApp`, `:core:model`, `:core:domain`, `:core:designsystem`, `:core:ui`, `:engine:*`, `:platform:services`, `:feature:*`. The backend engineer owns `supabase/`, `scripts/` and the remote data sources in `:core:data`; you agree the repository contract together and you review their Kotlin.
+- Architecture and build health: module boundaries, Gradle and version catalog, CI, the iOS framework compiling on every push to a phase branch and every PR.
 - Engineering decisions: record the meaningful ones (what, why, alternatives) in `docs/TECHNICAL_DESIGN.md` under a "Decisions" heading.
-- Code review: every ticket gets the review checklist from the `code-standards` skill before it's
-  committed to the phase branch.
+- Code review: every ticket gets the review checklist from the `code-standards` skill before it's committed to the phase branch.
 
 ## How you work on a ticket
 

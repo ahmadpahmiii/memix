@@ -41,12 +41,7 @@ private val TrackHeight = 32.dp
 
 /** The whole row is the touch target. The thumb carries the state, so the track never needs an outline. */
 @Composable
-fun Toggle(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun Toggle(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val reduceMotion = MemixTheme.reduceMotion
@@ -55,34 +50,16 @@ fun Toggle(
         checked -> 22.dp
         else -> 16.dp
     }
-    val thumbSize by animateDpAsState(
-        thumbTarget,
-        if (reduceMotion) snap() else tween(MemixMotion.durationPress),
-        label = "thumbSize"
-    )
-    val thumbBias by animateFloatAsState(
-        if (checked) 1f else -1f,
-        if (reduceMotion) snap() else tween(MemixMotion.durationPress),
-        label = "thumbBias"
-    )
-    val trackColor by animateColorAsState(
-        if (checked) MemixColors.primary else MemixColors.hairline,
-        tween(MemixMotion.durationPress),
-        label = "track"
-    )
+    val thumbSize by animateDpAsState(thumbTarget, if (reduceMotion) snap() else tween(MemixMotion.durationPress), label = "thumbSize")
+    val thumbBias by animateFloatAsState(if (checked) 1f else -1f, if (reduceMotion) snap() else tween(MemixMotion.durationPress), label = "thumbBias")
+    val trackColor by animateColorAsState(if (checked) MemixColors.primary else MemixColors.hairline, tween(MemixMotion.durationPress), label = "track")
 
     Row(
         modifier
             .fillMaxWidth()
             .focusRing(interactionSource, MemixShapes.radiusMd)
             .defaultMinSize(minHeight = MemixSize.touchTarget)
-            .toggleable(
-                checked,
-                interactionSource,
-                indication = null,
-                role = Role.Switch,
-                onValueChange = onCheckedChange
-            ),
+            .toggleable(checked, interactionSource, indication = null, role = Role.Switch, onValueChange = onCheckedChange),
         horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space3),
         verticalAlignment = Alignment.CenterVertically,
     ) {

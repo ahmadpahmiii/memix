@@ -17,20 +17,9 @@ import app.memix.core.designsystem.component.CloseButton
 
 /** A screen whose feature isn't built yet: it says so and offers the way back, nothing that pretends to work. */
 @Composable
-fun PlaceholderScreen(
-    title: String,
-    body: String,
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier.fillMaxSize().background(MemixColors.canvas)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-    ) {
-        CloseButton(
-            onClose,
-            Modifier.padding(start = MemixSpacing.space2, top = MemixSpacing.space2)
-        )
+fun PlaceholderScreen(title: String, body: String, onClose: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxSize().background(MemixColors.canvas).windowInsetsPadding(WindowInsets.safeDrawing)) {
+        CloseButton(onClose, Modifier.padding(start = MemixSpacing.space2, top = MemixSpacing.space2))
         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
             EmptyState(title, body)
         }

@@ -32,14 +32,7 @@ fun TemplateCard(
     thumbnail: (@Composable BoxScope.() -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    Column(
-        modifier.clickable(
-            interactionSource,
-            indication = null,
-            role = Role.Button,
-            onClick = onClick
-        )
-    ) {
+    Column(modifier.clickable(interactionSource, indication = null, role = Role.Button, onClick = onClick)) {
         Box(
             Modifier
                 .focusRing(interactionSource, MemixShapes.radiusLg)

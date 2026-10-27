@@ -30,7 +30,7 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 **Color.**
 - Backgrounds: `canvas` for screens, `surface` for cards, sheets, nav and tool bar, `surface-raised` for controls on top of `surface`.
 - Text: `text` first, `text-secondary` for supporting copy, `text-muted` for hints and timecodes. All three pass 4.5:1 on `canvas`, `surface` and `surface-raised`.
-- `primary-subtle` (16% sky) backs the active tool, the playing sound row and sound play buttons; icons on it use `primary`.
+- `primary-subtle` (16% sky) backs the active tool, sound play buttons and the "Add a meme sound" pill; icons and text on it use `primary`. It never fills a whole row: a playing sound row steps one value up instead (`surface` on `canvas`, `surface-raised` on `surface`).
 - Track colors encode clip type on the timeline and in the layers panel, and nowhere else:
 
 | Track | Token |
@@ -64,25 +64,21 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 **States.**
 - Pressed: `primary` fills switch to `primary-pressed`; neutral controls go one value step lighter (`surface-raised` → `hairline`). Nothing moves.
 - Selected clip or layer: `stroke-selection` outline in `selection` plus white trim handles.
-- Selected chip: `selection` fill with `on-primary` text. Selected tab: `text` label with a 2px `selection` underline. Selected segment: `surface-raised` pill with `text`.
+- Selected chip, segment (SegmentedChoice) and font tile (FontTile): `selection` fill with `on-primary` text. Selected swatch: a white ring 2px outside it. Selected tab: `text` label with a 2px `selection` underline. `surface-raised` never marks a selection (1.4:1 against `canvas`); see `docs/DESIGN_SYSTEM.md` → States.
 - Active tool: `primary` icon and label on `primary-subtle`.
 - Disabled: `text-muted` label. Prefer keeping controls enabled and explaining on tap.
 - Focus: `stroke-focus` ring in `focus-ring`, 2px outside the control.
 
 **Motion.**
 - Durations: 120 ms for presses and toggles, 200 ms for sheets and tab changes, 320 ms for screen transitions.
-- The "bonk": a sound or sticker landing on the timeline scales 1 → 1.12 → 1 over 240 ms with a slight overshoot. Use it only for placing content.
+- The "bonk": a sound or sticker landing on the timeline scales 1 → 1.12 → 1 over 240 ms with a slight overshoot. Use it only for placing content. On the timeline the width grows by the same dp as the height (or 12% if that's less), so a long clip swells a little at each end instead of sweeping over its neighbors.
 - Respect the system's reduce-motion setting: replace movement with a 120 ms fade.
 
 **Imagery.** The user's content is the imagery. Template thumbnails are 9:16 in `radius-lg` frames. No stock illustrations or mascots.
 
 ## Iconography
 
-Memix draws its own icons on a 24px grid: 2px flat-cap strokes, mitred joins, and one solid core
-where the metaphor has mass (the door of Home, the cone of Sounds). Colored `text-secondary`
-(inactive), `text` (current nav item) or `primary` (active tool). The rule set is in
-`docs/DESIGN_SYSTEM.md` → Iconography; the previews here still use the earlier stand-ins. There is
-no Memix logo yet: until one exists, write the name "Memix" in Anton.
+Memix draws its own icons on a 24px grid: 2px flat-cap strokes, mitred joins, and one solid core where the metaphor has mass (the door of Home, the cone of Sounds). Colored `text-secondary` (inactive), `text` (current nav item) or `primary` (active tool). The rule set is in `docs/DESIGN_SYSTEM.md` → Iconography; the previews here still use the earlier stand-ins. There is no Memix logo yet: until one exists, write the name "Memix" in Anton.
 
 ## In Compose
 

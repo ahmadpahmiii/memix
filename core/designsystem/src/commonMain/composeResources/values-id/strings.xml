@@ -5,4 +5,6 @@
     <string name="sound_pause">Jeda %1$s</string>
     <string name="sound_favorite">Favoritkan %1$s</string>
     <string name="sound_add">Tambahkan %1$s ke video</string>
+    <string name="setting_expanded">Diperluas</string>
+    <string name="setting_collapsed">Diciutkan</string>
 </resources>

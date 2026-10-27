@@ -1,20 +1,16 @@
 # Build tickets
 
-Source of truth: the "Memix — Product Requirements" Claude Doc (https://claude.ai/code/artifact/c81028c0-e543-4488-ace3-100bdcbb9e10). This file is an export from Oct 7, 2026; if the two disagree, ask the owner which one wins.
+Source of truth: this file (owner, 8 Oct 2026). The "Memix — Product Requirements" Claude Doc (https://claude.ai/code/artifact/c81028c0-e543-4488-ace3-100bdcbb9e10) is the original plan, kept for reference only; changes aren't synced back to it.
 
 ## How to work the tickets
 
-Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.g. `phase-1`) and
-one pull request, opened when the phase is done (after the QA pass and the phase gate). Each ticket
-is one or more commits on that branch, titled `<ID>: <ticket name>`. Every phase ends with a build
-in Play internal testing.
+Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.g. `phase-1`) and one pull request, opened when the phase is done (after the QA pass and the phase gate). Each ticket is one or more commits on that branch, titled `<ID>: <ticket name>`. Every phase ends with a build in Play internal testing, which the owner builds, signs and uploads by hand (owner, 21 Oct 2026).
 
-- **IDs:** `P<phase>-<number>`, for example `P1-04`. The Needs column lists tickets that must merge first.
+- **IDs:** `P<phase>-<number>`, for example `P1-04`; `L-<number>` for unscheduled improvements after launch. The Needs column lists tickets that must merge first.
 - **Sizes** (one developer working with Claude): S is up to 1 day, M is 2 to 3 days, L is 4 to 5 days.
 - **Definition of done** for every ticket:
   - The Android app builds, the iOS framework compiles, and CI is green.
-  - The engineer ran the change on an emulator or phone and listed what was checked in the ticket's
-    commit message. The project has no automated tests; QA tests manually at the end of each phase.
+  - The engineer ran the change on an emulator or phone and listed what was checked in the ticket's commit message. The project has no automated tests; QA tests manually at the end of each phase.
   - UI uses design-system tokens only (no raw colors or sizes).
   - Every user-facing string is a resource, with all five languages present (machine-drafted is fine until phase 5).
   - Analytics events named in the PRD fire.
@@ -22,62 +18,79 @@ in Play internal testing.
 
 ## Phase 0 · Foundation (week 1, from 12 Oct)
 
-> 8 Oct 2026 (owner): P0-07 moved out of Phase 0 while another media-hosting approach is found;
-> P0-06's seed sounds and templates move with it. Every later ticket that needs hosted media (P3-01,
-> P3-04, P3-12, P4-05, P4-15) waits for that decision, due before P3 starts.
+> 8 Oct 2026 (owner): P0-07 moved out of Phase 0 while another media-hosting approach is found; P0-06's seed sounds and templates move with it. Every later ticket that needs hosted media (P3-01, P3-04, P3-12, P4-05, P4-15) waits for that decision, due before P3 starts.
+> Decided 8 Oct 2026 (owner): Supabase Storage now (P3-13, first in P3), Cloudflare R2 before launch (P6-07). P0-02's "merging requires green" stays a convention, without branch protection.
 
-| ID    | Ticket                                                                                                                               | Done when                                                                                                                  | Size | Needs        |
-|-------|--------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|------|--------------|
-| P0-01 | Create the KMP project: Android and iOS targets, Compose Multiplatform, version catalog, module skeleton from the technical design   | The app launches on an Android emulator and an iOS simulator with a placeholder screen                                     | M    | —            |
-| P0-02 | CI on GitHub Actions                                                                                                                 | Each push to a phase branch and each PR runs the Android build, lint and the iOS framework compile; merging requires green | M    | P0-01        |
-| P0-03 | Architecture base: Koin, navigation host, base ViewModel (UiState and Intent), result and error types, logging                       | A sample screen shows state from a use case                                                                                | M    | P0-01        |
-| P0-04 | Design system in Compose: tokens, bundled fonts, core components (buttons, chips, sound chip, cards, sheets, tabs, sliders, toggles) | A catalog screen shows every component and the designer approves it against the design system                              | L    | P0-01        |
-| P0-05 | Bottom navigation and empty screens: Home, Templates, Create sheet, Sounds, Drafts                                                   | Navigation and back behavior work in the dark theme                                                                        | S    | P0-03, P0-04 |
-| P0-06 | Supabase project: schema SQL, access rules, seed data (10 sounds, 3 templates)                                                       | The public key reads active rows only; writes are refused                                                                  | M    | —            |
-| P0-07 | Cloudflare R2 bucket, custom media domain, upload script                                                                             | A test file loads from the media domain with immutable cache headers                                                       | S    | —            |
-| P0-08 | Firebase on Android: Crashlytics, Analytics, Remote Config                                                                           | A test crash shows in the console; a Remote Config value is read                                                           | S    | P0-01        |
-| P0-09 | String resources for English, Indonesian, Spanish, Portuguese, Hindi                                                                 | Switching language changes the UI strings                                                                                  | S    | P0-01        |
+| ID | Ticket | Done when | Size | Needs |
+| --- | --- | --- | --- | --- |
+| P0-01 | Create the KMP project: Android and iOS targets, Compose Multiplatform, version catalog, module skeleton from the technical design | The app launches on an Android emulator and an iOS simulator with a placeholder screen | M | — |
+| P0-02 | CI on GitHub Actions | Each push to a phase branch and each PR runs the Android build, lint and the iOS framework compile; merging requires green | M | P0-01 |
+| P0-03 | Architecture base: Koin, navigation host, base ViewModel (UiState and Intent), result and error types, logging | A sample screen shows state from a use case | M | P0-01 |
+| P0-04 | Design system in Compose: tokens, bundled fonts, core components (buttons, chips, sound chip, cards, sheets, tabs, sliders, toggles) | A catalog screen shows every component and the designer approves it against the design system | L | P0-01 |
+| P0-05 | Bottom navigation and empty screens: Home, Templates, Create sheet, Sounds, Drafts | Navigation and back behavior work in the dark theme | S | P0-03, P0-04 |
+| P0-06 | Supabase project: schema SQL, access rules, seed data (10 sounds, 3 templates) | The public key reads active rows only; writes are refused | M | — |
+| P0-07 | Cloudflare R2 bucket, custom media domain, upload script | A test file loads from the media domain with immutable cache headers | S | — |
+| P0-08 | Firebase on Android: Crashlytics, Analytics, Remote Config | A test crash shows in the console; a Remote Config value is read | S | P0-01 |
+| P0-09 | String resources for English, Indonesian, Spanish, Portuguese, Hindi | Switching language changes the UI strings | S | P0-01 |
 
 ## Phase 1 · Core and video editor (weeks 2 to 5, from 19 Oct)
+
+> 8 Oct 2026 (owner, answers to the 15 questions): P1-04's run also builds three things: (a) deleting a draft with no clips when the user leaves the editor; (b) P1-02's failed first save after copying, which reuses the "Not enough space" sheet with **Free up space** (the designer adds the state to the P1-02 spec first); (c) P1-02's import-sheet exit animation (N1, accepted as is until then). P1-08's sound files: once the owner opens `freesound.org` and `cdn.freesound.org` to cloud sessions, one session downloads the 10 approved CC0 sounds once, saves each license page into the repo as proof, normalizes the sounds and bundles them. The app never calls Freesound, and from P3 all catalog media comes from Supabase Storage. P1-15 waits for the owner's upload key and service account ("soon, when ready to publish"). Until then, phases close without an internal-testing build and QA uses debug builds. Where P1-15 goes is proposed in `docs/pm/proposals/2026-10-08-play-release-path.md`; the credentials are needed by 11 Jan 2027 for P5-08.
+> 8 Oct 2026 (owner): P1-16 added (`docs/pm/proposals/2026-10-07-p1-02-followups.md`, A). It sits after P1-07 in build order, so its Needs are met working top to bottom.
+> 8 Oct 2026 (owner): no named reference phone. Speed numbers are measured on the owner's own phone with a release-type build; the bar is no visible lag and no memory leaks. Editor and export tickets check for leaks with LeakCanary in debug builds (a debug-only tool added with P1-04, not a test). P1-08 waits until the owner approves each starter-sound license (CC0 or equivalent). P1-17 added (Hindi display face). Keyboard shortcuts and the locked-track UI are not in P1: see Later · Improvements.
+> 13 Oct 2026 (PM, wording only; the owner can veto): P1-16's Done when now names its two entries, as the finished spec has them (P1-06 spec → Add media). The Add media tool on the main tool bar adds after the clip under the playhead, and the Add media tile at the end of the video always appends. Nothing is added or cut.
+> 20 Oct 2026 (PM, clarifications from the designer's specs in 90c8b07; nothing is added or cut; the owner can veto. `decision-log.md`, 20 Oct): **P1-11**'s Done when means that a layer fully inside the frame stays fully inside after a ratio change, and a layer the user placed partly outside keeps its place. P1-11 also needs P1-10, because captions are the only layers in P1 and the rule measures them with P1-10's renderer; P1-10 comes first in table order, so nothing moves. **P1-14**: opening or renaming a draft doesn't count as an edit; a duplicate takes its original's edit time plus 1 µs, so it sits directly above it until it's edited (ties go to the newer copy); duplicating fires no `project_create`. **P1-12**: Make another opens Home with the Create sheet open; `export_start` fires on Export video in the sheet, when the export starts. Owner questions from the same specs: `proposals/2026-10-20-*.md` (background image, clip crop/rotate/flip, analytics, P1-12 Share and notification permission).
+> 21 Oct 2026 (owner: "1 - 6 do with your recomendation, i have approve it"; `decision-log.md`, 21 Oct): **P1-12** gets one **Share** button on the Exported screen that opens the system share sheet with the video attached and fires `share_target` with `target: "more"`; P5-05 replaces it with the full share row. On Android 13 and newer, P1-12 asks for notification permission once, at the first tap on **Export video**, with Android's own dialog; the export starts at once, whatever the answer. P1-12 also fires the new `export_cancel` (editor, progress 0–100). **P1-11**'s three canvas `tool_use` events carry the new optional `value` (PRD → Metrics and analytics). Background image → P2-12; clip crop, rotate, flip and per-clip Fit or Fill → P4-16.
+> 21 Oct 2026 (owner: "P1-15 play release setup i will setup manual by myself, i will manually deploy"): **P1-15 is rewritten.** The owner sets up Play signing and the Play Console and builds, signs and uploads every Play build by hand. No upload key, keystore, password or service account goes into the repo or CI, and there's no CI upload. The team's part needs no credentials, so it's built in Phase 1 after P1-14. The 8 Oct line above (P1-15 waits for the owner's upload key and service account, needed by 11 Jan 2027) no longer applies. Until the owner's first upload, phases still close without an internal-testing build and QA uses debug and benchmark builds (8 Oct, 1B).
 
 | ID | Ticket | Done when | Size | Needs |
 | --- | --- | --- | --- | --- |
 | P1-01 | Project model, serialization, SQLDelight storage, migrations | A project created, saved, force-closed and reopened comes back identical | M | P0-03 |
 | P1-02 | Gallery picker (Android photo picker, multi-select videos and photos) with a cached copy of each file | Picked media appear in the project without a storage permission prompt | M | P1-01 |
 | P1-03 | `VideoEngine` interface and the Android composition builder (main video sequence, audio sequences) | A sample project with every track type previews and exports correctly | L | P1-01 |
-| P1-04 | Preview: player in Compose, play, pause, seek, timecode | 1080p preview plays at 30 fps or more on the reference phone | L | P1-03 |
-| P1-05 | Timeline UI: tracks, pinch zoom, scroll, playhead, thumbnail strip, selection, track colors | Timeline scrolls at 60 fps on the reference phone | L | P1-04 |
-| P1-06 | Clip edits: split, trim handles, delete, duplicate, reorder | Each edit shows in the preview within 100 ms | L | P1-05 |
+| P1-04 | Preview: player in Compose, play, pause, seek, timecode; leaving the editor deletes a draft that has no clips (owner, 8 Oct) | 1080p preview plays at 30 fps or more on the owner's phone; LeakCanary shows no leaks | L | P1-03 |
+| P1-05 | Timeline UI: tracks, pinch zoom, scroll, playhead, thumbnail strip, selection, track colors | Timeline scrolls at 60 fps on the owner's phone; LeakCanary shows no leaks | L | P1-04 |
+| P1-06 | Clip edits: split, trim handles, delete, duplicate, reorder | Each edit shows in the preview within 100 ms on the owner's phone; LeakCanary shows no leaks | L | P1-05 |
 | P1-07 | Undo and redo (100 steps), auto-save 500 ms after the last change | Killing the app mid-edit restores the draft | M | P1-01 |
+| P1-16 | Add media and replace a clip from the video editor: same picker and import sheet as P1-02; Replace keeps the clip's place and length and covers video and photo clips only (a meme sound is deleted and re-added) | Media added with the Add media tool lands after the clip under the playhead (the Add media tile at the end of the video appends) as one undo step, and a replaced clip keeps its start and length so sounds and text stay in sync | S | P1-02, P1-06, P1-07 |
 | P1-08 | Meme sounds on the timeline from the bundled starter pack: add at playhead, move, trim, volume | Sound stays in sync within 1 frame in preview and export | M | P1-05 |
 | P1-09 | Original audio: volume, mute, detach | Detached audio becomes its own audio-track clip | S | P1-04 |
 | P1-10 | Text, basic: add, edit, font (Anton plus 4 more), color, outline, move / scale / rotate gestures, timing on the timeline | Text looks the same in preview and export | L | P1-04 |
-| P1-11 | Canvas: ratios 9:16, 1:1, 4:5, 3:4, 16:9 and custom; fit or fill; background color or blur | Changing ratio keeps every layer inside the frame | M | P1-04 |
-| P1-12 | Export: resolution and fps choices, device capability check, size and time estimate, free-space check, foreground service with notification, cancel | 60 s at 1080p30 exports in 60 s or less on the reference phone and plays in the gallery | L | P1-03 |
-| P1-13 | Watermark: small "Memix" text, top-left, on free exports | Watermark shows by default and is absent when the export is marked watermark-free | S | P1-12 |
-| P1-14 | Drafts screen: list, open, rename, duplicate, delete | Drafts sort by last edited | S | P1-01 |
-| P1-15 | Release plumbing: signing and CI upload to the Play internal testing track | A build installs from internal testing | S | P0-02 |
+| P1-11 | Canvas: ratios 9:16, 1:1, 4:5, 3:4, 16:9 and custom; fit or fill; background color or blur | Changing ratio keeps every layer inside the frame: a layer fully inside stays fully inside, and a layer the user placed partly outside keeps its place | M | P1-04, P1-10 |
+| P1-12 | Export: resolution and fps choices, device capability check, size and time estimate, free-space check, foreground service with notification, cancel; notification permission asked once at the first Export video (Android 13+, the export doesn't wait for the answer); one Share button on the Exported screen (system share sheet, until P5-05) (owner, 21 Oct) | 60 s at 1080p30 exports in 60 s or less on the owner's phone and plays in the gallery; LeakCanary shows no leaks after an export and a cancel | L | P1-03 |
+| P1-13 | Watermark: small "Memix" text, top-left with a 3% margin, on free exports | Watermark shows by default and is absent when the export is marked watermark-free | S | P1-12 |
+| P1-14 | Drafts screen: list, open, rename, duplicate, delete | Drafts sort by last edited (opening or renaming a draft isn't an edit; a duplicate sits directly above its original until it's edited) | S | P1-01 |
+| P1-15 | Release build for the owner's manual Play uploads (owner, 21 Oct 2026). **The owner** creates the Play Console app, sets up Play App Signing with his own upload key, and builds, signs and uploads every Play build by hand on his Mac. **The team** adds only release settings that need no secrets (R8 on for release with its keep rules checked, Crashlytics mapping upload, a versionCode rule so every upload is higher than the last) and the owner's runbook in the `play-release` skill (build a signed release locally, upload it to internal testing). No upload key, keystore, password or service account in the repo or CI, and no CI upload | The release build runs on the owner's phone without an R8 crash (open the video editor, add a meme sound and a caption, export 1080p30); following the runbook, the owner's signed bundle installs from internal testing; the repo and CI hold no signing material or Play credentials | S | P0-08 |
+| P1-17 | Hindi display face: the designer picks an OFL display face with Devanagari (for example Teko) for Anton's display roles and documents it in the design system and tokens; the engineer bundles it and uses it only when the app language is Hindi | In Hindi, the Home hero and entry-card titles render in the new face instead of the system font, nothing clips at 200% font scale and 360 dp, and the other four languages look unchanged | S | P0-04 |
 
 ## Phase 2 · Photo editor (weeks 6 to 8, from 16 Nov)
 
+> 9 Oct 2026 (owner, option C): P2-11 adds the PRD's text shadow and background box right after P2-03, built once in the shared text engine so both editors get them (the P1-10 spec covers font, color and outline only).
+> 21 Oct 2026 (owner, [proposal](pm/proposals/2026-10-20-canvas-background-image.md) B): P2-12 adds the PRD's canvas background image to both editors, right after P2-01. P2-01's "canvas" means ratio, size and color; the image comes with P2-12. The designer specs it with P2-01.
+
 | ID | Ticket | Done when | Size | Needs |
 | --- | --- | --- | --- | --- |
-| P2-01 | Photo editor shell: canvas, layer model, move / scale / rotate gestures, layers panel (reorder, lock, hide, opacity) | A 10-layer scene stays smooth while dragging | L | P1-01, P0-04 |
+| P2-01 | Photo editor shell: canvas, layer model, move / scale / rotate gestures, layers panel (reorder, lock, hide, opacity) | A 10-layer scene stays smooth while dragging; LeakCanary shows no leaks | L | P1-01, P0-04 |
+| P2-12 | Canvas background image in both editors: a photo the user picks from the gallery (same picker and cached copy as P1-02, never uploaded) behind video clips that don't fill the frame and behind the photo editor's layers; one saved-draft format change with a migration | The picked image shows behind a Fit clip in the video editor and behind the layers in the photo editor, looks the same in preview and export, and an old draft still opens after the migration | S | P1-11, P2-01 |
 | P2-02 | Meme formats: Classic, Caption bar, Panels (2 to 6 cells, draggable dividers), Demotivational, Speech bubbles | Each format exports correctly at 1080 px and 2160 px | L | P2-01 |
 | P2-03 | Text and stickers in the photo editor, sharing the video editor's text engine | The same style looks identical in both editors | M | P2-01, P1-10 |
+| P2-11 | Text shadow and background box in the shared text engine (video and photo editors): shadow on/off with color and softness, a box behind the text with color and corner radius; declarative style params with a reference render | A caption with shadow and box looks the same in preview and export in both editors | M | P2-03 |
 | P2-04 | Image tools: crop, rotate, flip, straighten; adjustments; 20 LUT filters; deep-fry | Filter ids and looks match the video filters | L | P2-01 |
 | P2-05 | Draw (brush sizes and colors, eraser) and censor (blur, pixelate, black bar) | Strokes and censor areas stay editable as layers | M | P2-01 |
-| P2-06 | `Segmenter` interface and ML Kit subject segmentation, with model availability check and "Preparing…" state | A person, pet or object cut-out takes under 1.5 s for a 12 MP photo on the reference phone | M | P0-03 |
+| P2-06 | `Segmenter` interface and ML Kit subject segmentation, with model availability check and "Preparing…" state | A person, pet or object cut-out takes under 1.5 s for a 12 MP photo on the owner's phone | M | P0-03 |
 | P2-07 | Photo background removal UX: one tap, checkerboard result, refine brush, edge softness, save as sticker | Refine strokes survive save and reopen | M | P2-06, P2-01 |
-| P2-08 | Photo export: PNG, JPG with quality, GIF for animated layers, copy to clipboard, save to the "Memix" album | Each format opens correctly in the gallery and in chat apps | M | P2-01 |
+| P2-08 | Photo export: PNG, JPG with quality, GIF for animated layers, copy to clipboard, save to the "Memix" album | Each format opens correctly in the gallery and in chat apps; LeakCanary shows no leaks | M | P2-01 |
 | P2-09 | WhatsApp sticker pack export (check WhatsApp's current sticker spec first) | A pack installs into WhatsApp on a test phone | M | P2-08 |
 | P2-10 | Make it a video meme: convert the photo scene to a video timeline, then open the sound picker | Every layer keeps its position, size and style | M | P2-01, P1-03 |
 
 ## Phase 3 · Sounds and audio (weeks 9 to 11, from 7 Dec)
 
+> 8 Oct 2026 (owner): P3-13 replaces the moved P0-07 with Supabase Storage. It comes first in build order; P3-01 and P3-12 need it.
+
 | ID | Ticket | Done when | Size | Needs |
 | --- | --- | --- | --- | --- |
-| P3-01 | Catalog repositories: categories, sound pages, trending, search, with SQLDelight caching and refresh rules | Launching offline shows the cached catalog | L | P0-06, P1-01 |
+| P3-13 | Media storage on Supabase Storage (replaces P0-07): public bucket in the `memix` project, upload script that sets long cache headers, `media_base_url` in Remote Config; seed rows for the owner-approved starter sounds (P0-06's moved sound seed) | A seed sound loads from `media_base_url` plus its `file_path` with immutable cache headers, and the publishable key can read files but can't upload or delete them | S | P0-06 |
+| P3-01 | Catalog repositories: categories, sound pages, trending, search, with SQLDelight caching and refresh rules | Launching offline shows the cached catalog | L | P0-06, P1-01, P3-13 |
 | P3-02 | Sounds screen: Trending, Local, Global, Favorites and My sounds tabs; categories; typo-tolerant search | Search finds "bruh" when typed "bruhh" | L | P3-01 |
 | P3-03 | Sound preview with waveform and details (credit, license) | A cached sound starts playing within 300 ms | M | P3-01 |
 | P3-04 | Download manager: 500 MB cache with least-recently-used cleanup, progress, retries; 50-sound offline starter pack | Airplane mode still plays the starter pack and every cached sound | M | P3-01 |
@@ -88,9 +101,11 @@ in Play internal testing.
 | P3-09 | Audio effects: fades, pitch, speed, echo, bass boost / distortion, voice-changer presets; waveforms on the timeline | Preview and export sound the same | L | P1-08 |
 | P3-10 | Report a sound | The report appears as a row in Supabase | S | P3-03 |
 | P3-11 | Region and language: detect from the phone, confirm in onboarding, filter the Local tab | Changing region in settings changes the Local tab | S | P3-01 |
-| P3-12 | Content intake script (trim, normalize, encode, waveform, upload, row template), then load the first 500 sounds | 500 sounds are live, each with complete license fields | L | P0-07 |
+| P3-12 | Content intake script (trim, normalize, encode, waveform, upload, row template), then load the first 500 sounds | 500 sounds are live, each with complete license fields | L | P3-13 |
 
 ## Phase 4 · Pro video tools (weeks 12 to 17, from 28 Dec)
+
+> 21 Oct 2026 (owner, [proposal](pm/proposals/2026-10-20-clip-crop-rotate-flip.md) A): P4-16 adds the PRD's video crop, rotate and flip, plus per-clip Fit or Fill (P1-11 sets it for all clips), right after P4-10. If Phase 4 runs late, it joins the cut-list talk and the owner decides then. The designer specs it before Phase 4.
 
 | ID | Ticket | Done when | Size | Needs |
 | --- | --- | --- | --- | --- |
@@ -98,12 +113,13 @@ in Play internal testing.
 | P4-02 | Keyframes for position, scale, rotation, opacity and volume, with easing and keyframe markers on the timeline | Motion matches between preview and export | L | P4-01 |
 | P4-03 | 10 blend modes and shape masks (rectangle, circle, linear, mirror) | Each mode and mask matches its reference render | L | P4-01 |
 | P4-04 | Green screen keying on clips and overlays: pick color, strength, edge softness | A standard green screen clip keys cleanly at default settings | M | P4-01 |
-| P4-05 | Templates: repository, Templates screen (Video / Photo switch, categories, previews), slot-fill flow, open in editor | A user fills a 2-slot preset and exports it | L | P3-01, P4-04 |
+| P4-05 | Templates: repository, Templates screen (Video / Photo switch, categories, previews), slot-fill flow, open in editor; loads P0-06's 3 seed templates | A user fills a 2-slot preset and exports it | L | P3-01, P4-04 |
 | P4-06 | About 30 video effects as timeline items with intensity | Each effect matches its reference render and preview stays at 30 fps or more | L | P1-05 |
 | P4-07 | About 20 LUT filters and adjustments for video | Same ids and looks as the photo filters | M | P2-04 |
 | P4-08 | About 20 transitions between clips | Transitions keep audio continuous | M | P1-06 |
 | P4-09 | Speed: constant 0.1× to 10× and speed curves with presets | Audio follows the speed or mutes, per the user's choice | L | P1-06 |
 | P4-10 | Reverse and freeze frame | Reversed clips play smoothly in preview | M | P1-06 |
+| P4-16 | Clip crop, rotate, flip and per-clip Fit or Fill in the video editor (reuses P4-01's on-frame gestures and P2-04's crop screen); declarative params with a reference render | A cropped, rotated and flipped clip looks the same in preview and export and matches its reference render; Fit or Fill set on one clip changes only that clip; each change is one undo step | M | P4-01, P2-04 |
 | P4-11 | Text animations (in, out, loop) and text presets | Animations look the same in preview and export | M | P1-10 |
 | P4-12 | Stickers in video: catalog packs, animated GIF and WebP, the user's own files | Animated stickers loop in sync with the timeline | M | P3-01 |
 | P4-13 | Video background removal for people: MediaPipe person segmentation, per-frame mask cache, low-res preview, full-res export, refine | Progress shows while processing, and the export matches the preview | L | P2-06, P4-01 |
@@ -112,13 +128,16 @@ in Play internal testing.
 
 ## Phase 5 · Ads, analytics, sharing, languages (weeks 18 to 19, from 8 Feb)
 
+> 8 Oct 2026 (owner: "yes personal / start early"; start date and placement: PM): P5-08 added because the Play account is personal. It runs by the calendar, so it starts around 25 Jan 2027, during P4's last two weeks, and the P5 gate checks that production access was granted. The owner recruits the testers in early January. The start-date options are in `docs/pm/proposals/2026-10-08-play-release-path.md`, question 2.
+
 | ID | Ticket | Done when | Size | Needs |
 | --- | --- | --- | --- | --- |
+| P5-08 | Closed test for production access (personal Play account): the owner recruits 15–20 testers into one Google Group; the owner uploads the newest build by hand to a closed-testing track with first versions of the store listing (English), privacy policy URL, content rating, target audience 13+, ads declaration and Data safety form (P6-03, P6-04 and P6-05 finish them); it runs for 14 days in a row from around 25 Jan 2027; then the owner applies for production access with the testers' feedback. Re-check Google's rule when it starts | Play Console shows production access granted, after at least 12 testers stayed opted in for 14 days in a row | M | P1-15 |
 | P5-01 | AdMob with the UMP consent flow for EEA, UK and Switzerland; test ads in debug builds | The consent form appears on a device set to an EEA region | M | P0-08 |
 | P5-02 | Rewarded ad on the export sheet removes the watermark | A completed ad produces one watermark-free export | M | P5-01, P1-13 |
 | P5-03 | Interstitial after export, capped by Remote Config (1 per 3 exports, never the first export) | A manual run of 10 exports follows every cap rule | S | P5-01 |
 | P5-04 | Every analytics event from the PRD, respecting consent | All events show in Firebase DebugView | M | P0-08 |
-| P5-05 | Share row: TikTok, Instagram, WhatsApp, YouTube Shorts, Save, More | Each installed target opens with the file attached | M | P1-12 |
+| P5-05 | Share row: TikTok, Instagram, WhatsApp, YouTube Shorts, Save, More; replaces P1-12's single Share button (owner, 21 Oct) | Each installed target opens with the file attached | M | P1-12 |
 | P5-06 | Final translations for all five languages, including store listing text | No untranslated strings; the longest strings still fit | M | P0-09 |
 | P5-07 | Credits and licenses screen (open-source, fonts, sound credits) | Every CC-BY item's credit is listed | S | P3-01 |
 
@@ -131,7 +150,8 @@ in Play internal testing.
 | P6-03 | Store listing: "Memix: Meme Video & Photo", short description, screenshots, feature graphic, in five languages | Listing passes Play review | M | P5-06 |
 | P6-04 | Privacy policy, support page and app-ads.txt on the app's domain | All three URLs are live | S | — |
 | P6-05 | Play Console forms: Data safety, content rating, target audience 13+, ads declaration | All forms are accepted | S | P6-04 |
-| P6-06 | Production release with staged rollout (10%, 50%, 100%) and crash monitoring | Crash-free users stay at 99.5% or more at each step | S | P6-01 |
+| P6-07 | Move media to Cloudflare R2 (Supabase Storage until then, owner 8 Oct): R2 bucket, custom media domain, copy every file under the same keys, switch `media_base_url` in Remote Config | Every catalog file loads from the R2 media domain with immutable cache headers, an installed build picks up the new address without an app update, and no file is served from Supabase Storage | S | P3-13 |
+| P6-06 | Production release with staged rollout (10%, 50%, 100%) and crash monitoring | Crash-free users stay at 99.5% or more at each step | S | P6-01, P6-07, P5-08 |
 
 ## Phase 7 · iOS (weeks 22 to 29, from 8 Mar)
 
@@ -141,11 +161,20 @@ Start the Apple Developer enrollment during phase 5 so it's ready when this phas
 | --- | --- | --- | --- | --- |
 | P7-01 | Apple Developer enrollment, bundle id, signing in CI | CI produces a signed iOS build | S | — |
 | P7-02 | iOS app running the shared UI; fix iOS-only layout and gesture issues | Every screen works on a current iPhone | M | P7-01 |
-| P7-03 | iOS `VideoEngine`, part 1: `AVMutableComposition` tracks and `AVPlayerLayer` preview | A basic project previews like Android | L | P7-02 |
+| P7-03 | iOS `VideoEngine`, part 1: `AVMutableComposition` tracks and `AVPlayerLayer` preview | A basic project previews like Android; Xcode Instruments Leaks shows no leaks | L | P7-02 |
 | P7-04 | iOS `VideoEngine`, part 2: custom compositor on Metal / Core Image for effects, filters, transitions, masks, keying, overlays | Reference renders match Android side by side | L | P7-03 |
-| P7-05 | iOS export with `AVAssetWriter`, background task and progress | 60 s at 1080p30 exports in about real time | M | P7-04 |
+| P7-05 | iOS export with `AVAssetWriter`, background task and progress | 60 s at 1080p30 exports in about real time on the owner's iPhone; Instruments Leaks shows no leaks | M | P7-04 |
 | P7-06 | iOS audio: mixing, effects, voiceover | Preview and export sound the same as Android | M | P7-03 |
 | P7-07 | iOS `Segmenter`: Vision foreground mask for photos, person segmentation with a sequence handler for video | Cut-outs match the Android behavior | M | P7-02 |
 | P7-08 | iOS platform services: photo picker, share sheet and direct targets, AdMob with UMP and the tracking prompt (ATT), Firebase | All services work on a TestFlight build | M | P7-02 |
 | P7-09 | iOS photo encoders and WhatsApp sticker export | Photo exports match Android | M | P7-02 |
 | P7-10 | TestFlight beta, App Store listing, privacy labels, App Review submission | The app is approved | M | All of phase 7 |
+
+## Later · Improvements (after launch, not scheduled)
+
+> 8 Oct 2026 (owner): "put that improvement into separate phase". Items here are outside the v1 dates and get a phase when the owner schedules them.
+
+| ID | Ticket | Done when | Size | Needs |
+| --- | --- | --- | --- | --- |
+| L-01 | Keyboard shortcuts in the video editor (play and pause, split, delete, undo and redo, nudge), reusing the editor's existing actions as drafted in the P1-04/05/06 specs | With a hardware keyboard, each shortcut does exactly what its button does, including one undo step per edit | S | P1-06 |
+| L-02 | Locked-track UI in the video editor: lock and unlock a track; edits on a locked track are refused (drafted in the P1-05/06 specs) | A locked track refuses every edit and Unlock restores editing, each as one undo step | S | P1-06 |

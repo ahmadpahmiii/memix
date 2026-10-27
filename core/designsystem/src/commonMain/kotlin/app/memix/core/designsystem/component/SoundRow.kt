@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.memix.core.designsystem.Icon
 import app.memix.core.designsystem.MemixColors
@@ -39,7 +40,14 @@ import memix.core.designsystem.generated.resources.sound_pause
 import memix.core.designsystem.generated.resources.sound_play
 import org.jetbrains.compose.resources.stringResource
 
-/** One meme sound. Sound controls are Memix blue everywhere, so this row may carry blue next to a screen's main action. */
+/**
+ * One meme sound. Sound controls are Memix blue everywhere, so this row may carry blue next to a screen's main action.
+ * The title takes up to two lines; the meta line is never cut, because it can hold a license's credit. Without
+ * [onFavoriteChange] the favorite heart isn't shown (the editor's sounds sheet has no Favorites list, P1-08).
+ *
+ * While playing, the row sits one value step above its container: `surface` on `canvas`, or `surface-raised` when
+ * it's [onSurface] (inside a sheet), where a `surface` band wouldn't show.
+ */
 @Composable
 fun SoundRow(
     name: String,
@@ -47,33 +55,27 @@ fun SoundRow(
     isPlaying: Boolean,
     isFavorite: Boolean,
     onPlayToggle: () -> Unit,
-    onFavoriteChange: (Boolean) -> Unit,
+    onFavoriteChange: ((Boolean) -> Unit)?,
     onAdd: () -> Unit,
     modifier: Modifier = Modifier,
+    onSurface: Boolean = false,
 ) {
+    val playingBand = if (onSurface) MemixColors.surfaceRaised else MemixColors.surface
     Row(
         modifier
             .fillMaxWidth()
             .clip(MemixShapes.radiusMd)
-            .background(if (isPlaying) MemixColors.surface else Color.Transparent)
+            .background(if (isPlaying) playingBand else Color.Transparent)
             .padding(horizontal = MemixSpacing.space2),
         horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space2),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PlayDisc(
-            isPlaying,
-            stringResource(if (isPlaying) Res.string.sound_pause else Res.string.sound_play, name),
-            onPlayToggle
-        )
+        PlayDisc(isPlaying, stringResource(if (isPlaying) Res.string.sound_pause else Res.string.sound_play, name), onPlayToggle)
         Column(Modifier.weight(1f).padding(vertical = MemixSpacing.space2)) {
-            Text(name, MemixTheme.type.bodyStrong, maxLines = 1)
-            Text(meta, MemixTheme.type.label, color = MemixColors.textSecondary, maxLines = 1)
+            Text(name, MemixTheme.type.bodyStrong, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(meta, MemixTheme.type.label, color = MemixColors.textSecondary)
         }
-        FavoriteToggle(
-            isFavorite,
-            stringResource(Res.string.sound_favorite, name),
-            onFavoriteChange
-        )
+        if (onFavoriteChange != null) FavoriteToggle(isFavorite, stringResource(Res.string.sound_favorite, name), onFavoriteChange)
         AddSoundButton(stringResource(Res.string.sound_add, name), onAdd)
     }
 }
@@ -82,11 +84,7 @@ fun SoundRow(
 private fun PlayDisc(isPlaying: Boolean, description: String, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val normal = if (isPlaying) MemixColors.primary else MemixColors.primarySubtle
-    val disc = pressedColor(
-        interactionSource,
-        normal,
-        if (isPlaying) MemixColors.primaryPressed else MemixColors.surfaceRaised
-    )
+    val disc = pressedColor(interactionSource, normal, if (isPlaying) MemixColors.primaryPressed else MemixColors.surfaceRaised)
     Box(
         Modifier
             .size(MemixSize.touchTarget)
@@ -113,23 +111,13 @@ private fun PlayDisc(isPlaying: Boolean, description: String, onClick: () -> Uni
 }
 
 @Composable
-private fun FavoriteToggle(
-    isFavorite: Boolean,
-    description: String,
-    onFavoriteChange: (Boolean) -> Unit
-) {
+private fun FavoriteToggle(isFavorite: Boolean, description: String, onFavoriteChange: (Boolean) -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     Box(
         Modifier
             .size(MemixSize.touchTarget)
             .focusRing(interactionSource, MemixShapes.radiusFull)
-            .toggleable(
-                isFavorite,
-                interactionSource,
-                indication = null,
-                role = Role.Checkbox,
-                onValueChange = onFavoriteChange
-            )
+            .toggleable(isFavorite, interactionSource, indication = null, role = Role.Checkbox, onValueChange = onFavoriteChange)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
@@ -160,12 +148,7 @@ private fun AddSoundButton(description: String, onClick: () -> Unit) {
                 .drawBehind { drawRect(block.value) },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                MemixIcons.Create,
-                contentDescription = null,
-                tint = MemixColors.onPrimary,
-                size = 20.dp
-            )
+            Icon(MemixIcons.Create, contentDescription = null, tint = MemixColors.onPrimary, size = 20.dp)
         }
     }
 }

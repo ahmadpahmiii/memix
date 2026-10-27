@@ -4,4 +4,51 @@
     <string name="drafts_empty_title">Nenhum rascunho ainda</string>
     <string name="drafts_empty_body">Vai lá criar algo bem doido.</string>
     <string name="drafts_empty_action">Faça um meme</string>
+    <!-- P1-14 Drafts screen (spec docs/ux/specs/P1-14-drafts.md -> Copy). -->
+    <string name="drafts_untitled_video">Meme de vídeo sem título</string>
+    <string name="drafts_untitled_photo">Meme de foto sem título</string>
+    <string name="drafts_type_video">Meme de vídeo</string>
+    <string name="drafts_type_photo">Meme de foto</string>
+    <string name="drafts_edited_now">Editado agora mesmo</string>
+    <plurals name="drafts_edited_minutes">
+        <item quantity="one">Editado há 1 minuto</item>
+        <item quantity="other">Editado há %1$d minutos</item>
+    </plurals>
+    <plurals name="drafts_edited_hours">
+        <item quantity="one">Editado há 1 hora</item>
+        <item quantity="other">Editado há %1$d horas</item>
+    </plurals>
+    <string name="drafts_edited_yesterday">Editado ontem</string>
+    <plurals name="drafts_edited_days">
+        <item quantity="one">Editado há %1$d dia</item>
+        <item quantity="other">Editado há %1$d dias</item>
+    </plurals>
+    <string name="drafts_edited_date">Editado em %1$s</string>
+    <string name="drafts_needs_update">Precisa de uma versão mais nova do Memix</string>
+    <string name="drafts_more_a11y">Mais opções</string>
+    <string name="drafts_rename">Renomear</string>
+    <string name="drafts_duplicate">Duplicar</string>
+    <string name="drafts_delete">Excluir</string>
+    <string name="drafts_rename_title">Renomear rascunho</string>
+    <string name="drafts_rename_label">Nome</string>
+    <string name="drafts_rename_save">Salvar</string>
+    <string name="drafts_name_count">%1$d/%2$d</string>
+    <string name="drafts_copy_name">%1$s (cópia)</string>
+    <string name="drafts_copy_name_n">%1$s (cópia %2$d)</string>
+    <string name="drafts_deleted">Rascunho excluído.</string>
+    <string name="drafts_undo">Desfazer</string>
+    <string name="drafts_duplicated">Rascunho duplicado.</string>
+    <string name="drafts_duplicating_title">Copiando seu rascunho</string>
+    <string name="drafts_cant_open">Não dá para abrir este rascunho. Atualize o Memix ou exclua-o.</string>
+    <string name="drafts_rename_failed">Não foi possível renomear o rascunho. Tente de novo.</string>
+    <string name="drafts_duplicate_failed">Não foi possível duplicar o rascunho. Tente de novo.</string>
+    <string name="drafts_delete_failed">Não foi possível excluir o rascunho. Tente de novo.</string>
+    <string name="drafts_load_error">Não foi possível carregar seus rascunhos.</string>
+    <string name="drafts_try_again">Tentar de novo</string>
+    <string name="a11y_draft_row">%1$s, %2$s, %3$s</string>
+    <string name="drafts_copy_percent">%1$d%</string>
+    <string name="drafts_copy_cancel">Cancelar</string>
+    <string name="drafts_storage_title">Espaço insuficiente</string>
+    <string name="drafts_storage_body">Copiar este rascunho precisa de %1$s, e seu celular tem %2$s livres. Libere espaço e volte para continuar.</string>
+    <string name="drafts_free_up_space">Liberar espaço</string>
 </resources>

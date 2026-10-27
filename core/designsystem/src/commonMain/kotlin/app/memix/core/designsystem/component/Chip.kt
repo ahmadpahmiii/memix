@@ -27,18 +27,11 @@ import app.memix.core.designsystem.pressedColor
 fun Chip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val interactionSource = remember { MutableInteractionSource() }
     val normal = if (selected) MemixColors.selection else MemixColors.surfaceRaised
-    val container =
-        pressedColor(interactionSource, normal, if (selected) normal else MemixColors.hairline)
+    val container = pressedColor(interactionSource, normal, if (selected) normal else MemixColors.hairline)
     Box(
         modifier
             .defaultMinSize(minHeight = MemixSize.touchTarget)
-            .selectable(
-                selected,
-                interactionSource,
-                indication = null,
-                role = Role.RadioButton,
-                onClick = onClick
-            ),
+            .selectable(selected, interactionSource, indication = null, role = Role.RadioButton, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Box(
@@ -50,12 +43,7 @@ fun Chip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifi
                 .padding(horizontal = MemixSpacing.space4, vertical = MemixSpacing.space2),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                label,
-                MemixTheme.type.label,
-                color = if (selected) MemixColors.onPrimary else MemixColors.text,
-                maxLines = 1
-            )
+            Text(label, MemixTheme.type.label, color = if (selected) MemixColors.onPrimary else MemixColors.text, maxLines = 1)
         }
     }
 }

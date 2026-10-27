@@ -1,25 +1,28 @@
 ---
 name: play-release
-description: Build and ship a signed Memix Android release to Google Play (internal testing or staged production rollout) with the pre-release checklist. Manual only — run with /play-release.
+description: Prepare a Memix Android release the owner signs and uploads to Google Play by hand (internal testing, closed testing or staged production rollout), with the pre-release checklist. Manual only — run with /play-release.
 disable-model-invocation: true
 ---
 
 # Play release
 
-Ask which track (internal / production) and version name if not given.
+Ask which track (internal / closed / production) and version name if not given.
+
+**The owner signs and uploads by hand** (owner, 21 Oct 2026). Claude prepares and checks the build and writes the steps; it never handles the upload key. No keystore, password or Play service account goes in the repo, CI or a chat. What the release build contains (R8, version code, mapping upload, signing): `docs/TECHNICAL_DESIGN.md` → Release build (P1-15).
 
 1. **Preflight** (stop on any failure and report):
-   - on `main`, clean tree, CI green for the commit;
+   - clean tree, CI green for the commit, including the **Release build (R8)** step (`bundleRelease`): the phase branch's pushed head for a phase-end internal build, `main` for production;
    - for production: QA's latest phase report is **Pass** and the PM's phase gate is accepted;
-   - `versionCode` incremented, `versionName` set;
-   - Crashlytics mapping upload enabled; R8 rules checked on a release build;
-   - AdMob uses real ad unit IDs in release, test IDs in debug; UMP consent shows on an EEA-region device;
+   - `versionName` bumped by hand in `androidApp/build.gradle.kts` (the principal mobile engineer does it when a phase ends, before the owner's build: `0.1.0` is Phase 1, `0.2.0` Phase 2, and so on; a fix build inside a phase raises the last number). **`versionCode` needs nothing**: `release` gets whole minutes since 1 Jan 2026 UTC at build time, so each build is higher than the last one Play saw. Two builds in the same minute get the same number, and a wrong clock on the Mac can lower it: build again if Play refuses a code;
+   - the real `androidApp/google-services.json` is in place on the owner's Mac (not the CI placeholder, `androidApp/google-services.ci.json`); the release build fails or reports to the wrong Firebase app without it;
+   - Crashlytics mapping upload: it runs by default for `release` right after R8, needs the Mac **online**, and fails the build when it can't upload. Never build an upload bundle with `-Pmemix.mappingUpload=none` (that is CI's setting: it skips the mapping). The first time, check that it works: `./gradlew :androidApp:installBenchmark -Pmemix.mappingUpload=all`, then `adb shell am start -n app.memix/.android.MainActivity --ez memix.testCrash true`, open Memix again so the report is sent, and look in the Crashlytics console (steps: `docs/qa/phase-1/engineer-hand-checks.md` → P1-15);
+   - from Phase 5 on: AdMob uses real ad unit IDs in release, test IDs in debug; UMP consent shows on an EEA-region device (skip both before P5-01);
    - strings complete in en, id, es, pt, hi; no `TODO(P7…)` reachable on Android.
-2. **Build:** `./gradlew :androidApp:bundleRelease` (signing from CI secrets / local keystore
-   outside the repo). Never print keystore passwords.
-3. **Smoke check** on the reference phone: cold start < 1.5 s, open both editors, add a meme sound, export 1080p30, share to one app, watermark present, rewarded ad removes it.
-4. **Upload** via the CI release workflow (or Play Console). Internal testing for phase builds; production as a staged rollout 10% → 50% → 100%, holding each step until crash-free users ≥ 99.5%.
-5. **Store listing** (production): title "Memix: Meme Video & Photo", short description "Meme editor with meme sounds", screenshots, feature graphic, five languages; Data safety, content rating, target audience 13+, contains ads; privacy policy and app-ads.txt live on the app domain.
-6. **Report:** version, track, rollout %, what was smoke-checked, anything skipped.
+2. **Build (owner, on his Mac):** Android Studio → Build → Generate Signed App Bundle, **release** variant, with the upload keystore kept outside the repo (for example `~/keys/memix-upload.jks`). Command line instead: `./gradlew :androidApp:bundleRelease` with the owner's own local signing config, never committed. Play App Signing holds the app signing key. Never print, paste or commit keystore passwords. Check the output: `androidApp/build/outputs/bundle/release/androidApp-release.aab`; the log shows the Crashlytics mapping upload ran (`uploadCrashlyticsMappingFileRelease`). Play Console reads its own mapping from the bundle, so there is no mapping file to upload by hand.
+3. **Smoke check** on the owner's own phone, with the signed build installed from internal testing (or `bundletool` for a first look). Phases 1 to 4 (no ads yet): cold start < 1.5 s; open the video editor from Create → Video meme; add a meme sound and a caption; Export 1080p30 and play the result; the watermark is present; Share opens the system share sheet; open Drafts, close the app, open the draft; switch the phone to Hindi and see the Teko headings; logcat has no `ClassNotFoundException`, `NoSuchMethodError` or `Failed to find` from `app.memix` or a library (R8 would cause those). From Phase 5 on, add: the rewarded ad removes the watermark for one export; no interstitial on the first export.
+4. **Foreground-service declaration (owner, once, before the first upload that contains P1-12):** the app targets SDK 36 and its manifest asks for `FOREGROUND_SERVICE_DATA_SYNC` and `FOREGROUND_SERVICE_MEDIA_PROCESSING` (the export service uses `dataSync` on Android 10 to 14 and `mediaProcessing` on 15 and up). Play Console → the app → Policy and programs → App content → Foreground service permissions (the menu names move: use the Console's search for "foreground service"). For **each** type give: what the feature does ("exports the user's video to the gallery while they leave the app"), what happens to the user if it's interrupted (the export stops and must be restarted from the editor), and a link to a short screen video of Export. Record the video on a phone: open a draft, tap Export, tap Export video, allow notifications, leave the app and return from the notification, wait for the result screen and play it. Put it at a link Google can open without a sign-in (an unlisted video; a Drive link set to "anyone with the link"). `POST_NOTIFICATIONS` needs no declaration. This step was written from secondary sources: read the Console form itself. A missing declaration can hold a release.
+5. **Upload (owner, in Play Console):** Test and release → the track → Create new release → upload the `.aab` → release notes → review → roll out. Internal testing for phase builds; closed testing for P5-08 (at least 12 testers for 14 days before production access); production as a staged rollout 10% → 50% → 100%, holding each step until crash-free users ≥ 99.5%. Every upload needs a `versionCode` higher than the last one Play has seen (the build gives you that, see step 1).
+6. **Store listing** (production): title "Memix: Meme Video & Photo", short description "Meme editor with meme sounds", screenshots, feature graphic, five languages; Data safety, content rating, target audience 13+, contains ads; privacy policy and app-ads.txt live on the app domain.
+7. **Report:** version name and code, track, rollout %, what was smoke-checked, anything skipped.
 
-The account predates 13 Nov 2023, so the 12-tester closed-test rule doesn't apply; internal testing is still used every phase.
+The developer account is a personal account created after 13 Nov 2023, so the closed-test rule applies: at least 12 testers opted in for 14 days in a row before applying for production access (P5-08). Internal testing is used at phase ends once the owner's Play Console app exists.

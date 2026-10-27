@@ -7,7 +7,7 @@
     <string name="nav_drafts">Borradores</string>
     <string name="create_title">Crear</string>
     <string name="create_video_title">Meme de video</string>
-    <string name="create_video_body">Elige clips de tu galería</string>
+    <string name="create_video_body">Elige videos y fotos</string>
     <string name="create_photo_title">Meme de foto</string>
     <string name="create_photo_body">Elige una foto de tu galería</string>
     <string name="create_template">Empieza con una plantilla</string>

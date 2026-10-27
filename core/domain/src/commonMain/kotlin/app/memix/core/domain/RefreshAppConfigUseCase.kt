@@ -4,15 +4,8 @@ package app.memix.core.domain
 class RefreshAppConfigUseCase(private val appConfig: AppConfig, private val logger: Logger) {
     suspend operator fun invoke() {
         when (val outcome = appConfig.refresh()) {
-            is Outcome.Success -> logger.debug(
-                TAG,
-                "Remote config ready, media_base_url='${appConfig.mediaBaseUrl}'"
-            )
-
-            is Outcome.Failure -> logger.error(
-                TAG,
-                "Remote config refresh failed: ${outcome.error}"
-            )
+            is Outcome.Success -> logger.debug(TAG, "Remote config ready, media_base_url='${appConfig.mediaBaseUrl}'")
+            is Outcome.Failure -> logger.error(TAG, "Remote config refresh failed: ${outcome.error}")
         }
     }
 

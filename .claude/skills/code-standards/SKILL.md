@@ -47,7 +47,6 @@ Goal: code a new developer understands on first read, with no surprises in produ
 4. **Smooth?** Main thread clean, no heavy work in composition, stable state, fast-changing reads deferred to layout/draw, resources released (`mobile-performance`).
 5. **Safe?** No secrets, no GPL/FFmpeg, no unlicensed content, ad rules respected, permissions requested in context.
 6. **Strings and tokens?** Five languages, no hardcoded UI values, no v1 colors (`#FFE14D`, `#FF4FA3`).
-7. **Checked by hand?** The commit message says what was run on the emulator/phone; screenshots for
-   UI changes are in `docs/ux/reviews/<ID>/`.
+7. **Checked by hand?** The commit message says what was run on the emulator/phone; screenshots for UI changes are in `docs/ux/reviews/<ID>/`.
 
 Write findings as: file:line, problem, why it matters, fix. Approve only when items 1–7 hold.

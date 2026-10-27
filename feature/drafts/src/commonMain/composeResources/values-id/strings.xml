@@ -4,4 +4,48 @@
     <string name="drafts_empty_title">Belum ada draf</string>
     <string name="drafts_empty_body">Ayo bikin sesuatu yang absurd.</string>
     <string name="drafts_empty_action">Bikin meme</string>
+    <!-- P1-14 Drafts screen (spec docs/ux/specs/P1-14-drafts.md -> Copy). -->
+    <string name="drafts_untitled_video">Meme video tanpa judul</string>
+    <string name="drafts_untitled_photo">Meme foto tanpa judul</string>
+    <string name="drafts_type_video">Meme video</string>
+    <string name="drafts_type_photo">Meme foto</string>
+    <string name="drafts_edited_now">Diedit barusan</string>
+    <plurals name="drafts_edited_minutes">
+        <item quantity="other">Diedit %1$d menit lalu</item>
+    </plurals>
+    <plurals name="drafts_edited_hours">
+        <item quantity="other">Diedit %1$d jam lalu</item>
+    </plurals>
+    <string name="drafts_edited_yesterday">Diedit kemarin</string>
+    <plurals name="drafts_edited_days">
+        <item quantity="other">Diedit %1$d hari lalu</item>
+    </plurals>
+    <string name="drafts_edited_date">Diedit %1$s</string>
+    <string name="drafts_needs_update">Perlu versi Memix yang lebih baru</string>
+    <string name="drafts_more_a11y">Opsi lainnya</string>
+    <string name="drafts_rename">Ganti nama</string>
+    <string name="drafts_duplicate">Duplikat</string>
+    <string name="drafts_delete">Hapus</string>
+    <string name="drafts_rename_title">Ganti nama draf</string>
+    <string name="drafts_rename_label">Nama</string>
+    <string name="drafts_rename_save">Simpan</string>
+    <string name="drafts_name_count">%1$d/%2$d</string>
+    <string name="drafts_copy_name">%1$s (salinan)</string>
+    <string name="drafts_copy_name_n">%1$s (salinan %2$d)</string>
+    <string name="drafts_deleted">Draf dihapus.</string>
+    <string name="drafts_undo">Urungkan</string>
+    <string name="drafts_duplicated">Draf diduplikat.</string>
+    <string name="drafts_duplicating_title">Menyalin draf kamu</string>
+    <string name="drafts_cant_open">Draf ini tidak bisa dibuka. Perbarui Memix, atau hapus.</string>
+    <string name="drafts_rename_failed">Draf ini tidak bisa diganti namanya. Coba lagi.</string>
+    <string name="drafts_duplicate_failed">Draf ini tidak bisa diduplikat. Coba lagi.</string>
+    <string name="drafts_delete_failed">Draf ini tidak bisa dihapus. Coba lagi.</string>
+    <string name="drafts_load_error">Draf kamu tidak bisa dimuat.</string>
+    <string name="drafts_try_again">Coba lagi</string>
+    <string name="a11y_draft_row">%1$s, %2$s, %3$s</string>
+    <string name="drafts_copy_percent">%1$d%</string>
+    <string name="drafts_copy_cancel">Batal</string>
+    <string name="drafts_storage_title">Ruang tidak cukup</string>
+    <string name="drafts_storage_body">Menyalin draf ini butuh %1$s, dan HP kamu punya %2$s kosong. Kosongkan ruang, lalu kembali untuk melanjutkan.</string>
+    <string name="drafts_free_up_space">Kosongkan ruang</string>
 </resources>

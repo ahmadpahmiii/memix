@@ -32,8 +32,19 @@ kotlin {
         implementation(projects.feature.export)
         implementation(libs.jetbrains.navigation.compose)
         implementation(libs.jetbrains.lifecycle.runtime.compose)
+        implementation(libs.kotlinx.collections.immutable)
+        // The debug save diff (EditorSaveDiffLog) compares projects as JSON trees.
+        implementation(libs.kotlinx.serialization.json)
         implementation(project.dependencies.platform(libs.koin.bom))
         implementation(libs.koin.core)
         implementation(libs.koin.compose.viewmodel)
+    }
+    // The composition root opens :core:data's database with each platform's driver (DatabaseDriverModule).
+    sourceSets.androidMain.dependencies {
+        implementation(libs.koin.android)
+        implementation(libs.sqldelight.android.driver)
+    }
+    sourceSets.iosMain.dependencies {
+        implementation(libs.sqldelight.native.driver)
     }
 }

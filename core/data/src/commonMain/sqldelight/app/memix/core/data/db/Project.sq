@@ -1,0 +1,61 @@
+-- One row per draft. project_json is the whole Project and the source of truth. name, type,
+-- schema_version and the times are copied out of it on every save, so the drafts list can sort
+-- and show rows without decoding every project.
+-- Changing a table: edit it here and add migrations/<current database version>.sqm (the first is 1.sqm);
+-- verifySqlDelightMigration checks the result against databases/1.db. Changes to the Project JSON
+-- itself are migrated in code instead (ProjectMigrations.kt).
+CREATE TABLE project (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    schema_version INTEGER NOT NULL,
+    created_at_epoch_us INTEGER NOT NULL,
+    updated_at_epoch_us INTEGER NOT NULL,
+    -- Relative to the app's files directory; written by updateThumbnailPath (P1-14).
+    thumbnail_path TEXT,
+    project_json TEXT NOT NULL
+);
+
+selectJsonById:
+SELECT project_json FROM project WHERE id = :id;
+
+-- Newest edit first; of two drafts edited at the same time (a second copy of one original), the newer one first.
+selectSummariesByLastEdited:
+SELECT id, name, type, schema_version, created_at_epoch_us, updated_at_epoch_us, thumbnail_path
+FROM project
+ORDER BY updated_at_epoch_us DESC, created_at_epoch_us DESC;
+
+-- The whole row, kept in memory while a delete can still be undone.
+selectRowById:
+SELECT * FROM project WHERE id = :id;
+
+-- Two columns, so the generated query takes a mapper (a single nullable column can't be a row on its own).
+selectThumbnailPathById:
+SELECT id, thumbnail_path FROM project WHERE id = :id;
+
+updateThumbnailPath:
+UPDATE project SET thumbnail_path = :thumbnailPath WHERE id = :id;
+
+-- A row written exactly as given, thumbnail included: an undone delete, a duplicate.
+insertWithThumbnail:
+INSERT OR REPLACE INTO project(
+    id, name, type, schema_version, created_at_epoch_us, updated_at_epoch_us, thumbnail_path, project_json
+)
+VALUES (
+    :id, :name, :type, :schemaVersion, :createdAtEpochUs, :updatedAtEpochUs, :thumbnailPath, :projectJson
+);
+
+-- One statement, so it is atomic without a transaction (a full disk then reports SQLITE_FULL instead
+-- of a failed ROLLBACK). REPLACE rewrites the whole row, so the thumbnail is carried over.
+insertOrReplace:
+INSERT OR REPLACE INTO project(
+    id, name, type, schema_version, created_at_epoch_us, updated_at_epoch_us, thumbnail_path, project_json
+)
+VALUES (
+    :id, :name, :type, :schemaVersion, :createdAtEpochUs, :updatedAtEpochUs,
+    (SELECT thumbnail_path FROM project WHERE id = :id),
+    :projectJson
+);
+
+deleteById:
+DELETE FROM project WHERE id = :id;

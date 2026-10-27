@@ -38,6 +38,7 @@ import memix.composeapp.generated.resources.create_video_title
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.stringResource
 
+/** Draws no scrim of its own: the app root's shared scrim stays up when a pick hands over to the import sheet. */
 @Composable
 internal fun CreateSheet(
     visible: Boolean,
@@ -46,34 +47,16 @@ internal fun CreateSheet(
     onPhotoMeme: () -> Unit,
     onTemplates: () -> Unit,
 ) {
-    Sheet(visible, onDismiss, stringResource(Res.string.create_title), heroTitle = true) {
-        EditorRow(
-            stringResource(Res.string.create_video_title),
-            stringResource(Res.string.create_video_body),
-            MemixIcons.Video,
-            emphasized = true,
-            onVideoMeme
-        )
-        EditorRow(
-            stringResource(Res.string.create_photo_title),
-            stringResource(Res.string.create_photo_body),
-            MemixIcons.Photo,
-            emphasized = false,
-            onPhotoMeme
-        )
+    Sheet(visible, onDismiss, stringResource(Res.string.create_title), heroTitle = true, drawScrim = false) {
+        EditorRow(stringResource(Res.string.create_video_title), stringResource(Res.string.create_video_body), MemixIcons.Video, emphasized = true, onVideoMeme)
+        EditorRow(stringResource(Res.string.create_photo_title), stringResource(Res.string.create_photo_body), MemixIcons.Photo, emphasized = false, onPhotoMeme)
         TemplateRow(stringResource(Res.string.create_template), onTemplates)
     }
 }
 
 /** Video meme is the sheet's one blue action; Photo meme stays neutral with a blue icon, as on Home. */
 @Composable
-private fun EditorRow(
-    title: String,
-    body: String,
-    icon: DrawableResource,
-    emphasized: Boolean,
-    onClick: () -> Unit
-) {
+private fun EditorRow(title: String, body: String, icon: DrawableResource, emphasized: Boolean, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val container = pressedRowColor(interactionSource, emphasized)
     val content = if (emphasized) MemixColors.onPrimary else MemixColors.text
@@ -89,12 +72,7 @@ private fun EditorRow(
         horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = if (emphasized) MemixColors.onPrimary else MemixColors.primary,
-            size = 32.dp
-        )
+        Icon(icon, contentDescription = null, tint = if (emphasized) MemixColors.onPrimary else MemixColors.primary, size = 32.dp)
         Column(Modifier.weight(1f)) {
             DisplayText(title, color = content)
             Text(body, MemixTheme.type.label, color = content)
@@ -121,19 +99,13 @@ private fun TemplateRow(label: String, onClick: () -> Unit) {
     ) {
         Icon(MemixIcons.Templates, contentDescription = null, tint = MemixColors.text, size = 22.dp)
         Text(label, MemixTheme.type.bodyStrong, Modifier.weight(1f))
-        Icon(
-            MemixIcons.ChevronRight,
-            contentDescription = null,
-            tint = MemixColors.text,
-            size = 20.dp
-        )
+        Icon(MemixIcons.ChevronRight, contentDescription = null, tint = MemixColors.text, size = 20.dp)
     }
 }
 
 @Composable
-private fun pressedRowColor(interactionSource: MutableInteractionSource, emphasized: Boolean) =
-    pressedColor(
-        interactionSource,
-        if (emphasized) MemixColors.primary else MemixColors.surfaceRaised,
-        if (emphasized) MemixColors.primaryPressed else MemixColors.hairline,
-    )
+private fun pressedRowColor(interactionSource: MutableInteractionSource, emphasized: Boolean) = pressedColor(
+    interactionSource,
+    if (emphasized) MemixColors.primary else MemixColors.surfaceRaised,
+    if (emphasized) MemixColors.primaryPressed else MemixColors.hairline,
+)

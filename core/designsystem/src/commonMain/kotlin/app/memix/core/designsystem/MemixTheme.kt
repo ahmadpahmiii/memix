@@ -36,25 +36,19 @@ fun MemixTheme(content: @Composable () -> Unit) {
         LocalReduceMotion provides isReduceMotionEnabled(),
         // Components draw their own pressed colors, so the default gray press overlay is off.
         LocalIndication provides NoIndication,
-        LocalTextSelectionColors provides TextSelectionColors(
-            MemixColors.primary,
-            MemixColors.primarySubtle
-        ),
+        LocalTextSelectionColors provides TextSelectionColors(MemixColors.primary, MemixColors.primarySubtle),
         content = content,
     )
 }
 
-private val LocalMemixType =
-    staticCompositionLocalOf<MemixType> { error("Wrap the UI in MemixTheme { }") }
+private val LocalMemixType = staticCompositionLocalOf<MemixType> { error("Wrap the UI in MemixTheme { }") }
 private val LocalReduceMotion = staticCompositionLocalOf { false }
 
 @Composable
 internal expect fun isReduceMotionEnabled(): Boolean
 
 private object NoIndication : IndicationNodeFactory {
-    override fun create(interactionSource: InteractionSource): DelegatableNode =
-        object : Modifier.Node() {}
-
+    override fun create(interactionSource: InteractionSource): DelegatableNode = object : Modifier.Node() {}
     override fun equals(other: Any?) = other === this
     override fun hashCode() = 0
 }

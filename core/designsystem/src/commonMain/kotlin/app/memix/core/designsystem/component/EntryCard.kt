@@ -51,12 +51,7 @@ fun EntryCard(
             .padding(MemixSpacing.space4),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = if (emphasized) MemixColors.onPrimary else MemixColors.primary,
-            size = 28.dp
-        )
+        Icon(icon, contentDescription = null, tint = if (emphasized) MemixColors.onPrimary else MemixColors.primary, size = 28.dp)
         Column(Modifier.padding(top = MemixSpacing.space4)) {
             DisplayText(title, color = content)
             Text(description, MemixTheme.type.label, color = content)

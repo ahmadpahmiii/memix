@@ -65,16 +65,34 @@ object MemixSize {
     val touchTarget = 48.dp
     val navHeight = 64.dp
     val toolbarHeight = 72.dp
+    val toolItemWidth = 64.dp
     val trackHeightVideo = 40.dp
     val trackHeight = 28.dp
     val playheadWidth = 2.dp
+    val playheadHeadSize = 12.dp
+    val trimHandleWidth = 12.dp
+    val iconSmall = 16.dp
+    val railHeight = 4.dp
+
+    /** The white scale-and-rotate handle on a selected caption on the preview; its target is still [touchTarget]. */
+    val canvasHandleSize = 24.dp
+
+    /** A color swatch's circle, drawn in a [touchTarget] square. */
+    val swatchSize = 32.dp
+
+    /** The play disc over a video that isn't playing (the Exported screen, P1-12); `play-disc-size` in design/tokens.json. */
+    val playDiscSize = 56.dp
+
+    /** The square thumbnail at the start of a list row (a draft's first frame, P1-14); `list-thumb-size` in design/tokens.json. */
+    val listThumbSize = 56.dp
+
+    /** The square icon chip over a picture (the type badge on a draft's thumbnail, P1-14); `badge-size` in design/tokens.json. */
+    val badge = 20.dp
 }
 
 object MemixElevation {
-    val shadowSheet =
-        Shadow(radius = 24.dp, color = Color(0x80000000), offset = DpOffset(0.dp, (-8).dp))
-    val shadowFloat =
-        Shadow(radius = 24.dp, color = Color(0x66000000), offset = DpOffset(0.dp, 8.dp))
+    val shadowSheet = Shadow(radius = 24.dp, color = Color(0x80000000), offset = DpOffset(0.dp, (-8).dp))
+    val shadowFloat = Shadow(radius = 24.dp, color = Color(0x66000000), offset = DpOffset(0.dp, 8.dp))
 }
 
 object MemixMotion {

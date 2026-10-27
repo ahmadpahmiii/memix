@@ -15,7 +15,6 @@ fun ScreenTitle(text: String, modifier: Modifier = Modifier) {
     Text(
         text,
         MemixTheme.type.titleL,
-        modifier.padding(horizontal = MemixSpacing.space4).padding(top = MemixSpacing.space5)
-            .semantics { heading() },
+        modifier.padding(horizontal = MemixSpacing.space4).padding(top = MemixSpacing.space5).semantics { heading() },
     )
 }
