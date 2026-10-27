@@ -114,7 +114,7 @@ The first iOS link after adding a library takes up to 15 minutes while Kotlin/Na
 
 ## Current phase
 
-P1 · Core and video editor: all 17 tickets built (CI green) and merged to `main` on 27 Oct 2026 **before** the phase-end QA pass (owner decision, decision log). Still owed for Phase 1: the QA pass on the owner's Mac (emulator) and phone (`docs/qa/phase-1/engineer-hand-checks.md`), fixes, the gate report and /retro. Next: P2, on a new phase branch from `main` (cloud sessions use `claude/phase-<n>-*`, which CI builds). Keep this line updated as phases advance.
+P2 · Photo editor: kicked off 27 Oct 2026 (planned 16 Nov), before Phase 1's QA (owner decision, decision log). Phase 2 is built on `claude/friendly-brown-km8lwu` only, with **no CI until the phase PR** (owner, 27 Oct, option C), so rule 7 and "CI green" are met locally per ticket: `:androidApp:assembleDebug`, `lint` and `compileCommonMainKotlinMetadata` ("local build green"); the iOS framework link and the R8 `bundleRelease` first run in CI at the phase PR. Still owed for Phase 1 (17 tickets, merged to `main` on 27 Oct before QA): the QA pass on the owner's Mac (emulator) and phone, now covering Phase 1 and Phase 2 together (`docs/qa/phase-1/engineer-hand-checks.md`), fixes, the P1 gate report and /retro. Keep this line updated as phases advance.
 
 ## Open items that affect code
 
