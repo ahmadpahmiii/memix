@@ -12,6 +12,7 @@ import app.memix.App
 import app.memix.debug.DraftsCheck
 import app.memix.debug.ExportCheck
 import app.memix.debug.ImportSaveFailure
+import app.memix.debug.MemixTestCrash
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -20,8 +21,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge(SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT))
         super.onCreate(savedInstanceState)
         val isDebugBuild = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
-        // Debug-only Crashlytics check (P0-08): adb shell am start -n app.memix/.android.MainActivity --ez memix.testCrash true
-        if (isDebugBuild && intent.getBooleanExtra("memix.testCrash", false)) throw RuntimeException("Memix test crash")
+        val handChecks = resources.getBoolean(R.bool.memix_hand_checks)
+        // Debug and benchmark builds (P0-08, P1-15): adb shell am start -n app.memix/.android.MainActivity --ez memix.testCrash true
+        // The benchmark build is minified, so this is the way to see that a crash reaches Crashlytics deobfuscated.
+        if (handChecks && intent.getBooleanExtra("memix.testCrash", false)) throw MemixTestCrash()
         // Debug-only project checks (P1-01 round trip, P1-07 auto-save): --es memix.projectCheck <step>, see ProjectChecks.kt.
         val projectCheckStep = intent.getStringExtra("memix.projectCheck")
         if (isDebugBuild && projectCheckStep != null && savedInstanceState == null) startProjectCheck(projectCheckStep)
@@ -38,7 +41,6 @@ class MainActivity : ComponentActivity() {
         }
         // Debug and benchmark builds (P1-04): --es memix.openEditor <project> opens a hand-check project in the editor.
         // Projects and steps: docs/qa/phase-1/engineer-hand-checks.md → P1-04. Logcat tag MemixEditorCheck.
-        val handChecks = resources.getBoolean(R.bool.memix_hand_checks)
         val editorCheck = if (handChecks && savedInstanceState == null) intent.getStringExtra("memix.openEditor") else null
         // Debug and benchmark builds (P1-02 N2): --ez memix.failImportSave true makes the next import's first save fail as if
         // the phone were full. Steps: docs/qa/phase-1/engineer-hand-checks.md → P1-04.

@@ -1,6 +1,6 @@
 # Phase 1 · hand checks for the owner
 
-The engineers' device steps for each ticket's "Done when", copied from their handoffs. This cloud session has no Android SDK or emulator, so these are the checks that move a ticket from "Building (hand check pending)" to Built. QA folds them into `device-checklist.md` at the phase-end pass. All hooks run in debug builds only (`FLAG_DEBUGGABLE`), except P1-04's `memix.openEditor` and the editor's debug edit, which also run in the `benchmark` build used for speed numbers.
+The engineers' device steps for each ticket's "Done when", copied from their handoffs. This cloud session has no Android SDK or emulator, so these are the checks that move a ticket from "Building (hand check pending)" to Built. QA folds them into `device-checklist.md` at the phase-end pass. All hooks run in debug builds only (`FLAG_DEBUGGABLE`), except those gated by the `memix_hand_checks` resource, which also run in the `benchmark` build used for speed numbers (P1-04's `memix.openEditor` and the editor's debug edit, `failImportSave`, `draftsCheck`, and from P1-15 `testCrash`). The `benchmark` build is minified by R8, like the release the owner uploads.
 
 Run from the repo root with a phone or emulator attached: `./gradlew :androidApp:installDebug` first.
 
@@ -1293,3 +1293,37 @@ adb shell am force-stop app.memix
 ```
 
 Any line starting with `autosave-verify: DAMAGED` or `load failed` is a fail.
+
+## P1-15 · the release build runs without an R8 crash; a crash is readable in Crashlytics
+
+Built without a phone, an emulator or a local Gradle (CI compiles it, and its "Release build (R8)" step runs R8 on the whole app). What was built: `docs/TECHNICAL_DESIGN.md` → Release build (P1-15). The **benchmark** build has the same code as `release` (R8 on, same rules); only the signature and the hand-check hooks differ.
+
+**A. CI (before anything on a phone).** The CI run of the pushed commit is green, including the step "`./gradlew :androidApp:bundleRelease -Pmemix.mappingUpload=none`". If R8 reports a missing class, the error names it: add a commented `-dontwarn` for that exact class, or a keep rule, to `androidApp/proguard-rules.pro` (never a blanket rule), and say in the commit which run showed it.
+
+**B. The Done when's first clause: the shipped code works (benchmark build).**
+```sh
+./gradlew :androidApp:installBenchmark
+adb logcat -c
+```
+0. The hooks survive R8 (must-know 3): `adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor export-check` opens the editor on the check project, with logcat tag `MemixEditorCheck` lines.
+1. Home → Create → Video meme → import a clip. The editor opens and the preview plays.
+2. Add a meme sound from the sheet and a caption. Export 1080p30 (Export → Export video), allow notifications, wait, play the result in the gallery. The watermark is on.
+3. Share opens the system sheet. Back in Memix, open Drafts: the draft is there with its thumbnail. Close the app (swipe it away), open the draft again: this decodes the saved JSON through the R8-built serializers.
+4. Open a draft saved before P1-15 by an older build, if you have one (schema 1 or 2): it opens and migrates.
+5. Switch the phone to Hindi (`adb shell cmd locale set-app-locales app.memix --locales hi`): Home and the entry cards read in Teko, the export notification text is Hindi. Switch back to English.
+6. Pass: `adb logcat -d | grep -E 'ClassNotFoundException|NoSuchMethodError|NoSuchFieldError|Failed to find|AndroidRuntime|SerializationException'` prints nothing from `app.memix` or a library. The notification's Cancel button stops an export.
+
+**C. Hooks stay off in release (must-know 7).** On the release build (the owner's signed bundle installed from internal testing): `adb shell am start -n app.memix/.android.MainActivity --es memix.openEditor export-check` opens Home and nothing else; `--ez memix.failImportSave true`, `--ez memix.draftsCheck true` and `--ez memix.testCrash true` do nothing (no editor, no crash, no 25 drafts).
+
+**D. Mapping upload and a readable crash (the open P0-08 console check fits the same sitting).** Mac online, the real `androidApp/google-services.json` in place:
+```sh
+./gradlew :androidApp:installBenchmark -Pmemix.mappingUpload=all
+# The log ends with uploadCrashlyticsMappingFileBenchmark (the upload task) and no error.
+adb shell am start -S -n app.memix/.android.MainActivity --ez memix.testCrash true   # the app closes: that is the crash
+adb shell am start -n app.memix/.android.MainActivity                                # open it again so the report is sent
+```
+Pass: within a few minutes the Crashlytics console shows the issue "Memix test crash" with the exception `app.memix.debug.MemixTestCrash` and `MainActivity.onCreate` with a file name and line number. Fail: a one- or two-letter class name, or no line numbers (the mapping or `-keepattributes SourceFile,LineNumberTable` isn't applied). Also: `./gradlew :androidApp:assembleDebug` never starts an upload task, and a plain `installBenchmark` (no property) skips `uploadCrashlyticsMappingFileBenchmark` (the log marks it SKIPPED).
+
+**E. Version code.** `./gradlew :androidApp:assembleRelease` twice, a few minutes apart (unsigned APK, any Firebase config, `-Pmemix.mappingUpload=none` if offline): `aapt2 dump badging androidApp/build/outputs/apk/release/*.apk | grep versionCode` (or Android Studio's APK Analyzer) grows by about the minutes between the two builds and is above 430,000. `installDebug` and `installBenchmark` keep `versionCode` 1.
+
+**F. The Done when's second clause (the owner).** Follow the `play-release` skill: sign the bundle, fill the foreground-service declaration (step 4, with a screen video of Export), upload to internal testing and install it from the Play Store on the phone. Nothing in the repo or in CI holds a key.

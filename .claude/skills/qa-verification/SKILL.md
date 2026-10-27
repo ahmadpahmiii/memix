@@ -17,6 +17,8 @@ emulator -list-avds                                   # pick a recent Pixel imag
 adb push qa-media/. /sdcard/DCIM/MemixQA/             # sample media (see below)
 adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/DCIM/MemixQA
 ```
+Builds: `installDebug` for the feature checks and the engineers' hooks. `installBenchmark` (since P1-15) is **minified by R8, like the build the owner uploads**: use it for every performance number and repeat the main path once on it (import, caption, meme sound, export, Drafts, reopen a draft, Hindi, Share), watching `adb logcat -d | grep -E 'ClassNotFoundException|NoSuchMethodError|Failed to find|AndroidRuntime'`. Its hooks are the ones gated by `memix_hand_checks` (`memix.openEditor`, `failImportSave`, `draftsCheck`, `testCrash`); the export and project hooks need a debuggable build and do nothing there, so export on it through the Export button.
+
 Sample media to keep outside the repo or in a git-ignored `qa-media/`: short 1080p30 H.264, 4K60 HEVC, portrait with rotation metadata, variable frame rate phone clip, a 10-minute clip, a video with no audio, a 12 MP photo, a PNG with transparency.
 
 ## 3. Drive and observe

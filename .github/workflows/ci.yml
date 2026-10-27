@@ -45,6 +45,10 @@ jobs:
       - run: cp androidApp/google-services.ci.json androidApp/google-services.json
       # verifySqlDelightMigration: the database schema from 1.db plus every .sqm must equal the .sq files.
       - run: ./gradlew :androidApp:assembleDebug lint :core:data:verifySqlDelightMigration --console=plain
+      # Release build (R8): the bundle the owner signs and uploads by hand, built unsigned (CI holds no keystore), so a
+      # missing keep rule or a release-only error fails here and not on the owner's phone. The Crashlytics mapping upload
+      # is off (-Pmemix.mappingUpload=none) because the Firebase config above is a placeholder. Not uploaded anywhere.
+      - run: ./gradlew :androidApp:bundleRelease -Pmemix.mappingUpload=none --console=plain
 
   ios:
     name: iOS framework compile
