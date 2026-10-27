@@ -24,7 +24,7 @@ Create sheet "Video meme" row ─┴─> system photo picker ── nothing pick
 
 - **Kept:** the project, and Memix's own copy of every file that went in. Nothing is kept from a pick that was backed out of, cancelled, or where nothing went in. A project only exists once at least one item has landed, so Drafts never fills with empty projects.
 - **Closing the editor** (close button or system back) → the screen the flow started from (Home or a tab), not the Create sheet. The draft stays.
-- **Photo meme** (Home card and Create row) stays on its placeholder until P2. P2-01 specs the photo picker.
+- **Photo meme** (Home card and Create row) stays on its placeholder until P2. P2-01 specs the photo picker (`P2-01-photo-editor-shell.md` → Starting a photo meme): the same picker, images only and one item, the same import sheet with photo wording (percent only, no "1 of 1"). The same one-photo flow also picks the canvas background image (P2-12) and an added image layer (P2-13).
 
 ### Before the picker
 - A tap opens the picker straight away. Memix shows no screen, explainer or permission rationale before it, the first time or any time: the system photo picker needs no permission (Guidance).

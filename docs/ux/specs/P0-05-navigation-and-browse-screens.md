@@ -34,6 +34,7 @@ The one blue action: the Create block in the bottom navigation on every browse s
 ### Create sheet · board `design/screens/Create.dc.html`
 - Sheet title "CREATE" (`display`), close button, Video meme row (`primary`), Photo meme row (`surface-raised`, `primary` icon), "Start from a template" row (`surface-raised`) that switches to the Templates tab and closes the sheet.
 - **Difference from the board:** the line "Memix asks for gallery access the first time you pick media" is dropped. The Android photo picker (P1-02) needs no permission, so the line would be false.
+- **P2-01 (27 Oct):** the Photo meme row and the Home card open the system picker at once (images only, one photo), then the photo editor; nothing asks "photo or blank?" first. **A fourth row, "Start with a blank canvas"** (`create_blank`, `surface-raised`, the `create` icon, 56 dp like the template row, after "Start from a template"), opens the photo editor on a blank canvas; it ships with P2-03, the first ticket that can put something on one, so until then the sheet keeps its three rows. See `P2-01-photo-editor-shell.md` → Starting a photo meme.
 
 ### Bottom navigation · component `BottomNav`
 Home, Templates, Create, Sounds, Drafts. Current item `text`; others `text-secondary`; Create is the `primary` block. Height `nav-height` plus the system navigation inset; content scrolls above it, never under it.

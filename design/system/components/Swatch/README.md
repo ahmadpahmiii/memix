@@ -8,6 +8,7 @@ A round, single-choice color button for content colors: caption text and outline
   - **Low-contrast colors** (under 3:1 against `surface`, in the current palette only Black at 1.2:1): a `stroke-hairline` ring in `text-muted` just inside the edge (5.7:1), so the swatch doesn't vanish.
   - **None** ("No outline"): a `surface-raised` circle with the same `text-muted` ring and one diagonal `stroke-selection` line in `text-secondary`, top-right to bottom-left.
   - **Blur** (canvas background, P1-11): a `surface-raised` circle with the `blur` icon at `icon-small` in `text-secondary` (5.7:1), first in the row. Spoken "Blur".
+  - **Image** (canvas background, P2-12, both editors): after Blur in the video panel, first in the photo panel. No picture yet: a `surface-raised` circle with the `photo` icon at `icon-small` in `text-secondary` (5.7:1); a tap opens the picker and the swatch isn't selected until a picture exists. **A picture set:** the picture itself, center-cropped into the circle (a thumbnail, never the original), with the selected ring. **File missing:** the same circle with the icon in `text-muted` and the selected ring, plus an explanation line under the row. Spoken "Image" (click label "Pick an image" when empty; "Image, file missing" when missing).
   - **Selected:** a `stroke-selection` ring in `selection` (white), 2 dp outside the circle (17.2:1 on `surface`).
   - No shadow, no check mark.
 - **Layout:** a horizontally scrolling row that scrolls edge to edge, in palette order.
