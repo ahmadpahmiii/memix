@@ -1236,6 +1236,7 @@ adb logcat -s MemixDraftsCheck MediaImport Drafts MemixPreview
 7. Delete row 2: it collapses, "Draft deleted." with Undo above the bottom nav for 8 s. Undo: it's back in its place with its thumbnail and name. Delete it again and wait 8 s: `run-as app.memix ls files/media/drafts-check-02` fails (folder gone).
 8. Delete row 9, then row 11 while the first toast shows: the first one's folder goes at once (`ls`), the new toast replaces the old one.
 9. Row 5 (newer Memix): tap, Rename and Duplicate each show "This draft can't be opened. Update Memix, or delete it."; Delete works and Undo brings it back.
+10. Long-press a row near its left edge, then near More options (P2 in cdfa202 moved the row's touch area 8 dp in and offset the menu anchor by the same amount). Pass: each time the menu (Rename, Duplicate, Delete) opens at your finger, not 8 dp to its left.
 
 **B. Kill during the delete toast (must-know 7).** Delete row 14, and within 8 s `adb shell am force-stop app.memix`; start again. Pass: the row is gone and `ls files/media/drafts-check-14` fails after the start (MediaImport logs "Deleted the media of 1 unsaved or deleted projects").
 
