@@ -40,12 +40,15 @@
     <string name="drafts_duplicated">Borrador duplicado.</string>
     <string name="drafts_duplicating_title">Copiando tu borrador</string>
     <string name="drafts_cant_open">Este borrador no se puede abrir. Actualiza Memix o elimínalo.</string>
+    <string name="drafts_rename_failed">No se pudo cambiar el nombre. Inténtalo otra vez.</string>
+    <string name="drafts_duplicate_failed">No se pudo duplicar el borrador. Inténtalo otra vez.</string>
+    <string name="drafts_delete_failed">No se pudo eliminar el borrador. Inténtalo otra vez.</string>
     <string name="drafts_load_error">No se pudieron cargar tus borradores.</string>
     <string name="drafts_try_again">Reintentar</string>
     <string name="a11y_draft_row">%1$s, %2$s, %3$s</string>
     <string name="drafts_copy_percent">%1$d\u00A0%</string>
     <string name="drafts_copy_cancel">Cancelar</string>
     <string name="drafts_storage_title">No hay espacio suficiente</string>
-    <string name="drafts_storage_body">Tus videos y fotos necesitan %1$s y tu teléfono tiene %2$s libres. Libera espacio y vuelve para continuar.</string>
+    <string name="drafts_storage_body">Copiar este borrador necesita %1$s y tu teléfono tiene %2$s libres. Libera espacio y vuelve para continuar.</string>
     <string name="drafts_free_up_space">Liberar espacio</string>
 </resources>

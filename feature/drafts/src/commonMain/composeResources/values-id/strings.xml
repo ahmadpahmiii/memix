@@ -37,12 +37,15 @@
     <string name="drafts_duplicated">Draf diduplikat.</string>
     <string name="drafts_duplicating_title">Menyalin draf kamu</string>
     <string name="drafts_cant_open">Draf ini tidak bisa dibuka. Perbarui Memix, atau hapus.</string>
+    <string name="drafts_rename_failed">Draf ini tidak bisa diganti namanya. Coba lagi.</string>
+    <string name="drafts_duplicate_failed">Draf ini tidak bisa diduplikat. Coba lagi.</string>
+    <string name="drafts_delete_failed">Draf ini tidak bisa dihapus. Coba lagi.</string>
     <string name="drafts_load_error">Draf kamu tidak bisa dimuat.</string>
     <string name="drafts_try_again">Coba lagi</string>
     <string name="a11y_draft_row">%1$s, %2$s, %3$s</string>
     <string name="drafts_copy_percent">%1$d%</string>
     <string name="drafts_copy_cancel">Batal</string>
     <string name="drafts_storage_title">Ruang tidak cukup</string>
-    <string name="drafts_storage_body">Media kamu butuh %1$s, dan HP kamu punya %2$s kosong. Kosongkan ruang, lalu kembali untuk melanjutkan.</string>
+    <string name="drafts_storage_body">Menyalin draf ini butuh %1$s, dan HP kamu punya %2$s kosong. Kosongkan ruang, lalu kembali untuk melanjutkan.</string>
     <string name="drafts_free_up_space">Kosongkan ruang</string>
 </resources>

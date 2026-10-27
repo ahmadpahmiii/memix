@@ -40,12 +40,15 @@
     <string name="drafts_duplicated">Rascunho duplicado.</string>
     <string name="drafts_duplicating_title">Copiando seu rascunho</string>
     <string name="drafts_cant_open">Não dá para abrir este rascunho. Atualize o Memix ou exclua-o.</string>
+    <string name="drafts_rename_failed">Não foi possível renomear o rascunho. Tente de novo.</string>
+    <string name="drafts_duplicate_failed">Não foi possível duplicar o rascunho. Tente de novo.</string>
+    <string name="drafts_delete_failed">Não foi possível excluir o rascunho. Tente de novo.</string>
     <string name="drafts_load_error">Não foi possível carregar seus rascunhos.</string>
     <string name="drafts_try_again">Tentar de novo</string>
     <string name="a11y_draft_row">%1$s, %2$s, %3$s</string>
     <string name="drafts_copy_percent">%1$d%</string>
     <string name="drafts_copy_cancel">Cancelar</string>
     <string name="drafts_storage_title">Espaço insuficiente</string>
-    <string name="drafts_storage_body">Sua mídia precisa de %1$s, e seu celular tem %2$s livres. Libere espaço e volte para continuar.</string>
+    <string name="drafts_storage_body">Copiar este rascunho precisa de %1$s, e seu celular tem %2$s livres. Libere espaço e volte para continuar.</string>
     <string name="drafts_free_up_space">Liberar espaço</string>
 </resources>

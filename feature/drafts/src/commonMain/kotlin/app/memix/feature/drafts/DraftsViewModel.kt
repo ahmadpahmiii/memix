@@ -59,6 +59,8 @@ class DraftsViewModel(
     private val copyFraction = MutableStateFlow(0f)
     private var nextSerial = 0L
     private var lastEditorFailure = -1L
+    // The delete that can still be undone; its toast comes back after another toast has gone (spec → Interactions → Delete).
+    private var undoableDelete: UndoableDelete? = null
     // The draft opened from this list, as it was, to tell on return whether it was edited (spec → Entry and exit).
     private var openedDraft: OpenedDraft? = null
     private var returningTo: OpenedDraft? = null
@@ -84,7 +86,7 @@ class DraftsViewModel(
             DraftsIntent.AppResumed -> retryCopyAfterSpace()
             is DraftsIntent.Delete -> delete(intent.draftId, intent.undoWindowMillis)
             is DraftsIntent.Undo -> undo(intent.draftId)
-            is DraftsIntent.ToastTimedOut -> updateState { if (it.toast?.serial == intent.serial) it.copy(toast = null) else it }
+            is DraftsIntent.ToastTimedOut -> toastTimedOut(intent.serial)
             is DraftsIntent.FocusDone -> updateState { if (it.focus?.serial == intent.serial) it.copy(focus = null) else it }
             is DraftsIntent.EditorCouldntOpen -> editorCouldntOpen(intent.serial)
         }
@@ -194,7 +196,9 @@ class DraftsViewModel(
             when (val renamed = renameDraft(renaming.draftId, typedName)) {
                 is Outcome.Success -> Unit
                 // Saved by a newer app, or damaged: it can't be read, so it can't be renamed either.
-                is Outcome.Failure -> if (renamed.error == AppError.ProjectUnreadable) showToast(DraftsToast.CantOpen(newSerial()))
+                is Outcome.Failure -> showToast(
+                    if (renamed.error == AppError.ProjectUnreadable) DraftsToast.CantOpen(newSerial()) else DraftsToast.RenameFailed(newSerial()),
+                )
             }
         }
     }
@@ -242,7 +246,9 @@ class DraftsViewModel(
             is DuplicateOutcome.Failed -> {
                 copyingDraftId = null
                 updateState { it.copy(copySheet = null) }
-                showToast(DraftsToast.CantOpen(newSerial()))
+                showToast(
+                    if (outcome.error == AppError.ProjectUnreadable) DraftsToast.CantOpen(newSerial()) else DraftsToast.DuplicateFailed(newSerial()),
+                )
             }
         }
     }
@@ -274,8 +280,10 @@ class DraftsViewModel(
         // Focus goes to the next row, or the previous one at the end (spec → Accessibility).
         val nextFocus = rows.getOrNull(index + 1)?.id ?: rows.getOrNull(index - 1)?.id
         viewModelScope.launch {
-            if (deleteDraft(draftId, undoWindowMillis.milliseconds) is Outcome.Success && nextFocus != null) {
-                requestFocus(nextFocus, scrollToTop = false)
+            when (val deleted = deleteDraft(draftId, undoWindowMillis.milliseconds)) {
+                is Outcome.Success -> if (nextFocus != null) requestFocus(nextFocus, scrollToTop = false)
+                // The row stays. NotFound means it was already gone, which needs no message.
+                is Outcome.Failure -> if (deleted.error != AppError.NotFound) showToast(DraftsToast.DeleteFailed(newSerial()))
             }
         }
     }
@@ -288,6 +296,7 @@ class DraftsViewModel(
 
     // The toast follows the delete that can still be undone; when its window ends it goes.
     private fun showUndoable(undoable: UndoableDelete?) {
+        undoableDelete = undoable
         if (undoable != null) return showToast(DraftsToast.Deleted(undoable.draftId, newSerial()))
         updateState { if (it.toast is DraftsToast.Deleted) it.copy(toast = null) else it }
     }
@@ -296,6 +305,13 @@ class DraftsViewModel(
         if (serial == lastEditorFailure) return
         lastEditorFailure = serial
         showToast(DraftsToast.CantOpen(newSerial()))
+    }
+
+    // Another toast may have replaced the Undo while the delete can still be undone: when it goes, the Undo returns.
+    private fun toastTimedOut(serial: Long) {
+        if (state.value.toast?.serial != serial) return
+        val undoAgain = undoableDelete?.let { DraftsToast.Deleted(it.draftId, newSerial()) }
+        updateState { if (it.toast?.serial == serial) it.copy(toast = undoAgain) else it }
     }
 
     // Toasts never stack: a new one replaces the one shown.

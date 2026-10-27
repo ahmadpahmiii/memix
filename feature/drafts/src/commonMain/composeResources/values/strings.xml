@@ -45,6 +45,9 @@
     <string name="drafts_duplicated">Draft duplicated.</string>
     <string name="drafts_duplicating_title">Copying your draft</string>
     <string name="drafts_cant_open">This draft can't be opened. Update Memix, or delete it.</string>
+    <string name="drafts_rename_failed">Couldn't rename this draft. Try again.</string>
+    <string name="drafts_duplicate_failed">Couldn't duplicate this draft. Try again.</string>
+    <string name="drafts_delete_failed">Couldn't delete this draft. Try again.</string>
     <string name="drafts_load_error">Your drafts couldn't be loaded.</string>
     <string name="drafts_try_again">Try again</string>
     <!-- Spoken row: name, type, edit time ("Cat fail, Video meme, Edited 2 hours ago"). -->
@@ -53,6 +56,6 @@
     <string name="drafts_copy_percent">%1$d%</string>
     <string name="drafts_copy_cancel">Cancel</string>
     <string name="drafts_storage_title">Not enough space</string>
-    <string name="drafts_storage_body">Your media needs %1$s, and your phone has %2$s free. Free up space, then come back to carry on.</string>
+    <string name="drafts_storage_body">Copying this draft needs %1$s, and your phone has %2$s free. Free up space, then come back to carry on.</string>
     <string name="drafts_free_up_space">Free up space</string>
 </resources>

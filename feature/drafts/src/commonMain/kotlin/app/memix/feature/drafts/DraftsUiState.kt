@@ -82,6 +82,15 @@ sealed interface DraftsToast {
 
     /** "This draft can't be opened. Update Memix, or delete it." */
     data class CantOpen(override val serial: Long) : DraftsToast
+
+    /** "Couldn't rename this draft. Try again." (a write failed; nothing changed). */
+    data class RenameFailed(override val serial: Long) : DraftsToast
+
+    /** "Couldn't duplicate this draft. Try again." (a write failed; the half-made copy is cleaned up). */
+    data class DuplicateFailed(override val serial: Long) : DraftsToast
+
+    /** "Couldn't delete this draft. Try again." (the row stays). */
+    data class DeleteFailed(override val serial: Long) : DraftsToast
 }
 
 /** Focus [draftId]'s row, scrolling to the top first when [scrollToTop] (the draft just edited is now first). */

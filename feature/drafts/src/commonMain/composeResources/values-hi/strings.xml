@@ -40,12 +40,15 @@
     <string name="drafts_duplicated">ड्राफ़्ट डुप्लिकेट किया गया।</string>
     <string name="drafts_duplicating_title">आपका ड्राफ़्ट कॉपी हो रहा है</string>
     <string name="drafts_cant_open">यह ड्राफ़्ट नहीं खुल सकता। Memix अपडेट करें, या इसे हटाएं।</string>
+    <string name="drafts_rename_failed">ड्राफ़्ट का नाम नहीं बदला जा सका। फिर कोशिश करें।</string>
+    <string name="drafts_duplicate_failed">ड्राफ़्ट डुप्लिकेट नहीं हो सका। फिर कोशिश करें।</string>
+    <string name="drafts_delete_failed">ड्राफ़्ट हटाया नहीं जा सका। फिर कोशिश करें।</string>
     <string name="drafts_load_error">आपके ड्राफ़्ट लोड नहीं हो सके।</string>
     <string name="drafts_try_again">फिर कोशिश करें</string>
     <string name="a11y_draft_row">%1$s, %2$s, %3$s</string>
     <string name="drafts_copy_percent">%1$d%</string>
     <string name="drafts_copy_cancel">रद्द करें</string>
     <string name="drafts_storage_title">पर्याप्त जगह नहीं है</string>
-    <string name="drafts_storage_body">आपकी मीडिया को %1$s चाहिए, और आपके फ़ोन में %2$s खाली है। जगह खाली करें, फिर जारी रखने के लिए वापस आएं।</string>
+    <string name="drafts_storage_body">इस ड्राफ़्ट की कॉपी के लिए %1$s चाहिए, और आपके फ़ोन में %2$s खाली है। जगह खाली करें, फिर जारी रखने के लिए वापस आएं।</string>
     <string name="drafts_free_up_space">जगह खाली करें</string>
 </resources>

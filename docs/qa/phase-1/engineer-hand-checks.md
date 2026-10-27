@@ -1254,14 +1254,26 @@ adb logcat -s MemixDraftsCheck MediaImport Drafts MemixPreview
 **G. Accessibility.** TalkBack: each row is one stop ("Cat fail, Video meme, Edited 2 hours ago"); the actions menu offers Rename, Duplicate, Delete; More options is its own stop. After Delete, focus is on the next row; after Undo, on the restored row; after Rename, on the row; after Duplicate, it stays put and "Draft duplicated." is announced. A keyboard (or `adb shell input keyevent`): Tab moves row → More options → next row, Enter opens, Shift+F10 or the Menu key opens the menu, Escape closes it and the sheet.
 
 ### States to screenshot for the design review (`docs/ux/reviews/P1-14/`)
-The spec's QA compares 1 to 6, at 360 dp wide, English unless noted:
+The spec's QA compares 1 to 6, at 360 dp wide, English unless noted (the designer's review of 27 Oct, `docs/ux/reviews/P1-14.md`, extends the list):
 1. `list-360`: three drafts sorted by last edit, thumbnails with the badge, one "Untitled video meme", the edit times.
 2. `after-edit-oldest`: back from editing the oldest draft: it's first and focused. `after-rename-middle`: renamed middle row, not moved.
 3. `menu-open`: the menu from More options. `rename-sheet`: the rename sheet with the keyboard up and the whole name selected; `rename-counter`: the counter at 52/60.
 4. `deleted-toast`: the row gone and "Draft deleted." with Undo; `undo-restored`: the row back in place.
 5. `duplicated`: "{name} (copy)" directly above the original, with the toast.
 6. `hi-200-list`, `hi-200-menu`, `hi-200-rename`: Hindi at 200% font, 360 dp; `needs-update-row`: the newer-Memix row.
-Also: `empty` (no drafts), `load-error` (not reachable by hand; skip unless the database is made unreadable), `copying-sheet` (step C's large duplicate), `not-enough-space` (fill the phone, then duplicate a large draft), `more-icon-zoom` (the new `more` icon, for the icon review).
+
+Also: `empty` (no drafts), `load-error` (not reachable by hand; skip unless the database is made unreadable), `copying-sheet` (step C's large duplicate), `not-enough-space` (fill the phone, then duplicate a large draft; it must show the new body "Copying this draft needs ... and your phone has ... free"), `more-icon-zoom` (the new `more` icon, for the icon review; if the dots read lighter than the 2 px strokes beside them, tell the designer: r 1.75 at the same centers).
+
+Added by the design review (M1, M2, P2, P1):
+- `badge-zoom`: a thumbnail over a white picture and one over a dark one, at 2x zoom. Check the 20 dp chip and the glyph with air around it, readable on both.
+- `placeholder-row`: the missing-media row ("Media folder missing") and a pre-build draft: the centered icon alone, no corner badge.
+- `undo-then-duplicate`: delete a draft, duplicate another within 8 s: "Draft duplicated." shows, then the Undo toast returns for the rest of the 8 s.
+- `focus-ring-keyboard`: Tab onto a row and onto More options: the focus ring is whole at the left edge.
+
+QA notes from the design review:
+- `duplicate-large-time` (a note, not a screenshot): the copy time for the 500 MB draft in step C, and whether Cancel left no folder in `files/media`.
+- Not screenshots, but part of the QA pass: TalkBack (check G, plus two focus cases: after the last delete TalkBack must not land on the status bar or nowhere, and after Escape closes a menu a keyboard user must not have to Tab from the top of the list), system back while "Copying your draft" is up (it must cancel or be ignored, never leave a half-made copy), and Escape closing the menu.
+- The three failure toasts ("Couldn't rename / duplicate / delete this draft. Try again.") can't be reached by hand without a failing write; they are checked in code and by the strings in all five languages.
 
 ## P1-07 · killing the app mid-edit restores the draft
 

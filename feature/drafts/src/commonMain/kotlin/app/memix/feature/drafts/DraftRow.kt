@@ -128,6 +128,8 @@ internal fun DraftRow(
                 Modifier
                     .weight(1f)
                     .heightIn(min = MemixSize.listThumbSize + MemixSpacing.space2 * 2)
+                    // Starts where the pressed fill does, so the focus ring is whole at the screen edge.
+                    .padding(start = MemixSpacing.space2)
                     .focusRequester(focusRequester)
                     .focusRing(interactionSource, MemixShapes.radiusMd)
                     .pointerInput(Unit) { notePressPoints(anchors) }
@@ -149,7 +151,7 @@ internal fun DraftRow(
                         contentDescription = spoken
                         customActions = actions.map { action -> CustomAccessibilityAction(action.label) { action.onClick(); true } }
                     }
-                    .padding(start = MemixSpacing.space4, top = MemixSpacing.space2, bottom = MemixSpacing.space2),
+                    .padding(start = MemixSpacing.space2, top = MemixSpacing.space2, bottom = MemixSpacing.space2),
                 horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space3),
             ) {
                 DraftThumbnail(row.thumbnailPath, row.type, thumbnails)
@@ -182,7 +184,7 @@ internal fun DraftRow(
     }
 }
 
-/** The thumbnail, a placeholder until it's read (fading in over 120 ms), and the type badge in its corner. */
+/** The thumbnail, a placeholder until it's read (fading in over 120 ms), and over a picture the type badge in its corner. */
 @Composable
 private fun DraftThumbnail(path: String?, type: ProjectType, thumbnails: DraftThumbnailImages) {
     val image by produceState(path?.let(thumbnails::cached), path) {
@@ -201,18 +203,20 @@ private fun DraftThumbnail(path: String?, type: ProjectType, thumbnails: DraftTh
                 modifier = Modifier.matchParentSize().graphicsLayer { this.alpha = alpha.value },
                 contentScale = ContentScale.Crop,
             )
+            // The type badge sits on a picture only, and fades in with it; the placeholder is the centered icon alone.
+            Box(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(MemixSpacing.space1)
+                    .size(MemixSize.badge)
+                    .graphicsLayer { this.alpha = alpha.value }
+                    .clip(MemixShapes.radiusSm)
+                    .background(MemixColors.scrim),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(typeIcon, contentDescription = null, tint = MemixColors.text, size = MemixSize.iconSmall)
+            }
         }
-        Icon(
-            typeIcon,
-            contentDescription = null,
-            tint = MemixColors.text,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(MemixSpacing.space1)
-                .clip(MemixShapes.radiusSm)
-                .background(MemixColors.scrim),
-            size = MemixSize.iconSmall,
-        )
     }
 }
 
@@ -263,12 +267,13 @@ private class MenuAnchors {
 }
 
 // Notes where each touch goes down, without consuming it, so a long-press opens the menu at the finger. The clickable
-// area starts at the row's top-left, so its positions are the row's.
+// area starts space-2 in from the row's left edge, so that is added to put positions in the row's own coordinates.
 private suspend fun PointerInputScope.notePressPoints(anchors: MenuAnchors) {
+    val rowOffset = Offset(MemixSpacing.space2.toPx(), 0f)
     awaitPointerEventScope {
         while (true) {
             val event = awaitPointerEvent(PointerEventPass.Initial)
-            event.changes.firstOrNull { it.pressed && !it.previousPressed }?.let { anchors.lastPress = it.position }
+            event.changes.firstOrNull { it.pressed && !it.previousPressed }?.let { anchors.lastPress = it.position + rowOffset }
         }
     }
 }
