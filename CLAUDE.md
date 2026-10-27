@@ -114,7 +114,7 @@ The first iOS link after adding a library takes up to 15 minutes while Kotlin/Na
 
 ## Current phase
 
-P1 · Core and video editor (started 7 Oct 2026). Phase 0 merged to `main` (PR #7; P0-07 moved). The Phase 1 branch is `claude/phase-1-kickoff-cenfgz`, branched from `main`, because cloud sessions can't push to `phase-1`. Keep this line updated as phases advance.
+P1 · Core and video editor: all 17 tickets built (CI green) and merged to `main` on 27 Oct 2026 **before** the phase-end QA pass (owner decision, decision log). Still owed for Phase 1: the QA pass on the owner's Mac (emulator) and phone (`docs/qa/phase-1/engineer-hand-checks.md`), fixes, the gate report and /retro. Next: P2, on a new phase branch from `main` (cloud sessions use `claude/phase-<n>-*`, which CI builds). Keep this line updated as phases advance.
 
 ## Open items that affect code
 
