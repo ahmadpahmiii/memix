@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sounds_title">मीम साउंड</string>
+    <string name="sounds_empty_title">अभी कोई साउंड नहीं</string>
+    <string name="sounds_empty_body">मीम साउंड लाइब्रेरी अगले बिल्ड में आएगी।</string>
+</resources>

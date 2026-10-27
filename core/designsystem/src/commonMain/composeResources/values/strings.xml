@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="close">Close</string>
+    <string name="sound_play">Play %1$s</string>
+    <string name="sound_pause">Pause %1$s</string>
+    <string name="sound_favorite">Favorite %1$s</string>
+    <string name="sound_add">Add %1$s to video</string>
+</resources>

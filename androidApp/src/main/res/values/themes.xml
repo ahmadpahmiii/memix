@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Same value as MemixColors.canvas, so the window behind the first frame matches the app. -->
+    <color name="memix_canvas">#FF111111</color>
+
+    <style name="Theme.Memix" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/memix_canvas</item>
+    </style>
+</resources>

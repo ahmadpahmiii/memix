@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_home">Inicio</string>
+    <string name="nav_templates">Plantillas</string>
+    <string name="nav_create">Crear</string>
+    <string name="nav_sounds">Sonidos</string>
+    <string name="nav_drafts">Borradores</string>
+    <string name="create_title">Crear</string>
+    <string name="create_video_title">Meme de video</string>
+    <string name="create_video_body">Elige clips de tu galería</string>
+    <string name="create_photo_title">Meme de foto</string>
+    <string name="create_photo_body">Elige una foto de tu galería</string>
+    <string name="create_template">Empieza con una plantilla</string>
+</resources>

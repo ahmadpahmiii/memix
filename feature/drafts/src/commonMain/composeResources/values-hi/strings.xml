@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="drafts_title">आपके ड्राफ़्ट</string>
+    <string name="drafts_empty_title">अभी कोई ड्राफ़्ट नहीं</string>
+    <string name="drafts_empty_body">जाओ, कुछ बेहद धमाकेदार बनाओ।</string>
+    <string name="drafts_empty_action">मीम बनाएं</string>
+</resources>

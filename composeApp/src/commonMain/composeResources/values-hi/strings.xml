@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_home">होम</string>
+    <string name="nav_templates">टेम्पलेट</string>
+    <string name="nav_create">बनाएं</string>
+    <string name="nav_sounds">साउंड</string>
+    <string name="nav_drafts">ड्राफ़्ट</string>
+    <string name="create_title">बनाएं</string>
+    <string name="create_video_title">वीडियो मीम</string>
+    <string name="create_video_body">अपनी गैलरी से क्लिप चुनें</string>
+    <string name="create_photo_title">फ़ोटो मीम</string>
+    <string name="create_photo_body">अपनी गैलरी से फ़ोटो चुनें</string>
+    <string name="create_template">टेम्पलेट से शुरू करें</string>
+</resources>

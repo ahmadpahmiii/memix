@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="templates_title">Plantillas</string>
+    <string name="templates_empty_title">Aún no hay plantillas</string>
+    <string name="templates_empty_body">La biblioteca de plantillas llega en una versión posterior.</string>
+</resources>

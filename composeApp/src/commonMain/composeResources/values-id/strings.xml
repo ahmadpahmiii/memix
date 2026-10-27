@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_home">Beranda</string>
+    <string name="nav_templates">Template</string>
+    <string name="nav_create">Buat</string>
+    <string name="nav_sounds">Suara</string>
+    <string name="nav_drafts">Draf</string>
+    <string name="create_title">Buat</string>
+    <string name="create_video_title">Meme video</string>
+    <string name="create_video_body">Pilih klip dari galeri</string>
+    <string name="create_photo_title">Meme foto</string>
+    <string name="create_photo_body">Pilih foto dari galeri</string>
+    <string name="create_template">Mulai dari template</string>
+</resources>

@@ -1,4 +1,8 @@
-# Build output
+# Every credential this project uses is listed in docs/CREDENTIALS.md with where it lives.
+# Nothing below may be force-added (`git add -f`). scripts/check-secrets.sh runs before each
+# commit (.githooks/pre-commit) and in CI.
+
+# ---- Build output and IDE state
 build/
 .gradle/
 .kotlin/
@@ -7,16 +11,76 @@ build/
 .DS_Store
 xcuserdata/
 DerivedData/
+*.xcuserstate
+captures/
+.externalNativeBuild/
+.cxx/
 
-# Local config and secrets — never commit
+# ---- Local machine config (sdk.dir, app config values)
 local.properties
+
+# ---- Environment files: secrets for scripts, backend and tooling (.env.example is the committed template)
 .env
 .env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+
+# ---- Firebase app configs (P0-08 Android, P7-08 iOS); CI writes them from secrets
+google-services.json
+GoogleService-Info.plist
+
+# ---- Service accounts and admin credentials (Play Console upload, Firebase admin, Google Cloud)
+*service-account*.json
+*service_account*.json
+*-firebase-adminsdk-*.json
+*credentials*.json
+client_secret*.json
+
+# ---- Android signing (P1-15): upload keystore and its passwords
 *.jks
 *.keystore
 keystore.properties
-supabase/.temp/
+signing.properties
 
-# Manual QA scratch (sample media and pulled exports)
+# ---- Apple signing and App Store Connect (P7-01, P7-10)
+*.p8
+*.p12
+*.mobileprovision
+*.provisionprofile
+*.cer
+*.certSigningRequest
+AuthKey_*.p8
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# ---- Private keys of any kind
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+
+# ---- Supabase CLI local state (P0-06 onward)
+supabase/.temp/
+supabase/.branches/
+supabase/.env
+supabase/.env.*
+
+# ---- Cloudflare Wrangler state (P0-07 upload script, P6-04 pages)
+.wrangler/
+
+# ---- Claude Code personal settings (team settings in .claude/ are committed)
+.claude/settings.local.json
+.claude/ios-memory/
+.claude/kmp-context/
+.claude/mobile-memory/
+
+# ---- Content intake scratch (P3-12): raw downloads and license screenshots stay local until uploaded
+scripts/out/
+intake/
+
+# ---- Manual QA scratch (sample media and pulled exports)
 qa-media/
 qa-out/

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="templates_title">Modelos</string>
+    <string name="templates_empty_title">Nenhum modelo ainda</string>
+    <string name="templates_empty_body">A biblioteca de modelos chega em uma versão futura.</string>
+</resources>

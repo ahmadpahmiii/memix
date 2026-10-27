@@ -9,19 +9,20 @@ Full detail: `docs/TECHNICAL_DESIGN.md`. This is the working summary.
 
 ## Modules
 
-| Module | Layer | Holds | May depend on |
-| --- | --- | --- | --- |
-| `:composeApp` | App | Android `Application`, iOS entry, Koin graph, NavHost | everything |
-| `:core:model` | Domain | `Project`, `Track`, `TimelineItem`, `PhotoScene`, `Layer`, effect/filter/transition specs, catalog entities | nothing |
-| `:core:domain` | Domain | use cases; repository + engine interfaces (`VideoEngine`, `PreviewSession`, `PhotoRenderer`, `Segmenter`, `MediaPicker`, `Sharer`, `Ads`, `Analytics`) | `:core:model` |
-| `:core:data` | Data | repositories, supabase-kt remote, SQLDelight local, file cache, settings | `:core:domain` |
-| `:core:designsystem` | UI | `MemixTheme`, tokens, base components | — |
-| `:core:ui` | UI | timeline, layer handles, sliders, pickers | designsystem, model |
-| `:engine:video` | Platform | `VideoEngine`: Media3 (androidMain), AVFoundation (iosMain) | domain |
-| `:engine:photo` | Platform | photo renderer + PNG/JPG/GIF/WebP encoders | domain |
-| `:engine:segmentation` | Platform | `Segmenter`: ML Kit + MediaPipe / Vision | domain |
-| `:platform:services` | Platform | AdMob+UMP, Firebase, share intents, gallery picker | domain |
-| `:feature:onboarding/home/templates/sounds/drafts/video-editor/photo-editor/export` | UI | screens + ViewModels | domain, ui |
+| Module                                                                              | Layer    | Holds                                                                                                                                                  | May depend on       |
+|-------------------------------------------------------------------------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------|
+| `:androidApp`                                                                       | App      | Android `Application`, `MainActivity`, manifest (AGP 9: not a KMP module)                                                                              | `:composeApp`       |
+| `:composeApp`                                                                       | App      | `App()`, NavHost, Koin graph, iOS entry; builds the `ComposeApp` framework for `iosApp/`                                                               | everything          |
+| `:core:model`                                                                       | Domain   | `Project`, `Track`, `TimelineItem`, `PhotoScene`, `Layer`, effect/filter/transition specs, catalog entities                                            | nothing             |
+| `:core:domain`                                                                      | Domain   | use cases; repository + engine interfaces (`VideoEngine`, `PreviewSession`, `PhotoRenderer`, `Segmenter`, `MediaPicker`, `Sharer`, `Ads`, `Analytics`) | `:core:model`       |
+| `:core:data`                                                                        | Data     | repositories, supabase-kt remote, SQLDelight local, file cache, settings                                                                               | `:core:domain`      |
+| `:core:designsystem`                                                                | UI       | `MemixTheme`, tokens, base components                                                                                                                  | —                   |
+| `:core:ui`                                                                          | UI       | timeline, layer handles, sliders, pickers                                                                                                              | designsystem, model |
+| `:engine:video`                                                                     | Platform | `VideoEngine`: Media3 (androidMain), AVFoundation (iosMain)                                                                                            | domain              |
+| `:engine:photo`                                                                     | Platform | photo renderer + PNG/JPG/GIF/WebP encoders                                                                                                             | domain              |
+| `:engine:segmentation`                                                              | Platform | `Segmenter`: ML Kit + MediaPipe / Vision                                                                                                               | domain              |
+| `:platform:services`                                                                | Platform | AdMob+UMP, Firebase, share intents, gallery picker                                                                                                     | domain              |
+| `:feature:onboarding/home/templates/sounds/drafts/video-editor/photo-editor/export` | UI       | screens + ViewModels                                                                                                                                   | domain, ui          |
 
 ## Rules
 
