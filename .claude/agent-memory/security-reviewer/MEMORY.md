@@ -6,3 +6,4 @@ Lessons for this project only, newest first. Keep under ~150 lines; prune stale 
 
 <!-- - 2026-10-xx · P1-xx · lesson … -->
 - 2026-10-27 · P1 PR · 94 commits / 480 paths, PASS. mcp__github__run_secret_scanning fails ("no GitHub Advanced Security") on this repo: do the manual diff review instead and note it as a warning. Release build is unsigned by design (benchmark uses the debug key); google-services.ci.json is unchanged and not AIza-shaped.
+- 2026-10-27 · main bd80eee · Owner force-added a real androidApp/google-services.json (despite .gitignore) to main. check-secrets --range misses it once it is on main (not in range) and merge commits show no diff. Firebase API keys are client identifiers, not secrets, but project policy keeps the file local: restrict the key (package + SHA-1) or rotate. Check `git ls-tree -r origin/main` for local-only names at each review.
