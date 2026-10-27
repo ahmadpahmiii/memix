@@ -234,7 +234,7 @@ The north-star metric is **DAU, with a target of 5,000 by month 3 after the Andr
 | `template_open` | A template opens | template\_id, type |
 | `sound_preview` | A sound plays in the library | sound\_id, tab |
 | `sound_add` | A sound lands on a timeline | sound\_id, tab, editor |
-| `tool_use` | A tool is applied | editor, tool; font (font id: anton, poppins, baloo2, kalam, rozha) when tool is add_text or text_font; value when tool is a canvas tool (owner, 21 Oct 2026): `canvas_ratio` → 9:16, 1:1, 4:5, 3:4, 16:9 or custom (never the custom numbers), `canvas_fit` → fit or fill, `canvas_background` → blur or color (never the color itself) |
+| `tool_use` | A tool is applied | editor, tool; font (font id: anton, poppins, baloo2, kalam, rozha) when tool is add_text or text_font; value when tool is a canvas tool (owner, 21 Oct 2026): `canvas_ratio` → 9:16, 1:1, 4:5, 3:4, 16:9 or custom (never the custom numbers), `canvas_fit` → fit or fill, `canvas_background` → blur, color or image (never the color itself or anything about the picture; Remove sends `color`; `image` comes with P2-12, PM clarification 27 Oct 2026) |
 | `bg_remove` | Background removal finishes | editor, success, duration\_ms |
 | `export_start` | The user starts an export (Export video in the export sheet, PM 20 Oct 2026) | editor, format, resolution, fps, length\_s |
 | `export_complete` | The file is saved | editor, format, time\_ms, size\_mb |

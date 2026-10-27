@@ -379,7 +379,8 @@ Translator notes:
 | Event | When | Parameters |
 | --- | --- | --- |
 | `project_create` | The photo lands (gallery), or a blank project's first committed step that leaves a layer (blank) | `editor: "photo"`, `source: "gallery"` or `"blank"` |
-| `tool_use` | A gesture releases (move, scale, turn), or one Position-panel step | `tool: "transform_layer"` |
+| `tool_use` | A gesture releases (move, scale, turn) | `tool: "transform_layer"` |
+| `tool_use` | One Position-panel step | `tool: "position_layer"` (PM, 27 Oct; mirrors video's `position_text`) |
 | `tool_use` | The opacity slider is released | `tool: "layer_opacity"` |
 | `tool_use` | Lock, Unlock | `tool: "lock_layer"`, `"unlock_layer"` |
 | `tool_use` | Hide, Show | `tool: "hide_layer"`, `"show_layer"` |
@@ -432,7 +433,7 @@ Changes needed from the design (the engineer owns the exact code; the PM's must-
 ## Requests to the principal mobile engineer
 I don't edit code, so these are requests. They sit beside the PM's must-knows, which already list the hooks, the edit session, the migration, the media rules and the lift into `:core:ui`.
 1. **Debug scenes**, opened with `--es memix.openEditor`:
-   - `photo-layers-10`: a 12 MP-class photo at the back (the canvas from its shape), five more large images, three at 60%, 40% and 10% opacity, two turned (one 30°, one 90°), one partly off the frame, **one locked, one hidden**, all overlapping, so every row state has an example.
+   - `photo-layers-10`: **ten visible image layers** plus one hidden (11 in all; PM, 27 Oct: a hidden layer proves nothing about drag speed): a 12 MP-class photo at the back (the canvas from its shape), nine more large images, three at 60%, 40% and 10% opacity, two turned (one 30°, one 90°), one partly off the frame, **one locked**, and an 11th, **hidden**, all overlapping, so every row state has an example.
    - `photo-empty`: no layers, white 1:1 (the blank defaults).
    - `photo-missing-media`: two layers, one whose file is gone.
    - Also an image set: a 4:3, a 3:2, a 1:1, a 9:16, a 6:13 and a 3:1 for the photo-shape check.
@@ -451,7 +452,7 @@ I don't edit code, so these are requests. They sit beside the PM's must-knows, w
 8. **Lift, don't copy** (PM must-know 8): caption gestures, selection frame, snap guides, the Position panel, `RatioShape`, the stepper rows and the Canvas panel pieces move into `:core:ui`; the video editor uses them in the same commit with no behavior change. The Position panel's size ladder gains 10% and 15% for images.
 9. **Tokens and components:** `MemixSize.layerThumbSize` (40 dp, `layer-thumb-size`); LayerRow in `:core:designsystem` and the debug catalog in every state; ToolPanel's "sized by content, up to 40% of the window" option; the ToolBar's trailing behavior is unchanged.
 10. **Icons**, drawn to the grammar (DESIGN_SYSTEM → Iconography lists them): `layers`, `lock`, `unlock`, `eye`, `eye_off`, `opacity`. The Move buttons reuse `arrow` turned up and down.
-11. **Analytics:** new `EditorTool` values `transform_layer`, `layer_opacity`, `lock_layer`, `unlock_layer`, `hide_layer`, `show_layer`, `reorder_layer`; the photo editor passes `editor: photo`.
+11. **Analytics:** new `EditorTool` values `transform_layer`, `position_layer`, `layer_opacity`, `lock_layer`, `unlock_layer`, `hide_layer`, `show_layer`, `reorder_layer`; the photo editor passes `editor: photo`.
 12. **Routing:** `PhotoEditorRoute(projectId)`; `onOpenDraft` by project type (PM must-know 9). Photo is portrait-locked on phones like the video editor (P1-04).
 
 ## Changes to other specs (made with this spec)
