@@ -5,6 +5,7 @@ An icon-only control with no fill: the editor's Close, Play/Pause, Undo and Redo
 - **Provide:** a Memix icon, a screen-reader label (verb first, e.g. "Close editor", "Undo"), an action, and optionally `enabled`.
 - **Look:**
   - Target `touch-target` square (48 dp). Icon 24 dp, centered, tinted `text`.
+  - **Quiet variant (`tint`):** a control that repeats down a list may use `text-secondary` so a column of them doesn't compete with the content (a draft row's More options, P1-14; 7.8:1 on `canvas`). Only `text-secondary`; never `primary`, and disabled still turns `text-muted`.
   - No fill at rest, no outline.
 - **Pressed:**
   - A fill fades in behind the icon over `duration-press`, at `radius-md`, covering the full 48 × 48.

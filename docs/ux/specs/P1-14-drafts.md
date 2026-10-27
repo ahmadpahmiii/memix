@@ -28,12 +28,12 @@ No board: the P0-05 frame plus this spec. Title "Your drafts" (`title-l`, P0-05)
 `canvas` background, no dividers, no card. From the start:
 1. **Thumbnail:** a `list-thumb-size` (56, new token) square, `radius-sm`, `space-4` from the screen edge.
    - Image: the first frame of the video (the first main clip at its trim-in), center-cropped square, as the timeline tiles are (P1-05).
-   - **Type badge** in its bottom-start corner, `space-1` inside: `scrim` fill, `radius-sm`, the `video` icon (later `photo`) at `icon-small` in `text` (7.5:1 or more over any image). The PRD's "type badge"; it matters once photo drafts arrive in P2, and is shown now so the row doesn't change later.
-   - No image yet, or it can't be read: `surface-raised` with the type icon at 24 in `text-secondary`. No spinner (MOTION 2); the image fades in over 120 ms when ready.
+   - **Type badge** over the image, in its bottom-start corner, `space-1` inside: a `badge-size` (20, new token, review 27 Oct) square chip, `scrim` fill, `radius-sm`, the `video` icon (later `photo`) at `icon-small` centered in it, in `text` (7.5:1 or more over any image). The PRD's "type badge"; it matters once photo drafts arrive in P2, and is shown now so the row doesn't change later.
+   - No image yet, or it can't be read: `surface-raised` with the type icon at 24 in `text-secondary`, centered, **and no badge** (the centered icon already says the type, and a corner badge would overlap it). No spinner (MOTION 2); the image fades in over 120 ms when ready, and the badge with it.
 2. **Text**, `space-3` after the thumbnail, filling the width:
    - Name in `body-strong` `text`, up to two lines, then an ellipsis at the end (the full name is spoken).
    - Below it, the edit time in `label` `text-secondary` ("Edited 2 hours ago").
-3. **More options:** IconButton, new icon `more` (three solid dots in a row; all core, like play) in `text-secondary`, 48 dp target, `space-1` from the end edge. It opens the row's Menu.
+3. **More options:** IconButton, new icon `more` (three solid dots in a row, "…"; all core, like play) in `text-secondary`, 48 dp target, `space-1` from the end edge. It opens the row's Menu. The dots are horizontal, as built and approved in the P1-14 review: it matches the editor's horizontal tool bar and iOS later, and the label, not the glyph, carries the meaning.
 
 - **Row height:** at least the thumbnail plus `space-2` above and below (72 dp); it grows with the text.
 - **Pressed:** a `surface` fill (one value step up from `canvas`) behind the row, `radius-md`, inset `space-2` from both screen edges, over `duration-press`. Nothing moves.
@@ -72,8 +72,9 @@ Standard Sheet (`design/system/components/Sheet/README.md`), title "Rename draft
 | Renaming | Rename sheet with keyboard | `drafts_rename_title`, `drafts_rename_label`, `drafts_rename_save`, `drafts_name_count` |
 | Deleted | Row gone; toast with Undo, above the bottom nav | `drafts_deleted`, `drafts_undo` |
 | Duplicated | New row above the original; toast | `drafts_duplicated` |
-| Duplicating takes over 300 ms | P1-02's import sheet (blocking), title "Copying your draft", determinate progress, Cancel | `drafts_duplicating_title`, P1-02 progress strings |
-| Not enough space to duplicate | P1-02's "Not enough space" sheet with Free up space | P1-02 strings |
+| Duplicating takes over 300 ms | P1-02's import sheet (blocking), title "Copying your draft", determinate progress, Cancel. **On Android this is the normal path for a draft with sizeable media** (every duplicate copies, request 3); a draft with a few small clips finishes before 300 ms and never shows it. Cancel deletes the half-made copy. | `drafts_duplicating_title`, P1-02 progress strings |
+| Not enough space to duplicate | P1-02's "Not enough space" sheet with Free up space. Its body names the copy, not "your media". Coming back from the system's storage screen tries the duplicate again by itself. | `drafts_storage_title`, `drafts_storage_body`, `drafts_free_up_space` |
+| Rename, duplicate or delete fails (not unreadable, not out of space) | Toast, 4 s (or the user's "Time to take action" time). Nothing changes in the list; for a failed rename the typed name is lost, which is acceptable for a write to the phone's own database that rarely fails. A draft that can't be read keeps `drafts_cant_open`. | `drafts_rename_failed`, `drafts_duplicate_failed`, `drafts_delete_failed` |
 | Draft from a newer Memix (`schema_version` above this app's) | Row as usual, but the meta line says so; a tap, Rename or Duplicate explain with a toast; Delete works | `drafts_needs_update`, `drafts_cant_open` |
 | Damaged draft (found only when opened) | Toast on tap; nothing else changes | `drafts_cant_open` |
 | Draft whose media is missing (restored from a backup, TECHNICAL_DESIGN → Backups) | Placeholder thumbnail; it opens in P1-04's missing-media state | P1-04 |
@@ -92,6 +93,7 @@ Standard Sheet (`design/system/components/Sheet/README.md`), title "Rename draft
   - The toast stays 8 s, or longer if the user's "Time to take action" setting asks for more (it contains a control).
   - The files are removed when the toast ends, or at the next app start if Memix is closed before that (`LeftoverMediaCleaner` already does this for drafts that aren't saved).
   - A second delete while the toast shows finalizes the first; the new toast replaces it.
+  - **No other toast may take the Undo away while the delete can still be undone** (review M2). If "Draft duplicated.", "can't be opened" or a failure toast comes up during the 8 s, it shows for its own time, then the Undo toast comes back for the rest of the window.
 - **Swipe to delete:** no. It's undiscoverable and easy to trigger while scrolling.
 - **Relative times** update when the screen comes back to the foreground and once a minute while it's shown.
 
@@ -122,7 +124,7 @@ English source; machine drafts in id, es, pt and hi until P5. Budgets in charact
 | `drafts_edited_days` | other: Edited %d days ago | 30 | Plural; 2 to 6 days |
 | `drafts_edited_date` | Edited %1$s | 30 | %1$s = a short date in the phone's locale ("12 Oct", with the year if it isn't this year) |
 | `drafts_needs_update` | Needs a newer version of Memix | 40 | Meta line for a draft saved by a newer app. "Memix" never translates |
-| `drafts_more_a11y` | More options | 24 | Spoken label of the ⋮ button |
+| `drafts_more_a11y` | More options | 24 | Spoken label of the "…" button |
 | `drafts_rename` | Rename | 20 | Menu item and row action |
 | `drafts_duplicate` | Duplicate | 20 | Same word as the editor's Duplicate tool in your language |
 | `drafts_delete` | Delete | 20 | Same word as the editor's Delete tool |
@@ -137,6 +139,10 @@ English source; machine drafts in id, es, pt and hi until P5. Budgets in charact
 | `drafts_duplicated` | Draft duplicated. | 30 | Toast |
 | `drafts_duplicating_title` | Copying your draft | 30 | Import-sheet title while a big duplicate copies |
 | `drafts_cant_open` | This draft can't be opened. Update Memix, or delete it. | 70 | Toast |
+| `drafts_rename_failed` | Couldn't rename this draft. Try again. | 60 | Toast. A write to the phone failed; the next step is to do it again |
+| `drafts_duplicate_failed` | Couldn't duplicate this draft. Try again. | 60 | Toast. Not for a full phone (that has its own sheet) or an unreadable draft |
+| `drafts_delete_failed` | Couldn't delete this draft. Try again. | 60 | Toast. The row stays |
+| `drafts_storage_body` | Copying this draft needs %1$s, and your phone has %2$s free. Free up space, then come back to carry on. | 120 | "Not enough space" sheet body for a duplicate. %1$s = the size needed (with headroom), %2$s = free. Replaces the import wording ("Your media needs…"), which doesn't say why a duplicate costs space |
 | `drafts_load_error` | Your drafts couldn't be loaded. | 50 | |
 | `drafts_try_again` | Try again | 18 | Same text as `editor_preview_retry`: reuse it |
 | `a11y_draft_row` | %1$s, %2$s, %3$s | 120 | Spoken row: name, type, edit time ("Cat fail, Video meme, Edited 2 hours ago") |
@@ -173,12 +179,12 @@ Translator notes:
 I don't edit code, so these are requests.
 1. **List:** `ProjectSummary` rows ordered by `updated_at_epoch_us` descending, then `created_at_epoch_us` descending for ties (the columns already exist, so the list never decodes projects), observed as a Flow so returning from the editor updates it. Read `schema_version` too, for the newer-version state.
 2. **Rename** without touching `updated_at_epoch_us`: write the new name into the project JSON and the `name` column, keeping the time. This is a repository operation, not an editor commit.
-3. **Duplicate:** a new id, `createdAtEpochUs` now, `updatedAtEpochUs` = the original's + 1, the name rule, and its own media folder. Please use **hard links** for the media copies if both platforms allow it in the app's files directory (Android `Os.link`, iOS `FileManager.linkItem`): the copies are written once and never changed, so a link is instant and takes no space, and deleting either draft leaves the other whole. If links aren't possible, copy with P1-02's flow (space check, the import sheet after 300 ms, Cancel deletes the partial copy).
+3. **Duplicate:** a new id, `createdAtEpochUs` now, `updatedAtEpochUs` = the original's + 1, the name rule, and its own media folder. Media copies: **hard links where the platform allows, else copy with P1-02's flow** (space check, the import sheet after 300 ms, Cancel deletes the partial copy). *Review 27 Oct:* Android's SELinux refuses hard links to apps, so Android always copies, and that is accepted as built: the spec's states already cover it (the copying sheet after 300 ms, "Not enough space", Cancel). The design consequence is only that the sheet is the normal path for big drafts, and a duplicate costs real space, which the sheet's body now says. iOS may link (P7-08); users see no difference except that the sheet rarely shows.
 4. **Delete with undo:** remove the row at once, keep the project in memory and its files on disk until the toast ends, then delete the folder. Undo writes the same project back (same id and times). If the app dies first, the next start's `LeftoverMediaCleaner` removes the folder.
 5. **Thumbnail:** write `thumbnail_path` as a square JPEG of the first main clip's first frame (192 px, from the existing `ThumbnailReader`) in the draft's folder: at the first save (P1-02 import) and when the editor closes or goes to the background if the first clip or its trim-in changed. The cleaner already keeps it.
 6. **Relative time:** the rules in Copy (now, minutes, hours, yesterday, days, then a short localized date), refreshed on resume and every minute. The short date comes from the platform formatter (expect/actual in `:platform:services`).
 7. **Debug drafts:** a hand-check hook that saves 10 drafts with spread-out times, one unnamed, one with a long name, one with `schema_version` above the current, one whose media folder is missing.
-8. **Token and icon:** `MemixSize.listThumbSize` (56 dp, `design/tokens.json`); icon `more`.
+8. **Token and icon:** `MemixSize.listThumbSize` (56 dp, `design/tokens.json`); icon `more`; `MemixSize.badge` (20 dp, `badge-size`, added in the 27 Oct review).
 
 ## Proposals and questions for the PM
 Questions 1–3 answered (PM, 20 Oct; decision log, TICKETS P1-14 Done when and note); 4 and 5 need no answer. Kept for the record.
