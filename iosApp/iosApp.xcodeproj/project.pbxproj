@@ -14,6 +14,10 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		7A1E00000000000000000002 /* iosApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
 			path = iosApp;
 			sourceTree = "<group>";
 		};
