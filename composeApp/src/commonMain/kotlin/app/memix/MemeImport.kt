@@ -11,20 +11,23 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.memix.core.designsystem.MemixMotion
 import app.memix.core.designsystem.MemixTheme
 import app.memix.core.domain.media.MAX_ITEMS_PER_PICK
-import app.memix.feature.videoeditor.importmedia.ImportIntent
-import app.memix.feature.videoeditor.importmedia.ImportSheet
-import app.memix.feature.videoeditor.importmedia.ImportUiState
-import app.memix.feature.videoeditor.importmedia.ImportWording
-import app.memix.feature.videoeditor.importmedia.MediaImportViewModel
-import app.memix.feature.videoeditor.importmedia.MemeImportViewModel
-import app.memix.feature.videoeditor.importmedia.PhotoMemeImportViewModel
-import app.memix.feature.videoeditor.importmedia.isBlockingSheet
-import app.memix.feature.videoeditor.importmedia.showsSheet
+import app.memix.feature.mediaimport.ImportIntent
+import app.memix.feature.mediaimport.ImportSheet
+import app.memix.feature.mediaimport.ImportUiState
+import app.memix.feature.mediaimport.ImportWording
+import app.memix.feature.mediaimport.MediaImportViewModel
+import app.memix.feature.mediaimport.MemeImportViewModel
+import app.memix.feature.mediaimport.PhotoMemeImportViewModel
+import app.memix.feature.mediaimport.isBlockingSheet
+import app.memix.feature.mediaimport.showsSheet
+import app.memix.feature.photoeditor.PhotoEditorIntent
+import app.memix.feature.photoeditor.PhotoPickRequest
 import app.memix.platform.services.FreeUpSpaceLauncher
 import app.memix.platform.services.MediaPickerLauncher
 import app.memix.platform.services.PickerMedia
@@ -162,3 +165,39 @@ internal fun MemeImportSheet(memeImport: MemeImport) {
         wording = memeImport.wording,
     )
 }
+
+/**
+ * The photo editor's system picker for a photo that goes into the open project (P2-12 canvas background; P2-13 adds Add
+ * photo): one image, no video. Opens the one [request] asks for and keeps that request while the picker is open, saved with
+ * the screen, so the result goes back to the editor with what it was for ([PhotoEditorIntent.PhotoPicked]) even after Android
+ * restarted the app behind the picker. Call it unconditionally in the editor's destination: a result after a restart reaches
+ * only a picker registered at the same place.
+ */
+@Composable
+internal fun PhotoEditorPicker(request: PhotoPickRequest?, onIntent: (PhotoEditorIntent) -> Unit) {
+    val currentOnIntent by rememberUpdatedState(onIntent)
+    val openRequest = rememberSaveable(stateSaver = PhotoPickRequestSaver) { mutableStateOf<PhotoPickRequest?>(null) }
+    val picker = rememberMediaPickerLauncher(maxItems = 1, PickerMedia.IMAGES_ONLY) { picked ->
+        val opened = openRequest.value
+        openRequest.value = null
+        if (opened != null) currentOnIntent(PhotoEditorIntent.PhotoPicked(opened, picked))
+    }
+    LaunchedEffect(request) {
+        val wanted = request ?: return@LaunchedEffect
+        openRequest.value = wanted
+        if (picker.launch()) {
+            currentOnIntent(PhotoEditorIntent.PickerOpened)
+        } else {
+            openRequest.value = null
+            currentOnIntent(PhotoEditorIntent.PickerUnavailable)
+        }
+    }
+}
+
+// A request as a short list of plain values: its kind.
+private val PhotoPickRequestSaver = Saver<PhotoPickRequest?, List<Any>>(
+    save = { request -> if (request == null) emptyList() else listOf(KIND_BACKGROUND) },
+    restore = { saved -> if (saved.firstOrNull() == KIND_BACKGROUND) PhotoPickRequest.Background else null },
+)
+
+private const val KIND_BACKGROUND = "background"

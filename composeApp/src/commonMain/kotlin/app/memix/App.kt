@@ -335,6 +335,8 @@ private fun VideoEditorDestination(projectId: String, onClose: () -> Unit, onCou
     val viewModel = koinViewModel<VideoEditorViewModel> { parametersOf(projectId) }
     // The engine's caption renderer, which its stand-in draws with (P1-10).
     val captionMeasurer = koinInject<CaptionMeasurer>()
+    // Decodes the Canvas panel's background picture for its swatch (P2-12).
+    val imageSource = koinInject<SceneImageSource>()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val freeUpSpace = rememberFreeUpSpaceLauncher()
     LockPortraitOnPhones()
@@ -360,6 +362,7 @@ private fun VideoEditorDestination(projectId: String, onClose: () -> Unit, onCou
         captionStandIn = { text, style, transform, canvasWidthPx, canvasHeightPx, modifier ->
             CaptionStandIn(captionMeasurer, text, style, transform, canvasWidthPx, canvasHeightPx, modifier)
         },
+        imageSource = imageSource,
         // When no storage screen opens, the editor hides the button (spec P1-04 → Saving).
         onFreeUpSpace = { requestedBytes ->
             if (!freeUpSpace.launch(requestedBytes)) viewModel.onIntent(VideoEditorIntent.FreeUpSpaceUnavailable)
@@ -378,6 +381,7 @@ private fun PhotoEditorDestination(projectId: String, blank: Boolean, onClose: (
     val state by viewModel.state.collectAsStateWithLifecycle()
     val freeUpSpace = rememberFreeUpSpaceLauncher()
     LockPortraitOnPhones()
+    PhotoEditorPicker(state.pickRequest, viewModel::onIntent)
     val currentOnClose by rememberUpdatedState(onClose)
     val currentOnCouldntOpen by rememberUpdatedState(onCouldntOpen)
     LaunchedEffect(state.isClosing) {

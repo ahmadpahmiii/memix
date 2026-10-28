@@ -1,4 +1,4 @@
-package app.memix.feature.videoeditor.importmedia
+package app.memix.feature.mediaimport
 
 import app.memix.core.domain.media.ImportProgress
 import kotlin.math.ceil

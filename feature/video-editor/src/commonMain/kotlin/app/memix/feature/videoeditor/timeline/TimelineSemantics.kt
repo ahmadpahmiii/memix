@@ -48,6 +48,8 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 import memix.feature.video_editor.generated.resources.Res
 import memix.core.ui.generated.resources.Res as UiRes
+import memix.core.ui.generated.resources.import_item_photo
+import memix.core.ui.generated.resources.import_item_video
 import memix.feature.video_editor.generated.resources.a11y_back_1s
 import memix.feature.video_editor.generated.resources.a11y_clip_media
 import memix.feature.video_editor.generated.resources.a11y_forward_1s
@@ -65,8 +67,6 @@ import memix.feature.video_editor.generated.resources.a11y_trim_end
 import memix.feature.video_editor.generated.resources.a11y_trim_start
 import memix.feature.video_editor.generated.resources.a11y_trim_to_playhead
 import memix.feature.video_editor.generated.resources.clip_missing_file
-import memix.feature.video_editor.generated.resources.import_item_photo
-import memix.feature.video_editor.generated.resources.import_item_video
 import memix.feature.video_editor.generated.resources.reorder_move_earlier
 import memix.feature.video_editor.generated.resources.reorder_move_later
 import memix.feature.video_editor.generated.resources.timeline_original_audio
@@ -393,7 +393,7 @@ private fun itemDescription(track: TrackUi, item: ItemUi, clipCount: Int): Strin
     val duration = spokenTime(item.durationUs)
     val start = spokenTime(item.startUs)
     if (track.kind == TrackKind.MAIN_VIDEO) {
-        val kind = stringResource(if (item.isPhoto) Res.string.import_item_photo else Res.string.import_item_video)
+        val kind = stringResource(if (item.isPhoto) UiRes.string.import_item_photo else UiRes.string.import_item_video)
         return stringResource(Res.string.a11y_clip_media, kind, item.clipNumber, clipCount, duration, start)
     }
     val trackName = stringResource(trackNameOf(track.kind))
@@ -468,7 +468,7 @@ internal fun ReorderSemantics(controller: TimelineController, strip: ReorderStri
 
 @Composable
 private fun TileSemantics(controller: TimelineController, clip: ItemUi?, isMoving: Boolean, position: Int, count: Int) {
-    val kind = stringResource(if (clip?.isPhoto == true) Res.string.import_item_photo else Res.string.import_item_video)
+    val kind = stringResource(if (clip?.isPhoto == true) UiRes.string.import_item_photo else UiRes.string.import_item_video)
     val description = stringResource(Res.string.a11y_reorder_tile, kind, position, count)
     Box(
         Modifier.semantics {

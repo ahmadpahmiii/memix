@@ -50,7 +50,7 @@ internal class EditorCheckProjects : KoinComponent {
     suspend fun save(name: String): DebugEditor? {
         if (name == PhotoCheckProjects.EMPTY) return DebugEditor(Uuid.random().toString(), ProjectType.PHOTO, blank = true)
         // The photo scenes' pictures are generated on first use.
-        if (name in PhotoCheckProjects.NAMES) writeDebugPhotos()
+        if (name in PhotoCheckProjects.NAMES || name == CANVAS_IMAGE_CHECK) writeDebugPhotos()
         val project = build(name)
         if (project == null) {
             logger.error(TAG, "Unknown memix.openEditor '$name'. Use ${NAMES.joinToString()}.")
@@ -80,6 +80,7 @@ internal class EditorCheckProjects : KoinComponent {
         SOUND_SYNC -> soundSync()
         TEXT_CHECK -> textCheck()
         CANVAS_CHECK -> canvasCheck()
+        CANVAS_IMAGE_CHECK -> canvasImageCheck()
         else -> null
     }
 
@@ -274,6 +275,21 @@ internal class EditorCheckProjects : KoinComponent {
         return project(CANVAS_CHECK, clips, extraTracks = captions.mapIndexed { index, item -> Track("canvas-lane-${index + 1}", TrackKind.TEXT, listOf(item)) })
     }
 
+    /**
+     * The P2-12 check: `canvas-check`'s three clips (16:9 video, 9:16 video, 4:3 photo, all Fit) on a 9:16 canvas over the
+     * patterned background picture, no captions, so the bars show the picture and a shift of it would show: compare the
+     * preview with the export (spec P2-12 → QA compares 3). Remove the picture in the Canvas panel for the black baseline.
+     */
+    private fun canvasImageCheck(): Project {
+        val clips = listOf(
+            MediaClip("canvas-wide", 0, clipA, trimInUs = 0, trimOutUs = 3_000_000),
+            MediaClip("canvas-tall", 3_000_000, clipB, trimInUs = 0, trimOutUs = 3_000_000),
+            MediaClip("canvas-photo", 6_000_000, photo4x3, trimInUs = 0, trimOutUs = 3_000_000),
+        )
+        val withPicture = project(CANVAS_IMAGE_CHECK, clips)
+        return withPicture.copy(canvas = withPicture.canvas.copy(background = CanvasBackground.Image(PhotoCheckProjects.backgroundMedia(missing = false))))
+    }
+
     private fun project(id: String, mainClips: List<MediaClip>, extraTracks: List<Track> = emptyList()) = Project(
         id = id,
         type = ProjectType.VIDEO,
@@ -297,9 +313,10 @@ internal class EditorCheckProjects : KoinComponent {
         const val SOUND_SYNC = "sound-sync"
         const val TEXT_CHECK = "text-check"
         const val CANVAS_CHECK = "canvas-check"
+        const val CANVAS_IMAGE_CHECK = "canvas-image-check"
         private val NAMES = listOf(
             EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK,
-            CANVAS_CHECK,
+            CANVAS_CHECK, CANVAS_IMAGE_CHECK,
         ) + PhotoCheckProjects.NAMES
         private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20

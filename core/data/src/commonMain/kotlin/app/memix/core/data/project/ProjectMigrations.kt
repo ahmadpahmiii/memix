@@ -23,4 +23,7 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     // 2 → 3 (P2-01): Layer gained locked, hidden and opacity. Each has a default (unlocked, shown, 1.0) and the
     // codec writes defaults, so version-2 JSON decodes as it is: a layer saved before this step looks the same.
     ProjectMigration(fromVersion = 2) { json -> json },
+    // 3 → 4 (P2-12): CanvasBackground gained the "image" subtype. A new subtype leaves every saved "color" and "blur"
+    // background as it was, so version-3 JSON decodes as it is and the step only moves the version on.
+    ProjectMigration(fromVersion = 3) { json -> json },
 )

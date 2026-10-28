@@ -10,6 +10,7 @@ import app.memix.core.domain.Logger
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.project.GetProjectUseCase
 import app.memix.core.domain.project.layers
+import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.ui.scene.SceneBitmap
 import app.memix.core.ui.scene.SceneImageSource
@@ -37,8 +38,10 @@ class SceneRender : KoinComponent {
         if (project?.photo == null) return logger.error(TAG, "renderScene: '$projectId' isn't a saved photo project")
         val heightPx = (widthPx.toLong() * project.canvas.heightPx / project.canvas.widthPx).toInt()
         val pictures = HashMap<String, SceneBitmap>()
-        for (layer in project.layers().filterIsInstance<ImageLayer>()) {
-            val path = layer.source.cachedCopyPath ?: continue
+        // The layers' pictures and the background picture (P2-12), each decoded once.
+        val sources = project.layers().filterIsInstance<ImageLayer>().map { it.source } + listOfNotNull(project.canvas.background.let { (it as? CanvasBackground.Image)?.source })
+        for (source in sources) {
+            val path = source.cachedCopyPath ?: continue
             if (path in pictures) continue
             imageSource.decode(path, PhotoCatalog.MAX_DECODE_PX, SceneImageUse.OFFSCREEN)?.let { pictures[path] = it }
         }

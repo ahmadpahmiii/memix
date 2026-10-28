@@ -5,7 +5,12 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateMapOf
 import app.memix.core.designsystem.MemixMotion
+import app.memix.core.model.project.BoxSize
+import app.memix.core.model.project.Canvas
+import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.PhotoCatalog
+import app.memix.core.model.project.coveredImageSize
+import app.memix.core.model.project.size
 import app.memix.core.ui.scene.SceneBitmap
 import app.memix.core.ui.scene.SceneImageSource
 import app.memix.core.ui.scene.SceneImageUse
@@ -45,6 +50,7 @@ internal class SceneBitmaps(private val source: SceneImageSource, private val sc
      * picture of about that size. [onFailed] gets the files that couldn't be read, once each.
      */
     fun ensure(neededLongSides: Map<String, Int>, onFailed: (Set<String>) -> Unit) {
+        letGoOfFilesLeftOut(neededLongSides.keys)
         for ((path, needed) in neededLongSides) {
             if (path in failed) continue
             val have = decodedLongSide[path]
@@ -52,6 +58,17 @@ internal class SceneBitmaps(private val source: SceneImageSource, private val sc
             if (have != null && wanted <= have * GROW_LIMIT && wanted >= have * SHRINK_LIMIT) continue
             jobs.remove(path)?.cancel()
             jobs[path] = scope.launch { decode(path, wanted, onFailed) }
+        }
+    }
+
+    // A file that left the scene (a replaced background picture, a deleted layer) lets go of its bitmap, so Replace
+    // five times doesn't keep five cover-sized pictures; Undo decodes it again.
+    private fun letGoOfFilesLeftOut(inScene: Set<String>) {
+        for (path in (decoded.keys + jobs.keys).filter { it !in inScene }) {
+            jobs.remove(path)?.cancel()
+            decoded.remove(path)
+            appearance.remove(path)
+            decodedLongSide.remove(path)
         }
     }
 
@@ -95,12 +112,20 @@ internal class SceneBitmaps(private val source: SceneImageSource, private val sc
 /**
  * The long side in pixels each layer's file is drawn at on a frame [frameWidthPx] wide, the biggest per file: the picture
  * fitted on the canvas, times the layer's scale, times how much the frame shrinks the canvas, never above the source's own
- * size. Layers whose box isn't known (no measured picture) are left out.
+ * size. Layers whose box isn't known (no measured picture) are left out. A background picture counts at the size that
+ * covers the canvas (P2-12).
  */
-internal fun neededLongSides(layers: List<SceneLayerUi>, canvasWidthPx: Int, frameWidthPx: Float): Map<String, Int> {
-    if (canvasWidthPx <= 0 || frameWidthPx <= 0f) return emptyMap()
-    val pixelScale = frameWidthPx / canvasWidthPx
+internal fun neededLongSides(layers: List<SceneLayerUi>, canvas: Canvas, frameWidthPx: Float): Map<String, Int> {
+    if (canvas.widthPx <= 0 || frameWidthPx <= 0f) return emptyMap()
+    val pixelScale = frameWidthPx / canvas.widthPx
     val needed = HashMap<String, Int>()
+    (canvas.background as? CanvasBackground.Image)?.let { background ->
+        val path = background.source.cachedCopyPath ?: return@let
+        val picture = background.source.pixelSize
+        val covered = picture?.let { coveredImageSize(it, canvas.size()) } ?: BoxSize(canvas.widthPx.toFloat(), canvas.heightPx.toFloat())
+        val drawn = max(covered.width, covered.height) * pixelScale
+        needed[path] = min(drawn.roundToInt(), picture?.let { max(it.widthPx, it.heightPx) } ?: Int.MAX_VALUE)
+    }
     for (layer in layers) {
         val path = layer.path ?: continue
         val drawn = max(layer.boxWidthPx, layer.boxHeightPx) * layer.transform.scale * pixelScale

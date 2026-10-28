@@ -25,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
@@ -33,8 +34,10 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -114,8 +117,12 @@ import app.memix.feature.videoeditor.captions.CaptionStandInSlot
 import app.memix.feature.videoeditor.captions.TextEntryBar
 import app.memix.feature.videoeditor.captions.TextPanels
 import app.memix.feature.videoeditor.export.ExportSheet
-import app.memix.feature.videoeditor.importmedia.ImportSheet
-import app.memix.feature.videoeditor.importmedia.showsSheet
+import app.memix.core.ui.panels.BackgroundUi
+import app.memix.core.ui.scene.SceneImageSource
+import app.memix.core.ui.scene.SceneThumbnails
+import app.memix.feature.mediaimport.ImportSheet
+import app.memix.feature.mediaimport.ImportWording
+import app.memix.feature.mediaimport.showsSheet
 import app.memix.feature.videoeditor.timeline.Timeline
 import app.memix.feature.videoeditor.timeline.spokenName
 import app.memix.feature.videoeditor.timeline.timelineMinHeight
@@ -126,8 +133,12 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import memix.feature.video_editor.generated.resources.Res
 import memix.core.ui.generated.resources.Res as UiRes
+import memix.core.ui.generated.resources.a11y_canvas_image_removed
+import memix.core.ui.generated.resources.a11y_canvas_image_set
+import memix.core.ui.generated.resources.canvas_image_missing_toast
 import memix.core.ui.generated.resources.a11y_degrees
 import memix.core.ui.generated.resources.a11y_edit_on_item
 import memix.feature.video_editor.generated.resources.a11y_media_added
@@ -224,6 +235,7 @@ fun VideoEditorScreen(
     onIntent: (VideoEditorIntent) -> Unit,
     previewSurface: @Composable (PreviewSession, Modifier) -> Unit,
     captionStandIn: CaptionStandInSlot,
+    imageSource: SceneImageSource,
     onFreeUpSpace: (requestedBytes: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -243,6 +255,7 @@ fun VideoEditorScreen(
     // A save needs little room; ask for the import's headroom, so the next import fits too (spec P1-04 → Saving).
     val freeUpSpaceForSave = remember(onFreeUpSpace) { { onFreeUpSpace(ImportMediaUseCase.HEADROOM_BYTES) } }
     val focusTargets = remember { EditorFocusTargets() }
+    val backgroundThumbnails = rememberBackgroundThumbnails(imageSource, state.canvas?.background, onIntent)
     val panelOpen = state.volumePanel != null || state.textPanel != null || state.canvasPanel != null
     val sheetOpen = state.sounds.isOpen || state.unsavedSheetOpen || state.exportSheet != null || importSheetShown(state.mediaImport)
     ReturnFocus(state.returnFocus, focusTargets)
@@ -301,7 +314,7 @@ fun VideoEditorScreen(
                     VolumePanel(state.volumePanel, state.originalAudio?.muted == true, onIntent, Modifier.fillMaxSize())
                     val panelCaption = selectedCaption(state)
                     TextPanels(state.textPanel, panelCaption?.style, panelCaption?.transform, onIntent, Modifier.fillMaxSize())
-                    CanvasPanel(state.canvasPanel, state.canvas, onIntent, Modifier.fillMaxSize())
+                    CanvasPanel(state.canvasPanel, state.canvas, backgroundThumbnails, onIntent, Modifier.fillMaxSize())
                 },
                 entryBar = entry?.let { { TextEntryBar(it, entryField, onIntent) } },
                 timelineMinHeight = timelineMinHeight(),
@@ -310,7 +323,7 @@ fun VideoEditorScreen(
             )
         }
         MemeSoundsSheet(state.sounds, onIntent)
-        state.mediaImport?.let { EditorImportSheet(it, onIntent, onFreeUpSpace) }
+        state.mediaImport?.let { EditorImportSheet(it, state.importWording, onIntent, onFreeUpSpace) }
         UnsavedChangesSheet(
             state.unsavedSheetOpen,
             onStay = { onIntent(VideoEditorIntent.StayInEditor) },
@@ -322,11 +335,31 @@ fun VideoEditorScreen(
 }
 
 /**
- * The import sheet of Add media and Replace (spec P1-06 → Add media: P1-02's sheet over the editor, with its own scrim).
+ * The small pictures of the Canvas panel's Image swatch, and the watch on the background picture's file: when its thumbnail
+ * can't be decoded the editor is told once, so the swatch, the panel and a toast say it is missing (spec P2-12 → States).
+ */
+@Composable
+private fun rememberBackgroundThumbnails(imageSource: SceneImageSource, background: BackgroundUi?, onIntent: (VideoEditorIntent) -> Unit): SceneThumbnails {
+    val scope = rememberCoroutineScope()
+    val thumbnails = remember(imageSource) { SceneThumbnails(imageSource, scope) }
+    DisposableEffect(thumbnails) { onDispose { thumbnails.release() } }
+    val path = (background as? BackgroundUi.Image)?.path
+    val currentOnIntent by rememberUpdatedState(onIntent)
+    LaunchedEffect(path, thumbnails) {
+        if (path == null) return@LaunchedEffect
+        thumbnails.request(path)
+        snapshotFlow { thumbnails.failed(path) }.first { it }
+        currentOnIntent(VideoEditorIntent.BackgroundImageUnreadable(path))
+    }
+    return thumbnails
+}
+
+/**
+ * The import sheet of Add media, Replace and the background picture (spec P1-06 → Add media: P1-02's sheet over the editor, with its own scrim).
  * It reads the import's progress itself, so only it redraws while copying.
  */
 @Composable
-private fun EditorImportSheet(mediaImport: EditorMediaImportUi, onIntent: (VideoEditorIntent) -> Unit, onFreeUpSpace: (Long) -> Unit) {
+private fun EditorImportSheet(mediaImport: EditorMediaImportUi, wording: ImportWording, onIntent: (VideoEditorIntent) -> Unit, onFreeUpSpace: (Long) -> Unit) {
     val importState by mediaImport.state.collectAsState()
     ImportSheet(
         state = importState,
@@ -334,6 +367,7 @@ private fun EditorImportSheet(mediaImport: EditorMediaImportUi, onIntent: (Video
         onPickAgain = { onIntent(VideoEditorIntent.PickAgain) },
         onFreeUpSpace = onFreeUpSpace,
         drawScrim = true,
+        wording = wording,
     )
 }
 
@@ -652,7 +686,7 @@ private fun selectedCaption(state: VideoEditorUiState): CaptionUi? {
 }
 
 /** The canvas background as the frame shows it without a picture: the color, or black for blur. User content, not chrome. */
-private fun backgroundColorOf(canvas: CanvasUi): Color = canvas.backgroundArgb?.let { Color(it.toInt()) } ?: MemixColors.stage
+private fun backgroundColorOf(canvas: CanvasUi): Color = (canvas.background as? BackgroundUi.Solid)?.let { Color(it.argb.toInt()) } ?: MemixColors.stage
 
 /** What the frame says instead of a picture; drawn over the stage's tap area so its button can be pressed. */
 @Composable
@@ -745,12 +779,12 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
             is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition, is ToastMessage.SoundAdded,
             is ToastMessage.MediaAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned,
             -> WHAT_HAPPENED_TOAST_MILLIS
-            is ToastMessage.RatioStepped, ToastMessage.ExportStopped -> WHAT_HAPPENED_TOAST_MILLIS
+            is ToastMessage.RatioStepped, ToastMessage.ExportStopped, ToastMessage.BackgroundImageSet, ToastMessage.BackgroundImageRemoved -> WHAT_HAPPENED_TOAST_MILLIS
             is ToastMessage.ExportFrameRateLowered, is ToastMessage.ExportResolutionLowered, is ToastMessage.ExportCantDo,
             is ToastMessage.ExportShapeCantDo,
             -> EXPLANATION_TOAST_MILLIS
             // An unexpected move, so it stays as long as an explanation.
-            ToastMessage.MissingMedia, is ToastMessage.Explain, is ToastMessage.ReplaceTooShort, ToastMessage.LayersMoved -> EXPLANATION_TOAST_MILLIS
+            ToastMessage.MissingMedia, is ToastMessage.Explain, is ToastMessage.ReplaceTooShort, ToastMessage.LayersMoved, is ToastMessage.BackgroundMissing -> EXPLANATION_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
         onTimedOut(toast.id)
@@ -778,6 +812,9 @@ private fun toastText(message: ToastMessage): String = when (message) {
     // The timecode is never translated (spec P1-06 → Copy).
     is ToastMessage.ReplaceTooShort -> stringResource(Res.string.explain_replace_too_short, formatTimecode(message.clipLengthUs))
     ToastMessage.LayersMoved -> stringResource(Res.string.canvas_layers_moved)
+    is ToastMessage.BackgroundMissing -> stringResource(UiRes.string.canvas_image_missing_toast, message.ratioLabel)
+    ToastMessage.BackgroundImageSet -> stringResource(UiRes.string.a11y_canvas_image_set)
+    ToastMessage.BackgroundImageRemoved -> stringResource(UiRes.string.a11y_canvas_image_removed)
     // Ratios are never translated (spec P1-11 → Copy).
     is ToastMessage.RatioStepped -> message.label
     is ToastMessage.ExportFrameRateLowered ->

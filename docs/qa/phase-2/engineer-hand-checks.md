@@ -54,3 +54,37 @@ Five cycles of: open `photo-layers-10`; drag, pinch, turn; Hide, Show, Lock, Unl
 - **P1-11 canvas in the video editor:** ratio tiles, Custom steppers (hold to repeat, the limit toasts), Fit and Fill, Blur and the color swatches, the hint line, a ratio change keeps captions inside.
 - **Editor frame:** the save banner and "Changes saved", the unsaved-changes sheet, the frame edge while the Canvas panel is open or a caption gesture runs, Undo and Redo toasts and their names ("Undo: Ratio").
 - **Import:** Create → Video meme still says "Adding your media" with "1 of N"; Add media and Replace unchanged.
+
+## P2-12 · canvas background image, both editors
+
+Spec: `docs/ux/specs/P2-12-canvas-background-image.md` (its "QA compares" and "Measured: the Done when" lists are the checks; this section only adds the hooks and the engineer's own steps). Screenshots of the states (desktop renders): `docs/ux/reviews/P2-12/`. Reference frames: `docs/qa/references/P2-12-background-image/`.
+
+### Hooks
+```bash
+adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor canvas-image-check       # video: 16:9 video, 9:16 video, 4:3 photo (all Fit) over the patterned picture on a 9:16 canvas, no captions
+adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor photo-background-image   # photo: a 1:1 canvas, three layers over the picture
+adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor photo-background-missing # photo: the picture's file is gone
+adb shell am start -S -n app.memix/.android.MainActivity --es memix.renderScene photo-background-image --ei memix.renderWidth 1080   # after opening it once
+```
+`canvas-image-check` needs the P1 test videos pushed as for `canvas-check` (`docs/qa/phase-1/engineer-hand-checks.md`); the patterned picture is generated on first use (`files/debug-media/photo-scenes/background-pattern.jpg`).
+
+### Done when
+1. **Behind a Fit clip (video):** `canvas-image-check`: the picture shows in the bars above and below the 16:9 clip and the 4:3 photo, and nowhere on the 9:16 clip (same shape, no bars). Canvas panel → Fill: the picture is gone behind every clip and the hint line appears. Back to Fit.
+2. **Preview = export (video):** export `canvas-image-check` at 1080p30 and again after changing the ratio to 1:1; pull three frames (one per clip) and compare with the preview screenshots cropped to the frame and scaled to the export width, and with `expected-video-*` in the references folder: the same crop of the picture within 1% of the width, the same brightness (no dimming), black in any gap. Look at the bar edge next to the clip: no hairline of black or of the picture inside the clip's edge (the bars are cut to a rounded pixel count and drawn at the exact thickness).
+3. **Behind the layers (photo):** `photo-background-image`: the picture covers the canvas; Canvas panel shows Image first in the row (no Blur) with its thumbnail ringed. `renderScene` at 1080: compare with `photo-background-image-1080.png` (positions within 1% of the width, same cover crop).
+4. **Pick, Replace, Remove, Undo (both editors):** Canvas panel → Image swatch with no picture opens the system picker at once (images only, one item); cancelling changes nothing. A pick lands as the background (the sheet "Adding your photo" only when the copy is slow); one Undo ("Undo: Background") takes it off. Replace gives a new picture (a new file in `files/media/<project id>/`; the old one stays for Undo). Remove goes back to black (video) or white (photo). A color, or Blur in the video editor, over the picture drops it; Undo brings it back. `Not enough space` and `Couldn't add your photo` read as in P1-02. Taps while the picker opens do nothing extra.
+5. **Missing picture:** `photo-background-missing` (and, for video, delete the picture's file with `adb shell run-as app.memix rm files/media/<project id>/<picture>` after setting one): the canvas draws black, the Image swatch shows the icon in `text-muted` with the ring, the line "The image is missing. Pick another one or remove it." shows under the swatches, one toast per open names the ratio; export draws black bars.
+6. **Old drafts:** open a draft saved at schema 2 and one at schema 3 (P2-01's photo draft) after this build: both open with their backgrounds unchanged (the JVM harness checked the JSON; this is the real database). A video draft with Blur still shows Blur.
+7. **Media rules:** set a picture, close, kill, start again: it is still there (the cleaner runs at start). Duplicate the draft, delete the original: the copy still shows its picture. Open `files/media/` for the duplicate: it has its own copy of the picture.
+8. **Orientation:** pick a portrait phone photo whose EXIF turn is 90 degrees (a camera photo): it covers the canvas upright in the swatch, the photo canvas and the video bars (the engineer assumes `ImageDecoder`'s size is the size as shown, as in P2-01: report if it is turned).
+9. **4K export memory:** export at 2160 x 3840 with the picture set; report `dumpsys meminfo` peak (expected: about two frames of bitmap, 66 MB, on top of the usual, for each distinct clip shape: clips of one shape share their bars, so also try five clips of five shapes and report the peak: that is the case that could need a cap) and the export time against the same export with a black background.
+10. **Responsiveness:** after a ratio change or any Canvas edit with the picture set, the video preview shows the new frame within 100 ms of the edit plus the usual rebuild (the picture is decoded at each rebuild: `adb logcat -s MemixPreview`; report the rebuild time with and without the picture, and tell the engineer if the picture adds more than 100 ms).
+11. **Leaks:** LeakCanary, 5 cycles in each editor: open, set a picture, Replace, Remove, change the ratio, close. No leak; `dumpsys meminfo` Graphics after cycle 1 and cycle 5.
+12. **Analytics:** logcat shows `tool_use` `canvas_background` with `value` `image` on a pick or Replace, `color` on Remove and on a color, `blur` on Blur; nothing else carries the picture.
+13. **Accessibility:** the Image swatch reads "Image" (and "Pick an image" as its click label when empty, "Image, file missing" when missing); Replace and Remove read "Replace image" and "Remove image"; "Background image set" and "Background image removed" are announced politely. Focus return after the picker closes is not built (known limit, shared with the P4 gap in the P2-01 review).
+14. **Fonts and 360 dp:** Hindi and Spanish at 200% on 360 x 640: the image row wraps under its label, nothing is cut (`docs/ux/reviews/P2-12/10-bg-hindi-200-canvas-panel.png`).
+
+### Re-run because P2-12 moved the import flow and the swatch
+- **Create → Video meme and Photo meme:** "Adding your media" with "1 of N" and "Adding your photo" with no count; Cancel, "Not enough space", "None went in", no picker app.
+- **Video editor Add media and Replace (P1-16):** unchanged: the picks land, the toasts and the focus return work. The editor's `EditorMediaImport` now delegates to the shared `ProjectPickImport`.
+- **Canvas panel colors in both editors:** the ten swatches, the ring, the black swatch's hairline ring; the timeline's spoken clip kinds ("video", "photo") after the `import_item_*` strings moved to `:core:ui`.

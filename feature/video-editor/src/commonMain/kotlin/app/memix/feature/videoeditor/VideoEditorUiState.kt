@@ -18,8 +18,10 @@ import app.memix.core.model.project.Transform
 import app.memix.core.ui.editor.SaveProblem
 import app.memix.core.ui.panels.PositionStep
 import app.memix.core.ui.panels.RatioStep
-import app.memix.feature.videoeditor.importmedia.ImportIntent
-import app.memix.feature.videoeditor.importmedia.ImportUiState
+import app.memix.core.ui.panels.BackgroundUi
+import app.memix.feature.mediaimport.ImportIntent
+import app.memix.feature.mediaimport.ImportUiState
+import app.memix.feature.mediaimport.ImportWording
 import app.memix.feature.videoeditor.timeline.ItemName
 import app.memix.feature.videoeditor.timeline.TimelineThumbnails
 import app.memix.feature.videoeditor.timeline.TimelineUi
@@ -78,6 +80,8 @@ data class VideoEditorUiState(
      * ten times a second). Compared by identity.
      */
     val mediaImport: EditorMediaImportUi? = null,
+    /** The words of the import sheet: a background picture is "your photo", Add media and Replace are "your media" (spec P2-12 → Entry and exit). */
+    val importWording: ImportWording = ImportWording.MEDIA,
     /** From a pick until its import sheet is gone; tools that start another pick wait (spec P1-06 → Entry and exit). */
     val isImporting: Boolean = false,
     /** The picker the app should open now; the app opens it and sends [VideoEditorIntent.PickerOpened]. */
@@ -136,7 +140,7 @@ data class VideoEditorUiState(
 /**
  * The project's frame: its width-to-height ratio, the ratio as shown and spoken ("9:16", a custom one in lowest terms),
  * its size in pixels (captions are laid out in it), and what the Canvas panel shows of it (spec P1-11): the [ratio]
- * choice, the background ([backgroundArgb] as 0xAARRGGBB, null for blur), the fit every main clip shares ([clipsFit],
+ * choice, the background (a color, blur or a picture, [background]), the fit every main clip shares ([clipsFit],
  * null when they differ) and whether the background can show around any clip ([backgroundShows]).
  */
 @Immutable
@@ -146,7 +150,7 @@ data class CanvasUi(
     val widthPx: Int = 0,
     val heightPx: Int = 0,
     val ratio: CanvasRatio = CanvasRatio.RATIO_9_16,
-    val backgroundArgb: Long? = BLACK_ARGB,
+    val background: BackgroundUi = BackgroundUi.Solid(BLACK_ARGB),
     val clipsFit: FrameFit? = FrameFit.FIT,
     val backgroundShows: Boolean = true,
 )
@@ -278,6 +282,9 @@ sealed interface MediaPickRequest {
 
     /** One video or photo for main clip [itemId]. */
     data class Replace(val itemId: String) : MediaPickRequest
+
+    /** One photo for the canvas background (P2-12: the Canvas panel's Image swatch and Replace). */
+    data object Background : MediaPickRequest
 }
 
 /** Which control gets focus; a new [serial] moves it there again. */
@@ -372,6 +379,15 @@ sealed interface ToastMessage {
 
     /** Once per open, when a clip's media file is missing. */
     data object MissingMedia : ToastMessage
+
+    /** Once per open, when the background picture's file is missing; [ratioLabel] is the pill's text ("9:16"). */
+    data class BackgroundMissing(val ratioLabel: String) : ToastMessage
+
+    /** Spoken only, after a background picture landed. */
+    data object BackgroundImageSet : ToastMessage
+
+    /** Spoken only, after Remove. */
+    data object BackgroundImageRemoved : ToastMessage
 
     /** A tool that can't act right now says why. */
     data class Explain(val explanation: Explanation) : ToastMessage
@@ -680,6 +696,15 @@ sealed interface VideoEditorIntent {
 
     /** A background swatch: the color [argb] (0xAARRGGBB), or blur when it's null. */
     data class SetCanvasBackground(val argb: Long?) : VideoEditorIntent
+
+    /** The Image swatch with no picture yet, or Replace: the picker for the background picture opens (P2-12). */
+    data object PickBackgroundImage : VideoEditorIntent
+
+    /** Remove: the default color goes back. */
+    data object RemoveBackgroundImage : VideoEditorIntent
+
+    /** The background picture's file couldn't be read (decoding its thumbnail failed). */
+    data class BackgroundImageUnreadable(val path: String) : VideoEditorIntent
 
     /** Export in the top bar: opens the Export sheet (spec P1-12). */
     data object ExportTool : VideoEditorIntent

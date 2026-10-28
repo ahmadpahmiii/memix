@@ -20,6 +20,9 @@ object CanvasCatalog {
         CanvasRatio.RATIO_16_9 to PixelSize(1920, 1080),
     )
 
+    /** The video canvas's default background, the color a removed background picture goes back to (the photo editor's is [PhotoCatalog.BACKGROUND]). */
+    val VIDEO_BACKGROUND = ArgbColor(0xFF000000)
+
     /** A custom ratio's terms are whole numbers in this range. */
     val CUSTOM_TERMS: IntRange = 1..99
 

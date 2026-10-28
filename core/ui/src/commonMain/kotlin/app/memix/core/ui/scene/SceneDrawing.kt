@@ -15,6 +15,7 @@ import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.StickerLayer
 import app.memix.core.model.project.TextLayer
 import app.memix.core.model.project.Transform
+import app.memix.core.model.project.coveredImageSize
 import app.memix.core.model.project.fittedImageSize
 
 /**
@@ -31,7 +32,8 @@ interface SceneLive {
  * THE one function that draws a photo scene, at any pixel size: the editor at screen size, the render hook and (P2-08)
  * export at theirs, so preview and export can't disagree. The scene fills this [DrawScope]'s whole size, with [canvas]'s
  * shape; layers draw bottom to top, hidden ones skipped, each with its opacity and transform, clipped at the canvas edge.
- * A layer whose picture isn't ready or whose file is missing isn't drawn.
+ * A layer whose picture isn't ready or whose file is missing isn't drawn. A background picture (P2-12) is drawn first, to
+ * cover the canvas; while it isn't ready or when its file is missing the canvas is black.
  */
 fun DrawScope.drawPhotoScene(canvas: Canvas, layers: List<Layer>, images: SceneImages, live: SceneLive? = null) {
     val canvasSize = PixelSize(canvas.widthPx, canvas.heightPx)
@@ -39,6 +41,7 @@ fun DrawScope.drawPhotoScene(canvas: Canvas, layers: List<Layer>, images: SceneI
     clipRect(0f, 0f, size.width, size.height) {
         drawRect(backgroundOf(canvas))
         withTransform({ scale(pixelScale, pixelScale, Offset.Zero) }) {
+            (canvas.background as? CanvasBackground.Image)?.let { drawBackgroundImage(it, canvasSize, images) }
             for (layer in layers) {
                 if (layer.hidden) continue
                 val transform = live?.transformOf(layer.id) ?: layer.transform
@@ -53,10 +56,33 @@ fun DrawScope.drawPhotoScene(canvas: Canvas, layers: List<Layer>, images: SceneI
     }
 }
 
-// The canvas color; a background that isn't a color (P2-12's picture) draws white until its ticket.
+// The canvas color. Blur is video only (a copy of the playing clip): a photo draws white where one would be. A picture
+// is drawn over black by [drawBackgroundImage], so a missing file shows black, as in the video export.
 private fun backgroundOf(canvas: Canvas): Color = when (val background = canvas.background) {
     is CanvasBackground.Solid -> Color(background.color.argb.toInt())
     CanvasBackground.Blur -> Color.White
+    is CanvasBackground.Image -> Color.Black
+}
+
+// Covers the canvas, centered; the clip at the canvas edge cuts the overflow (spec P2-12 → How it draws).
+private fun DrawScope.drawBackgroundImage(background: CanvasBackground.Image, canvasSize: PixelSize, images: SceneImages) {
+    val path = background.source.cachedCopyPath ?: return
+    val picture = images.imageOf(path) ?: return
+    val image = picture.image
+    val covered = coveredImageSize(background.source.pixelSize ?: picture.sourceSize, canvasSize)
+    withTransform({
+        translate(canvasSize.widthPx / 2f, canvasSize.heightPx / 2f)
+        scale(covered.width / image.width, covered.height / image.height, Offset.Zero)
+        translate(-image.width / 2f, -image.height / 2f)
+    }) {
+        drawImage(
+            image,
+            srcSize = IntSize(image.width, image.height),
+            dstSize = IntSize(image.width, image.height),
+            alpha = images.appearanceOf(path),
+            filterQuality = FilterQuality.Medium,
+        )
+    }
 }
 
 // Placed in canvas pixels: the picture's fitted size at scale 1, times the layer's scale, turned about its center.

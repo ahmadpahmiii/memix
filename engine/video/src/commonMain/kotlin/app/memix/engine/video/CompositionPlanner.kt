@@ -55,6 +55,7 @@ internal object CompositionPlanner {
             background = when (val background = project.canvas.background) {
                 is CanvasBackground.Solid -> PlanBackground.Color(background.color.argb)
                 CanvasBackground.Blur -> PlanBackground.Blur
+                is CanvasBackground.Image -> PlanBackground.Image(background.source)
             },
             durationUs = durationUs,
             mainVideo = backToBack(mainClips, ::Gap) { it.toVisualClip(mainTrack.muted, keepSilentItems) },

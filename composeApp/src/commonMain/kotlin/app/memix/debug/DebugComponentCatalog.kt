@@ -20,14 +20,14 @@ import app.memix.core.designsystem.component.Scrim
 import app.memix.core.designsystem.component.coveredByModal
 import app.memix.core.domain.media.ImportFailure
 import app.memix.core.domain.media.MAX_ITEMS_PER_PICK
-import app.memix.feature.videoeditor.importmedia.CopyProgressUi
-import app.memix.feature.videoeditor.importmedia.ImportIntent
-import app.memix.feature.videoeditor.importmedia.ImportSheet
-import app.memix.feature.videoeditor.importmedia.ImportUiState
-import app.memix.feature.videoeditor.importmedia.NotAddedItemUi
-import app.memix.feature.videoeditor.importmedia.TimeLeft
-import app.memix.feature.videoeditor.importmedia.isBlockingSheet
-import app.memix.feature.videoeditor.importmedia.showsSheet
+import app.memix.feature.mediaimport.CopyProgressUi
+import app.memix.feature.mediaimport.ImportIntent
+import app.memix.feature.mediaimport.ImportSheet
+import app.memix.feature.mediaimport.ImportUiState
+import app.memix.feature.mediaimport.NotAddedItemUi
+import app.memix.feature.mediaimport.TimeLeft
+import app.memix.feature.mediaimport.isBlockingSheet
+import app.memix.feature.mediaimport.showsSheet
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
 

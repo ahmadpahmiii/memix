@@ -11,6 +11,8 @@ internal data class ResolvedSources(
     val uriByMedia: Map<MediaRef, Uri>,
     /** The items whose media file isn't on the phone, in plan order. */
     val missingItemIds: List<String>,
+    /** The plan's background picture, when it has one and it is on the phone; null otherwise (the bars draw black). */
+    val backgroundFile: File?,
 )
 
 /** Finds the file each clip of a [CompositionPlan] plays from. Reads the disk, so call it off the main thread. */
@@ -24,7 +26,13 @@ internal class MediaSourceResolver(private val filesDir: File) {
             val uri = uriFor(media)
             if (uri != null) uriByMedia[media] = uri else missingItemIds += itemId
         }
-        return ResolvedSources(uriByMedia, missingItemIds)
+        return ResolvedSources(uriByMedia, missingItemIds, backgroundFileOf(plan))
+    }
+
+    /** The background picture's file when the plan has one and it is on the phone; null otherwise (the bars draw black). */
+    private fun backgroundFileOf(plan: CompositionPlan): File? {
+        val picture = (plan.background as? PlanBackground.Image)?.source?.cachedCopyPath ?: return null
+        return File(filesDir, picture).takeIf { it.isFile }
     }
 
     // The app's own copy wins: it survives the original being moved or deleted, and a photo picker

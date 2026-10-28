@@ -96,4 +96,20 @@
     <string name="color_blue">Azul</string>
     <string name="color_light_blue">Azul-claro</string>
     <string name="color_green">Verde</string>
+    <!-- Spoken kind of a picked item, shared by the import sheet and the video timeline (P1-02, P1-05). -->
+    <string name="import_item_video">Vídeo</string>
+    <string name="import_item_photo">Foto</string>
+    <!-- Canvas background picture, both editors (P2-12). Budgets and translator notes: docs/ux/specs/P2-12-canvas-background-image.md -> Copy. "Image" is a picture from the gallery used as a backdrop; %1$s in the toast is a ratio such as "9:16", never translated. -->
+    <string name="tool_replace">Substituir</string>
+    <string name="canvas_background_image">Imagem</string>
+    <string name="canvas_image_label">Imagem</string>
+    <string name="canvas_image_remove">Remover</string>
+    <string name="canvas_image_replace_a11y">Substituir imagem</string>
+    <string name="canvas_image_remove_a11y">Remover imagem</string>
+    <string name="canvas_image_pick_a11y">Escolher uma imagem</string>
+    <string name="canvas_image_missing">A imagem não foi encontrada. Escolha outra ou remova.</string>
+    <string name="canvas_image_missing_a11y">Imagem, arquivo ausente</string>
+    <string name="canvas_image_missing_toast">Imagem de fundo não encontrada. Toque em %1$s no topo para substituí-la ou removê-la.</string>
+    <string name="a11y_canvas_image_set">Imagem de fundo definida</string>
+    <string name="a11y_canvas_image_removed">Imagem de fundo removida</string>
 </resources>

@@ -1,4 +1,4 @@
-package app.memix.feature.videoeditor.importmedia
+package app.memix.feature.mediaimport
 
 import kotlinx.coroutines.flow.StateFlow
 

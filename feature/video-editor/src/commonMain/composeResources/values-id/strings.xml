@@ -5,35 +5,6 @@
         <item quantity="one">%1$d detik</item>
         <item quantity="other">%1$d detik</item>
     </plurals>
-    <string name="import_title">Menambahkan media kamu</string>
-    <string name="import_count">%1$d dari %2$d</string>
-    <string name="import_percent">%1$d%</string>
-    <plurals name="import_time_left_seconds">
-        <item quantity="one">Sekitar %1$d detik lagi</item>
-        <item quantity="other">Sekitar %1$d detik lagi</item>
-    </plurals>
-    <plurals name="import_time_left_minutes">
-        <item quantity="one">Sekitar %1$d menit lagi</item>
-        <item quantity="other">Sekitar %1$d menit lagi</item>
-    </plurals>
-    <string name="import_copied">%1$s tersalin</string>
-    <string name="import_cap_note">Kamu bisa menambahkan hingga %1$d sekaligus, jadi ini %1$d pertama yang kamu pilih.</string>
-    <string name="import_cancel">Batal</string>
-    <string name="import_partial_title">%1$d dari %2$d ditambahkan</string>
-    <string name="import_partial_body">Yang ini tidak bisa ditambahkan. Sisanya sudah ada di proyekmu.</string>
-    <string name="import_continue">Lanjut</string>
-    <string name="import_none_title">Media kamu gagal ditambahkan</string>
-    <string name="import_none_body">Tidak ada yang bisa ditambahkan. Coba video atau foto lain.</string>
-    <string name="import_pick_again">Pilih lagi</string>
-    <string name="import_item_video">Video</string>
-    <string name="import_item_photo">Foto</string>
-    <string name="import_reason_unsupported">Rusak, atau formatnya tidak bisa diputar di HP ini</string>
-    <string name="import_reason_unreadable">Tidak bisa dibaca. Jika ada di cloud, periksa koneksimu.</string>
-    <string name="import_storage_title">Ruang tidak cukup</string>
-    <string name="import_storage_body">Media kamu butuh %1$s, dan HP kamu punya %2$s kosong. Kosongkan ruang, lalu kembali untuk melanjutkan.</string>
-    <string name="import_no_picker_title">Galeri tidak bisa dibuka</string>
-    <string name="import_no_picker_body">HP ini tidak punya aplikasi untuk memilih video dan foto.</string>
-    <string name="close">Tutup</string>
     <string name="editor_play">Putar</string>
     <string name="editor_pause">Jeda</string>
     <string name="editor_preview_a11y">Pratinjau, %1$s</string>
@@ -44,8 +15,6 @@
     <string name="editor_empty_body_add">Tambahkan video atau foto untuk mulai.</string>
     <string name="edit_trim">Pangkas</string>
     <string name="edit_split">Pisahkan</string>
-    <string name="import_row_a11y">%1$s, %2$s. %3$s</string>
-    <string name="import_row_a11y_no_name">%1$s. %2$s</string>
     <!-- Timeline (P1-05): machine draft until P5-06. Budgets and translator notes: docs/ux/specs/P1-05-timeline.md -> Copy. Spoken times come from a11y_time_* (core:ui); never put timecode digits in spoken strings. -->
     <string name="timeline_a11y">Linimasa</string>
     <string name="timeline_zoom_menu">Zoom</string>
@@ -112,7 +81,6 @@
     <string name="sounds_empty_body">Koleksi suara meme hadir di build berikutnya.</string>
     <!-- P1-16: Add media and Replace (spec P1-06 -> Add media, Replace; P1-05 -> Trailing area) -->
     <string name="tool_add_media">Tambah media</string>
-    <string name="tool_replace">Ganti</string>
     <string name="edit_add_media">Tambah media</string>
     <string name="edit_replace">Ganti</string>
     <string name="explain_replace_too_short">Video itu lebih pendek dari klip ini (%1$s). Pilih yang lebih panjang, atau pangkas klip ini dulu.</string>
@@ -198,7 +166,4 @@
     <string name="export_watermark_title">Watermark Memix</string>
     <string name="export_watermark_body">Teks kecil di pojok kiri atas videomu</string>
     <string name="export_facts_a11y">MP4, %1$s, AAC. Maks. %2$s, sekitar %3$s.</string>
-    <string name="import_title_photo">Menambahkan fotomu</string>
-    <string name="import_none_title_photo">Foto tidak bisa ditambahkan</string>
-    <string name="import_none_body_photo">Foto itu tidak bisa ditambahkan. Coba foto lain.</string>
 </resources>

@@ -17,6 +17,7 @@ import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.PixelSize
+import java.io.File
 
 /**
  * Builds the Media3 [Composition] for a [CompositionPlan]: the main video sequence first, then one
@@ -25,7 +26,7 @@ import app.memix.core.model.project.PixelSize
  * export (Transformer) and the preview (CompositionPlayer), so both render alike.
  *
  * Every main clip is drawn at one frame size, the canvas's shape, by the canvas rules ([CanvasFraming]); captions go over
- * the composited frame.
+ * the composited frame. Call [build] off the main thread: a background picture is decoded there.
  *
  * Each video and sound item carries its source file's length when the project knows it: CompositionPlayer
  * needs it up front, and Transformer would otherwise read it from the file.
@@ -53,9 +54,14 @@ internal class Media3CompositionBuilder(
     private val frameShortSidePx: Int? = null,
     /** The exact frame size of an export from the sheet (P1-12: the resolution, aligned to the encoder); wins over [frameShortSidePx]. */
     private val frameSizePx: PixelSize? = null,
+    /** The file of the plan's background picture, when it has one and it is on the phone (null draws the bars black). */
+    private val backgroundFile: File? = null,
 ) {
     // The size every main clip is drawn at, the canvas's shape: captions and output come out at this size too.
     private val frame: PixelSize = frameSizePx ?: frameSizeOf(PixelSize(plan.canvasWidthPx, plan.canvasHeightPx), frameShortSidePx)
+
+    // The background picture at the frame's size, decoded once for every clip (P2-12). Reads the file: build() runs off the main thread.
+    private val pictureBars: BackgroundBars? = if (plan.background is PlanBackground.Image) BackgroundBars(backgroundFile, frame) else null
 
     fun build(): Composition {
         val sequences = listOf(mainVideoSequence()) + plan.audioLanes.map(::audioSequence)
@@ -103,7 +109,7 @@ internal class Media3CompositionBuilder(
             .setRemoveAudio(!clip.playsOwnAudio)
             // The output rate for photos; a ceiling that drops extra frames from faster videos.
             .setFrameRate(frameRate)
-            .setEffects(Effects(audioProcessors, CanvasFraming(clip, frame, plan.background).effects()))
+            .setEffects(Effects(audioProcessors, CanvasFraming(clip, frame, plan.background, pictureBars).effects()))
         // A photo's length comes from its image duration.
         if (!clip.isStill) item.setSourceDuration(clip.source, clip.trimOutUs)
         return item.build()

@@ -1,4 +1,4 @@
-package app.memix.feature.videoeditor.importmedia
+package app.memix.feature.mediaimport
 
 import app.memix.core.domain.AppError
 import app.memix.core.domain.media.CopyRun
@@ -28,8 +28,9 @@ import kotlinx.coroutines.launch
 /**
  * One pick's way into a project (spec P1-02 → States): copies what the user picked, shows the import sheet when copying
  * takes a while, waits for space when the phone is full, hands the copies to an [ImportLanding] once they're in, and
- * shows the result. Used by Create → Video meme ([MediaImportViewModel]) and by the editor's Add media and Replace
- * (P1-16), which differ only in what landing means.
+ * shows the result. Used by Create → Video meme ([MediaImportViewModel], [PhotoMemeImportViewModel]) and by a pick for an
+ * open project ([ProjectPickImport]: the editors' Add media, Replace and background picture), which differ only in what
+ * landing means.
  *
  * Runs in its owner's [scope], so copying carries on as long as the owner lives. Main thread only.
  */
@@ -264,7 +265,7 @@ internal fun interface ImportLanding {
 }
 
 /** How landing went. */
-internal sealed interface LandingResult {
+sealed interface LandingResult {
     /** The media is in the project. */
     data object Landed : LandingResult
 

@@ -36,6 +36,17 @@ fun fittedImageSize(image: PixelSize, canvas: PixelSize): BoxSize {
     return BoxSize(image.widthPx * scale, image.heightPx * scale)
 }
 
+/**
+ * A background picture's size on [canvas] (spec P2-12 → How it draws): scaled uniformly to cover the whole canvas, the
+ * overflow cropped about the center. [image] is the size as shown (EXIF turn applied). The video engine and the photo
+ * scene both use this, so a picture lies the same in the preview and the export.
+ */
+fun coveredImageSize(image: PixelSize, canvas: PixelSize): BoxSize {
+    if (image.widthPx <= 0 || image.heightPx <= 0) return BoxSize(0f, 0f)
+    val scale = max(canvas.widthPx.toFloat() / image.widthPx, canvas.heightPx.toFloat() / image.heightPx)
+    return BoxSize(image.widthPx * scale, image.heightPx * scale)
+}
+
 /** The bounds of a [box] turned clockwise by [rotationDegrees] around its center: its width and height on the canvas. */
 fun turnedBounds(box: BoxSize, rotationDegrees: Float): BoxSize {
     val radians = rotationDegrees * PI.toFloat() / HALF_TURN_DEGREES

@@ -29,6 +29,7 @@ kotlin {
         implementation(projects.feature.drafts)
         implementation(projects.feature.videoEditor)
         implementation(projects.feature.photoEditor)
+        implementation(projects.feature.mediaImport)
         implementation(projects.feature.export)
         implementation(libs.jetbrains.navigation.compose)
         implementation(libs.jetbrains.lifecycle.runtime.compose)

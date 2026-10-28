@@ -2,6 +2,7 @@ package app.memix.feature.videoeditor
 
 import app.memix.core.domain.project.CanvasRatioChange
 import app.memix.core.domain.project.CaptionBlockMeasure
+import app.memix.core.domain.project.removeBackgroundImage
 import app.memix.core.domain.project.setCanvasBackground
 import app.memix.core.domain.project.setCanvasRatio
 import app.memix.core.domain.project.setClipsFit
@@ -101,6 +102,12 @@ internal class CanvasPanelControl(private val host: EditorHost, private val meas
         host.commit(VideoEdit.CANVAS_BACKGROUND, pausesPlayback = false, value = if (argb == null) "blur" else "color") {
             it.setCanvasBackground(background)
         }
+    }
+
+    /** Remove: the picture goes, the default color (black) comes back, one "Background" step with value `color`. */
+    fun removeBackgroundImage() {
+        val removed = host.commit(VideoEdit.CANVAS_BACKGROUND, pausesPlayback = false, value = "color") { it.removeBackgroundImage() }
+        if (removed) host.showToast(ToastMessage.BackgroundImageRemoved, spokenOnly = true)
     }
 
     /**

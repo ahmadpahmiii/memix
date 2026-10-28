@@ -9,8 +9,11 @@ import app.memix.core.model.project.CaptionCatalog
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.MediaClip
+import app.memix.core.model.project.MediaRef
+import app.memix.core.model.project.PhotoCatalog
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
+import app.memix.core.model.project.ProjectType
 import app.memix.core.model.project.RatioTerms
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TrackKind
@@ -75,6 +78,22 @@ fun Project.setClipsFit(fit: FrameFit): Project {
 /** What shows around fitted clips: a color or a blurred copy of the clip. */
 fun Project.setCanvasBackground(background: CanvasBackground): Project =
     if (canvas.background == background) this else copy(canvas = canvas.copy(background = background))
+
+/** The picture behind everything, or null when the background is a color or Blur. */
+fun Project.backgroundImage(): MediaRef? = (canvas.background as? CanvasBackground.Image)?.source
+
+/** The picture [source] as the background, covering the canvas (a new pick, or Replace: [source] is always a new file). */
+fun Project.setBackgroundImage(source: MediaRef): Project = setCanvasBackground(CanvasBackground.Image(source))
+
+/**
+ * The background picture gone, the editor's default color back (video black, photo white). The picture's file stays in
+ * the draft's media folder while Undo can bring it back (spec P2-12 → Entry and exit). Unchanged without a picture.
+ */
+fun Project.removeBackgroundImage(): Project {
+    if (canvas.background !is CanvasBackground.Image) return this
+    val color = if (type == ProjectType.PHOTO) PhotoCatalog.BACKGROUND else CanvasCatalog.VIDEO_BACKGROUND
+    return setCanvasBackground(CanvasBackground.Solid(color))
+}
 
 /** The fit every main clip shares; null when they differ (an older debug draft, a later per-clip tool) or there are none. */
 fun Project.sharedClipsFit(): FrameFit? {

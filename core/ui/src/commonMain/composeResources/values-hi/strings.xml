@@ -96,4 +96,20 @@
     <string name="color_blue">नीला</string>
     <string name="color_light_blue">हल्का नीला</string>
     <string name="color_green">हरा</string>
+    <!-- Spoken kind of a picked item, shared by the import sheet and the video timeline (P1-02, P1-05). -->
+    <string name="import_item_video">वीडियो</string>
+    <string name="import_item_photo">फ़ोटो</string>
+    <!-- Canvas background picture, both editors (P2-12). Budgets and translator notes: docs/ux/specs/P2-12-canvas-background-image.md -> Copy. "Image" is a picture from the gallery used as a backdrop; %1$s in the toast is a ratio such as "9:16", never translated. -->
+    <string name="tool_replace">बदलें</string>
+    <string name="canvas_background_image">तस्वीर</string>
+    <string name="canvas_image_label">तस्वीर</string>
+    <string name="canvas_image_remove">हटाएँ</string>
+    <string name="canvas_image_replace_a11y">तस्वीर बदलें</string>
+    <string name="canvas_image_remove_a11y">तस्वीर हटाएँ</string>
+    <string name="canvas_image_pick_a11y">तस्वीर चुनें</string>
+    <string name="canvas_image_missing">तस्वीर नहीं मिली। दूसरी चुनें या हटा दें।</string>
+    <string name="canvas_image_missing_a11y">तस्वीर, फ़ाइल नहीं मिली</string>
+    <string name="canvas_image_missing_toast">बैकग्राउंड की तस्वीर नहीं मिली। उसे बदलने या हटाने के लिए ऊपर %1$s पर टैप करें।</string>
+    <string name="a11y_canvas_image_set">बैकग्राउंड की तस्वीर लगा दी गई</string>
+    <string name="a11y_canvas_image_removed">बैकग्राउंड की तस्वीर हटा दी गई</string>
 </resources>

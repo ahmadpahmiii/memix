@@ -68,10 +68,17 @@ import app.memix.core.ui.editor.WHAT_HAPPENED_TOAST_MILLIS
 import app.memix.core.ui.editor.recommendedTimeoutMillis
 import app.memix.core.ui.layers.LayerStageState
 import app.memix.core.ui.scene.SceneImageSource
+import app.memix.core.ui.scene.SceneThumbnails
+import app.memix.feature.mediaimport.ImportWording
+import app.memix.feature.mediaimport.ProjectImportSheet
+import app.memix.feature.mediaimport.rememberImportSheetShown
 import kotlin.math.max
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import memix.core.ui.generated.resources.Res as UiRes
+import memix.core.ui.generated.resources.a11y_canvas_image_removed
+import memix.core.ui.generated.resources.a11y_canvas_image_set
+import memix.core.ui.generated.resources.canvas_image_missing_toast
 import memix.core.ui.generated.resources.a11y_degrees
 import memix.core.ui.generated.resources.a11y_edit_on_item
 import memix.core.ui.generated.resources.a11y_text_position
@@ -153,10 +160,11 @@ fun PhotoEditorScreen(
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { onIntent(PhotoEditorIntent.AppStopped) }
     val freeUpSpaceForSave = remember(onFreeUpSpace) { { onFreeUpSpace(ImportMediaUseCase.HEADROOM_BYTES) } }
 
+    val importSheetShown = rememberImportSheetShown(state.photoImport)
     val scope = rememberCoroutineScope()
     val bitmaps = remember(imageSource) { SceneBitmaps(imageSource, scope) }
     DisposableEffect(bitmaps) { onDispose { bitmaps.release() } }
-    val thumbnails = remember(imageSource) { LayerThumbnails(imageSource, scope) }
+    val thumbnails = remember(imageSource) { SceneThumbnails(imageSource, scope) }
     DisposableEffect(thumbnails) { onDispose { thumbnails.release() } }
     val stage = remember { LayerStageState() }
     val held = rememberUpdatedState(state.held)
@@ -184,7 +192,7 @@ fun PhotoEditorScreen(
         Column(
             Modifier
                 .fillMaxSize()
-                .coveredByModal(state.unsavedSheetOpen)
+                .coveredByModal(state.unsavedSheetOpen || importSheetShown)
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         ) {
             TopBar(state, onIntent)
@@ -197,8 +205,17 @@ fun PhotoEditorScreen(
             }
         }
         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { if (it.height > 0) panelHeightPx = it.height }) {
-            PhotoPanels(state, live, panelMaxHeight, onIntent)
+            PhotoPanels(state, live, thumbnails, panelMaxHeight, onIntent)
             LayersPanel(state, live, thumbnails, panelMaxHeight, onIntent)
+        }
+        state.photoImport?.let { importUi ->
+            ProjectImportSheet(
+                importUi,
+                ImportWording.PHOTO,
+                onIntent = { onIntent(PhotoEditorIntent.Import(it)) },
+                onPickAgain = { onIntent(PhotoEditorIntent.PickAgain) },
+                onFreeUpSpace = onFreeUpSpace,
+            )
         }
         UnsavedChangesSheet(
             state.unsavedSheetOpen,
@@ -364,10 +381,10 @@ private fun ToastTimer(toast: PhotoToast, onTimedOut: (id: Long) -> Unit) {
     val accessibilityManager = LocalAccessibilityManager.current
     LaunchedEffect(toast.id) {
         val baseMillis = when (toast.message) {
-            is PhotoToastMessage.Explain, PhotoToastMessage.MissingMedia, PhotoToastMessage.LayersMoved -> EXPLANATION_TOAST_MILLIS
+            is PhotoToastMessage.Explain, PhotoToastMessage.MissingMedia, PhotoToastMessage.LayersMoved, is PhotoToastMessage.BackgroundMissing -> EXPLANATION_TOAST_MILLIS
             is PhotoToastMessage.Undone, is PhotoToastMessage.Redone, is PhotoToastMessage.Edited, is PhotoToastMessage.LayerOrder,
             is PhotoToastMessage.PositionTransformed, is PhotoToastMessage.PositionMoved, is PhotoToastMessage.OpacityChanged,
-            is PhotoToastMessage.RatioStepped,
+            is PhotoToastMessage.RatioStepped, PhotoToastMessage.BackgroundImageSet, PhotoToastMessage.BackgroundImageRemoved,
             -> WHAT_HAPPENED_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
@@ -397,6 +414,9 @@ private fun toastText(message: PhotoToastMessage): String = when (message) {
     is PhotoToastMessage.OpacityChanged -> stringResource(Res.string.a11y_layer_opacity, message.percent)
     // Ratios are never translated (spec P1-11 → Copy).
     is PhotoToastMessage.RatioStepped -> message.label
+    is PhotoToastMessage.BackgroundMissing -> stringResource(UiRes.string.canvas_image_missing_toast, message.ratioLabel)
+    PhotoToastMessage.BackgroundImageSet -> stringResource(UiRes.string.a11y_canvas_image_set)
+    PhotoToastMessage.BackgroundImageRemoved -> stringResource(UiRes.string.a11y_canvas_image_removed)
 }
 
 @Composable

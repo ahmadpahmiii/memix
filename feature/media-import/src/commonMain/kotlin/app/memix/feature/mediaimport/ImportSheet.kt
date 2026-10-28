@@ -1,4 +1,4 @@
-package app.memix.feature.videoeditor.importmedia
+package app.memix.feature.mediaimport
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
@@ -51,37 +51,37 @@ import app.memix.core.domain.media.ImportFailure
 import app.memix.core.ui.SizeRounding
 import app.memix.core.ui.fileSizeText
 import kotlinx.collections.immutable.ImmutableList
-import memix.feature.video_editor.generated.resources.Res
+import memix.feature.media_import.generated.resources.Res
 import memix.core.ui.generated.resources.Res as UiRes
-import memix.feature.video_editor.generated.resources.close
-import memix.feature.video_editor.generated.resources.import_cancel
-import memix.feature.video_editor.generated.resources.import_cap_note
-import memix.feature.video_editor.generated.resources.import_continue
-import memix.feature.video_editor.generated.resources.import_copied
-import memix.feature.video_editor.generated.resources.import_count
+import memix.feature.media_import.generated.resources.close
+import memix.feature.media_import.generated.resources.import_cancel
+import memix.feature.media_import.generated.resources.import_cap_note
+import memix.feature.media_import.generated.resources.import_continue
+import memix.feature.media_import.generated.resources.import_copied
+import memix.feature.media_import.generated.resources.import_count
 import memix.core.ui.generated.resources.import_free_up_space
-import memix.feature.video_editor.generated.resources.import_item_photo
-import memix.feature.video_editor.generated.resources.import_item_video
-import memix.feature.video_editor.generated.resources.import_no_picker_body
-import memix.feature.video_editor.generated.resources.import_no_picker_title
-import memix.feature.video_editor.generated.resources.import_none_body
-import memix.feature.video_editor.generated.resources.import_none_body_photo
-import memix.feature.video_editor.generated.resources.import_none_title
-import memix.feature.video_editor.generated.resources.import_none_title_photo
-import memix.feature.video_editor.generated.resources.import_partial_body
-import memix.feature.video_editor.generated.resources.import_partial_title
-import memix.feature.video_editor.generated.resources.import_percent
-import memix.feature.video_editor.generated.resources.import_pick_again
-import memix.feature.video_editor.generated.resources.import_reason_unreadable
-import memix.feature.video_editor.generated.resources.import_reason_unsupported
-import memix.feature.video_editor.generated.resources.import_row_a11y
-import memix.feature.video_editor.generated.resources.import_row_a11y_no_name
-import memix.feature.video_editor.generated.resources.import_storage_body
-import memix.feature.video_editor.generated.resources.import_storage_title
-import memix.feature.video_editor.generated.resources.import_time_left_minutes
-import memix.feature.video_editor.generated.resources.import_time_left_seconds
-import memix.feature.video_editor.generated.resources.import_title
-import memix.feature.video_editor.generated.resources.import_title_photo
+import memix.core.ui.generated.resources.import_item_photo
+import memix.core.ui.generated.resources.import_item_video
+import memix.feature.media_import.generated.resources.import_no_picker_body
+import memix.feature.media_import.generated.resources.import_no_picker_title
+import memix.feature.media_import.generated.resources.import_none_body
+import memix.feature.media_import.generated.resources.import_none_body_photo
+import memix.feature.media_import.generated.resources.import_none_title
+import memix.feature.media_import.generated.resources.import_none_title_photo
+import memix.feature.media_import.generated.resources.import_partial_body
+import memix.feature.media_import.generated.resources.import_partial_title
+import memix.feature.media_import.generated.resources.import_percent
+import memix.feature.media_import.generated.resources.import_pick_again
+import memix.feature.media_import.generated.resources.import_reason_unreadable
+import memix.feature.media_import.generated.resources.import_reason_unsupported
+import memix.feature.media_import.generated.resources.import_row_a11y
+import memix.feature.media_import.generated.resources.import_row_a11y_no_name
+import memix.feature.media_import.generated.resources.import_storage_body
+import memix.feature.media_import.generated.resources.import_storage_title
+import memix.feature.media_import.generated.resources.import_time_left_minutes
+import memix.feature.media_import.generated.resources.import_time_left_seconds
+import memix.feature.media_import.generated.resources.import_title
+import memix.feature.media_import.generated.resources.import_title_photo
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -258,7 +258,7 @@ private fun ResultContent(
 
 @Composable
 private fun NotAddedRow(item: NotAddedItemUi) {
-    val kindLabel = stringResource(if (item.isVideo) Res.string.import_item_video else Res.string.import_item_photo)
+    val kindLabel = stringResource(if (item.isVideo) UiRes.string.import_item_video else UiRes.string.import_item_photo)
     val reason = stringResource(
         when (item.reason) {
             ImportFailure.UNREADABLE -> Res.string.import_reason_unreadable

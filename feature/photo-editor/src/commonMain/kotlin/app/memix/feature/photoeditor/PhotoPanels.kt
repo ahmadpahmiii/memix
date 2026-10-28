@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -17,15 +18,16 @@ import app.memix.core.designsystem.Text
 import app.memix.core.designsystem.component.Button
 import app.memix.core.designsystem.component.Slider
 import app.memix.core.designsystem.component.ToolPanel
-import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.PhotoCatalog
-import app.memix.core.ui.panels.CanvasColorSwatches
+import app.memix.core.ui.panels.BackgroundActions
+import app.memix.core.ui.panels.BackgroundGroup
+import app.memix.core.ui.panels.BackgroundUi
+import app.memix.core.ui.panels.toUi
+import app.memix.core.ui.scene.SceneThumbnails
 import app.memix.core.ui.panels.CanvasRatioRow
-import app.memix.core.ui.panels.ChoiceRow
 import app.memix.core.ui.panels.CustomRatioRows
 import app.memix.core.ui.panels.PositionRows
 import memix.core.ui.generated.resources.Res as UiRes
-import memix.core.ui.generated.resources.canvas_background
 import memix.core.ui.generated.resources.canvas_title
 import memix.core.ui.generated.resources.panel_done
 import memix.core.ui.generated.resources.position_size_value
@@ -43,7 +45,7 @@ import org.jetbrains.compose.resources.stringResource
  * once as one undo step; the slider's in-between values go to [live] and are committed on release.
  */
 @Composable
-internal fun PhotoPanels(state: PhotoEditorUiState, live: PhotoLive, maxHeight: Dp, onIntent: (PhotoEditorIntent) -> Unit, modifier: Modifier = Modifier) {
+internal fun PhotoPanels(state: PhotoEditorUiState, live: PhotoLive, thumbnails: SceneThumbnails, maxHeight: Dp, onIntent: (PhotoEditorIntent) -> Unit, modifier: Modifier = Modifier) {
     val done = stringResource(UiRes.string.panel_done)
     val close = { onIntent(PhotoEditorIntent.ClosePanel) }
     val layer = state.selectedLayer
@@ -70,7 +72,7 @@ internal fun PhotoPanels(state: PhotoEditorUiState, live: PhotoLive, maxHeight: 
                 onHeld = { step, repeats -> onIntent(PhotoEditorIntent.CanvasStepHeld(step, repeats)) },
                 onStepped = { step, repeats -> onIntent(PhotoEditorIntent.CanvasStepped(step, repeats)) },
             )
-            BackgroundRow((canvas.background as? CanvasBackground.Solid)?.color?.argb, state.backgroundShows, onIntent)
+            BackgroundRow(canvas.background.toUi(state.backgroundMissing), state.backgroundShows, thumbnails, onIntent)
         }
     }
 }
@@ -111,15 +113,20 @@ private fun LockedOpacityMessage(onUnlock: () -> Unit) {
     }
 }
 
-// The caption palette; the line under it explains why a color shows nothing when a photo covers the whole frame.
+// Image first (no Blur in a photo), then the caption palette; the line under them explains why the background shows nothing
+// when a photo covers the whole frame (spec P2-12 → Layout).
 @Composable
-private fun BackgroundRow(selectedArgb: Long?, backgroundShows: Boolean, onIntent: (PhotoEditorIntent) -> Unit) {
-    ChoiceRow(stringResource(UiRes.string.canvas_background)) {
-        CanvasColorSwatches(selectedArgb, onPick = { onIntent(PhotoEditorIntent.SetCanvasBackground(it)) })
+private fun BackgroundRow(background: BackgroundUi, backgroundShows: Boolean, thumbnails: SceneThumbnails, onIntent: (PhotoEditorIntent) -> Unit) {
+    val hint = if (backgroundShows) null else stringResource(Res.string.photo_background_hidden)
+    val actions = remember(onIntent) {
+        object : BackgroundActions {
+            override fun onBlur() = Unit
+            override fun onColor(argb: Long) = onIntent(PhotoEditorIntent.SetCanvasBackground(argb))
+            override fun onPickImage() = onIntent(PhotoEditorIntent.PickBackgroundImage)
+            override fun onRemoveImage() = onIntent(PhotoEditorIntent.RemoveBackgroundImage)
+        }
     }
-    if (!backgroundShows) {
-        Text(stringResource(Res.string.photo_background_hidden), MemixTheme.type.caption, color = MemixColors.textSecondary)
-    }
+    BackgroundGroup(background, blurName = null, thumbnails, hint, actions)
 }
 
 private const val PERCENT = 100

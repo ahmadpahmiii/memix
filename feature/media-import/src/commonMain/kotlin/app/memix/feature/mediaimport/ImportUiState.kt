@@ -1,4 +1,4 @@
-package app.memix.feature.videoeditor.importmedia
+package app.memix.feature.mediaimport
 
 import androidx.compose.runtime.Immutable
 import app.memix.core.domain.media.ImportFailure

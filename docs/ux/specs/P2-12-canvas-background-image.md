@@ -39,14 +39,14 @@ In the Background row's horizontally scrolling Swatch row (`design/system/compon
 - **A tap on the swatch:** with no picture, it opens the picker at once (the swatch isn't selected until a picture exists; if the pick is cancelled nothing changes). With a picture (selected), it does nothing, as every selected swatch; Replace and Remove are right below.
 
 ### The image row
-Directly under the swatch row, only while the background is an image (set or missing), in the Position panel's row pattern (P1-10): a label **Image** (`body` `text-secondary`) at the start, two Secondary buttons at the end, `space-2` apart: **Replace** and **Remove** (`touch-target` tall). At 200% font they wrap under the label, and Remove under Replace if the pair is still too wide; nothing is cut.
+Directly under the swatch row, only while the background is an image (set or missing), in the Position panel's row pattern (P1-10): a label **Image** (`body` `text-secondary`) at the start, two Secondary buttons at the end, `space-2` apart: **Replace** and **Remove** (`touch-target` tall). At 200% font the pair wraps beside or under the label (the built look: the label centered at the start, Replace above Remove at the end, `space-2` apart; accepted in the review), and Remove goes under Replace if the pair is still too wide; nothing is cut.
 - **Replace:** opens the picker. A new picture is a **new file**; the old one stays for Undo (Media copies are never changed in place). One step "Background".
 - **Remove:** the background goes back to the editor's default color (video black, photo white) in one step "Background". The file stays for Undo.
 - **Picking another background** (a color, or Blur in the video editor) also drops the picture from the project; Undo brings it back as one step. The Image swatch then shows its "no picture yet" look, and tapping it asks for a picture again. (The model holds one background at a time; keeping a hidden picture would be a second field and a schema change. A user who toggles Blur ↔ Image will pick again: Assumption that this is rare, tested at the P2 test.)
 - **The hint line** (`canvas_background_hidden` in the video panel, `photo_background_hidden` in the photo panel) applies to an image exactly as it does to a color: when nothing would show the background, the swatches still work and the line explains.
 
 ### Panel height
-The Image row adds about 64 dp (the row and its gap) to each panel while an image is the background, so the video panel reaches about 416 dp and the photo panel about 300 dp. Both already scroll inside their region (P1-11; P2-01 caps a panel at 40% of the window in the photo editor).
+The Image row adds about 64 dp (the row and its gap) to each panel while an image is the background, so the video panel reaches about 416 dp and the photo panel about **335 dp, about 360 dp with a hint line** (measured from the P2-12 renders; this said 300 before the review). Both already scroll inside their region (P1-11; P2-01 caps a panel at 40% of the window in the photo editor: 320 dp at 800, 256 dp at 640). So in the photo editor the Image row's buttons are partly or wholly below the fold when the picture lands; accepted (the cap stays, so the stage doesn't jump when a picture is set), see the P2-12 review P3.
 
 ## How it draws (preview and export match)
 These rules are part of every saved draft's look (`design/tokens.json` → `canvas.background.image`).
@@ -73,7 +73,7 @@ These rules are part of every saved draft's look (`design/tokens.json` → `canv
 | Picker open, copying, no space, failed | P1-02's sheets with photo wording; the panel unchanged under them | `import_*` |
 | Picture set | The thumbnail swatch, ringed; the image row; the canvas shows the picture | `canvas_image_label`, `tool_replace`, `canvas_image_remove` |
 | Picture set, nothing would show it | As above plus the hint line | `canvas_background_hidden` or `photo_background_hidden` |
-| Picture's file missing | The icon swatch, ringed; the image row; a line under the swatches; the canvas draws black; a toast once per open | `canvas_image_missing`, `canvas_image_missing_toast` |
+| Picture's file missing (or present but undecodable: the same state, review 28 Oct) | The icon swatch, ringed; the image row; a line under the swatches; the canvas draws black; a toast once per open | `canvas_image_missing`, `canvas_image_missing_toast` |
 | Replaced | The swatch and the canvas show the new picture; one undo step | `edit_canvas_background` |
 | Removed | The editor's default color is selected; the Image swatch is back to "no picture yet" | none |
 | Another background chosen over the picture | As Removed; Undo brings the picture back | none |

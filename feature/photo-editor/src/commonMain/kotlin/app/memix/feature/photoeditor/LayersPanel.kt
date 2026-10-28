@@ -45,8 +45,7 @@ import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.component.IconButton
 import app.memix.core.designsystem.component.LayerRow
 import app.memix.core.designsystem.component.ToolPanel
-import app.memix.core.ui.scene.SceneImageSource
-import app.memix.core.ui.scene.SceneImageUse
+import app.memix.core.ui.scene.SceneThumbnails
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -71,40 +70,6 @@ import memix.feature.photo_editor.generated.resources.layers_title
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Row pictures for the Layers panel: each file decoded once at [THUMBNAIL_LONG_SIDE_PX] (never the original), the picture
- * fitted inside the square (spec P2-01 → LayerRow). Read while drawing a row; a file that can't be read is reported as
- * missing. Lives with the editor screen.
- */
-@Stable
-internal class LayerThumbnails(private val source: SceneImageSource, private val scope: CoroutineScope) {
-    private val pictures = mutableStateMapOf<String, ImageBitmap>()
-    private val failed = mutableStateMapOf<String, Boolean>()
-    private val asked = HashSet<String>()
-
-    fun pictureOf(path: String): ImageBitmap? = pictures[path]
-
-    fun failed(path: String): Boolean = failed[path] == true
-
-    /** Starts decoding [path] once. */
-    fun request(path: String) {
-        if (!asked.add(path)) return
-        scope.launch {
-            val bitmap = source.decode(path, THUMBNAIL_LONG_SIDE_PX, SceneImageUse.SCREEN)
-            if (bitmap == null) failed[path] = true else pictures[path] = bitmap.image
-        }
-    }
-
-    fun release() {
-        pictures.clear()
-        failed.clear()
-        asked.clear()
-    }
-}
-
-/** Sharp at the row's 40 dp on a 3x screen (120 px) with a little to spare; far below the 192 px the spec allows. */
-private const val THUMBNAIL_LONG_SIDE_PX = 128
-
-/**
  * The Layers panel (spec P2-01 → Layers panel): a ToolPanel as tall as its list up to [maxHeight], front layer first. Its top
  * row holds Move layer up and down for the selected layer; the Opacity row follows while a layer is selected (the list's
  * first item when the panel is tight); then one
@@ -115,7 +80,7 @@ private const val THUMBNAIL_LONG_SIDE_PX = 128
 internal fun LayersPanel(
     state: PhotoEditorUiState,
     live: PhotoLive,
-    thumbnails: LayerThumbnails,
+    thumbnails: SceneThumbnails,
     maxHeight: Dp,
     onIntent: (PhotoEditorIntent) -> Unit,
     modifier: Modifier = Modifier,
@@ -161,7 +126,7 @@ private fun LayerList(
     frontFirst: List<SceneLayerUi>,
     listState: LazyListState,
     reorder: LayerReorder,
-    thumbnails: LayerThumbnails,
+    thumbnails: SceneThumbnails,
     opacityItem: (@Composable () -> Unit)?,
     onIntent: (PhotoEditorIntent) -> Unit,
 ) {
@@ -204,7 +169,7 @@ private fun LayerRowFor(
     lifted: Boolean,
     position: Int,
     count: Int,
-    thumbnails: LayerThumbnails,
+    thumbnails: SceneThumbnails,
     labels: LayerActionLabels,
     onIntent: (PhotoEditorIntent) -> Unit,
     modifier: Modifier,

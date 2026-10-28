@@ -5,6 +5,7 @@ import app.memix.core.domain.AppError
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.ProjectSource
 import app.memix.core.domain.drafts.UpdateDraftThumbnailUseCase
+import app.memix.core.domain.media.ImportMediaUseCase
 import app.memix.core.domain.project.CanvasRatioChange
 import app.memix.core.domain.project.CreatePhotoProjectUseCase
 import app.memix.core.domain.project.LayerEdit
@@ -19,6 +20,9 @@ import app.memix.core.domain.project.isEmptyDraft
 import app.memix.core.domain.project.layers
 import app.memix.core.domain.project.moveLayerDown
 import app.memix.core.domain.project.moveLayerUp
+import app.memix.core.domain.project.backgroundImage
+import app.memix.core.domain.project.removeBackgroundImage
+import app.memix.core.domain.project.setBackgroundImage
 import app.memix.core.domain.project.reorderLayer
 import app.memix.core.domain.project.photoBackgroundShows
 import app.memix.core.domain.project.setCanvasBackground
@@ -31,12 +35,16 @@ import app.memix.core.model.project.ArgbColor
 import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.CanvasCatalog
 import app.memix.core.model.project.CanvasRatio
+import app.memix.core.model.project.MediaKind
+import app.memix.core.model.project.MediaOrigin
+import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.PhotoCatalog
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.RatioTerms
 import app.memix.core.model.project.SizeLadder
 import app.memix.core.model.project.Transform
 import app.memix.core.model.project.size
+import app.memix.core.designsystem.MemixMotion
 import app.memix.core.ui.MemixViewModel
 import app.memix.core.ui.editor.SaveProblem
 import app.memix.core.ui.panels.CanvasLimit
@@ -48,10 +56,18 @@ import app.memix.core.ui.panels.customTermsAfterChange
 import app.memix.core.ui.panels.limit
 import app.memix.core.ui.panels.steppedBy
 import app.memix.core.ui.panels.steppedTerms
+import app.memix.feature.mediaimport.ImportIntent
+import app.memix.feature.mediaimport.ImportUiState
+import app.memix.feature.mediaimport.LandingResult
+import app.memix.feature.mediaimport.ProjectImportUi
+import app.memix.feature.mediaimport.ProjectPickImport
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.uuid.Uuid
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -69,16 +85,24 @@ class PhotoEditorViewModel(
     private val createPhotoProject: CreatePhotoProjectUseCase,
     private val startEditSession: StartEditSessionUseCase,
     private val updateDraftThumbnail: UpdateDraftThumbnailUseCase,
+    importMedia: ImportMediaUseCase,
 ) : MemixViewModel<PhotoEditorUiState, PhotoEditorIntent>(PhotoEditorUiState()) {
+    // A picked photo's copy, its sheet and its landing (spec P2-12); P2-13 adds Add photo to the same pick.
+    private val pick = ProjectPickImport(importMedia, viewModelScope, projectId, PickLanding())
+    private val draftOpened = CompletableDeferred<Unit>()
     private var editSession: ProjectEditSession? = null
     private var shownProject: Project? = null
     private var saveFailure: AppError? = null
     private var bannerDismissed = false
     private var missingMediaShown = false
+    private var backgroundMissingShown = false
+    // The background picture's file that couldn't be read, so a replaced picture isn't called missing.
+    private var missingBackgroundPath: String? = null
     private var gestureActive = false
     private var nextToastId = 0L
 
     init {
+        updateState { it.copy(photoImport = ProjectImportUi(pick.state)) }
         viewModelScope.launch {
             when (val opened = if (newBlank) Outcome.Success(createPhotoProject().copy(id = projectId)) else openPhotoDraft(projectId)) {
                 is Outcome.Success -> if (opened.value.photo != null) startEditing(opened.value) else couldntOpen()
@@ -97,7 +121,10 @@ class PhotoEditorViewModel(
             PhotoEditorIntent.LeaveAnyway -> updateState { it.copy(unsavedSheetOpen = false, isClosing = true) }
             PhotoEditorIntent.StayInEditor -> updateState { it.copy(unsavedSheetOpen = false) }
             PhotoEditorIntent.DismissSaveBanner -> dismissSaveBanner()
-            PhotoEditorIntent.FreeUpSpaceUnavailable -> updateState { it.copy(canFreeUpSpace = false) }
+            PhotoEditorIntent.FreeUpSpaceUnavailable -> {
+                updateState { it.copy(canFreeUpSpace = false) }
+                pick.onIntent(ImportIntent.FreeUpSpaceUnavailable)
+            }
             PhotoEditorIntent.AppStarted -> if (saveFailure != null) editSession?.saveNow()
             PhotoEditorIntent.AppStopped -> goToBackground()
             is PhotoEditorIntent.ToastTimedOut -> updateState { if (it.toast?.id == intent.id) it.copy(toast = null) else it }
@@ -124,6 +151,13 @@ class PhotoEditorViewModel(
             is PhotoEditorIntent.CanvasStepped -> stepRatio(intent.step, intent.repeats)
             is PhotoEditorIntent.CanvasStepHeld -> holdRatio(intent.step, intent.repeats)
             is PhotoEditorIntent.SetCanvasBackground -> setBackground(intent.argb)
+            PhotoEditorIntent.PickBackgroundImage -> requestPick(PhotoPickRequest.Background)
+            PhotoEditorIntent.RemoveBackgroundImage -> removeBackgroundImage()
+            PhotoEditorIntent.PickerOpened -> updateState { it.copy(pickRequest = null) }
+            PhotoEditorIntent.PickerUnavailable -> pickerUnavailable()
+            is PhotoEditorIntent.PhotoPicked -> onPhotoPicked(intent.request, intent.items)
+            is PhotoEditorIntent.Import -> pick.onIntent(intent.intent)
+            PhotoEditorIntent.PickAgain -> pickAgain()
         }
     }
 
@@ -133,6 +167,7 @@ class PhotoEditorViewModel(
         // The drafts list's cover follows the lowest image layer; it's checked as the editor goes, after the last save starts.
         addCloseable(AutoCloseable { currentProject()?.takeUnless { it.isEmptyDraft() }?.let { updateDraftThumbnail(it) } })
         editSession = session
+        draftOpened.complete(Unit)
         viewModelScope.launch { session.state.collect(::showEditState) }
     }
 
@@ -157,6 +192,7 @@ class PhotoEditorViewModel(
                 scene = SceneUi(project.canvas, project.layers().toImmutableList()),
                 layers = layers,
                 backgroundShows = project.photoBackgroundShows(),
+                backgroundMissing = project.backgroundImage()?.cachedCopyPath?.let { it == missingBackgroundPath } == true,
                 selectedLayerId = selected,
                 panel = panel,
                 canvasPanel = if (panel == PhotoPanel.CANVAS) state.canvasPanel else null,
@@ -323,6 +359,63 @@ class PhotoEditorViewModel(
         commit(PhotoEdit.CANVAS_BACKGROUND, "color") { it.setCanvasBackground(CanvasBackground.Solid(ArgbColor(argb))) }
     }
 
+    // The background picture (spec P2-12) ------------------------------------------------------------------------
+
+    // One pick at a time; the app opens the picker for the request.
+    private fun requestPick(request: PhotoPickRequest) {
+        if (editSession == null || state.value.pickRequest != null || pick.state.value != ImportUiState.Idle) return
+        updateState { it.copy(pickRequest = request) }
+    }
+
+    private fun pickerUnavailable() {
+        val request = state.value.pickRequest ?: return
+        updateState { it.copy(pickRequest = null) }
+        pick.pickerUnavailable(request)
+    }
+
+    private fun onPhotoPicked(request: PhotoPickRequest, items: List<MediaOrigin>) {
+        updateState { it.copy(pickRequest = null) }
+        if (items.isEmpty()) pick.nothingPicked(request) else pick.start(request, items.take(1))
+    }
+
+    // The sheet slides away first, then the same picker opens (spec P1-02 → States, "Pick again").
+    private fun pickAgain() {
+        val request = pick.pickAgain() ?: return
+        viewModelScope.launch {
+            delay(MemixMotion.durationSheet.milliseconds)
+            updateState { it.copy(pickRequest = request) }
+        }
+    }
+
+    // Remove: the editor's default color goes back, one "Background" step with value "color" (the result is a color).
+    private fun removeBackgroundImage() {
+        if (commit(PhotoEdit.CANVAS_BACKGROUND, "color") { it.removeBackgroundImage() }) showToast(PhotoToastMessage.BackgroundImageRemoved, spokenOnly = true)
+    }
+
+    private inner class PickLanding : ProjectPickImport.Landing<PhotoPickRequest> {
+        override suspend fun land(request: PhotoPickRequest, added: List<MediaRef>): LandingResult {
+            draftOpened.await()
+            return when (request) {
+                PhotoPickRequest.Background -> landBackground(added.firstOrNull { it.kind == MediaKind.IMAGE })
+            }
+        }
+
+        // The Canvas panel is still open under the pick; the new picture shows on the canvas and the swatch.
+        private fun landBackground(photo: MediaRef?): LandingResult {
+            if (photo == null) return LandingResult.Declined
+            return if (commit(PhotoEdit.CANVAS_BACKGROUND, "image") { it.setBackgroundImage(photo) }) LandingResult.Landed else LandingResult.Declined
+        }
+
+        override fun showLanding(request: PhotoPickRequest, afterSheet: Boolean) {
+            viewModelScope.launch {
+                if (afterSheet) delay(MemixMotion.durationSheet.milliseconds)
+                showToast(PhotoToastMessage.BackgroundImageSet, spokenOnly = true)
+            }
+        }
+
+        override fun onPickEnded(request: PhotoPickRequest) = Unit
+    }
+
     // Editing -----------------------------------------------------------------------------------------------------
 
     /** Applies [change] as one [edit] step; false when it changed nothing (no step, no `tool_use`). */
@@ -386,6 +479,7 @@ class PhotoEditorViewModel(
     // Messages ----------------------------------------------------------------------------------------------------
 
     private fun showMissing(paths: Set<String>) {
+        showMissingBackground(paths)
         val layerIds = state.value.layers.filter { it.path in paths }.map { it.id }
         if (layerIds.isEmpty()) return
         updateState { it.copy(missingLayerIds = (it.missingLayerIds + layerIds).toImmutableSet()) }
@@ -393,6 +487,16 @@ class PhotoEditorViewModel(
             missingMediaShown = true
             showToast(PhotoToastMessage.MissingMedia)
         }
+    }
+
+    // The background picture can't be read: the canvas draws black, the panel says so, and a toast names the way out once per open.
+    private fun showMissingBackground(paths: Set<String>) {
+        val picture = currentProject()?.backgroundImage()?.cachedCopyPath?.takeIf { it in paths } ?: return
+        missingBackgroundPath = picture
+        updateState { it.copy(backgroundMissing = true) }
+        if (backgroundMissingShown) return
+        backgroundMissingShown = true
+        showToast(PhotoToastMessage.BackgroundMissing(state.value.scene?.ratioLabel.orEmpty()))
     }
 
     private fun showSaveState(failure: AppError?) {

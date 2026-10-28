@@ -1,6 +1,7 @@
 package app.memix.core.domain.media
 
 import app.memix.core.model.project.AudioClip
+import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.EffectItem
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.MediaClip
@@ -12,8 +13,9 @@ import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TextLayer
 
 /**
- * Every media copy the project uses, as relative paths: its clips', sounds' and stickers' on the video timeline, and
- * its layers' in a photo scene. Split and duplicated clips share one copy, so it's listed once.
+ * Every media copy the project uses, as relative paths: its clips', sounds' and stickers' on the video timeline, its
+ * layers' in a photo scene and the canvas's background picture (P2-12). Split and duplicated clips share one copy, so it's
+ * listed once.
  */
 internal fun Project.mediaCopyPaths(): Set<String> {
     val paths = HashSet<String>()
@@ -36,12 +38,14 @@ internal fun Project.mediaCopyPaths(): Set<String> {
         }
         source?.cachedCopyPath?.let(paths::add)
     }
+    (canvas.background as? CanvasBackground.Image)?.source?.cachedCopyPath?.let(paths::add)
     return paths
 }
 
 /**
  * The same project with every media copy path passed through [rewrite]: clips, sounds and stickers on the video
- * timeline and image and sticker layers in a photo scene. Media without a copy is left as it is.
+ * timeline, image and sticker layers in a photo scene and the canvas's background picture. Media without a copy is left
+ * as it is.
  */
 internal fun Project.withMediaCopyPaths(rewrite: (String) -> String): Project {
     fun MediaRef.rewritten(): MediaRef = cachedCopyPath?.let { copy(cachedCopyPath = rewrite(it)) } ?: this
@@ -72,5 +76,7 @@ internal fun Project.withMediaCopyPaths(rewrite: (String) -> String): Project {
             },
         )
     }
-    return copy(video = rewrittenVideo, photo = rewrittenPhoto)
+    val rewrittenCanvas = (canvas.background as? CanvasBackground.Image)
+        ?.let { canvas.copy(background = it.copy(source = it.source.rewritten())) } ?: canvas
+    return copy(video = rewrittenVideo, photo = rewrittenPhoto, canvas = rewrittenCanvas)
 }

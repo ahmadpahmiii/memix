@@ -2,6 +2,7 @@ package app.memix.debug
 
 import app.memix.core.domain.project.photoCanvasFor
 import app.memix.core.model.project.Canvas
+import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.Layer
 import app.memix.core.model.project.MediaKind
@@ -24,13 +25,18 @@ internal class DebugPicture(val fileName: String, val widthPx: Int, val heightPx
  *   90°), one partly off the frame, one locked; all overlapping, so every row state has an example.
  * - `photo-empty`: no layers, the blank canvas (1:1, white), made in memory like a Create row start.
  * - `photo-missing-media`: two layers, one whose file is gone.
+ * - `photo-background-image` (P2-12): a 1:1 canvas with a patterned picture (3000 x 2000, a grid and marked corners, so any
+ *   shift shows) behind three smaller layers, one at 60%: the picture covers the canvas, cropped at the sides.
+ * - `photo-background-missing` (P2-12): the same scene whose background picture's file is gone: black, a toast, a line in the panel.
  * The pictures for the photo-shape check (4:3, 3:2, 1:1, 9:16, 6:13, 3:1) are written too, for picking from the gallery.
  */
 internal object PhotoCheckProjects {
     const val LAYERS_10 = "photo-layers-10"
     const val EMPTY = "photo-empty"
     const val MISSING_MEDIA = "photo-missing-media"
-    val NAMES = listOf(LAYERS_10, EMPTY, MISSING_MEDIA)
+    const val BACKGROUND_IMAGE = "photo-background-image"
+    const val BACKGROUND_MISSING = "photo-background-missing"
+    val NAMES = listOf(LAYERS_10, EMPTY, MISSING_MEDIA, BACKGROUND_IMAGE, BACKGROUND_MISSING)
 
     const val PICTURES_DIR = "${ExportCheckProject.MEDIA_DIR}/photo-scenes"
 
@@ -40,6 +46,9 @@ internal object PhotoCheckProjects {
     private val mid = (1..4).map { DebugPicture("mid-$it.jpg", 3000, 2000, "MID $it") }
     private val base = DebugPicture("base-12mp.jpg", BIG, BIG_HEIGHT, "BASE")
     private val hidden = DebugPicture("hidden.jpg", 3000, 2000, "HIDDEN")
+
+    /** The patterned picture of the background checks, in the photo scenes and the video editor's `canvas-image-check`. */
+    val backgroundPattern = DebugPicture("background-pattern.jpg", 3000, 2000, "BG")
     private val shapes = listOf(
         DebugPicture("shape-4x3.jpg", 4032, 3024, "4:3"),
         DebugPicture("shape-3x2.jpg", 3000, 2000, "3:2"),
@@ -50,7 +59,7 @@ internal object PhotoCheckProjects {
     )
 
     /** Every picture the scenes and the photo-shape check use. */
-    val pictures: List<DebugPicture> = listOf(base) + big + mid + hidden + shapes
+    val pictures: List<DebugPicture> = listOf(base) + big + mid + hidden + backgroundPattern + shapes
 
     private fun image(id: String, picture: DebugPicture, transform: Transform, locked: Boolean = false, hidden: Boolean = false, opacity: Float = 1f): Layer =
         ImageLayer(id, mediaOf(picture.fileName, PixelSize(picture.widthPx, picture.heightPx)), transform, locked, hidden, opacity)
@@ -63,10 +72,16 @@ internal object PhotoCheckProjects {
         pixelSize = size,
     )
 
+    /** The media of the background checks: the patterned picture, or one whose file isn't there. */
+    fun backgroundMedia(missing: Boolean): MediaRef =
+        if (missing) mediaOf("gone-background.jpg", PixelSize(3000, 2000)) else mediaOf(backgroundPattern.fileName, PixelSize(backgroundPattern.widthPx, backgroundPattern.heightPx))
+
     /** The scene [name] as a project, or null for an unknown name or `photo-empty` (a blank canvas isn't saved). */
     fun build(name: String): Project? = when (name) {
         LAYERS_10 -> layers10()
         MISSING_MEDIA -> missingMedia()
+        BACKGROUND_IMAGE -> backgroundImage(BACKGROUND_IMAGE, missing = false)
+        BACKGROUND_MISSING -> backgroundImage(BACKGROUND_MISSING, missing = true)
         else -> null
     }
 
@@ -95,6 +110,16 @@ internal object PhotoCheckProjects {
             image("m-gone", gone, Transform(0.5f, 0.5f, 0.6f)),
         )
         return project(MISSING_MEDIA, photoCanvasFor(PixelSize(base.widthPx, base.heightPx)), layers)
+    }
+
+    private fun backgroundImage(id: String, missing: Boolean): Project {
+        val layers = listOf(
+            image("b-mid-1", mid[0], Transform(0.3f, 0.3f, 0.5f)),
+            image("b-mid-2", mid[1], Transform(0.7f, 0.5f, 0.45f), opacity = 0.6f),
+            image("b-big-1", big[0], Transform(0.4f, 0.75f, 0.4f, rotationDegrees = 20f)),
+        )
+        val canvas = photoCanvasFor(PixelSize(1080, 1080)).copy(background = CanvasBackground.Image(backgroundMedia(missing)))
+        return project(id, canvas, layers)
     }
 
     private fun project(id: String, canvas: Canvas, layers: List<Layer>) = Project(

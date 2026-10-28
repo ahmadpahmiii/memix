@@ -54,8 +54,8 @@ import app.memix.feature.videoeditor.EditorExport
 import app.memix.feature.videoeditor.EditorSounds
 import app.memix.feature.videoeditor.VideoEditorViewModel
 import app.memix.feature.photoeditor.PhotoEditorViewModel
-import app.memix.feature.videoeditor.importmedia.MediaImportViewModel
-import app.memix.feature.videoeditor.importmedia.PhotoMemeImportViewModel
+import app.memix.feature.mediaimport.MediaImportViewModel
+import app.memix.feature.mediaimport.PhotoMemeImportViewModel
 import app.memix.platform.services.platformServicesModule
 import kotlin.time.Clock
 import kotlinx.coroutines.CoroutineScope
@@ -133,6 +133,7 @@ private val appModule = module {
             createPhotoProject = get(),
             startEditSession = get(),
             updateDraftThumbnail = get(),
+            importMedia = get(),
         )
     }
     viewModel { params ->

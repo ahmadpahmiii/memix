@@ -42,5 +42,6 @@ include(
     ":feature:drafts",
     ":feature:video-editor",
     ":feature:photo-editor",
+    ":feature:media-import",
     ":feature:export",
 )

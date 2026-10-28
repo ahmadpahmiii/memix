@@ -45,6 +45,7 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import memix.feature.video_editor.generated.resources.Res
 import memix.core.ui.generated.resources.Res as UiRes
+import memix.core.ui.generated.resources.tool_replace
 import memix.feature.video_editor.generated.resources.clip_tools_close
 import memix.core.ui.generated.resources.panel_done
 import memix.feature.video_editor.generated.resources.reorder_move_earlier
@@ -60,7 +61,6 @@ import memix.feature.video_editor.generated.resources.tool_move_here
 import memix.feature.video_editor.generated.resources.tool_move_here_a11y
 import memix.core.ui.generated.resources.tool_position
 import memix.feature.video_editor.generated.resources.tool_reorder
-import memix.feature.video_editor.generated.resources.tool_replace
 import memix.feature.video_editor.generated.resources.tool_split
 import memix.feature.video_editor.generated.resources.tool_style
 import memix.feature.video_editor.generated.resources.tool_text
@@ -219,7 +219,7 @@ private fun rememberClipTools(
     val volume = stringResource(Res.string.tool_volume)
     val moveHere = stringResource(Res.string.tool_move_here)
     val moveHereClickLabel = stringResource(Res.string.tool_move_here_a11y)
-    val replace = stringResource(Res.string.tool_replace)
+    val replace = stringResource(UiRes.string.tool_replace)
     val detach = stringResource(Res.string.tool_detach_audio)
     val textTools = rememberTextTools(onIntent, focus)
     return remember(clipTools, isMissing, split, delete, duplicate, reorder, volume, moveHere, moveHereClickLabel, replace, detach, textTools, onIntent, reorderFocus, focus) {

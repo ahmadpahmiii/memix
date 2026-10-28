@@ -9,6 +9,8 @@ A round, single-choice color button for content colors: caption text and outline
   - **None** ("No outline"): a `surface-raised` circle with the same `text-muted` ring and one diagonal `stroke-selection` line in `text-secondary`, top-right to bottom-left.
   - **Blur** (canvas background, P1-11): a `surface-raised` circle with the `blur` icon at `icon-small` in `text-secondary` (5.7:1), first in the row. Spoken "Blur".
   - **Image** (canvas background, P2-12, both editors): after Blur in the video panel, first in the photo panel. No picture yet: a `surface-raised` circle with the `photo` icon at `icon-small` in `text-secondary` (5.7:1); a tap opens the picker and the swatch isn't selected until a picture exists. **A picture set:** the picture itself, center-cropped into the circle (a thumbnail, never the original), with the selected ring. **File missing:** the same circle with the icon in `text-muted` and the selected ring, plus an explanation line under the row. Spoken "Image" (click label "Pick an image" when empty; "Image, file missing" when missing).
+    - **Missing means unreadable:** "file missing" also covers a file that exists but can't be decoded (the thumbnail fails); the copy and the way out (Replace or Remove below) are the same.
+    - **While the thumbnail loads** the swatch shows the ringed icon in `text-secondary`; the picture then replaces it (ideally with a 120 ms fade, `duration-press`; built as polish, P2-12 review P1).
   - **Selected:** a `stroke-selection` ring in `selection` (white), 2 dp outside the circle (17.2:1 on `surface`).
   - No shadow, no check mark.
 - **Layout:** a horizontally scrolling row that scrolls edge to edge, in palette order.

@@ -166,7 +166,7 @@ internal fun PhotoStage(
             FrameRefit(stage, geometry, coverPx)
             // The pictures are decoded for the frame without a panel, and again only when a committed change needs it.
             val normalWidth = geometry.frameFor(0f).width
-            val needed = remember(state.layers, scene.canvas.widthPx, normalWidth) { neededLongSides(state.layers, scene.canvas.widthPx, normalWidth) }
+            val needed = remember(state.layers, scene.canvas, normalWidth) { neededLongSides(state.layers, scene.canvas, normalWidth) }
             val currentOnIntent by rememberUpdatedState(onIntent)
             LaunchedEffect(needed) {
                 bitmaps.ensure(needed) { failed -> currentOnIntent(PhotoEditorIntent.MediaMissing(failed)) }

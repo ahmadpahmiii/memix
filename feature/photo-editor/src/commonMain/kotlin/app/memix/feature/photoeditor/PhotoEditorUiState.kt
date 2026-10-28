@@ -5,6 +5,7 @@ import app.memix.core.domain.EditorTool
 import app.memix.core.model.project.Canvas
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.ImageLayer
+import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.Layer
 import app.memix.core.model.project.PhotoCatalog
 import app.memix.core.model.project.RatioTerms
@@ -14,6 +15,8 @@ import app.memix.core.model.project.Transform
 import app.memix.core.model.project.fittedImageSize
 import app.memix.core.model.project.PixelSize
 import app.memix.core.ui.editor.SaveProblem
+import app.memix.feature.mediaimport.ImportIntent
+import app.memix.feature.mediaimport.ProjectImportUi
 import app.memix.core.ui.layers.GestureTarget
 import app.memix.core.ui.panels.PositionStep
 import app.memix.core.ui.panels.RatioStep
@@ -48,6 +51,12 @@ data class PhotoEditorUiState(
     val saveBanner: SaveProblem? = null,
     val savedAgainCount: Int = 0,
     val canFreeUpSpace: Boolean = true,
+    /** The canvas's background picture can't be read (its file is gone); the Canvas panel says so and the canvas is black (P2-12). */
+    val backgroundMissing: Boolean = false,
+    /** The picker the app should open now; the app opens it and sends [PhotoEditorIntent.PickerOpened] (P2-12). */
+    val pickRequest: PhotoPickRequest? = null,
+    /** The import sheet's state while a picked photo copies; read only by the sheet. Null until the editor starts. */
+    val photoImport: ProjectImportUi? = null,
     val toast: PhotoToast? = null,
     val unsavedSheetOpen: Boolean = false,
     /** The editor is done; the app closes the screen. */
@@ -61,6 +70,12 @@ data class PhotoEditorUiState(
 
     /** Whether a panel hides the tool bar (and then the selected-layer bar too). */
     val panelOpen: Boolean get() = panel != null
+}
+
+/** Why the photo picker is opened (spec P2-12 → Entry and exit); P2-13 adds Add photo. The app saves it across a restart behind the picker. */
+sealed interface PhotoPickRequest {
+    /** One photo for the canvas background. */
+    data object Background : PhotoPickRequest
 }
 
 /** [layerId] shown at [transform] while a Position arrow is held. */
@@ -203,6 +218,15 @@ sealed interface PhotoToastMessage {
 
     /** Spoken only, after a ratio step. */
     data class RatioStepped(val label: String) : PhotoToastMessage
+
+    /** Once per open, when the background picture's file is missing; [ratioLabel] is the pill's text ("9:16"). */
+    data class BackgroundMissing(val ratioLabel: String) : PhotoToastMessage
+
+    /** Spoken only, after a background picture landed. */
+    data object BackgroundImageSet : PhotoToastMessage
+
+    /** Spoken only, after Remove. */
+    data object BackgroundImageRemoved : PhotoToastMessage
 }
 
 sealed interface PhotoEditorIntent {
@@ -281,4 +305,25 @@ sealed interface PhotoEditorIntent {
     data class CanvasStepHeld(val step: RatioStep, val repeats: Int) : PhotoEditorIntent
 
     data class SetCanvasBackground(val argb: Long) : PhotoEditorIntent
+
+    // The background picture (P2-12).
+    /** The Image swatch with no picture yet, or Replace. */
+    data object PickBackgroundImage : PhotoEditorIntent
+
+    data object RemoveBackgroundImage : PhotoEditorIntent
+
+    /** The picker opened. */
+    data object PickerOpened : PhotoEditorIntent
+
+    /** The picker couldn't open: the import sheet says so. */
+    data object PickerUnavailable : PhotoEditorIntent
+
+    /** The picker returned [items] for [request] (empty when nothing was picked: nothing changes). */
+    data class PhotoPicked(val request: PhotoPickRequest, val items: List<MediaOrigin>) : PhotoEditorIntent
+
+    /** Something on the import sheet (Cancel, Continue, Close, back from the storage screen, ...). */
+    data class Import(val intent: ImportIntent) : PhotoEditorIntent
+
+    /** "Pick again" on the import sheet: it closes, then the same picker opens again. */
+    data object PickAgain : PhotoEditorIntent
 }

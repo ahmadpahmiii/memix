@@ -16,7 +16,7 @@ import app.memix.platform.services.PickerMedia
 import app.memix.platform.services.rememberMediaPickerLauncher
 
 /**
- * The video editor's two system pickers (P1-16): up to 35 items for Add media, one for Replace. Opens the one
+ * The video editor's three system pickers (P1-16, P2-12): up to 35 items for Add media, one for Replace, one image for the canvas background. Opens the one
  * [request] asks for and keeps that request while the picker is open, saved with the screen, so the result goes back
  * to the editor with what it was for ([VideoEditorIntent.MediaPicked]) even after Android restarted the app behind the
  * picker. Call it unconditionally in the editor's destination: a result after a restart reaches only a picker
@@ -33,10 +33,16 @@ internal fun EditorMediaPickers(request: MediaPickRequest?, onIntent: (VideoEdit
     }
     val addPicker = rememberMediaPickerLauncher(MAX_ITEMS_PER_PICK, PickerMedia.IMAGES_AND_VIDEOS, onPicked)
     val replacePicker = rememberMediaPickerLauncher(maxItems = 1, PickerMedia.IMAGES_AND_VIDEOS, onPicked)
+    // The canvas background is a picture: no videos (P2-12).
+    val backgroundPicker = rememberMediaPickerLauncher(maxItems = 1, PickerMedia.IMAGES_ONLY, onPicked)
     LaunchedEffect(request) {
         val wanted = request ?: return@LaunchedEffect
         openRequest.value = wanted
-        val picker = if (wanted is MediaPickRequest.Replace) replacePicker else addPicker
+        val picker = when (wanted) {
+            is MediaPickRequest.Add -> addPicker
+            is MediaPickRequest.Replace -> replacePicker
+            MediaPickRequest.Background -> backgroundPicker
+        }
         if (picker.launch()) {
             currentOnIntent(VideoEditorIntent.PickerOpened)
         } else {
@@ -51,6 +57,7 @@ private val MediaPickRequestSaver = Saver<MediaPickRequest?, List<Any>>(
     save = { request ->
         when (request) {
             null -> emptyList()
+            MediaPickRequest.Background -> listOf(KIND_BACKGROUND)
             is MediaPickRequest.Replace -> listOf(KIND_REPLACE, request.itemId)
             is MediaPickRequest.Add -> when (val place = request.place) {
                 is MediaPlace.AfterClipAt -> listOf(KIND_AFTER_CLIP, place.atUs)
@@ -63,6 +70,7 @@ private val MediaPickRequestSaver = Saver<MediaPickRequest?, List<Any>>(
             KIND_REPLACE -> MediaPickRequest.Replace(saved[1] as String)
             KIND_AFTER_CLIP -> MediaPickRequest.Add(MediaPlace.AfterClipAt(saved[1] as Long))
             KIND_END -> MediaPickRequest.Add(MediaPlace.End)
+            KIND_BACKGROUND -> MediaPickRequest.Background
             else -> null
         }
     },
@@ -71,3 +79,4 @@ private val MediaPickRequestSaver = Saver<MediaPickRequest?, List<Any>>(
 private const val KIND_REPLACE = "replace"
 private const val KIND_AFTER_CLIP = "after"
 private const val KIND_END = "end"
+private const val KIND_BACKGROUND = "background"
