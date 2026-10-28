@@ -22,7 +22,7 @@ Third spec for the photo editor. It reuses, and does not repeat:
 ## Entry and exit
 
 ### The Text tool
-- **Main bar (nothing selected), final order from P2-01:** **Text** · [Add photo, P2-13] · Layers. Text is first: with Formats (P2-02) it will be second. Before the other tools exist they sit one place to the left; users only see the final order.
+- **Main bar (nothing selected), final order from P2-01:** **Text** · [Add photo, P2-13] · Layers. Text is first until P2-02 adds Formats (and its Layout or Add bubble tool) in front of it. Before the other tools exist they sit one place to the left; users only see the final order.
 - **Icon** `text` (P1-10), label "Text". **Tap:** goes straight to **Typing** for a new text (no menu), as P1-10. Taps are ignored while the keyboard opens.
 - **On a canvas with a selection:** the main bar is replaced by the selected-layer bar, so Text isn't there. Clear the selection first (above).
 
@@ -53,7 +53,7 @@ Third spec for the photo editor. It reuses, and does not repeat:
 - **Not changed:** the Home card, the Drafts list and the gallery start.
 
 ### The empty-canvas card (P2-01) gets its real words
-Same card, same place and look as P2-01 (`scrim`, centered on the stage). Two bodies, chosen by whether there is history to undo:
+**P2-02 later retires this card:** once formats exist, every format's hints or pick tiles are the call to action and the card never shows (`P2-02-meme-formats.md` → The empty-canvas card). Until then, as below. Same card, same place and look as P2-01 (`scrim`, centered on the stage). Two bodies, chosen by whether there is history to undo:
 - **A canvas that never had a layer** (a fresh blank start; Undo has nothing): title "This canvas is empty", body "Tap Text to add words, or Add photo to add a picture." (`photo_empty_body_blank`). The tools it names are the main bar's, with the same words.
 - **A canvas that was emptied** (a layer was deleted; Undo has something): the same title, body "Tap Undo to bring your layer back, or add something new with Text or Add photo." (`photo_empty_body`, new wording; the old one said "close this and start a new photo meme", which is no longer the only way out).
 - **Until P2-13 is in the build,** drop "or Add photo" and "or Add photo to add a picture". The order says P2-13 comes first, so the strings above are the real ones.
@@ -104,7 +104,7 @@ LayerRow (P2-01), with two new kinds:
 ## Text on the canvas
 
 ### Landing (a new text)
-- **Where:** centered horizontally (`centerX` 0.5), scale 100%, rotation 0°. Vertically the first **free slot** of **top (`centerY` 0.25), bottom (0.75), middle (0.5)**. A slot is taken when a **visible** (not hidden) text layer has its center within 0.1 of it. All three taken: the middle. Top first, as P1-10: a meme's classic caption is top and bottom, and a second caption naturally takes the bottom.
+- **Where:** centered horizontally (`centerX` 0.5), scale 100%, rotation 0°. Vertically the first **free slot** of **top (`centerY` 0.25), bottom (0.75), middle (0.5)**. (From P2-02, the active format's own empty text slot is used first and these three only when it has none: `P2-02-meme-formats.md` → How a format works, rule 6.) A slot is taken when a **visible** (not hidden) text layer has its center within 0.1 of it. All three taken: the middle. Top first, as P1-10: a meme's classic caption is top and bottom, and a second caption naturally takes the bottom.
 - **In the stack:** the **front** (top-most layer), so the new words are over the photo and everything else. It becomes the selection: frame, handle, the selected-text bar. No bonk (nothing is on a timeline), no haptic; a 120 ms fade of its frame (P2-01). Announced "Text added" (below).
 - **Style:** the last style used **in this editor visit** (font, color, outline), otherwise the default: Classic, White, Black outline (P1-10). A visit ends when the editor closes. **Duplicate** copies the style.
 

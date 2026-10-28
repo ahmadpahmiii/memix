@@ -25,7 +25,7 @@ Two entries, the same flow, both live only once this ticket is built (nothing in
 
 ## What lands
 - **A new `ImageLayer` at the top of the stack** (the front), as one committed edit: one undo step, "Add photo".
-- **Size: fitted inside the frame** (the owner's words): P2-01's "size at scale 1", the picture scaled to the largest size that lies wholly inside the canvas, centered, scale 1, no turn. A picture whose shape is within 1% of the canvas's covers it (the same 1% rule as every image layer). **Place:** the center of the canvas (0.5, 0.5).
+- **Size: fitted inside the frame** (the owner's words): P2-01's "size at scale 1", the picture scaled to the largest size that lies wholly inside the canvas, centered, scale 1, no turn. A picture whose shape is within 1% of the canvas's covers it (the same 1% rule as every image layer). **Place:** the center of the canvas (0.5, 0.5). (From P2-02, with a Caption bar or Demotivational format the picture is fitted inside the format's **picture area** and centered on it instead; `P2-02-meme-formats.md` → How a format works.)
 - **Unlocked, shown, 100% opacity.**
 - **The canvas doesn't change.** Its shape belongs to the project; the photo adapts to it. (A user whose second photo has another shape sees it letterboxed in the frame and can change the ratio with the pill.)
 - **It becomes the selection:** its frame and handle show, and the bar switches to the selected-layer bar. The photo is fully visible, which is the point: the user sees what landed and can pinch or drag it at once. If it covers the layers beneath it (a same-shape photo does), the handle and frame still show it's there, and Undo is one tap.

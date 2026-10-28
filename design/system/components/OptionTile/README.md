@@ -10,7 +10,7 @@ A single-choice tile with a small picture and a short label, for settings whose 
   - `radius-md`. Unselected: `surface-raised` fill, label in `text` (12.4:1), picture in `text-secondary` (5.7:1).
   - Selected: `selection` (white) fill, label and picture in `on-primary` (18.9:1), like a selected chip or FontTile.
   - No outline, no shadow, no check mark: the white fill is the selection.
-  - A drawn shape follows the icon grammar: solid, 1 dp corners, its long side 20 dp inside the 24 dp box.
+  - A drawn shape follows the icon grammar: solid, 1 dp corners, its long side 20 dp inside the 24 dp box. Shapes drawn from data so far: the ratio rectangles (P1-11), and, in the photo editor (P2-02), the five meme formats, Panels' cell counts and layouts, and a bubble's three shapes. A format shape may use one stroked outline beside its solid parts (single color).
 - **Behavior:**
   - A tap selects it and applies the setting at once (one undo step in the editors).
   - Tapping the selected tile does nothing.

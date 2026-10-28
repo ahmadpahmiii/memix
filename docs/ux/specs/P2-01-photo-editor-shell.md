@@ -105,7 +105,7 @@ The Layers panel row assumes three layers, one selected (its height is capped at
 ### Tool bars
 Component ToolBar (`design/system/components/ToolBar/README.md`, updated with this spec).
 
-**Main bar (nothing selected):** **Layers** only (icon `layers`, new). It opens the Layers panel. Final order of the photo editor's main bar, so each tool keeps its place as tickets add it: Formats (P2-02) · Text (P2-03) · Stickers (P2-03) · **Add photo (P2-13)** · **Layers** · Draw (P2-05) · Adjust and Filters (P2-04) · Remove BG (P2-07) · Censor (P2-05) · Crop (P2-04). P2-02 decides whether Formats is this bar's first tool or the board's separate format bar. Before a tool exists, the others sit one place to the left; users only ever see the final order.
+**Main bar (nothing selected):** **Layers** only (icon `layers`, new). It opens the Layers panel. Final order of the photo editor's main bar, so each tool keeps its place as tickets add it: **Formats (P2-02) · [Layout (Panels) or Add bubble (Bubbles), P2-02] · Text (P2-03) · Stickers (P2-14) · Add photo (P2-13) · Layers** · Draw (P2-05) · Adjust and Filters (P2-04) · Remove BG (P2-07) · Censor (P2-05) · Crop (P2-04). **Decided in the P2-02 spec: Formats is the bar's first tool** (a tool and a panel, not the board's permanent format row). Before a tool exists, the others sit one place to the left; users only ever see the final order.
 
 > **Hook, not built in P2-01:** the main bar's **Add photo** tool (just before Layers) and a first row **Add photo** at the top of the Layers panel's list belong to P2-13. Nothing in P2-01 shows, reserves space for, or announces them.
 

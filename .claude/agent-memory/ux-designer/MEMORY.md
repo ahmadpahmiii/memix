@@ -2,6 +2,13 @@
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: Design decisions and their reasons, patterns that worked or failed, recurring review issues, competitor insights.
 
+- 2026-10-28 · P2-12 review (provisional, desktop renders + code, no phone). Approved with polish, no must-fixes (P1 swatch fade, P2 line and swatch used two "missing" tests, P3 photo panel image row below the 40% cap, P4 pt toast 91 chars vs 90, P5 Hindi a11y name order). Lessons:
+  - **I wrote a panel height from memory (300 dp) that was 335 dp.** Measure content heights from renders before putting a number in a spec; compare to the panel cap (40% = 320 dp at 800, 256 at 640).
+  - **A state shown by two code paths (swatch look vs line under it) must come from one computed value.** Grep for the same state computed twice.
+  - **"Missing" in the editors = absent or undecodable;** editor learns it from the 128 px thumbnail, export from the bars' decode: QA checks they agree (damaged file, 12000 x 8000).
+  - **Count budget characters for pt and es with the placeholder expanded** (`%1$s` = "9:16"); pt toast was 91 vs 90.
+  - Accepted: Exporting mock frame draws no picture for an Image background; Hindi a11y names put the object first (contains the visible label, SC 2.5.3 holds).
+  - Don't change a panel cap to fit new content if it makes the stage jump when the content lands.
 - 2026-10-28 · P2-01 review (provisional, desktop renders + code, no phone). Changes requested, 3 small must-fixes: M1 locked layer's bar had Unlock fifth (my spec said "in the Lock place" and "Unlock first"; invisible at 200% es), M2 shared `explain_canvas_widest/tallest` said "video" in the photo editor, M3 Layers panel list got 96 dp (360x640) and about 40 dp (200% font) beside a fixed Opacity row. Decisions and lessons:
   - **A state whose other tools all refuse puts the state-fixing tool first** (Unlock). When a bar reorders under the finger, reset its scroll. Hidden layer: Show stays in place, QA watches.
   - **Measure list windows from renders at the smallest phone and 200% font:** header + fixed rows + panel padding can leave under 2 rows for the list. Rule: a list panel keeps room for 2 rows, else the fixed row moves into the list (cap under 300 dp or fontScale 1.3+).
