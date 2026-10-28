@@ -14,6 +14,7 @@ import app.memix.core.domain.project.OpenPhotoDraftUseCase
 import app.memix.core.domain.project.ProjectEditSession
 import app.memix.core.domain.project.ProjectEditState
 import app.memix.core.domain.project.StartEditSessionUseCase
+import app.memix.core.domain.project.addImageLayer
 import app.memix.core.domain.project.deleteLayer
 import app.memix.core.domain.project.duplicateLayer
 import app.memix.core.domain.project.isEmptyDraft
@@ -152,6 +153,7 @@ class PhotoEditorViewModel(
             is PhotoEditorIntent.CanvasStepHeld -> holdRatio(intent.step, intent.repeats)
             is PhotoEditorIntent.SetCanvasBackground -> setBackground(intent.argb)
             PhotoEditorIntent.PickBackgroundImage -> requestPick(PhotoPickRequest.Background)
+            PhotoEditorIntent.AddPhoto -> requestPick(PhotoPickRequest.AddLayer)
             PhotoEditorIntent.RemoveBackgroundImage -> removeBackgroundImage()
             PhotoEditorIntent.PickerOpened -> updateState { it.copy(pickRequest = null) }
             PhotoEditorIntent.PickerUnavailable -> pickerUnavailable()
@@ -397,7 +399,17 @@ class PhotoEditorViewModel(
             draftOpened.await()
             return when (request) {
                 PhotoPickRequest.Background -> landBackground(added.firstOrNull { it.kind == MediaKind.IMAGE })
+                PhotoPickRequest.AddLayer -> landLayer(added.firstOrNull { it.kind == MediaKind.IMAGE })
             }
+        }
+
+        // The photo goes on top of the stack, fitted inside the frame, and becomes the selection (spec P2-13 → What lands).
+        private fun landLayer(photo: MediaRef?): LandingResult {
+            if (photo == null) return LandingResult.Declined
+            val newId = Uuid.random().toString()
+            if (!commit(PhotoEdit.ADD_PHOTO) { it.addImageLayer(photo, newId) }) return LandingResult.Declined
+            select(newId)
+            return LandingResult.Landed
         }
 
         // The Canvas panel is still open under the pick; the new picture shows on the canvas and the swatch.
@@ -409,7 +421,11 @@ class PhotoEditorViewModel(
         override fun showLanding(request: PhotoPickRequest, afterSheet: Boolean) {
             viewModelScope.launch {
                 if (afterSheet) delay(MemixMotion.durationSheet.milliseconds)
-                showToast(PhotoToastMessage.BackgroundImageSet, spokenOnly = true)
+                val spoken = when (request) {
+                    PhotoPickRequest.Background -> PhotoToastMessage.BackgroundImageSet
+                    PhotoPickRequest.AddLayer -> PhotoToastMessage.LayerAdded
+                }
+                showToast(spoken, spokenOnly = true)
             }
         }
 

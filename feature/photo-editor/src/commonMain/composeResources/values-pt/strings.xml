@@ -48,4 +48,8 @@
     <string name="edit_unlock">Desbloquear</string>
     <string name="edit_layer_hide">Ocultar</string>
     <string name="edit_layer_show">Mostrar</string>
+    <!-- Add photo (P2-13). Budgets and translator notes: docs/ux/specs/P2-13-image-layers.md -> Copy. "Add photo" puts a second picture on top of the first. -->
+    <string name="tool_add_photo">Adicionar foto</string>
+    <string name="a11y_layer_added">Foto adicionada na frente</string>
+    <string name="edit_add_photo">Adicionar foto</string>
 </resources>

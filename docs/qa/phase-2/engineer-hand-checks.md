@@ -88,3 +88,19 @@ adb shell am start -S -n app.memix/.android.MainActivity --es memix.renderScene 
 - **Create → Video meme and Photo meme:** "Adding your media" with "1 of N" and "Adding your photo" with no count; Cancel, "Not enough space", "None went in", no picker app.
 - **Video editor Add media and Replace (P1-16):** unchanged: the picks land, the toasts and the focus return work. The editor's `EditorMediaImport` now delegates to the shared `ProjectPickImport`.
 - **Canvas panel colors in both editors:** the ten swatches, the ring, the black swatch's hairline ring; the timeline's spoken clip kinds ("video", "photo") after the `import_item_*` strings moved to `:core:ui`.
+
+## P2-13 · add image layers in the photo editor
+
+Spec: `docs/ux/specs/P2-13-image-layers.md` (its "QA compares" and "Measured" lists are the checks). Screenshots of the states (desktop renders): `docs/ux/reviews/P2-13/`. No new debug hook: use a photo start (Home → Photo meme, a 4:3 photo), then add a 9:16 photo and a second 4:3 photo from the gallery (the debug pictures `shape-9x16.jpg` and `shape-4x3.jpg` are written by `--es memix.openEditor photo-layers-10`; see the P2-01 hooks to copy them to the gallery).
+
+1. **Two taps:** nothing selected: Add photo (main bar, before Layers), a photo in the picker. The photo lands as the top layer, fitted inside the frame, centered, scale 1, selected with frame and handle, and the bar switches to the selected-layer bar. Cancelling the picker, "Not enough space", "None went in" and "No picker app" change nothing and fire no `tool_use`.
+2. **A 9:16 photo on a 4:3 canvas:** fitted inside, the canvas unchanged and its background beside the photo. **A same-shape photo:** covers the frame (1% rule); frame and handle still show it is there.
+3. **Undo and redo:** one Undo ("Undo: Add photo") removes the layer; Redo brings it back at the same place. `adb logcat` shows one `tool_use` `add_photo` per landing and none for a cancelled pick.
+4. **From the Layers panel:** Layers → the Add photo button is the first item of the list (after Move up and down and the Opacity row, never a drop target when dragging rows); after a landing the new row is selected at the top with the button above it; on a short panel (360 x 640, or 200% font) the Opacity row is the list's first item and the Add photo button follows it.
+5. **On an empty canvas** (delete the only layer, or start blank with `photo-empty`): Add photo works and the empty-canvas card goes.
+6. **Like any layer:** move, pinch, turn, fade, hide, lock, reorder, duplicate and delete the new layer; Position panel steps work.
+7. **Reopen:** kill after landing (`adb shell am force-stop app.memix`), reopen from Drafts: the layer, its place and its picture are there; kill while the picker is open: the result still lands once (the root keeps the open request across a restart behind the picker).
+8. **Adding the same gallery photo twice** makes a second file in `files/media/<project id>/`; Duplicate shares one file; close, kill, restart: both layers still draw (the cleaner keeps the shared files).
+9. **Memory and speed:** add a 12 MP photo to the `photo-layers-10` scene: it decodes at the drawn size (`dumpsys meminfo` Graphics stays near the P2-01 numbers, not 480 MB) and the next drag stays under 5% janky frames (benchmark build, three runs).
+10. **Leaks:** LeakCanary, 5 cycles of add, drag and undo.
+11. **Accessibility:** "Photo added in front" is announced politely; Add photo reads its visible label in the bar and the panel; TalkBack focus after the picker closes (from the main bar the layer lands selected and the bar switches: report where focus lands; focus return is not built, the P4 gap of the P2-01 review). Hindi and Spanish at 200% on 360 x 640: `docs/ux/reviews/P2-13/30-hindi-200-*`.

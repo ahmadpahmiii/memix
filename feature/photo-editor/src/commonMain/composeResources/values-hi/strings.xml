@@ -48,4 +48,8 @@
     <string name="edit_unlock">अनलॉक</string>
     <string name="edit_layer_hide">छिपाएँ</string>
     <string name="edit_layer_show">दिखाएँ</string>
+    <!-- Add photo (P2-13). Budgets and translator notes: docs/ux/specs/P2-13-image-layers.md -> Copy. "Add photo" puts a second picture on top of the first. -->
+    <string name="tool_add_photo">फ़ोटो जोड़ें</string>
+    <string name="a11y_layer_added">फ़ोटो सबसे ऊपर जोड़ी गई</string>
+    <string name="edit_add_photo">फ़ोटो जोड़ें</string>
 </resources>

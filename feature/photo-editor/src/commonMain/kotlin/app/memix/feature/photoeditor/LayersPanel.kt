@@ -42,6 +42,7 @@ import androidx.compose.ui.zIndex
 import app.memix.core.designsystem.MemixIcons
 import app.memix.core.designsystem.MemixMotion
 import app.memix.core.designsystem.MemixSpacing
+import app.memix.core.designsystem.component.Button
 import app.memix.core.designsystem.component.IconButton
 import app.memix.core.designsystem.component.LayerRow
 import app.memix.core.designsystem.component.ToolPanel
@@ -67,6 +68,7 @@ import memix.feature.photo_editor.generated.resources.layer_unlock_a11y
 import memix.feature.photo_editor.generated.resources.layers_move_down
 import memix.feature.photo_editor.generated.resources.layers_move_up
 import memix.feature.photo_editor.generated.resources.layers_title
+import memix.feature.photo_editor.generated.resources.tool_add_photo
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -95,7 +97,10 @@ internal fun LayersPanel(
     LaunchedEffect(state.selectedLayerId, state.panel, opacityInList) {
         if (state.panel != PhotoPanel.LAYERS) return@LaunchedEffect
         val index = frontFirst.indexOfFirst { it.id == state.selectedLayerId }
-        if (index >= 0) listState.animateScrollToItem(index + if (opacityInList) 1 else 0)
+        if (index < 0) return@LaunchedEffect
+        val itemsAbove = if (opacityInList) 1 else 0
+        // The front row shows with the Add photo button above it (where a new layer lands); any other row scrolls to the top.
+        listState.animateScrollToItem(if (index == 0) itemsAbove else index + ITEMS_BEFORE_ROWS + itemsAbove)
     }
     ToolPanel(
         state.panel == PhotoPanel.LAYERS,
@@ -136,6 +141,15 @@ private fun LayerList(
     LazyColumn(Modifier.fillMaxWidth(), state = listState, verticalArrangement = Arrangement.spacedBy(MemixSpacing.space1)) {
         // Reordering finds rows by key, so this extra first item shifts no index there; it is never a drop target.
         if (opacityItem != null) item(key = OPACITY_ITEM_KEY, contentType = "opacity") { opacityItem() }
+        // Where the new layer will land: the first stop before the rows (spec P2-13 → Entry and exit). Never a drop target.
+        item(key = ADD_PHOTO_ITEM_KEY, contentType = "add") {
+            Button(
+                stringResource(Res.string.tool_add_photo),
+                { onIntent(PhotoEditorIntent.AddPhoto) },
+                Modifier.fillMaxWidth(),
+                leadingIcon = MemixIcons.Create,
+            )
+        }
         items(shown, key = { it.id }, contentType = { "layer" }) { layer ->
             val index = frontFirst.indexOfFirst { it.id == layer.id }
             val lifted = reorder.draggedId == layer.id
@@ -343,6 +357,10 @@ private val REORDER_EDGE = MemixSpacing.space6
 private val ROOMY_PANEL_MIN_HEIGHT = 300.dp
 private const val TIGHT_FONT_SCALE = 1.3f
 private const val OPACITY_ITEM_KEY = "opacity"
+private const val ADD_PHOTO_ITEM_KEY = "add-photo"
+
+// The Add photo button comes before the first row, so the row at index i is item i + 1 (and one more with the Opacity item).
+private const val ITEMS_BEFORE_ROWS = 1
 private const val PERCENT = 100
 private const val ARROW_UP = 270f
 private const val ARROW_DOWN = 90f

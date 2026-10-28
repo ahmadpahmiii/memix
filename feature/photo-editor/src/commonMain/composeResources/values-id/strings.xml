@@ -48,4 +48,8 @@
     <string name="edit_unlock">Buka kunci</string>
     <string name="edit_layer_hide">Sembunyikan</string>
     <string name="edit_layer_show">Tampilkan</string>
+    <!-- Add photo (P2-13). Budgets and translator notes: docs/ux/specs/P2-13-image-layers.md -> Copy. "Add photo" puts a second picture on top of the first. -->
+    <string name="tool_add_photo">Tambah foto</string>
+    <string name="a11y_layer_added">Foto ditambahkan di depan</string>
+    <string name="edit_add_photo">Tambah foto</string>
 </resources>

@@ -29,7 +29,7 @@ Two entries, the same flow, both live only once this ticket is built (nothing in
 - **Unlocked, shown, 100% opacity.**
 - **The canvas doesn't change.** Its shape belongs to the project; the photo adapts to it. (A user whose second photo has another shape sees it letterboxed in the frame and can change the ratio with the pill.)
 - **It becomes the selection:** its frame and handle show, and the bar switches to the selected-layer bar. The photo is fully visible, which is the point: the user sees what landed and can pinch or drag it at once. If it covers the layers beneath it (a same-shape photo does), the handle and frame still show it's there, and Undo is one tap.
-- **If the Layers panel is open** (the entry was its button): the new row appears at the top of the list, selected, scrolled into view; the canvas above shows it.
+- **If the Layers panel is open** (the entry was its button): the new row appears at the top of the list, selected; **the list scrolls to the Add photo button with the new row beneath it** (so the user sees what landed and the button for the next photo; review P2-13, 28 Oct); the canvas above shows it.
 - **If the canvas has no layers** (a blank canvas, or the last layer deleted): the same landing, and the empty-canvas card goes.
 - **No layer limit** and no cap per pick: one photo per pick. Several at once is Later (below).
 - **Adding the same gallery photo twice** makes a second copy (a storage cost only). **Duplicate** (P2-01) shares one file instead.

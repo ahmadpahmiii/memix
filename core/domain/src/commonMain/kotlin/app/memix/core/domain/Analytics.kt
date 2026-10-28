@@ -158,6 +158,9 @@ enum class EditorTool(val eventValue: String?) {
     HIDE_LAYER("hide_layer"),
     SHOW_LAYER("show_layer"),
     REORDER_LAYER("reorder_layer"),
+
+    /** P2-13: a photo landed as a new top layer, once per pick. */
+    ADD_PHOTO("add_photo"),
 }
 
 /** `sound_add.tab` and `sound_preview.tab`: where in the sounds UI it happened. "starter" until P3-05 (PM, 8 Oct 2026). */

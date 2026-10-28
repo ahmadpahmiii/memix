@@ -1,6 +1,8 @@
 package app.memix.core.domain.project
 
+import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.Layer
+import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.PhotoCatalog
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.Transform
@@ -86,6 +88,14 @@ fun Project.duplicateLayer(layerId: String, newId: String): Project {
     val copy = original.withState(transform = moved, locked = false).withId(newId)
     return withLayers(all.take(index + 1) + copy + all.drop(index + 1))
 }
+
+/**
+ * A new image layer [id] of [media] at the front of the stack (spec P2-13 → What lands): centered, scale 1, no turn, unlocked,
+ * shown, fully opaque. Its size at scale 1 is the picture fitted inside the canvas ([fittedImageSize], the same rule as every
+ * image layer, computed when it is drawn), so the canvas doesn't change.
+ */
+fun Project.addImageLayer(media: MediaRef, id: String): Project =
+    withLayers(layers() + ImageLayer(id, media, Transform()))
 
 /** One place toward the front. Refused at the front, with a single layer, or while it's locked. */
 fun Project.moveLayerUp(layerId: String): LayerEdit = moveLayerBy(layerId, 1)

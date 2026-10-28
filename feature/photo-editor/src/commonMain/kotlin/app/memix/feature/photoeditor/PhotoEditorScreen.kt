@@ -105,9 +105,11 @@ import memix.core.ui.generated.resources.tool_delete
 import memix.core.ui.generated.resources.tool_duplicate
 import memix.core.ui.generated.resources.tool_position
 import memix.feature.photo_editor.generated.resources.Res
+import memix.feature.photo_editor.generated.resources.a11y_layer_added
 import memix.feature.photo_editor.generated.resources.a11y_layer_order
 import memix.feature.photo_editor.generated.resources.a11y_layer_opacity
 import memix.feature.photo_editor.generated.resources.a11y_layer_row
+import memix.feature.photo_editor.generated.resources.edit_add_photo
 import memix.feature.photo_editor.generated.resources.edit_layer_hide
 import memix.feature.photo_editor.generated.resources.edit_layer_opacity
 import memix.feature.photo_editor.generated.resources.edit_layer_show
@@ -125,6 +127,7 @@ import memix.feature.photo_editor.generated.resources.layer_name_photo
 import memix.feature.photo_editor.generated.resources.layer_tools_close
 import memix.feature.photo_editor.generated.resources.photo_layers_moved
 import memix.feature.photo_editor.generated.resources.photo_missing_media
+import memix.feature.photo_editor.generated.resources.tool_add_photo
 import memix.feature.photo_editor.generated.resources.tool_hide_layer
 import memix.feature.photo_editor.generated.resources.tool_layer_opacity
 import memix.feature.photo_editor.generated.resources.tool_layers
@@ -289,7 +292,7 @@ private fun ToolBarRegion(state: PhotoEditorUiState, onIntent: (PhotoEditorInten
         Crossfade(state.selectedLayerId != null, animationSpec = tween(MemixMotion.durationPress), label = "tool bar") { hasSelection ->
             val layer = if (hasSelection) state.selectedLayer ?: lastLayer[0] else null
             if (layer == null) {
-                ToolBar(persistentListOf(layersTool(onIntent)))
+                ToolBar(persistentListOf(addPhotoTool(onIntent), layersTool(onIntent)))
             } else {
                 val closeLabel = stringResource(Res.string.layer_tools_close)
                 ToolBar(
@@ -301,6 +304,11 @@ private fun ToolBarRegion(state: PhotoEditorUiState, onIntent: (PhotoEditorInten
         }
     }
 }
+
+// Opens the picker for a new top layer (spec P2-13 → Entry and exit); in its final place just before Layers.
+@Composable
+private fun addPhotoTool(onIntent: (PhotoEditorIntent) -> Unit) =
+    ToolBarItem(stringResource(Res.string.tool_add_photo), MemixIcons.Create, { onIntent(PhotoEditorIntent.AddPhoto) })
 
 // Opens the Layers panel; on an empty canvas it explains instead (spec → States).
 @Composable
@@ -385,6 +393,7 @@ private fun ToastTimer(toast: PhotoToast, onTimedOut: (id: Long) -> Unit) {
             is PhotoToastMessage.Undone, is PhotoToastMessage.Redone, is PhotoToastMessage.Edited, is PhotoToastMessage.LayerOrder,
             is PhotoToastMessage.PositionTransformed, is PhotoToastMessage.PositionMoved, is PhotoToastMessage.OpacityChanged,
             is PhotoToastMessage.RatioStepped, PhotoToastMessage.BackgroundImageSet, PhotoToastMessage.BackgroundImageRemoved,
+            PhotoToastMessage.LayerAdded,
             -> WHAT_HAPPENED_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
@@ -417,6 +426,7 @@ private fun toastText(message: PhotoToastMessage): String = when (message) {
     is PhotoToastMessage.BackgroundMissing -> stringResource(UiRes.string.canvas_image_missing_toast, message.ratioLabel)
     PhotoToastMessage.BackgroundImageSet -> stringResource(UiRes.string.a11y_canvas_image_set)
     PhotoToastMessage.BackgroundImageRemoved -> stringResource(UiRes.string.a11y_canvas_image_removed)
+    PhotoToastMessage.LayerAdded -> stringResource(Res.string.a11y_layer_added)
 }
 
 @Composable
@@ -433,6 +443,7 @@ private fun editName(edit: PhotoEdit): String = stringResource(
         PhotoEdit.DUPLICATE -> UiRes.string.edit_duplicate
         PhotoEdit.CANVAS_RATIO -> UiRes.string.edit_canvas_ratio
         PhotoEdit.CANVAS_BACKGROUND -> UiRes.string.edit_canvas_background
+        PhotoEdit.ADD_PHOTO -> Res.string.edit_add_photo
     },
 )
 

@@ -76,6 +76,9 @@ data class PhotoEditorUiState(
 sealed interface PhotoPickRequest {
     /** One photo for the canvas background. */
     data object Background : PhotoPickRequest
+
+    /** One photo as a new top layer (P2-13). */
+    data object AddLayer : PhotoPickRequest
 }
 
 /** [layerId] shown at [transform] while a Position arrow is held. */
@@ -160,6 +163,7 @@ enum class PhotoEdit(val tool: EditorTool) {
     DUPLICATE(EditorTool.DUPLICATE),
     CANVAS_RATIO(EditorTool.CANVAS_RATIO),
     CANVAS_BACKGROUND(EditorTool.CANVAS_BACKGROUND),
+    ADD_PHOTO(EditorTool.ADD_PHOTO),
     ;
 
     companion object {
@@ -227,6 +231,9 @@ sealed interface PhotoToastMessage {
 
     /** Spoken only, after Remove. */
     data object BackgroundImageRemoved : PhotoToastMessage
+
+    /** Spoken only, after a photo landed as a new top layer: "Photo added in front". */
+    data object LayerAdded : PhotoToastMessage
 }
 
 sealed interface PhotoEditorIntent {
@@ -309,6 +316,9 @@ sealed interface PhotoEditorIntent {
     // The background picture (P2-12).
     /** The Image swatch with no picture yet, or Replace. */
     data object PickBackgroundImage : PhotoEditorIntent
+
+    /** The Add photo tool, or the Layers panel's Add photo button (P2-13): the picker for a new top layer opens. */
+    data object AddPhoto : PhotoEditorIntent
 
     data object RemoveBackgroundImage : PhotoEditorIntent
 

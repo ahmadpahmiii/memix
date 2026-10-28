@@ -196,8 +196,21 @@ internal fun PhotoEditorPicker(request: PhotoPickRequest?, onIntent: (PhotoEdito
 
 // A request as a short list of plain values: its kind.
 private val PhotoPickRequestSaver = Saver<PhotoPickRequest?, List<Any>>(
-    save = { request -> if (request == null) emptyList() else listOf(KIND_BACKGROUND) },
-    restore = { saved -> if (saved.firstOrNull() == KIND_BACKGROUND) PhotoPickRequest.Background else null },
+    save = { request ->
+        when (request) {
+            null -> emptyList()
+            PhotoPickRequest.Background -> listOf(KIND_BACKGROUND)
+            PhotoPickRequest.AddLayer -> listOf(KIND_ADD_LAYER)
+        }
+    },
+    restore = { saved ->
+        when (saved.firstOrNull()) {
+            KIND_BACKGROUND -> PhotoPickRequest.Background
+            KIND_ADD_LAYER -> PhotoPickRequest.AddLayer
+            else -> null
+        }
+    },
 )
 
 private const val KIND_BACKGROUND = "background"
+private const val KIND_ADD_LAYER = "add_layer"
