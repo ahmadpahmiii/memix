@@ -13,7 +13,11 @@ import kotlinx.serialization.Serializable
 // Full screens over MainRoute.
 /** A saved video draft; P1-02 opens it right after its first import. */
 @Serializable data class VideoEditorRoute(val projectId: String)
-@Serializable data object PhotoEditorRoute
+/**
+ * A photo draft (P2-01). [blank] opens a blank canvas that only exists in memory: it is saved at its first committed step
+ * that leaves a layer, and [projectId] is the id it is saved under.
+ */
+@Serializable data class PhotoEditorRoute(val projectId: String, val blank: Boolean = false)
 @Serializable data object CatalogRoute
 /** The Exporting screen and, when the file is saved, the Exported screen (P1-12); pushed over the video editor. */
 @Serializable data object ExportRoute

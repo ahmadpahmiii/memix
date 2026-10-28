@@ -43,6 +43,7 @@ import app.memix.core.ui.shortDurationText
 import app.memix.feature.videoeditor.ExportSheetUi
 import app.memix.feature.videoeditor.VideoEditorIntent
 import memix.feature.video_editor.generated.resources.Res
+import memix.core.ui.generated.resources.Res as UiRes
 import memix.feature.video_editor.generated.resources.export_estimate
 import memix.feature.video_editor.generated.resources.export_facts_a11y
 import memix.feature.video_editor.generated.resources.export_facts_format
@@ -57,7 +58,7 @@ import memix.feature.video_editor.generated.resources.export_start
 import memix.feature.video_editor.generated.resources.export_watermark_body
 import memix.feature.video_editor.generated.resources.export_watermark_title
 import memix.feature.video_editor.generated.resources.export_title
-import memix.feature.video_editor.generated.resources.import_free_up_space
+import memix.core.ui.generated.resources.import_free_up_space
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -187,7 +188,7 @@ private fun Notices(sheet: ExportSheetUi, missingMedia: Boolean, onFreeUpSpace: 
             NoticeText(stringResource(Res.string.export_no_space, fileSizeText(shortBytes, SizeRounding.UP), sheet.choice.resolution.label))
             if (onFreeUpSpace != null) {
                 // The storage screen is asked for the total the export needs, not the amount missing (spec → Free space).
-                Button(stringResource(Res.string.import_free_up_space), { onFreeUpSpace(sheet.spaceNeededBytes) }, variant = ButtonVariant.Quiet)
+                Button(stringResource(UiRes.string.import_free_up_space), { onFreeUpSpace(sheet.spaceNeededBytes) }, variant = ButtonVariant.Quiet)
             }
         }
     }

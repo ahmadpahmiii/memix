@@ -1,8 +1,7 @@
-package app.memix.feature.videoeditor.captions
+package app.memix.core.ui.layers
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.geometry.Offset
-import app.memix.core.domain.text.CaptionBlockSize
 import app.memix.core.model.project.Transform
 import kotlin.math.abs
 import kotlin.math.cos
@@ -12,8 +11,8 @@ import kotlin.math.sin
 
 /**
  * Where the canvas frame sits on the stage, in stage pixels: the largest rectangle of the canvas ratio inside the stage
- * less [inset] on every side, centered in the top [areaHeight] of it (typing keeps the frame where it was, spec P1-10
- * → Typing). The preview, the captions and their frames all use this one rectangle.
+ * less [inset] on every side, centered in the top [areaHeight] of it (the video editor's typing keeps the frame where it
+ * was, spec P1-10 → Typing). The preview or the scene, the layers and their frames all use this one rectangle.
  */
 @Immutable
 data class CanvasFrameRect(val left: Float, val top: Float, val width: Float, val height: Float) {
@@ -34,11 +33,11 @@ data class CanvasFrameRect(val left: Float, val top: Float, val width: Float, va
 }
 
 /**
- * A caption's block on the stage: centered at [center] (stage pixels), [halfWidth] × [halfHeight] before it's turned
- * clockwise by [rotationDegrees] around that center.
+ * A layer's box on the stage: centered at [center] (stage pixels), [halfWidth] × [halfHeight] before it's turned
+ * clockwise by [rotationDegrees] around that center. A caption's box is its laid-out block, an image's its picture.
  */
 @Immutable
-data class CaptionBox(val center: Offset, val halfWidth: Float, val halfHeight: Float, val rotationDegrees: Float) {
+data class LayerBox(val center: Offset, val halfWidth: Float, val halfHeight: Float, val rotationDegrees: Float) {
     /**
      * Whether [point] is on the box grown by [margin] on every side, and to at least [minHalfSize] from the center
      * each way (a 48 dp target, spec P1-10 → On the preview).
@@ -65,13 +64,16 @@ data class CaptionBox(val center: Offset, val halfWidth: Float, val halfHeight: 
     }
 
     companion object {
-        /** The box of a caption whose block at scale 1 is [block] canvas pixels, placed by [transform] in [frame]. */
-        fun of(block: CaptionBlockSize, transform: Transform, frame: CanvasFrameRect, canvasWidthPx: Int): CaptionBox {
+        /**
+         * The box of a layer whose own box at scale 1 is [widthPx] × [heightPx] canvas pixels, placed by [transform] in
+         * [frame] on a canvas [canvasWidthPx] wide.
+         */
+        fun of(widthPx: Float, heightPx: Float, transform: Transform, frame: CanvasFrameRect, canvasWidthPx: Int): LayerBox {
             val pixelScale = if (canvasWidthPx > 0) frame.width / canvasWidthPx else 0f
-            return CaptionBox(
+            return LayerBox(
                 center = Offset(frame.left + transform.centerX * frame.width, frame.top + transform.centerY * frame.height),
-                halfWidth = block.widthPx * transform.scale * pixelScale / 2,
-                halfHeight = block.heightPx * transform.scale * pixelScale / 2,
+                halfWidth = widthPx * transform.scale * pixelScale / 2,
+                halfHeight = heightPx * transform.scale * pixelScale / 2,
                 rotationDegrees = transform.rotationDegrees,
             )
         }

@@ -54,7 +54,8 @@ import app.memix.feature.videoeditor.VideoEditorIntent
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import memix.feature.video_editor.generated.resources.Res
-import memix.feature.video_editor.generated.resources.panel_done
+import memix.core.ui.generated.resources.Res as UiRes
+import memix.core.ui.generated.resources.panel_done
 import memix.feature.video_editor.generated.resources.text_entry_count
 import memix.feature.video_editor.generated.resources.text_entry_count_a11y
 import memix.feature.video_editor.generated.resources.text_entry_hint
@@ -115,7 +116,7 @@ internal fun TextEntryBar(entry: TextEntryUi, field: TextFieldState, onIntent: (
                     }
                 },
             )
-            Button(stringResource(Res.string.panel_done), { onIntent(VideoEditorIntent.TextEntryDone) }, variant = ButtonVariant.Ghost)
+            Button(stringResource(UiRes.string.panel_done), { onIntent(VideoEditorIntent.TextEntryDone) }, variant = ButtonVariant.Ghost)
         }
         if (count >= COUNTER_FROM) Counter(count)
     }

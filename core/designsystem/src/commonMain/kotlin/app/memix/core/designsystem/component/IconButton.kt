@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -49,6 +50,8 @@ fun IconButton(
     enabled: Boolean = true,
     onSurfaceRaised: Boolean = false,
     tint: Color = MemixColors.text,
+    /** Turns the drawing clockwise: one arrow drawing for up and down (the Layers panel's Move buttons). */
+    turnDegrees: Float = 0f,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressedFill = if (onSurfaceRaised) MemixColors.hairline else MemixColors.surfaceRaised
@@ -66,7 +69,7 @@ fun IconButton(
         contentAlignment = Alignment.Center,
     ) {
         Crossfade(icon, animationSpec = tween(MemixMotion.durationPress), label = "icon") { shown ->
-            Icon(shown, contentDescription = null, tint = iconTint)
+            Icon(shown, contentDescription = null, tint = iconTint, modifier = Modifier.rotate(turnDegrees))
         }
     }
 }

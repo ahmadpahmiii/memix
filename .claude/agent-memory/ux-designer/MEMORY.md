@@ -2,6 +2,15 @@
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: Design decisions and their reasons, patterns that worked or failed, recurring review issues, competitor insights.
 
+- 2026-10-28 · P2-01 review (provisional, desktop renders + code, no phone). Changes requested, 3 small must-fixes: M1 locked layer's bar had Unlock fifth (my spec said "in the Lock place" and "Unlock first"; invisible at 200% es), M2 shared `explain_canvas_widest/tallest` said "video" in the photo editor, M3 Layers panel list got 96 dp (360x640) and about 40 dp (200% font) beside a fixed Opacity row. Decisions and lessons:
+  - **A state whose other tools all refuse puts the state-fixing tool first** (Unlock). When a bar reorders under the finger, reset its scroll. Hidden layer: Show stays in place, QA watches.
+  - **Measure list windows from renders at the smallest phone and 200% font:** header + fixed rows + panel padding can leave under 2 rows for the list. Rule: a list panel keeps room for 2 rows, else the fixed row moves into the list (cap under 300 dp or fontScale 1.3+).
+  - **When a spec says "reuse these strings", grep them for editor-specific words** (video, clip, caption) before approving; I missed two.
+  - **Eye icon 14 px tall, not 12:** air to the pupil is 1 px at 12. Check icon air numbers from the path, not the sentence.
+  - **Thumbnail reader returns square center crops;** a "fitted inside" row thumbnail needs the scene decoder (about 128 px, cached per file, released at close). Accepted.
+  - **Hindi spelling drift across modules** (कैनवस vs कैनवास): grep one word across `:core:ui` and the feature when machine drafts land.
+  - **Focus return after a panel closes is still not built in any editor;** one shared helper later. Becomes a must-fix only if TalkBack lands on nothing.
+  - Canvas panel with Custom open from a photo start hides Background below the fold (P3, QA decides).
 - 2026-10-27 · Phase 2 specs P2-01 (photo shell), P2-12 (background image), P2-13 (image layers, owner-approved B the same day). Decisions and reasons:
   - **Start:** Photo meme opens the picker at once (images only, one item; the shipped copy already said "Pick a photo"); **Blank is its own Create row**, hidden until P2-03 (a blank canvas can hold nothing before text), because a system picker can't carry a "Blank" button and a photo-or-blank sheet costs every gallery start a tap. Canvas from the photo: preset within 1%, else the fewest-terms custom ratio within 1%; blank = 1:1 white (white shows the frame on the black stage).
   - **Image layer size at scale 1 = fitted inside the canvas, recomputed from the canvas shape at draw time**, cover within 1%. So a ratio change re-fits a photo for free and scale-1 round trips are exact; "keeps its size" means scale. Images use margin 0 on the ratio-change move-in (2% beside a photo reads as a mistake); text and stickers keep 2%.

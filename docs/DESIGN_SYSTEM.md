@@ -138,7 +138,7 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
   - `layers`: a solid rhombus (18 × 9px, the core) over two stroked chevrons (the layers beneath), each chevron the rhombus's lower edge shifted down 4.5px, so about 3px of air separates them. Distinct from `duplicate` (rectangles).
   - `lock`: a solid body (14 × 9px, 1px corners, the core) under a stroked shackle (an arch 8px wide) whose legs meet the body.
   - `unlock`: the same body, the shackle's right leg ending 4px above it (lifted), so the open state reads at 24px.
-  - `eye`: a stroked eye outline (20 × 12px, pointed ends) around a solid 6px pupil (the core), at least 1.4px of air between them (the outline's inner edge sits 2px from the pupil).
+  - `eye`: a stroked eye outline (20 × 14px outside to outside, pointed ends) around a solid 6px pupil (the core), at least 1.4px of air between them (the outline's inner edge sits 2px from the pupil). The outline was 12px tall in the first draft; at 12px the air is only 1px, so it is 14px (accepted in review P2-01, 28 Oct).
   - `eye_off`: the eye outline with the pupil replaced by one 2px diagonal stroke from the top left to the bottom right (the "slash" is the state).
   - `opacity`: a stroked 18px circle around a solid left half-disc (13px, the core), 1.5px clear of the stroke.
   - The layer-order buttons reuse `arrow` (one drawing, turned up and down). Add photo reuses `create`.

@@ -1,5 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="editor_photo_title">Editor de fotos</string>
-    <string name="editor_photo_body">El editor de fotos llega en la fase 2.</string>
+    <!-- Machine-drafted until P5-06. P2-01 photo editor. English source, budgets and translator notes: docs/ux/specs/P2-01-photo-editor-shell.md -> Copy. Compose resources keep ' and % as written: use plain apostrophes and a single %. -->
+    <string name="tool_layers">Capas</string>
+    <string name="tool_layer_opacity">Opacidad</string>
+    <string name="tool_lock">Bloquear</string>
+    <string name="tool_unlock">Desbloquear</string>
+    <string name="tool_hide_layer">Ocultar</string>
+    <string name="tool_show_layer">Mostrar</string>
+    <string name="layer_tools_close">Cerrar herramientas de capa</string>
+    <string name="layers_title">Capas</string>
+    <string name="layers_move_up">Subir capa</string>
+    <string name="layers_move_down">Bajar capa</string>
+    <string name="layers_opacity">Opacidad</string>
+    <string name="layers_locked_opacity">Bloqueada. Desbloquea esta capa para cambiar su opacidad.</string>
+    <string name="layer_name_photo">Foto</string>
+    <string name="layer_meta_locked">Bloqueada</string>
+    <string name="layer_meta_hidden">Oculta</string>
+    <string name="layer_meta_missing">Falta el archivo</string>
+    <string name="layer_meta_opacity">Opacidad&#160;%1$d%</string>
+    <string name="layer_meta_separator">·</string>
+    <string name="layer_lock_a11y">Bloquear capa</string>
+    <string name="layer_unlock_a11y">Desbloquear capa</string>
+    <string name="layer_hide_a11y">Ocultar capa</string>
+    <string name="layer_show_a11y">Mostrar capa</string>
+    <string name="photo_stage_a11y">Lienzo del meme, %1$s</string>
+    <string name="a11y_layer_row">%1$s, capa %2$d de %3$d</string>
+    <string name="a11y_layer_locked">Bloqueada.</string>
+    <string name="a11y_layer_hidden">Oculta.</string>
+    <string name="a11y_layer_missing">Falta el archivo.</string>
+    <string name="a11y_layer_opacity">Opacidad del %1$d por ciento.</string>
+    <string name="a11y_layer_order">Capa %1$d de %2$d</string>
+    <string name="explain_layer_locked">Esta capa está bloqueada. Desbloquéala para cambiarla.</string>
+    <string name="explain_layer_one">Para reordenar hacen falta al menos dos capas.</string>
+    <string name="explain_layer_front">Esta capa ya está al frente.</string>
+    <string name="explain_layer_back">Esta capa ya está al fondo.</string>
+    <string name="explain_layer_edge">Esta capa no puede ir más lejos por aquí.</string>
+    <string name="explain_layers_empty">Aún no hay nada. Las capas que añadas aparecerán en esta lista.</string>
+    <string name="photo_missing_media">Falta el archivo de una foto, así que no se dibuja. Elimina esa capa para arreglarlo.</string>
+    <string name="explain_layer_missing">Falta el archivo de esta foto. Elimina la capa para arreglarlo.</string>
+    <string name="photo_layers_moved">Las capas se movieron para quedarse dentro del marco.</string>
+    <string name="photo_background_hidden">Tu foto cubre todo el marco, así que el fondo no se ve.</string>
+    <string name="photo_empty_title">Este lienzo está vacío</string>
+    <string name="photo_empty_body">Toca Deshacer para recuperar tu capa, o cierra esto y empieza un meme de foto nuevo.</string>
+    <string name="edit_transform_layer">Posición y tamaño</string>
+    <string name="edit_layer_opacity">Opacidad</string>
+    <string name="edit_lock">Bloquear</string>
+    <string name="edit_unlock">Desbloquear</string>
+    <string name="edit_layer_hide">Ocultar</string>
+    <string name="edit_layer_show">Mostrar</string>
 </resources>

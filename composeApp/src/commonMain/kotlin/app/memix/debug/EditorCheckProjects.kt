@@ -23,6 +23,7 @@ import app.memix.core.model.project.Track
 import app.memix.core.model.project.TrackKind
 import app.memix.core.model.project.Transform
 import app.memix.core.model.project.VideoTimeline
+import kotlin.uuid.Uuid
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -32,7 +33,10 @@ import org.koin.core.component.inject
  * docs/qa/phase-1/engineer-hand-checks.md → P1-04). Null for an unknown name or a failed save, both logged under
  * [EditorCheckProjects.TAG].
  */
-internal suspend fun openDebugEditorProject(name: String): String? = EditorCheckProjects().save(name)
+internal suspend fun openDebugEditorProject(name: String): DebugEditor? = EditorCheckProjects().save(name)
+
+/** The editor to open for a hand-check project: its kind, and whether it is a blank canvas made in memory (`photo-empty`). */
+internal class DebugEditor(val projectId: String, val type: ProjectType, val blank: Boolean = false)
 
 /**
  * The projects, all built from the test files pushed into `files/debug-media/` for P1-03 plus `clip-1080p.mp4`.
@@ -43,7 +47,10 @@ internal class EditorCheckProjects : KoinComponent {
     private val saveProject: SaveProjectUseCase by inject()
     private val logger: Logger by inject()
 
-    suspend fun save(name: String): String? {
+    suspend fun save(name: String): DebugEditor? {
+        if (name == PhotoCheckProjects.EMPTY) return DebugEditor(Uuid.random().toString(), ProjectType.PHOTO, blank = true)
+        // The photo scenes' pictures are generated on first use.
+        if (name in PhotoCheckProjects.NAMES) writeDebugPhotos()
         val project = build(name)
         if (project == null) {
             logger.error(TAG, "Unknown memix.openEditor '$name'. Use ${NAMES.joinToString()}.")
@@ -52,7 +59,7 @@ internal class EditorCheckProjects : KoinComponent {
         return when (val saved = saveProject(project)) {
             is Outcome.Success -> {
                 logger.debug(TAG, "openEditor: saved ${project.id}, opening it")
-                project.id
+                DebugEditor(project.id, project.type)
             }
             is Outcome.Failure -> {
                 logger.error(TAG, "openEditor: saving $name failed with ${saved.error}")
@@ -61,7 +68,7 @@ internal class EditorCheckProjects : KoinComponent {
         }
     }
 
-    private fun build(name: String): Project? = when (name) {
+    private fun build(name: String): Project? = PhotoCheckProjects.build(name) ?: when (name) {
         EXPORT_CHECK -> ExportCheckProject.build()
         PREVIEW_CHECK -> previewCheck()
         PREVIEW_ERROR -> previewError()
@@ -293,7 +300,7 @@ internal class EditorCheckProjects : KoinComponent {
         private val NAMES = listOf(
             EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK,
             CANVAS_CHECK,
-        )
+        ) + PhotoCheckProjects.NAMES
         private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20
         private const val HOUR_LONG_CLIPS = 120

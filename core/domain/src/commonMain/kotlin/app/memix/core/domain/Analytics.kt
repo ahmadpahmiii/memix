@@ -30,7 +30,7 @@ sealed interface AnalyticsEvent {
      * one with a [EditorTool.eventValue]. [font] is the caption font id, sent only with `add_text` and `text_font`
      * (owner, 9 Oct 2026: PRD → Analytics). [value] is the choice a canvas tool made, sent only with `canvas_ratio`
      * (`9:16` … `16:9` or `custom`, never the custom numbers), `canvas_fit` (`fit`, `fill`) and `canvas_background`
-     * (`blur`, `color`, never the color itself) (owner, 21 Oct 2026).
+     * (`blur`, `color`, never the color itself) (owner, 21 Oct 2026). The photo editor sends `editor: photo` (P2-01).
      */
     data class ToolUse(val editor: ProjectType, val tool: EditorTool, val font: String? = null, val value: String? = null) : AnalyticsEvent {
         override val name = "tool_use"
@@ -144,6 +144,20 @@ enum class EditorTool(val eventValue: String?) {
     CANVAS_FIT("canvas_fit"),
     CANVAS_FILL("canvas_fit"),
     CANVAS_BACKGROUND("canvas_background"),
+
+    /**
+     * P2-01: the photo editor's layer tools (PM, 27 Oct 2026). `transform_layer` is a gesture's release, `position_layer`
+     * one Position-panel step, as video has `transform_text` and `position_text`. `move` and `reorder` already mean time
+     * order in the video editor, so layers have their own ids; delete, duplicate, undo, redo and the canvas tools are shared.
+     */
+    TRANSFORM_LAYER("transform_layer"),
+    POSITION_LAYER("position_layer"),
+    LAYER_OPACITY("layer_opacity"),
+    LOCK_LAYER("lock_layer"),
+    UNLOCK_LAYER("unlock_layer"),
+    HIDE_LAYER("hide_layer"),
+    SHOW_LAYER("show_layer"),
+    REORDER_LAYER("reorder_layer"),
 }
 
 /** `sound_add.tab` and `sound_preview.tab`: where in the sounds UI it happened. "starter" until P3-05 (PM, 8 Oct 2026). */

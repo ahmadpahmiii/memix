@@ -12,6 +12,7 @@ import app.memix.core.domain.project.MediaPlace
 import app.memix.core.model.project.MediaOrigin
 import app.memix.feature.videoeditor.MediaPickRequest
 import app.memix.feature.videoeditor.VideoEditorIntent
+import app.memix.platform.services.PickerMedia
 import app.memix.platform.services.rememberMediaPickerLauncher
 
 /**
@@ -30,8 +31,8 @@ internal fun EditorMediaPickers(request: MediaPickRequest?, onIntent: (VideoEdit
         openRequest.value = null
         if (opened != null) currentOnIntent(VideoEditorIntent.MediaPicked(opened, picked))
     }
-    val addPicker = rememberMediaPickerLauncher(MAX_ITEMS_PER_PICK, onPicked)
-    val replacePicker = rememberMediaPickerLauncher(maxItems = 1, onPicked)
+    val addPicker = rememberMediaPickerLauncher(MAX_ITEMS_PER_PICK, PickerMedia.IMAGES_AND_VIDEOS, onPicked)
+    val replacePicker = rememberMediaPickerLauncher(maxItems = 1, PickerMedia.IMAGES_AND_VIDEOS, onPicked)
     LaunchedEffect(request) {
         val wanted = request ?: return@LaunchedEffect
         openRequest.value = wanted

@@ -18,3 +18,9 @@ kotlin {
         implementation(lib("compose-components-resources"))
     }
 }
+
+compose.resources {
+    // :core:ui holds the strings both editors share (Position panel, Canvas panel, editor frame), so the features reach
+    // its Res; every other module keeps its resources to itself.
+    publicResClass = project.path == ":core:ui"
+}

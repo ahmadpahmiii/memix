@@ -1,5 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="editor_photo_title">Photo editor</string>
-    <string name="editor_photo_body">The photo editor arrives in phase 2.</string>
+    <!-- P2-01 photo editor. English source, budgets and translator notes: docs/ux/specs/P2-01-photo-editor-shell.md -> Copy. Compose resources keep ' and % as written: use plain apostrophes and a single %. -->
+    <string name="tool_layers">Layers</string>
+    <string name="tool_layer_opacity">Opacity</string>
+    <string name="tool_lock">Lock</string>
+    <string name="tool_unlock">Unlock</string>
+    <string name="tool_hide_layer">Hide</string>
+    <string name="tool_show_layer">Show</string>
+    <string name="layer_tools_close">Close layer tools</string>
+    <string name="layers_title">Layers</string>
+    <string name="layers_move_up">Move layer up</string>
+    <string name="layers_move_down">Move layer down</string>
+    <string name="layers_opacity">Opacity</string>
+    <string name="layers_locked_opacity">Locked. Unlock this layer to change its opacity.</string>
+    <string name="layer_name_photo">Photo</string>
+    <string name="layer_meta_locked">Locked</string>
+    <string name="layer_meta_hidden">Hidden</string>
+    <string name="layer_meta_missing">File missing</string>
+    <string name="layer_meta_opacity">%1$d%&#160;opacity</string>
+    <string name="layer_meta_separator">·</string>
+    <string name="layer_lock_a11y">Lock layer</string>
+    <string name="layer_unlock_a11y">Unlock layer</string>
+    <string name="layer_hide_a11y">Hide layer</string>
+    <string name="layer_show_a11y">Show layer</string>
+    <string name="photo_stage_a11y">Meme canvas, %1$s</string>
+    <string name="a11y_layer_row">%1$s, layer %2$d of %3$d</string>
+    <string name="a11y_layer_locked">Locked.</string>
+    <string name="a11y_layer_hidden">Hidden.</string>
+    <string name="a11y_layer_missing">File missing.</string>
+    <string name="a11y_layer_opacity">%1$d percent opacity.</string>
+    <string name="a11y_layer_order">Layer %1$d of %2$d</string>
+    <string name="explain_layer_locked">This layer is locked. Unlock it to change it.</string>
+    <string name="explain_layer_one">Reordering needs at least two layers.</string>
+    <string name="explain_layer_front">This layer is already in front.</string>
+    <string name="explain_layer_back">This layer is already at the back.</string>
+    <string name="explain_layer_edge">This layer can't go further this way.</string>
+    <string name="explain_layers_empty">Nothing here yet. Layers you add show up in this list.</string>
+    <string name="photo_missing_media">A photo's file is missing, so it isn't drawn. Delete that layer to fix it.</string>
+    <string name="explain_layer_missing">This photo's file is missing. Delete the layer to fix it.</string>
+    <string name="photo_layers_moved">Layers moved to stay inside the frame.</string>
+    <string name="photo_background_hidden">Your photo covers the whole frame, so the background doesn't show.</string>
+    <string name="photo_empty_title">This canvas is empty</string>
+    <string name="photo_empty_body">Tap Undo to bring your layer back, or close this and start a new photo meme.</string>
+    <string name="edit_transform_layer">Position and size</string>
+    <string name="edit_layer_opacity">Opacity</string>
+    <string name="edit_lock">Lock</string>
+    <string name="edit_unlock">Unlock</string>
+    <string name="edit_layer_hide">Hide</string>
+    <string name="edit_layer_show">Show</string>
 </resources>

@@ -11,8 +11,12 @@ import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.CanvasCatalog
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.FrameFit
-import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.RatioTerms
+import app.memix.core.model.project.size
+import app.memix.core.ui.panels.CanvasLimit
+import app.memix.core.ui.panels.RatioStep
+import app.memix.core.ui.panels.customTermsAfterChange
+import app.memix.core.ui.panels.steppedTerms
 
 /**
  * The Canvas panel (spec docs/ux/specs/P1-11-canvas.md): the ratio, a custom ratio's steppers, Fit or Fill for every
@@ -63,7 +67,7 @@ internal class CanvasPanelControl(private val host: EditorHost, private val meas
     fun stepHeld(step: RatioStep, repeats: Int) {
         val panel = host.uiState.canvasPanel ?: return
         val terms = panel.customTerms ?: return
-        val stepped = stepped(terms, step, repeats).terms
+        val stepped = steppedTerms(terms, step, repeats).terms
         host.updateUiState { it.copy(canvasPanel = panel.copy(heldTerms = stepped)) }
     }
 
@@ -74,12 +78,13 @@ internal class CanvasPanelControl(private val host: EditorHost, private val meas
     fun step(step: RatioStep, repeats: Int) {
         val panel = host.uiState.canvasPanel ?: return
         val terms = panel.customTerms ?: return
-        val result = stepped(terms, step, repeats)
+        val result = steppedTerms(terms, step, repeats)
         host.updateUiState { it.copy(canvasPanel = panel.copy(customTerms = result.terms, heldTerms = null)) }
         val change = if (result.terms != terms) commitRatio(CanvasRatio.CUSTOM, result.terms, analyticsValue = CUSTOM_VALUE) else null
+        val limit = result.limit
         when {
             change != null && change.movedLayers -> host.showToast(ToastMessage.LayersMoved)
-            result.limit != null -> host.showToast(ToastMessage.Explain(result.limit))
+            limit != null -> host.showToast(ToastMessage.Explain(explanationOf(limit)))
             change != null -> host.showToast(ToastMessage.RatioStepped(result.terms.lowest().toString()), spokenOnly = true)
         }
     }
@@ -106,12 +111,7 @@ internal class CanvasPanelControl(private val host: EditorHost, private val meas
     fun onCanvasChanged(canvas: Canvas) {
         val panel = host.uiState.canvasPanel ?: return
         val terms = panel.customTerms ?: return
-        val shown = when {
-            canvas.ratio == CanvasRatio.CUSTOM -> terms.takeIf { it.lowest() == RatioTerms.of(canvas.size()) } ?: RatioTerms.of(canvas.size())
-            // Custom picked but not stepped yet: the canvas is still the preset the steppers were filled from.
-            terms.lowest() == RatioTerms.of(canvas.size()) -> terms
-            else -> null
-        }
+        val shown = customTermsAfterChange(canvas, terms)
         if (shown != terms) host.updateUiState { it.copy(canvasPanel = panel.copy(customTerms = shown, heldTerms = null)) }
     }
 
@@ -129,30 +129,11 @@ internal class CanvasPanelControl(private val host: EditorHost, private val meas
 
     private fun customTermsOf(canvas: Canvas): RatioTerms? = if (canvas.ratio == CanvasRatio.CUSTOM) RatioTerms.of(canvas.size()) else null
 
-    private data class Stepped(val terms: RatioTerms, val limit: Explanation?)
-
-    // [terms] after up to [repeats] steps; the first step that would pass a limit stops it, and names the limit.
-    private fun stepped(terms: RatioTerms, step: RatioStep, repeats: Int): Stepped {
-        var current = terms
-        repeat(repeats) {
-            val next = when (step) {
-                RatioStep.WIDTH_DOWN -> current.copy(width = current.width - 1)
-                RatioStep.WIDTH_UP -> current.copy(width = current.width + 1)
-                RatioStep.HEIGHT_DOWN -> current.copy(height = current.height - 1)
-                RatioStep.HEIGHT_UP -> current.copy(height = current.height + 1)
-            }
-            limitOf(next)?.let { return Stepped(current, it) }
-            current = next
-        }
-        return Stepped(current, null)
-    }
-
-    private fun limitOf(terms: RatioTerms): Explanation? = when {
-        terms.width < CanvasCatalog.CUSTOM_TERMS.first || terms.height < CanvasCatalog.CUSTOM_TERMS.first -> Explanation.CANVAS_MIN
-        terms.width > CanvasCatalog.CUSTOM_TERMS.last || terms.height > CanvasCatalog.CUSTOM_TERMS.last -> Explanation.CANVAS_MAX
-        CanvasCatalog.allowsCustom(terms) -> null
-        terms.width > terms.height -> Explanation.CANVAS_WIDEST
-        else -> Explanation.CANVAS_TALLEST
+    private fun explanationOf(limit: CanvasLimit): Explanation = when (limit) {
+        CanvasLimit.WIDEST -> Explanation.CANVAS_WIDEST
+        CanvasLimit.TALLEST -> Explanation.CANVAS_TALLEST
+        CanvasLimit.MIN -> Explanation.CANVAS_MIN
+        CanvasLimit.MAX -> Explanation.CANVAS_MAX
     }
 
     private companion object {
@@ -160,8 +141,3 @@ internal class CanvasPanelControl(private val host: EditorHost, private val meas
         const val CUSTOM_VALUE = "custom"
     }
 }
-
-/** One step of a custom ratio's Width or Height stepper. */
-enum class RatioStep { WIDTH_DOWN, WIDTH_UP, HEIGHT_DOWN, HEIGHT_UP }
-
-internal fun Canvas.size(): PixelSize = PixelSize(widthPx, heightPx)

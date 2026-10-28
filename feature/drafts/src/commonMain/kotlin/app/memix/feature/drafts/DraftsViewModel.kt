@@ -75,7 +75,7 @@ class DraftsViewModel(
             DraftsIntent.Hidden -> stopMinuteTick()
             DraftsIntent.TryAgain -> startList()
             is DraftsIntent.Open -> open(intent.draftId)
-            DraftsIntent.DraftOpened -> updateState { it.copy(openDraftId = null) }
+            DraftsIntent.DraftOpened -> updateState { it.copy(openDraftId = null, openDraftType = null) }
             is DraftsIntent.Rename -> startRename(intent.draftId)
             is DraftsIntent.SaveName -> saveName(intent.typedName)
             DraftsIntent.CloseRename -> closeRename(focusRow = true)
@@ -162,7 +162,7 @@ class DraftsViewModel(
         val draft = summaries.firstOrNull { it.id == draftId } ?: return
         if (draft.needsNewerApp) return showToast(DraftsToast.CantOpen(newSerial()))
         openedDraft = OpenedDraft(draft.id, draft.updatedAtEpochUs)
-        updateState { it.copy(openDraftId = draftId) }
+        updateState { it.copy(openDraftId = draftId, openDraftType = draft.type) }
     }
 
     // Edited in the editor: it's first now, so the list goes to the top; otherwise focus just returns to its row.

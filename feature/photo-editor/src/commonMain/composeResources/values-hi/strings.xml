@@ -1,5 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="editor_photo_title">फ़ोटो एडिटर</string>
-    <string name="editor_photo_body">फ़ोटो एडिटर चरण 2 में आएगा।</string>
+    <!-- Machine-drafted until P5-06. P2-01 photo editor. English source, budgets and translator notes: docs/ux/specs/P2-01-photo-editor-shell.md -> Copy. Compose resources keep ' and % as written: use plain apostrophes and a single %. -->
+    <string name="tool_layers">लेयर</string>
+    <string name="tool_layer_opacity">पारदर्शिता</string>
+    <string name="tool_lock">लॉक</string>
+    <string name="tool_unlock">अनलॉक</string>
+    <string name="tool_hide_layer">छिपाएँ</string>
+    <string name="tool_show_layer">दिखाएँ</string>
+    <string name="layer_tools_close">लेयर टूल बंद करें</string>
+    <string name="layers_title">लेयर</string>
+    <string name="layers_move_up">लेयर ऊपर ले जाएँ</string>
+    <string name="layers_move_down">लेयर नीचे ले जाएँ</string>
+    <string name="layers_opacity">पारदर्शिता</string>
+    <string name="layers_locked_opacity">लॉक है। पारदर्शिता बदलने के लिए यह लेयर अनलॉक करें।</string>
+    <string name="layer_name_photo">फ़ोटो</string>
+    <string name="layer_meta_locked">लॉक</string>
+    <string name="layer_meta_hidden">छिपी</string>
+    <string name="layer_meta_missing">फ़ाइल नहीं मिली</string>
+    <string name="layer_meta_opacity">%1$d%&#160;पारदर्शिता</string>
+    <string name="layer_meta_separator">·</string>
+    <string name="layer_lock_a11y">लेयर लॉक करें</string>
+    <string name="layer_unlock_a11y">लेयर अनलॉक करें</string>
+    <string name="layer_hide_a11y">लेयर छिपाएँ</string>
+    <string name="layer_show_a11y">लेयर दिखाएँ</string>
+    <string name="photo_stage_a11y">मीम कैनवास, %1$s</string>
+    <string name="a11y_layer_row">%1$s, लेयर %2$d / %3$d</string>
+    <string name="a11y_layer_locked">लॉक है।</string>
+    <string name="a11y_layer_hidden">छिपी है।</string>
+    <string name="a11y_layer_missing">फ़ाइल नहीं मिली।</string>
+    <string name="a11y_layer_opacity">%1$d प्रतिशत पारदर्शिता।</string>
+    <string name="a11y_layer_order">लेयर %1$d / %2$d</string>
+    <string name="explain_layer_locked">यह लेयर लॉक है। बदलने के लिए इसे अनलॉक करें।</string>
+    <string name="explain_layer_one">क्रम बदलने के लिए कम से कम दो लेयर चाहिए।</string>
+    <string name="explain_layer_front">यह लेयर पहले से सबसे आगे है।</string>
+    <string name="explain_layer_back">यह लेयर पहले से सबसे पीछे है।</string>
+    <string name="explain_layer_edge">यह लेयर इस तरफ़ और आगे नहीं जा सकती।</string>
+    <string name="explain_layers_empty">अभी यहाँ कुछ नहीं है। आपके जोड़े गए लेयर इस सूची में दिखेंगे।</string>
+    <string name="photo_missing_media">किसी फ़ोटो की फ़ाइल नहीं मिली, इसलिए वह नहीं दिख रही। ठीक करने के लिए वह लेयर हटाएँ।</string>
+    <string name="explain_layer_missing">इस फ़ोटो की फ़ाइल नहीं मिली। ठीक करने के लिए लेयर हटाएँ।</string>
+    <string name="photo_layers_moved">लेयर फ़्रेम के अंदर रहने के लिए खिसकाई गईं।</string>
+    <string name="photo_background_hidden">आपकी फ़ोटो पूरे फ़्रेम को ढकती है, इसलिए बैकग्राउंड नहीं दिखता।</string>
+    <string name="photo_empty_title">यह कैनवास खाली है</string>
+    <string name="photo_empty_body">अपनी लेयर वापस पाने के लिए पूर्ववत करें दबाएँ, या इसे बंद करके नया फ़ोटो मीम शुरू करें।</string>
+    <string name="edit_transform_layer">स्थिति और आकार</string>
+    <string name="edit_layer_opacity">पारदर्शिता</string>
+    <string name="edit_lock">लॉक</string>
+    <string name="edit_unlock">अनलॉक</string>
+    <string name="edit_layer_hide">छिपाएँ</string>
+    <string name="edit_layer_show">दिखाएँ</string>
 </resources>

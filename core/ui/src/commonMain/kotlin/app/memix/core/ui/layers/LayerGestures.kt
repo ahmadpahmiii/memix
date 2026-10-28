@@ -1,10 +1,11 @@
-package app.memix.feature.videoeditor.captions
+package app.memix.core.ui.layers
 
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateRotation
 import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,104 +19,155 @@ import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.positionChanged
-import app.memix.core.model.project.CaptionCatalog
 import app.memix.core.model.project.Transform
-import app.memix.feature.videoeditor.CaptionUi
-import app.memix.feature.videoeditor.VideoEditorIntent
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.roundToInt
 
-/** What a gesture on a caption is doing (spec P1-10 → On the preview). */
-internal enum class CaptionGestureKind {
-    /** One finger on a caption: it follows the finger. */
+/**
+ * What the gestures need to know about one layer (a caption on a video, any layer on a photo): its id, where it is,
+ * the size of its own box at scale 1 in canvas pixels, how far it may scale and whether it is locked. Implemented by each
+ * editor's own layer type, so the lists the editors already hold are passed as they are.
+ */
+@Immutable
+interface GestureTarget {
+    val id: String
+    val transform: Transform
+
+    /** The layer's own box at scale 1, in canvas pixels. */
+    val boxWidthPx: Float
+    val boxHeightPx: Float
+
+    /** The scales a pinch or the handle can reach. */
+    val scaleRange: ClosedFloatingPointRange<Float>
+
+    /** A locked layer can be tapped, but a drag, pinch or the handle's place only explains (spec P2-01 → Locked layers). */
+    val locked: Boolean
+}
+
+/** [this] layer's box on the stage frame [frame], for a canvas [canvasWidthPx] wide. */
+fun GestureTarget.boxIn(frame: CanvasFrameRect, canvasWidthPx: Int, transform: Transform = this.transform): LayerBox =
+    LayerBox.of(boxWidthPx, boxHeightPx, transform, frame, canvasWidthPx)
+
+/** What a gesture on a layer is doing (spec P1-10 → On the preview). */
+enum class LayerGestureKind {
+    /** One finger on a layer: it follows the finger. */
     MOVE,
 
     /** The handle: the distance from the center sets the size, the angle the turn. */
     HANDLE,
 
-    /** Two fingers anywhere on the stage, with a caption selected: size, turn and place together. */
+    /** Two fingers anywhere on the stage, with a layer selected: size, turn and place together. */
     PINCH,
 }
 
 /**
- * A caption under a finger: the one moving ([itemId]), how ([kind]), where it is now ([transform]) and which snaps hold.
+ * A layer under a finger: the one moving ([target]), how ([kind]), where it is now ([transform]) and which snaps hold.
  * Read in draw and placement code, so a gesture frame redraws without recomposing the screen. Main thread only.
  */
 @Stable
-internal class CaptionGesture(val itemId: String, val caption: CaptionUi) {
-    var kind by mutableStateOf(CaptionGestureKind.MOVE)
-    var transform by mutableStateOf(caption.transform)
+class LayerGesture(val target: GestureTarget) {
+    val layerId: String get() = target.id
+    var kind by mutableStateOf(LayerGestureKind.MOVE)
+    var transform by mutableStateOf(target.transform)
     var snappedCenterX by mutableStateOf(false)
     var snappedCenterY by mutableStateOf(false)
     var cancelled = false
 
     // The unsnapped values the fingers have reached; snapping only changes what's shown.
-    var rawCenter = Offset(caption.transform.centerX, caption.transform.centerY)
-    var rawScale = caption.transform.scale
-    var rawRotation = caption.transform.rotationDegrees
-    var snappedScale = false
-    var snappedRotation = false
+    internal var rawCenter = Offset(target.transform.centerX, target.transform.centerY)
+    internal var rawScale = target.transform.scale
+    internal var rawRotation = target.transform.rotationDegrees
+    internal var snappedScale = false
+    internal var snappedRotation = false
 }
 
-/** The caption layer's live state: the canvas frame on the stage and the gesture in progress, if any. */
+/** The stage's live state: the canvas frame on it and the gesture in progress, if any. */
 @Stable
-internal class CaptionLayerState {
+class LayerStageState {
     var frame by mutableStateOf(CanvasFrameRect.Empty)
     var stageWidth by mutableStateOf(0f)
     var stageHeight by mutableStateOf(0f)
-    var gesture by mutableStateOf<CaptionGesture?>(null)
-
-    /** The stage's height before typing began; typing keeps the frame inside it (spec P1-10 → Typing). */
-    var normalStageHeight = 0f
+    var gesture by mutableStateOf<LayerGesture?>(null)
 }
 
 /** Sizes the gestures need, in pixels. */
-internal class CaptionTouchSizes(
-    /** The handle's target and a caption's smallest target: `touch-target`. */
+class LayerTouchSizes(
+    /** The handle's target and a layer's smallest target: `touch-target`. */
     val targetPx: Float,
-    /** How far outside a caption's block its frame sits: `space-1`. */
+    /** How far outside a layer's box its frame sits: `space-1`. */
     val frameOutsetPx: Float,
     /** A center snaps to the frame's middle lines within this: `space-2`. */
     val snapPx: Float,
 )
 
+/** What the stage's gestures report; each editor turns these into its own intents. Called on the main thread. */
+interface LayerGestureEvents {
+    /** A tap on layer [layerId] (a finger lifted without dragging). */
+    fun onTap(layerId: String)
+
+    /** A drag, pinch or the handle started on [layerId]: select it, leave it out of whatever else draws it. */
+    fun onStarted(layerId: String)
+
+    /** The fingers lifted: [layerId] ends at [transform], to commit as one undo step. */
+    fun onEnded(layerId: String, transform: Transform)
+
+    /** A drag, pinch or the handle's place was tried on a locked layer; says so, once per touch. */
+    fun onLockedTouch(layerId: String)
+}
+
 /**
- * Taps, drags, pinches and the handle on the captions shown at the playhead (spec P1-10 → On the preview). Touches
- * that hit no caption, and no two-finger gesture with a caption selected, are left for the stage, whose tap plays or
- * pauses. [visible] is the captions shown now in draw order (the last on top); [selectedId] the selection.
+ * Taps, drags, pinches and the handle on the layers in [targets] (spec P1-10 → On the preview, P2-01 → Gestures). Touches
+ * that hit no layer, and no two-finger gesture with a layer selected, are left for the stage: the video's tap plays or
+ * pauses, the photo's clears the selection. [targets] are in draw order (the last on top); [selectedId] is the selection.
  */
-internal suspend fun PointerInputScope.detectCaptionGestures(
-    state: CaptionLayerState,
-    visible: () -> List<CaptionUi>,
+suspend fun PointerInputScope.detectLayerGestures(
+    state: LayerStageState,
+    targets: () -> List<GestureTarget>,
     selectedId: () -> String?,
     canvasWidthPx: () -> Int,
-    sizes: CaptionTouchSizes,
+    sizes: LayerTouchSizes,
     haptics: () -> HapticFeedback?,
-    onIntent: (VideoEditorIntent) -> Unit,
+    events: LayerGestureEvents,
 ) = awaitEachGesture {
     val down = awaitFirstDown(requireUnconsumed = false)
     val frame = state.frame
     if (frame.isEmpty) return@awaitEachGesture
-    val captions = visible()
-    val selected = captions.lastOrNull { it.itemId == selectedId() }
-    val boxOf = { caption: CaptionUi -> CaptionBox.of(caption.block, caption.transform, frame, canvasWidthPx()) }
+    val layers = targets()
+    val selected = layers.lastOrNull { it.id == selectedId() }
+    val boxOf = { layer: GestureTarget -> layer.boxIn(frame, canvasWidthPx()) }
     val onHandle = selected?.let { handleCenterOf(boxOf(it), size.width.toFloat(), size.height.toFloat(), sizes.frameOutsetPx) }
         ?.let { (down.position - it).getDistance() <= sizes.targetPx / 2 } == true
-    val hit = if (onHandle) selected else captions.lastOrNull { boxOf(it).contains(down.position, sizes.frameOutsetPx, sizes.targetPx / 2) }
+    val hit = if (onHandle) selected else layers.lastOrNull { boxOf(it).contains(down.position, sizes.frameOutsetPx, sizes.targetPx / 2) }
     if (hit == null) {
-        // Not on a caption: a second finger with a caption selected starts a pinch; otherwise the stage has the touch.
+        // Not on a layer: a second finger with a layer selected starts a pinch; otherwise the stage has the touch.
         if (selected == null || !awaitSecondFinger()) return@awaitEachGesture
-        runGesture(CaptionGesture(selected.itemId, selected).apply { kind = CaptionGestureKind.PINCH }, state, frame, sizes, haptics, onIntent)
+        if (selected.locked) return@awaitEachGesture explainLocked(selected, events)
+        runGesture(LayerGesture(selected).apply { kind = LayerGestureKind.PINCH }, state, frame, sizes, haptics, events)
         return@awaitEachGesture
     }
     down.consume()
-    val gesture = CaptionGesture(hit.itemId, hit).apply { kind = if (onHandle) CaptionGestureKind.HANDLE else CaptionGestureKind.MOVE }
+    if (hit.locked) {
+        // A tap still selects it; a drag, a pinch or its handle's place move nothing and explain once.
+        if (!onHandle && !awaitDragOrTap(down.id)) return@awaitEachGesture events.onTap(hit.id)
+        return@awaitEachGesture explainLocked(hit, events)
+    }
+    val gesture = LayerGesture(hit).apply { kind = if (onHandle) LayerGestureKind.HANDLE else LayerGestureKind.MOVE }
     if (!onHandle && !awaitDragOrTap(down.id)) {
-        onIntent(VideoEditorIntent.CaptionTapped(hit.itemId))
+        events.onTap(hit.id)
         return@awaitEachGesture
     }
-    runGesture(gesture, state, frame, sizes, haptics, onIntent)
+    runGesture(gesture, state, frame, sizes, haptics, events)
+}
+
+// Says "locked" once, then takes the rest of the touch, so nothing else on the stage reacts to it.
+private suspend fun AwaitPointerEventScope.explainLocked(layer: GestureTarget, events: LayerGestureEvents) {
+    events.onLockedTouch(layer.id)
+    while (true) {
+        val event = awaitPointerEvent()
+        event.changes.forEach(PointerInputChange::consume)
+        if (event.changes.none { it.pressed }) return
+    }
 }
 
 // While one finger is down, leaves its events to the stage. True when a second finger lands, false when all lift.
@@ -131,7 +183,7 @@ private suspend fun AwaitPointerEventScope.awaitSecondFinger(): Boolean {
     }
 }
 
-// True when the finger on a caption moves past the touch slop (or a second finger lands): a drag; false on a tap.
+// True when the finger on a layer moves past the touch slop (or a second finger lands): a drag; false on a tap.
 private suspend fun AwaitPointerEventScope.awaitDragOrTap(pointerId: PointerId): Boolean {
     var moved = Offset.Zero
     while (true) {
@@ -149,15 +201,15 @@ private suspend fun AwaitPointerEventScope.awaitDragOrTap(pointerId: PointerId):
 }
 
 private suspend fun AwaitPointerEventScope.runGesture(
-    gesture: CaptionGesture,
-    state: CaptionLayerState,
+    gesture: LayerGesture,
+    state: LayerStageState,
     frame: CanvasFrameRect,
-    sizes: CaptionTouchSizes,
+    sizes: LayerTouchSizes,
     haptics: () -> HapticFeedback?,
-    onIntent: (VideoEditorIntent) -> Unit,
+    events: LayerGestureEvents,
 ) {
     state.gesture = gesture
-    onIntent(VideoEditorIntent.CaptionGestureStarted(gesture.itemId))
+    events.onStarted(gesture.layerId)
     val startCenter = Offset(frame.left + gesture.rawCenter.x * frame.width, frame.top + gesture.rawCenter.y * frame.height)
     var handleStart: Offset? = null
     while (true) {
@@ -165,11 +217,11 @@ private suspend fun AwaitPointerEventScope.runGesture(
         if (gesture.cancelled) return
         val pressed = event.changes.filter { it.pressed }
         if (pressed.isEmpty()) break
-        if (pressed.size >= 2) gesture.kind = CaptionGestureKind.PINCH
+        if (pressed.size >= 2) gesture.kind = LayerGestureKind.PINCH
         when (gesture.kind) {
-            CaptionGestureKind.MOVE -> moveBy(gesture, pressed.first().let { it.position - it.previousPosition }, frame)
-            CaptionGestureKind.PINCH -> pinch(gesture, event, frame)
-            CaptionGestureKind.HANDLE -> {
+            LayerGestureKind.MOVE -> moveBy(gesture, pressed.first().let { it.position - it.previousPosition }, frame)
+            LayerGestureKind.PINCH -> pinch(gesture, event, frame)
+            LayerGestureKind.HANDLE -> {
                 val finger = pressed.first().position
                 val from = handleStart ?: finger.also { handleStart = it }
                 turnByHandle(gesture, startCenter, from, finger)
@@ -180,41 +232,40 @@ private suspend fun AwaitPointerEventScope.runGesture(
         event.changes.forEach { if (it.positionChanged() || it.pressed) it.consume() }
     }
     state.gesture = null
-    onIntent(VideoEditorIntent.CaptionGestureEnded(gesture.itemId, gesture.transform))
+    events.onEnded(gesture.layerId, gesture.transform)
 }
 
-private fun moveBy(gesture: CaptionGesture, delta: Offset, frame: CanvasFrameRect) {
+private fun moveBy(gesture: LayerGesture, delta: Offset, frame: CanvasFrameRect) {
     gesture.rawCenter = Offset(
         (gesture.rawCenter.x + delta.x / frame.width).coerceIn(0f, 1f),
         (gesture.rawCenter.y + delta.y / frame.height).coerceIn(0f, 1f),
     )
 }
 
-private fun pinch(gesture: CaptionGesture, event: PointerEvent, frame: CanvasFrameRect) {
-    gesture.rawScale = (gesture.rawScale * event.calculateZoom()).coerceIn(CaptionCatalog.MIN_SCALE, CaptionCatalog.MAX_SCALE)
+private fun pinch(gesture: LayerGesture, event: PointerEvent, frame: CanvasFrameRect) {
+    gesture.rawScale = (gesture.rawScale * event.calculateZoom()).coerceIn(gesture.target.scaleRange)
     gesture.rawRotation += event.calculateRotation()
     moveBy(gesture, event.calculatePan(), frame)
 }
 
 // The handle: the size follows the finger's distance from the center, the turn its angle, both from where it began.
-private fun turnByHandle(gesture: CaptionGesture, center: Offset, from: Offset, finger: Offset) {
+private fun turnByHandle(gesture: LayerGesture, center: Offset, from: Offset, finger: Offset) {
     val start = from - center
     val now = finger - center
     if (start.getDistance() <= 0f) return
-    gesture.rawScale = (gesture.caption.transform.scale * now.getDistance() / start.getDistance())
-        .coerceIn(CaptionCatalog.MIN_SCALE, CaptionCatalog.MAX_SCALE)
+    gesture.rawScale = (gesture.target.transform.scale * now.getDistance() / start.getDistance()).coerceIn(gesture.target.scaleRange)
     val turned = atan2(now.y, now.x) - atan2(start.y, start.x)
-    gesture.rawRotation = gesture.caption.transform.rotationDegrees + turned.toDegrees()
+    gesture.rawRotation = gesture.target.transform.rotationDegrees + turned.toDegrees()
 }
 
 /**
  * Shows the raw values with their snaps (spec P1-10 → Snapping): the center to the frame's middle lines within
  * `space-2`, the turn to a quarter within 4°, the size to 100% within 3%. True when a snap newly engaged (one tick).
  */
-private fun applySnaps(gesture: CaptionGesture, frame: CanvasFrameRect, snapPx: Float): Boolean {
+private fun applySnaps(gesture: LayerGesture, frame: CanvasFrameRect, snapPx: Float): Boolean {
     val snapX = abs(gesture.rawCenter.x - MIDDLE) * frame.width <= snapPx
     val snapY = abs(gesture.rawCenter.y - MIDDLE) * frame.height <= snapPx
-    val canResize = gesture.kind != CaptionGestureKind.MOVE
+    val canResize = gesture.kind != LayerGestureKind.MOVE
     val nearestQuarter = (gesture.rawRotation / QUARTER_TURN).roundToInt() * QUARTER_TURN
     val snapTurn = canResize && abs(gesture.rawRotation - nearestQuarter) <= ROTATION_SNAP_DEGREES
     val snapSize = canResize && abs(gesture.rawScale - 1f) <= SCALE_SNAP
@@ -237,7 +288,7 @@ private fun applySnaps(gesture: CaptionGesture, frame: CanvasFrameRect, snapPx: 
  * Where the scale-and-rotate handle sits: the frame's bottom-right corner, or, when that's off the stage
  * ([stageWidth] × [stageHeight]), the nearest corner that's on it.
  */
-internal fun handleCenterOf(box: CaptionBox, stageWidth: Float, stageHeight: Float, outset: Float): Offset {
+fun handleCenterOf(box: LayerBox, stageWidth: Float, stageHeight: Float, outset: Float): Offset {
     val corners = listOf(box.corner(1, 1, outset), box.corner(1, -1, outset), box.corner(-1, 1, outset), box.corner(-1, -1, outset))
     val preferred = corners.first()
     fun onStage(point: Offset) = point.x in 0f..stageWidth && point.y in 0f..stageHeight

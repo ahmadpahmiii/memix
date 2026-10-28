@@ -13,6 +13,9 @@ data class Canvas(
     val background: CanvasBackground,
 )
 
+/** The canvas's width and height in pixels. */
+fun Canvas.size(): PixelSize = PixelSize(widthPx, heightPx)
+
 @Serializable
 enum class CanvasRatio {
     @SerialName("9:16") RATIO_9_16,

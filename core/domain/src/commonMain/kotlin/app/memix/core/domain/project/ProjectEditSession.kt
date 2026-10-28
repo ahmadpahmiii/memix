@@ -4,6 +4,7 @@ import app.memix.core.domain.Analytics
 import app.memix.core.domain.AnalyticsEvent
 import app.memix.core.domain.AppError
 import app.memix.core.domain.EditorTool
+import app.memix.core.domain.ProjectSource
 import app.memix.core.model.project.Project
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -23,6 +24,9 @@ import kotlinx.coroutines.flow.update
  *
  * If the process dies, only the changes of the last 500 ms (and a write still in progress) are lost; the
  * saved draft is never half-written. The undo history isn't saved.
+ *
+ * A project that only exists in memory ([newSource] set: a blank photo canvas) isn't saved until a committed step leaves
+ * something in it, and that step logs `project_create` with [newSource] (spec P2-01 → Blank canvas).
  */
 class ProjectEditSession internal constructor(
     initial: Project,
@@ -30,11 +34,16 @@ class ProjectEditSession internal constructor(
     deleteProject: DeleteProjectUseCase,
     private val analytics: Analytics,
     saveScope: CoroutineScope,
+    private var newSource: ProjectSource? = null,
 ) : AutoCloseable {
     private val mutableState = MutableStateFlow(ProjectEditState(ProjectHistory(initial), saveFailure = null))
     val state: StateFlow<ProjectEditState> = mutableState.asStateFlow()
 
-    private val autoSaver = ProjectAutoSaver(saveProject, deleteProject, saveScope, onSaveFailureChanged = ::showSaveFailure)
+    private val autoSaver = ProjectAutoSaver(
+        saveProject, deleteProject, saveScope,
+        waitsForFirstContent = newSource != null,
+        onSaveFailureChanged = ::showSaveFailure,
+    )
 
     /**
      * Applies one user action as one undo step. [edit] gets the current project and returns the edited copy,
@@ -52,7 +61,10 @@ class ProjectEditSession internal constructor(
      */
     fun commit(tool: EditorTool, font: String? = null, value: String? = null, edit: (Project) -> Project): Boolean {
         val recorded = changeHistory { history -> history.record(tool, edit(history.current)) }
-        if (recorded) logToolUse(tool, font, value)
+        if (recorded) {
+            logProjectCreateOnFirstContent()
+            logToolUse(tool, font, value)
+        }
         return recorded
     }
 
@@ -73,13 +85,13 @@ class ProjectEditSession internal constructor(
     fun saveNow(): Job = autoSaver.saveNow()
 
     /**
-     * Saves the newest change, then stops saving; the write finishes even after the editor is gone. A video
-     * project with no clip left ([hasNoClips]) is deleted instead of saved, so leaving it doesn't keep an empty
-     * draft. Nothing is written after this.
+     * Saves the newest change, then stops saving; the write finishes even after the editor is gone. A project with
+     * nothing left in it ([isEmptyDraft]: a video with no clip, a photo with no layer) is deleted instead of saved, so
+     * leaving it doesn't keep an empty draft. Nothing is written after this.
      */
     override fun close() {
         val project = mutableState.value.project
-        if (project.hasNoClips()) autoSaver.closeDeletingDraft(project.id) else autoSaver.close()
+        if (project.isEmptyDraft()) autoSaver.closeDeletingDraft(project.id) else autoSaver.close()
     }
 
     /** Returns whether the history changed. */
@@ -92,6 +104,15 @@ class ProjectEditSession internal constructor(
         mutableState.update { it.withHistory(changed) }
         autoSaver.onProjectChanged(changed.current)
         return true
+    }
+
+    // A project made in memory counts as created when it first has something in it, as one saved from the gallery does.
+    private fun logProjectCreateOnFirstContent() {
+        val source = newSource ?: return
+        val project = mutableState.value.project
+        if (project.isEmptyDraft()) return
+        newSource = null
+        analytics.log(AnalyticsEvent.ProjectCreate(editor = project.type, source = source))
     }
 
     // PRD tool_use: every tool, undo and redo included, counts only when it changes the project (PM, 8 Oct 2026).

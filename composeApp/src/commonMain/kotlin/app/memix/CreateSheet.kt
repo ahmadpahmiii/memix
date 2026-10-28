@@ -29,6 +29,7 @@ import app.memix.core.designsystem.component.Sheet
 import app.memix.core.designsystem.focusRing
 import app.memix.core.designsystem.pressedColor
 import memix.composeapp.generated.resources.Res
+import memix.composeapp.generated.resources.create_blank
 import memix.composeapp.generated.resources.create_photo_body
 import memix.composeapp.generated.resources.create_photo_title
 import memix.composeapp.generated.resources.create_template
@@ -45,14 +46,20 @@ internal fun CreateSheet(
     onDismiss: () -> Unit,
     onVideoMeme: () -> Unit,
     onPhotoMeme: () -> Unit,
+    onBlankCanvas: () -> Unit,
     onTemplates: () -> Unit,
 ) {
     Sheet(visible, onDismiss, stringResource(Res.string.create_title), heroTitle = true, drawScrim = false) {
         EditorRow(stringResource(Res.string.create_video_title), stringResource(Res.string.create_video_body), MemixIcons.Video, emphasized = true, onVideoMeme)
         EditorRow(stringResource(Res.string.create_photo_title), stringResource(Res.string.create_photo_body), MemixIcons.Photo, emphasized = false, onPhotoMeme)
-        TemplateRow(stringResource(Res.string.create_template), onTemplates)
+        // A blank canvas can hold nothing until a ticket can add a layer, so its row stays out until P2-03 (P0-05 rule).
+        if (BLANK_ROW_VISIBLE) TemplateRow(stringResource(Res.string.create_blank), MemixIcons.Photo, onBlankCanvas)
+        TemplateRow(stringResource(Res.string.create_template), MemixIcons.Templates, onTemplates)
     }
 }
+
+/** Turns on the Create sheet's "Start with a blank canvas" row. P2-03 sets it (the PM's ready check owns that). */
+private const val BLANK_ROW_VISIBLE = false
 
 /** Video meme is the sheet's one blue action; Photo meme stays neutral with a blue icon, as on Home. */
 @Composable
@@ -82,7 +89,7 @@ private fun EditorRow(title: String, body: String, icon: DrawableResource, empha
 }
 
 @Composable
-private fun TemplateRow(label: String, onClick: () -> Unit) {
+private fun TemplateRow(label: String, icon: DrawableResource, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val container = pressedRowColor(interactionSource, emphasized = false)
     Row(
@@ -97,7 +104,7 @@ private fun TemplateRow(label: String, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space3),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(MemixIcons.Templates, contentDescription = null, tint = MemixColors.text, size = 22.dp)
+        Icon(icon, contentDescription = null, tint = MemixColors.text, size = 22.dp)
         Text(label, MemixTheme.type.bodyStrong, Modifier.weight(1f))
         Icon(MemixIcons.ChevronRight, contentDescription = null, tint = MemixColors.text, size = 20.dp)
     }

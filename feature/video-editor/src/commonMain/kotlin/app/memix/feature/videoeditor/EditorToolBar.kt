@@ -44,20 +44,21 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import memix.feature.video_editor.generated.resources.Res
+import memix.core.ui.generated.resources.Res as UiRes
 import memix.feature.video_editor.generated.resources.clip_tools_close
-import memix.feature.video_editor.generated.resources.panel_done
+import memix.core.ui.generated.resources.panel_done
 import memix.feature.video_editor.generated.resources.reorder_move_earlier
 import memix.feature.video_editor.generated.resources.reorder_move_later
 import memix.feature.video_editor.generated.resources.tool_add_media
-import memix.feature.video_editor.generated.resources.tool_delete
+import memix.core.ui.generated.resources.tool_delete
 import memix.feature.video_editor.generated.resources.tool_detach_audio
-import memix.feature.video_editor.generated.resources.tool_duplicate
+import memix.core.ui.generated.resources.tool_duplicate
 import memix.feature.video_editor.generated.resources.tool_edit
 import memix.feature.video_editor.generated.resources.tool_edit_text
 import memix.feature.video_editor.generated.resources.tool_meme_sounds
 import memix.feature.video_editor.generated.resources.tool_move_here
 import memix.feature.video_editor.generated.resources.tool_move_here_a11y
-import memix.feature.video_editor.generated.resources.tool_position
+import memix.core.ui.generated.resources.tool_position
 import memix.feature.video_editor.generated.resources.tool_reorder
 import memix.feature.video_editor.generated.resources.tool_replace
 import memix.feature.video_editor.generated.resources.tool_split
@@ -170,7 +171,7 @@ private fun ReorderBar(onIntent: (VideoEditorIntent) -> Unit, moveEarlierFocus: 
         Button(stringResource(Res.string.reorder_move_earlier), { onIntent(VideoEditorIntent.ReorderStep(steps = -1)) }, Modifier.focusRequester(moveEarlierFocus))
         Button(stringResource(Res.string.reorder_move_later), { onIntent(VideoEditorIntent.ReorderStep(steps = 1)) })
         // Quiet: blue for the mode's one main action, and narrow enough that all three fit one line at 360 dp in English.
-        Button(stringResource(Res.string.panel_done), { onIntent(VideoEditorIntent.ReorderDone) }, variant = ButtonVariant.Quiet)
+        Button(stringResource(UiRes.string.panel_done), { onIntent(VideoEditorIntent.ReorderDone) }, variant = ButtonVariant.Quiet)
     }
 }
 
@@ -212,8 +213,8 @@ private fun rememberClipTools(
     focus: EditorFocusTargets,
 ): ImmutableList<ToolBarItem> {
     val split = stringResource(Res.string.tool_split)
-    val delete = stringResource(Res.string.tool_delete)
-    val duplicate = stringResource(Res.string.tool_duplicate)
+    val delete = stringResource(UiRes.string.tool_delete)
+    val duplicate = stringResource(UiRes.string.tool_duplicate)
     val reorder = stringResource(Res.string.tool_reorder)
     val volume = stringResource(Res.string.tool_volume)
     val moveHere = stringResource(Res.string.tool_move_here)
@@ -263,7 +264,7 @@ private fun rememberClipTools(
 private fun rememberTextTools(onIntent: (VideoEditorIntent) -> Unit, focus: EditorFocusTargets): List<ToolBarItem> {
     val editText = stringResource(Res.string.tool_edit_text)
     val style = stringResource(Res.string.tool_style)
-    val position = stringResource(Res.string.tool_position)
+    val position = stringResource(UiRes.string.tool_position)
     return remember(editText, style, position, onIntent, focus) {
         listOf(
             ToolBarItem(editText, MemixIcons.EditText, { onIntent(VideoEditorIntent.EditTextSelected) }),

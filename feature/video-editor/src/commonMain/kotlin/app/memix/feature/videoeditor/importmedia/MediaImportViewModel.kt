@@ -22,12 +22,12 @@ class MediaImportViewModel(
     private val createVideoProject: CreateVideoProjectUseCase,
     importMedia: ImportMediaUseCase,
     private val saveGalleryProject: SaveGalleryProjectUseCase,
-) : ViewModel() {
+) : ViewModel(), MemeImportViewModel {
     private val flow = MediaImportFlow(importMedia, viewModelScope)
 
-    val state: StateFlow<ImportUiState> = flow.state
+    override val state: StateFlow<ImportUiState> = flow.state
 
-    fun onIntent(intent: ImportIntent) {
+    override fun onIntent(intent: ImportIntent) {
         when (intent) {
             is ImportIntent.Picked -> startImport(intent.items)
             ImportIntent.PickerUnavailable, ImportIntent.Cancel, ImportIntent.Continue, ImportIntent.Close,

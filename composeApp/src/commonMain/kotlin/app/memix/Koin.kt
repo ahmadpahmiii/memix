@@ -12,11 +12,14 @@ import app.memix.core.domain.drafts.RenameDraftUseCase
 import app.memix.core.domain.drafts.UpdateDraftThumbnailUseCase
 import app.memix.core.domain.media.ImportMediaUseCase
 import app.memix.core.domain.media.LeftoverMediaCleaner
+import app.memix.core.domain.media.SaveGalleryPhotoProjectUseCase
 import app.memix.core.domain.media.SaveGalleryProjectUseCase
+import app.memix.core.domain.project.CreatePhotoProjectUseCase
 import app.memix.core.domain.project.CreateVideoProjectUseCase
 import app.memix.core.domain.project.DeleteProjectUseCase
 import app.memix.core.domain.project.GetProjectUseCase
 import app.memix.core.domain.project.ObserveProjectSummariesUseCase
+import app.memix.core.domain.project.OpenPhotoDraftUseCase
 import app.memix.core.domain.project.OpenVideoDraftUseCase
 import app.memix.core.domain.project.SaveProjectUseCase
 import app.memix.core.domain.project.StartEditSessionUseCase
@@ -39,6 +42,7 @@ import app.memix.core.domain.video.StartThumbnailsUseCase
 import app.memix.debug.DebugEdits
 import app.memix.debug.EditorSaveDiffLog
 import app.memix.debug.ImportSaveFailure
+import app.memix.engine.photo.photoEngineModule
 import app.memix.engine.video.HAND_CHECKS_PROPERTY
 import app.memix.engine.video.videoEngineModule
 import app.memix.feature.drafts.DraftsViewModel
@@ -49,7 +53,9 @@ import app.memix.feature.videoeditor.EditorDebugEdit
 import app.memix.feature.videoeditor.EditorExport
 import app.memix.feature.videoeditor.EditorSounds
 import app.memix.feature.videoeditor.VideoEditorViewModel
+import app.memix.feature.photoeditor.PhotoEditorViewModel
 import app.memix.feature.videoeditor.importmedia.MediaImportViewModel
+import app.memix.feature.videoeditor.importmedia.PhotoMemeImportViewModel
 import app.memix.platform.services.platformServicesModule
 import kotlin.time.Clock
 import kotlinx.coroutines.CoroutineScope
@@ -72,11 +78,13 @@ private val appModule = module {
     factoryOf(::GetPhoneRegionUseCase)
     factoryOf(::RefreshAppConfigUseCase)
     factoryOf(::CreateVideoProjectUseCase)
+    factoryOf(::CreatePhotoProjectUseCase)
     factoryOf(::SaveProjectUseCase)
     factoryOf(::GetProjectUseCase)
     factoryOf(::DeleteProjectUseCase)
     factoryOf(::ObserveProjectSummariesUseCase)
     factoryOf(::OpenVideoDraftUseCase)
+    factoryOf(::OpenPhotoDraftUseCase)
     factoryOf(::StartPreviewUseCase)
     factoryOf(::StartThumbnailsUseCase)
     factory { StartEditSessionUseCase(get(), get(), get(), get(appScope)) }
@@ -84,6 +92,7 @@ private val appModule = module {
     single(createdAtStart = true) { LeftoverMediaCleaner(get(), get(), get(), get(), get(appScope)) }
     factoryOf(::ImportMediaUseCase)
     factoryOf(::SaveGalleryProjectUseCase)
+    factoryOf(::SaveGalleryPhotoProjectUseCase)
     // Drafts list (P1-14). The thumbnail writer and the delete with undo outlive every screen: singles in the app's scope.
     single { UpdateDraftThumbnailUseCase(get(), get(), get(), get(), get(appScope)) }
     single { DeleteDraftUseCase(get(), get(), get(), get(appScope)) }
@@ -114,7 +123,18 @@ private val appModule = module {
     viewModelOf(::HomeViewModel)
     viewModelOf(::ExportViewModel)
     viewModelOf(::MediaImportViewModel)
+    viewModelOf(::PhotoMemeImportViewModel)
     viewModel { DraftsViewModel(get(), get(), get(), get(), get(), get(), decodeDispatcher = Dispatchers.Default) }
+    viewModel { params ->
+        PhotoEditorViewModel(
+            projectId = params.get(),
+            newBlank = params.get(),
+            openPhotoDraft = get(),
+            createPhotoProject = get(),
+            startEditSession = get(),
+            updateDraftThumbnail = get(),
+        )
+    }
     viewModel { params ->
         VideoEditorViewModel(
             projectId = params.get(),
@@ -152,7 +172,7 @@ fun initKoin(handChecks: Boolean = false, platformSetup: KoinAppDeclaration = {}
     startKoin {
         platformSetup()
         properties(mapOf(HAND_CHECKS_PROPERTY to handChecks))
-        modules(platformServicesModule, databaseDriverModule, settingsModule, dataModule, videoEngineModule, appModule)
+        modules(platformServicesModule, databaseDriverModule, settingsModule, dataModule, videoEngineModule, photoEngineModule, appModule)
         if (handChecks) modules(handCheckModule)
     }
 }

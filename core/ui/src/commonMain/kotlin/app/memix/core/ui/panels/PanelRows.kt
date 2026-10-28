@@ -1,4 +1,4 @@
-package app.memix.feature.videoeditor
+package app.memix.core.ui.panels
 
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -58,7 +58,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.DrawableResource
 
 /*
- * Rows the editor's tool panels share (spec P1-10 → Style and Position panels, P1-11 → Canvas panel).
+ * Rows the editors' tool panels share (spec P1-10 → Style and Position panels, P1-11 → Canvas panel).
  */
 
 /**
@@ -67,7 +67,7 @@ import org.jetbrains.compose.resources.DrawableResource
  * with the heading and scrolled items slide out at the screen edge (ToolPanel README → Content; P1-10 review P1).
  */
 @Composable
-internal fun ChoiceRow(heading: String, choices: @Composable () -> Unit) {
+fun ChoiceRow(heading: String, choices: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(MemixSpacing.space2)) {
         Text(heading, MemixTheme.type.label, Modifier.semantics { heading() }, color = MemixColors.textSecondary)
         Row(
@@ -96,7 +96,7 @@ private fun Modifier.bleedPastPanelPadding(): Modifier = layout { measurable, co
  * font). [spokenState] is the row's value for screen readers ("Size, 120%").
  */
 @Composable
-internal fun StepperRow(label: String, spokenState: String?, controls: @Composable () -> Unit) {
+fun StepperRow(label: String, spokenState: String?, controls: @Composable () -> Unit) {
     FlowRow(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -115,7 +115,7 @@ internal fun StepperRow(label: String, spokenState: String?, controls: @Composab
 
 /** A stepper's value between its buttons, in `timecode`, at least `touch-target` wide. */
 @Composable
-internal fun Readout(value: String) {
+fun Readout(value: String) {
     Box(Modifier.widthIn(min = MemixSize.touchTarget), contentAlignment = Alignment.Center) {
         Text(value, MemixTheme.type.timecode, color = MemixColors.text)
     }
@@ -127,7 +127,7 @@ internal fun Readout(value: String) {
  * Enter or Space steps once. [turnDegrees] turns the icon (one arrow drawing for four directions).
  */
 @Composable
-internal fun RepeatingButton(
+fun RepeatingButton(
     icon: DrawableResource,
     label: String,
     onHeld: (count: Int) -> Unit,

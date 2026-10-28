@@ -22,6 +22,8 @@ data class DraftsUiState(
     val focus: FocusRequestUi? = null,
     /** A draft to open in its editor; the screen navigates, then sends [DraftsIntent.DraftOpened]. */
     val openDraftId: String? = null,
+    /** The kind of [openDraftId]'s project, which decides the editor (video or photo). */
+    val openDraftType: ProjectType? = null,
     /** False once the phone's storage screen failed to open, so Free up space hides. */
     val canFreeUpSpace: Boolean = true,
 ) {

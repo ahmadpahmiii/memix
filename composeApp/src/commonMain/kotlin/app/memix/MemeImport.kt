@@ -19,11 +19,15 @@ import app.memix.core.domain.media.MAX_ITEMS_PER_PICK
 import app.memix.feature.videoeditor.importmedia.ImportIntent
 import app.memix.feature.videoeditor.importmedia.ImportSheet
 import app.memix.feature.videoeditor.importmedia.ImportUiState
+import app.memix.feature.videoeditor.importmedia.ImportWording
 import app.memix.feature.videoeditor.importmedia.MediaImportViewModel
+import app.memix.feature.videoeditor.importmedia.MemeImportViewModel
+import app.memix.feature.videoeditor.importmedia.PhotoMemeImportViewModel
 import app.memix.feature.videoeditor.importmedia.isBlockingSheet
 import app.memix.feature.videoeditor.importmedia.showsSheet
 import app.memix.platform.services.FreeUpSpaceLauncher
 import app.memix.platform.services.MediaPickerLauncher
+import app.memix.platform.services.PickerMedia
 import app.memix.platform.services.rememberFreeUpSpaceLauncher
 import app.memix.platform.services.rememberMediaPickerLauncher
 import kotlinx.coroutines.CoroutineScope
@@ -32,13 +36,14 @@ import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
- * Create → Video meme (P1-02) at the app root: opens the system picker, hands what was picked to
- * [MediaImportViewModel], and keeps the Create sheet's scrim up while that pick copies. The picker and the storage
- * screen are platform launchers, so the app root owns them; the feature only sees results, as intents.
+ * Create → Video meme (P1-02) or Photo meme (P2-01) at the app root: opens the system picker, hands what was picked to
+ * the import's [MemeImportViewModel], and keeps the Create sheet's scrim up while that pick copies. The picker and the
+ * storage screen are platform launchers, so the app root owns them; the feature only sees results, as intents.
  */
 @Stable
-internal class VideoMemeImport(
-    private val viewModel: MediaImportViewModel,
+internal class MemeImport(
+    private val viewModel: MemeImportViewModel,
+    val wording: ImportWording,
     private val picker: MediaPickerLauncher,
     private val freeUpSpace: FreeUpSpaceLauncher,
     private val importState: State<ImportUiState>,
@@ -87,13 +92,29 @@ internal class VideoMemeImport(
     }
 }
 
+/** Create → Video meme: up to 35 videos and photos. */
+@Composable
+internal fun rememberVideoMemeImport(closeCreateSheet: () -> Unit, openEditor: (projectId: String) -> Unit): MemeImport =
+    rememberMemeImport(koinViewModel<MediaImportViewModel>(), ImportWording.MEDIA, MAX_ITEMS_PER_PICK, PickerMedia.IMAGES_AND_VIDEOS, closeCreateSheet, openEditor)
+
+/** Create → Photo meme: one photo from the gallery. */
+@Composable
+internal fun rememberPhotoMemeImport(closeCreateSheet: () -> Unit, openEditor: (projectId: String) -> Unit): MemeImport =
+    rememberMemeImport(koinViewModel<PhotoMemeImportViewModel>(), ImportWording.PHOTO, maxItems = 1, PickerMedia.IMAGES_ONLY, closeCreateSheet, openEditor)
+
 /**
- * Sets up the import. Call it unconditionally at the app root: a picker result that arrives after Android restarted
+ * Sets up an import. Call it unconditionally at the app root: a picker result that arrives after Android restarted
  * the app reaches only a picker registered at the same place in the UI. [openEditor] runs once the media is in.
  */
 @Composable
-internal fun rememberVideoMemeImport(closeCreateSheet: () -> Unit, openEditor: (projectId: String) -> Unit): VideoMemeImport {
-    val viewModel = koinViewModel<MediaImportViewModel>()
+private fun rememberMemeImport(
+    viewModel: MemeImportViewModel,
+    wording: ImportWording,
+    maxItems: Int,
+    media: PickerMedia,
+    closeCreateSheet: () -> Unit,
+    openEditor: (projectId: String) -> Unit,
+): MemeImport {
     val importState = viewModel.state.collectAsStateWithLifecycle()
     val pickStartedOnCreateSheet = rememberSaveable { mutableStateOf(false) }
     val scrimHeld = rememberSaveable { mutableStateOf(false) }
@@ -106,13 +127,13 @@ internal fun rememberVideoMemeImport(closeCreateSheet: () -> Unit, openEditor: (
             scrimHeld.value = true
         }
     }
-    val picker = rememberMediaPickerLauncher(MAX_ITEMS_PER_PICK) { picked ->
+    val picker = rememberMediaPickerLauncher(maxItems, media) { picked ->
         if (picked.isNotEmpty() && pickStartedOnCreateSheet.value) handOverFromCreateSheet()
         pickStartedOnCreateSheet.value = false
         viewModel.onIntent(ImportIntent.Picked(picked))
     }
-    val videoMemeImport = remember(viewModel, picker, freeUpSpace) {
-        VideoMemeImport(viewModel, picker, freeUpSpace, importState, pickStartedOnCreateSheet, scrimHeld, handOverFromCreateSheet, scope)
+    val memeImport = remember(viewModel, picker, freeUpSpace) {
+        MemeImport(viewModel, wording, picker, freeUpSpace, importState, pickStartedOnCreateSheet, scrimHeld, handOverFromCreateSheet, scope)
     }
 
     val editorToOpen by remember { derivedStateOf { (importState.value as? ImportUiState.Done)?.projectId } }
@@ -127,16 +148,17 @@ internal fun rememberVideoMemeImport(closeCreateSheet: () -> Unit, openEditor: (
     }
     val idle by remember { derivedStateOf { importState.value == ImportUiState.Idle } }
     LaunchedEffect(idle) { if (idle) scrimHeld.value = false }
-    return videoMemeImport
+    return memeImport
 }
 
 /** The import sheet, drawn where the app root draws its sheets. It reads the import's progress, so only it redraws. */
 @Composable
-internal fun VideoMemeImportSheet(videoMemeImport: VideoMemeImport) {
+internal fun MemeImportSheet(memeImport: MemeImport) {
     ImportSheet(
-        state = videoMemeImport.state,
-        onIntent = videoMemeImport::onIntent,
-        onPickAgain = videoMemeImport::pickAgain,
-        onFreeUpSpace = videoMemeImport::openFreeUpSpace,
+        state = memeImport.state,
+        onIntent = memeImport::onIntent,
+        onPickAgain = memeImport::pickAgain,
+        onFreeUpSpace = memeImport::openFreeUpSpace,
+        wording = memeImport.wording,
     )
 }

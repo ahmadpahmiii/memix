@@ -15,6 +15,9 @@ import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.RatioTerms
 import app.memix.core.model.project.Transform
+import app.memix.core.ui.editor.SaveProblem
+import app.memix.core.ui.panels.PositionStep
+import app.memix.core.ui.panels.RatioStep
 import app.memix.feature.videoeditor.importmedia.ImportIntent
 import app.memix.feature.videoeditor.importmedia.ImportUiState
 import app.memix.feature.videoeditor.timeline.ItemName
@@ -193,9 +196,6 @@ enum class StageContent {
     /** No clip on the main video track (defensive: the app never makes one, and leaving deletes it). */
     EMPTY,
 }
-
-/** Why the banner says the latest changes aren't saved. */
-enum class SaveProblem { STORAGE_FULL, OTHER }
 
 /**
  * Which tools the clip tool bar shows for the selected item, in the spec's order (P1-06 → Clip tool bar). P1-09 adds

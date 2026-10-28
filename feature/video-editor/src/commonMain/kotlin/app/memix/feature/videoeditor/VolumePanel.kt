@@ -11,7 +11,8 @@ import app.memix.core.designsystem.component.ToolPanel
 import app.memix.core.domain.project.MAX_VOLUME
 import kotlin.math.roundToInt
 import memix.feature.video_editor.generated.resources.Res
-import memix.feature.video_editor.generated.resources.panel_done
+import memix.core.ui.generated.resources.Res as UiRes
+import memix.core.ui.generated.resources.panel_done
 import memix.feature.video_editor.generated.resources.volume_mute_all
 import memix.feature.video_editor.generated.resources.volume_percent
 import memix.feature.video_editor.generated.resources.volume_this_clip
@@ -36,7 +37,7 @@ internal fun VolumePanel(
     ToolPanel(
         visible = panel != null,
         title = stringResource(Res.string.volume_title),
-        doneLabel = stringResource(Res.string.panel_done),
+        doneLabel = stringResource(UiRes.string.panel_done),
         onDone = { onIntent(VideoEditorIntent.CloseVolumePanel) },
         modifier = modifier,
     ) {

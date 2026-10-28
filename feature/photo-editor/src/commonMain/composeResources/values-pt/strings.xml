@@ -1,5 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="editor_photo_title">Editor de fotos</string>
-    <string name="editor_photo_body">O editor de fotos chega na fase 2.</string>
+    <!-- Machine-drafted until P5-06. P2-01 photo editor. English source, budgets and translator notes: docs/ux/specs/P2-01-photo-editor-shell.md -> Copy. Compose resources keep ' and % as written: use plain apostrophes and a single %. -->
+    <string name="tool_layers">Camadas</string>
+    <string name="tool_layer_opacity">Opacidade</string>
+    <string name="tool_lock">Bloquear</string>
+    <string name="tool_unlock">Desbloquear</string>
+    <string name="tool_hide_layer">Ocultar</string>
+    <string name="tool_show_layer">Mostrar</string>
+    <string name="layer_tools_close">Fechar ferramentas da camada</string>
+    <string name="layers_title">Camadas</string>
+    <string name="layers_move_up">Subir camada</string>
+    <string name="layers_move_down">Descer camada</string>
+    <string name="layers_opacity">Opacidade</string>
+    <string name="layers_locked_opacity">Bloqueada. Desbloqueie esta camada para mudar a opacidade.</string>
+    <string name="layer_name_photo">Foto</string>
+    <string name="layer_meta_locked">Bloqueada</string>
+    <string name="layer_meta_hidden">Oculta</string>
+    <string name="layer_meta_missing">Arquivo ausente</string>
+    <string name="layer_meta_opacity">Opacidade&#160;%1$d%</string>
+    <string name="layer_meta_separator">·</string>
+    <string name="layer_lock_a11y">Bloquear camada</string>
+    <string name="layer_unlock_a11y">Desbloquear camada</string>
+    <string name="layer_hide_a11y">Ocultar camada</string>
+    <string name="layer_show_a11y">Mostrar camada</string>
+    <string name="photo_stage_a11y">Tela do meme, %1$s</string>
+    <string name="a11y_layer_row">%1$s, camada %2$d de %3$d</string>
+    <string name="a11y_layer_locked">Bloqueada.</string>
+    <string name="a11y_layer_hidden">Oculta.</string>
+    <string name="a11y_layer_missing">Arquivo ausente.</string>
+    <string name="a11y_layer_opacity">Opacidade de %1$d por cento.</string>
+    <string name="a11y_layer_order">Camada %1$d de %2$d</string>
+    <string name="explain_layer_locked">Esta camada está bloqueada. Desbloqueie para alterá-la.</string>
+    <string name="explain_layer_one">Reordenar precisa de pelo menos duas camadas.</string>
+    <string name="explain_layer_front">Esta camada já está na frente.</string>
+    <string name="explain_layer_back">Esta camada já está no fundo.</string>
+    <string name="explain_layer_edge">Esta camada não pode ir mais longe por aqui.</string>
+    <string name="explain_layers_empty">Ainda não há nada. As camadas que você adicionar aparecem nesta lista.</string>
+    <string name="photo_missing_media">O arquivo de uma foto está ausente, então ela não é desenhada. Exclua essa camada para corrigir.</string>
+    <string name="explain_layer_missing">O arquivo desta foto está ausente. Exclua a camada para corrigir.</string>
+    <string name="photo_layers_moved">As camadas foram movidas para ficar dentro do quadro.</string>
+    <string name="photo_background_hidden">Sua foto cobre todo o quadro, então o fundo não aparece.</string>
+    <string name="photo_empty_title">Esta tela está vazia</string>
+    <string name="photo_empty_body">Toque em Desfazer para trazer sua camada de volta, ou feche isto e comece um novo meme de foto.</string>
+    <string name="edit_transform_layer">Posição e tamanho</string>
+    <string name="edit_layer_opacity">Opacidade</string>
+    <string name="edit_lock">Bloquear</string>
+    <string name="edit_unlock">Desbloquear</string>
+    <string name="edit_layer_hide">Ocultar</string>
+    <string name="edit_layer_show">Mostrar</string>
 </resources>

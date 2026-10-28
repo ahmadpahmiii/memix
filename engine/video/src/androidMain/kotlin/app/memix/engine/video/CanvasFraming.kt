@@ -10,7 +10,7 @@ import androidx.media3.effect.GaussianBlurWithFrameOverlaid
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.Presentation
 import androidx.media3.effect.StaticOverlaySettings
-import app.memix.core.domain.project.hasSameShape
+import app.memix.core.model.project.hasSameShape
 import app.memix.core.model.project.CanvasCatalog
 import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.PixelSize

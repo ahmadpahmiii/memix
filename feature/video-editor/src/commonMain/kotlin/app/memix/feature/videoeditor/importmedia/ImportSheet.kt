@@ -52,19 +52,22 @@ import app.memix.core.ui.SizeRounding
 import app.memix.core.ui.fileSizeText
 import kotlinx.collections.immutable.ImmutableList
 import memix.feature.video_editor.generated.resources.Res
+import memix.core.ui.generated.resources.Res as UiRes
 import memix.feature.video_editor.generated.resources.close
 import memix.feature.video_editor.generated.resources.import_cancel
 import memix.feature.video_editor.generated.resources.import_cap_note
 import memix.feature.video_editor.generated.resources.import_continue
 import memix.feature.video_editor.generated.resources.import_copied
 import memix.feature.video_editor.generated.resources.import_count
-import memix.feature.video_editor.generated.resources.import_free_up_space
+import memix.core.ui.generated.resources.import_free_up_space
 import memix.feature.video_editor.generated.resources.import_item_photo
 import memix.feature.video_editor.generated.resources.import_item_video
 import memix.feature.video_editor.generated.resources.import_no_picker_body
 import memix.feature.video_editor.generated.resources.import_no_picker_title
 import memix.feature.video_editor.generated.resources.import_none_body
+import memix.feature.video_editor.generated.resources.import_none_body_photo
 import memix.feature.video_editor.generated.resources.import_none_title
+import memix.feature.video_editor.generated.resources.import_none_title_photo
 import memix.feature.video_editor.generated.resources.import_partial_body
 import memix.feature.video_editor.generated.resources.import_partial_title
 import memix.feature.video_editor.generated.resources.import_percent
@@ -78,6 +81,7 @@ import memix.feature.video_editor.generated.resources.import_storage_title
 import memix.feature.video_editor.generated.resources.import_time_left_minutes
 import memix.feature.video_editor.generated.resources.import_time_left_seconds
 import memix.feature.video_editor.generated.resources.import_title
+import memix.feature.video_editor.generated.resources.import_title_photo
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -95,6 +99,7 @@ fun ImportSheet(
     onFreeUpSpace: (requestedBytes: Long) -> Unit,
     modifier: Modifier = Modifier,
     drawScrim: Boolean = false,
+    wording: ImportWording = ImportWording.MEDIA,
 ) {
     // While the sheet slides away, or holds still under the editor's push, it keeps showing its last content
     // instead of going blank.
@@ -114,7 +119,7 @@ fun ImportSheet(
     Sheet(
         visible = state.showsSheet,
         onDismiss = { onIntent(dismissIntentFor(shown)) },
-        title = titleFor(shown),
+        title = titleFor(shown, wording),
         modifier = modifier,
         blocking = shown.isBlockingSheet,
         drawScrim = drawScrim,
@@ -132,7 +137,7 @@ fun ImportSheet(
             contentKey = { it::class },
             label = "import sheet",
         ) { target ->
-            SheetContent(target, onIntent, onPickAgain, onFreeUpSpace)
+            SheetContent(target, wording, onIntent, onPickAgain, onFreeUpSpace)
         }
     }
 }
@@ -140,15 +145,16 @@ fun ImportSheet(
 @Composable
 private fun SheetContent(
     state: ImportUiState,
+    wording: ImportWording,
     onIntent: (ImportIntent) -> Unit,
     onPickAgain: () -> Unit,
     onFreeUpSpace: (Long) -> Unit,
 ) {
     when (state) {
-        is ImportUiState.Copying -> CopyingContent(state, onCancel = { onIntent(ImportIntent.Cancel) })
+        is ImportUiState.Copying -> CopyingContent(state, wording, onCancel = { onIntent(ImportIntent.Cancel) })
         is ImportUiState.SomeNotAdded -> SomeNotAddedContent(state, onContinue = { onIntent(ImportIntent.Continue) })
         is ImportUiState.NoneAdded -> ResultContent(
-            body = stringResource(Res.string.import_none_body),
+            body = stringResource(if (wording == ImportWording.PHOTO) Res.string.import_none_body_photo else Res.string.import_none_body),
             notAdded = state.notAdded,
             note = null,
             buttonLabel = stringResource(Res.string.import_pick_again),
@@ -162,19 +168,22 @@ private fun SheetContent(
 }
 
 @Composable
-private fun CopyingContent(state: ImportUiState.Copying, onCancel: () -> Unit) {
+private fun CopyingContent(state: ImportUiState.Copying, wording: ImportWording, onCancel: () -> Unit) {
     val progress = state.progress
     val percentText = stringResource(Res.string.import_percent, progress.percent)
     Column {
         // The percent wraps under the count when both don't fit (large font sizes).
         FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(
-                stringResource(Res.string.import_count, progress.itemNumber, progress.itemCount),
-                MemixTheme.type.label,
-                // Read out when a new item starts, not on every percent (WCAG 2.2 SC 4.1.3).
-                Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                color = MemixColors.textSecondary,
-            )
+            // One photo has no count to give ("1 of 1"); only its percent shows.
+            if (wording == ImportWording.MEDIA || progress.itemCount > 1) {
+                Text(
+                    stringResource(Res.string.import_count, progress.itemNumber, progress.itemCount),
+                    MemixTheme.type.label,
+                    // Read out when a new item starts, not on every percent (WCAG 2.2 SC 4.1.3).
+                    Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    color = MemixColors.textSecondary,
+                )
+            }
             Text(percentText, MemixTheme.type.timecode, color = MemixColors.textSecondary)
         }
         Spacer(Modifier.height(MemixSpacing.space2))
@@ -285,7 +294,7 @@ private fun NotEnoughSpaceContent(state: ImportUiState.NotEnoughSpace, onFreeUpS
         if (state.canFreeUpSpace) {
             Spacer(Modifier.height(MemixSpacing.space6))
             Button(
-                stringResource(Res.string.import_free_up_space),
+                stringResource(UiRes.string.import_free_up_space),
                 { onFreeUpSpace(state.neededBytes) },
                 Modifier.fillMaxWidth(),
                 ButtonVariant.Primary,
@@ -304,10 +313,10 @@ private fun NoPickerContent(onClose: () -> Unit) {
 }
 
 @Composable
-private fun titleFor(state: ImportUiState): String = when (state) {
-    is ImportUiState.Copying -> stringResource(Res.string.import_title)
+private fun titleFor(state: ImportUiState, wording: ImportWording): String = when (state) {
+    is ImportUiState.Copying -> stringResource(if (wording == ImportWording.PHOTO) Res.string.import_title_photo else Res.string.import_title)
     is ImportUiState.SomeNotAdded -> stringResource(Res.string.import_partial_title, state.addedCount, state.pickedCount)
-    is ImportUiState.NoneAdded -> stringResource(Res.string.import_none_title)
+    is ImportUiState.NoneAdded -> stringResource(if (wording == ImportWording.PHOTO) Res.string.import_none_title_photo else Res.string.import_none_title)
     is ImportUiState.NotEnoughSpace -> stringResource(Res.string.import_storage_title)
     ImportUiState.NoPicker -> stringResource(Res.string.import_no_picker_title)
     ImportUiState.Idle, is ImportUiState.Done -> ""

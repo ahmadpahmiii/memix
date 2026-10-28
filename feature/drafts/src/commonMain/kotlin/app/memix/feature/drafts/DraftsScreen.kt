@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import app.memix.core.model.project.ProjectType
 import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixMotion
 import app.memix.core.designsystem.MemixSpacing
@@ -55,19 +56,19 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * The Drafts tab (spec docs/ux/specs/P1-14-drafts.md): "Your drafts", then the drafts newest edit first, the empty
  * state, or the load error. Its sheets ([DraftsSheets]) and toast ([DraftsToastHost]) are placed by the app, over the
- * navigation. [onMakeMeme] opens Create; [onOpenDraft] opens a draft in its editor.
+ * navigation. [onMakeMeme] opens Create; [onOpenDraft] opens a draft in its editor, by its kind.
  */
 @Composable
 fun DraftsScreen(
     state: DraftsUiState,
     onIntent: (DraftsIntent) -> Unit,
     onMakeMeme: () -> Unit,
-    onOpenDraft: (draftId: String) -> Unit,
+    onOpenDraft: (draftId: String, type: ProjectType) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LifecycleEventEffect(Lifecycle.Event.ON_START) { onIntent(DraftsIntent.Shown) }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { onIntent(DraftsIntent.Hidden) }
-    OpenDraftWhenAsked(state.openDraftId, onOpenDraft, onIntent)
+    OpenDraftWhenAsked(state.openDraftId, state.openDraftType, onOpenDraft, onIntent)
     Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars)) {
         ScreenTitle(stringResource(Res.string.drafts_title))
         when (val list = state.list) {
@@ -153,12 +154,12 @@ private fun FocusRows(
 
 /** Navigates once per request; the ViewModel decides (a draft from a newer app explains instead). */
 @Composable
-private fun OpenDraftWhenAsked(draftId: String?, onOpenDraft: (String) -> Unit, onIntent: (DraftsIntent) -> Unit) {
+private fun OpenDraftWhenAsked(draftId: String?, type: ProjectType?, onOpenDraft: (String, ProjectType) -> Unit, onIntent: (DraftsIntent) -> Unit) {
     val currentOnOpenDraft by rememberUpdatedState(onOpenDraft)
     val currentOnIntent by rememberUpdatedState(onIntent)
     LaunchedEffect(draftId) {
-        if (draftId == null) return@LaunchedEffect
-        currentOnOpenDraft(draftId)
+        if (draftId == null || type == null) return@LaunchedEffect
+        currentOnOpenDraft(draftId, type)
         currentOnIntent(DraftsIntent.DraftOpened)
     }
 }

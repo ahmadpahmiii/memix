@@ -25,6 +25,9 @@ import kotlinx.coroutines.withContext
  * land after a newer one. A failed write keeps the project waiting: the next change, [saveNow] or [close]
  * tries again, and [onSaveFailureChanged] reports the failure, then `null` once a write works.
  *
+ * With [waitsForFirstContent] (a new project that only exists in memory), nothing is written until the project has
+ * something in it ([isEmptyDraft] is false), so a blank canvas that only had its ratio changed leaves no draft.
+ *
  * Closing is final: [close] makes the last write, or [closeDeletingDraft] deletes the draft instead, and no
  * write runs after either, so a delete can't be undone by a save that was still waiting (P1-07 review R4).
  */
@@ -32,6 +35,7 @@ internal class ProjectAutoSaver(
     private val saveProject: SaveProjectUseCase,
     private val deleteProject: DeleteProjectUseCase,
     private val scope: CoroutineScope,
+    private val waitsForFirstContent: Boolean = false,
     private val onSaveFailureChanged: (AppError?) -> Unit,
 ) {
     // The newest version to save; null until the first change. Handed over from the main thread.
@@ -85,6 +89,7 @@ internal class ProjectAutoSaver(
     private suspend fun writeNewestLocked() {
         val project = newest.value
         if (project == null || project === lastWritten) return
+        if (waitsForFirstContent && lastWritten == null && project.isEmptyDraft()) return
         when (val outcome = saveProject(project)) {
             is Outcome.Success -> {
                 lastWritten = project

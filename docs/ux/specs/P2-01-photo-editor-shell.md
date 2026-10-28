@@ -114,7 +114,7 @@ Component ToolBar (`design/system/components/ToolBar/README.md`, updated with th
 **Position · Opacity · Delete · Duplicate · Lock · Hide · Layers**
 
 - **Why this order:** Position is the non-gesture route for move, size and turn (WCAG 2.5.1 and 2.5.7), so it is always one tap away; Delete is third and stays in view at 360 dp (ToolBar rule); Layers is last, since it is a shortcut (Close layer tools, then Layers does the same).
-- **Lock and Hide swap their label and state:** a locked layer's bar starts with **Unlock** in the Lock place (and the layer's other tools explain, see Locked layers); a hidden layer shows **Show** in the Hide place. Each tool's icon shows the layer's **current state** (a closed lock on a locked layer, a slashed eye on a hidden one) and its label says the action ("Unlock", "Show"). This is the P1-09 pattern for the original-audio toggle (icon = state) with the action named in the label.
+- **Lock and Hide swap their label and state:** a locked layer's bar **starts with Unlock**, in front of Position (the Lock place is empty then); the other tools follow in their usual order. Why first: while a layer is locked, Position, Opacity and Delete only explain (see Locked layers), so the first three tools would be dead ends, and Unlock would sit fifth, off screen at 360 dp and not even in the first three tools at 200% font in es and pt (review P2-01, 28 Oct). Lock and Unlock never swap places by themselves: tapping Lock on an unlocked layer reorders the bar, so **the bar scrolls back to its start** at the same moment (instant), and the new first tool is the one in view. If the file is missing as well, Unlock is first and Delete second. A hidden layer shows **Show** in the Hide place. Each tool's icon shows the layer's **current state** (a closed lock on a locked layer, a slashed eye on a hidden one) and its label says the action ("Unlock", "Show"). This is the P1-09 pattern for the original-audio toggle (icon = state) with the action named in the label. TalkBack reads the bar in this visual order.
 - **A layer whose file is missing:** Delete comes first (it is what fixes it; the toast names it), then the usual order.
 - **Look:** tools `text-secondary` icon and label; Delete `danger` (with its word); every label keeps two lines of room (ToolBar rule). The bar crossfades with the main bar over 120 ms.
 - **Later tickets** add each layer type's own tools in front of these (text: Edit text · Style · Position, P2-03, as `P1-10-text.md`).
@@ -125,6 +125,10 @@ Opened by the Layers tool. ToolPanel rules apply (`design/system/components/Tool
 Top row: **Layers** (a heading) at the start; at the end **Move layer up** and **Move layer down** (IconButtons, `arrow` turned up and down, 48 dp, shown only while a layer is selected), then **Done**. Where the row doesn't fit (200% font), the two buttons wrap onto a second line under the title, never cut.
 
 Then, while a layer is selected, **Opacity** (Slider: label "Opacity", readout the percent in `timecode`; range 10% to 100%, default 100%). Then the **list**: one LayerRow per layer, **front layer first** (the top row is the top-most layer, as every layers panel does), `space-1` apart, scrolling.
+
+**Where the Opacity row lives (review P2-01, 28 Oct).** The list is the panel's job, so it must always have room for at least two rows (2 × 56 + `space-1` = 113 dp). Beside a fixed Opacity row it has about 96 dp at 360 × 640 and about 40 dp at 200% font (the renders show half a row), so:
+- **Roomy** (panel cap 300 dp or more and font scale under 1.3, for example 360 × 800 at 100%): the Opacity row is fixed above the list, as drawn.
+- **Tight** (cap under 300 dp, or font scale 1.3 or more): the Opacity row is **the list's first item** and scrolls with the rows. Opening the panel brings the selected row into view as always, so the slider may start scrolled out of sight; the **Opacity tool on the selected-layer bar** is the route to it from there (one tap, a panel of its own, always roomy). The Move buttons stay in the fixed top row.
 
 **LayerRow** (`design/system/components/LayerRow/README.md`, new): at least 56 dp tall (`layer-thumb-size` 40 plus `space-2` above and below), `surface-raised` fill, `radius-md`. From the start:
 1. **Thumbnail:** `layer-thumb-size` (40, new token) square, `radius-sm`, `space-2` from the row's start: the layer's picture, fitted inside. No checkerboard (a transparent picture shows on `surface`).
@@ -248,7 +252,7 @@ One tap on a ratio is **one undo step** ("Ratio") that changes the canvas and, i
 | Opening a draft | Frame in the background color at once; each layer fades in (120 ms) when decoded | none |
 | Default, one layer, nothing selected | The photo on the frame; main bar with Layers; Undo and Redo disabled | `photo_stage_a11y`, `tool_layers` |
 | Layer selected | Frame, handle, selected-layer bar | `tool_position`, `tool_layer_opacity`, `tool_delete`, `tool_duplicate`, `tool_lock`, `tool_hide_layer`, `tool_layers`, `layer_tools_close` |
-| Layer selected, locked | Frame, lock badge (no handle); Unlock first in its place | `tool_unlock`, `explain_layer_locked` |
+| Layer selected, locked | Frame, lock badge (no handle); the bar starts with Unlock | `tool_unlock`, `explain_layer_locked` |
 | Layer selected, hidden | Nothing on the canvas for it; the bar shows Show | `tool_show_layer` |
 | Moving, sizing, turning | The layer follows; guides when snapped; the bubble; the frame edge | `text_transform_bubble` |
 | Overlapping layers | A tap picks the top-most visible; the others via the panel | none |
@@ -322,7 +326,9 @@ English source; the engineer machine-drafts id, es, pt and hi (until P5). Budget
 | `layer_meta_locked` | Locked | 16 | Row meta |
 | `layer_meta_hidden` | Hidden | 16 | |
 | `layer_meta_missing` | File missing | 20 | |
-| `layer_meta_opacity` | %1$d%% opacity | 18 | Write a single %: Compose resources don't double it |
+| `layer_meta_opacity` | %1$d% opacity | 18 | Write a single %: Compose resources don't double it. Put a no-break space between the number and the word (` ` in the XML, which Compose resources decode), so a wrapped meta line never leaves "40%" alone at the end of a line |
+| `explain_canvas_widest` | This is as wide as a canvas can be. | 40 | Shared with the video editor; replaces "…as a video can be" (it named the wrong editor). Same pattern as `explain_canvas_tallest` |
+| `explain_canvas_tallest` | This is as tall as a canvas can be. | 40 | Shared with the video editor. "Canvas" is the same word as `canvas_title` in your language |
 | `layer_meta_separator` | · | 4 | Joins the meta parts with spaces around it. A resource so a language can change it |
 | `layer_lock_a11y` | Lock layer | 24 | Spoken label of the row's lock button |
 | `layer_unlock_a11y` | Unlock layer | 24 | |
@@ -370,7 +376,7 @@ Translator notes:
 - **Announcements, polite, never taking focus (SC 4.1.3):** `a11y_edit_on_item` after Delete, Duplicate, Lock, Hide; `a11y_layer_opacity` after the slider; `a11y_text_transformed` and `a11y_text_position` after the Position panel; toasts. Gestures announce nothing while moving.
 - **Touch targets:** every tool, button, row, tile and swatch is 48 dp or more; a layer's hit area grows to 48 dp; the handle's target is 48 dp (cut by the stage edge when it sits at a corner, where the inner 24 dp still works).
 - **Contrast:** row name `text` on `surface-raised` 12.4:1; meta `text-secondary` 5.7:1; a hidden row's name `text-secondary` 5.7:1; the free lock icon `text-muted` 4.6:1; the ring `selection` on `surface` 17.2:1; the lock badge `text` on `scrim` 7.5:1 or more; the empty card `text` on `scrim` over a white canvas 7.5:1; the frame and handle as P1-10 (4.3:1 or more over any content).
-- **200% font:** the top bar keeps its height (icons only; only the pill grows). Tool labels wrap and the bar grows. Row text wraps, rows grow and the thumbnail stays 40; the Layers panel's top row wraps its two buttons under the title; the panel still caps at 40% of the window and the list scrolls. The empty card scrolls. Nothing is cut. Hindi at 200% is a screenshot (QA compares 7).
+- **200% font:** the top bar keeps its height (icons only; only the pill grows). Tool labels wrap and the bar grows. Row text wraps, rows grow and the thumbnail stays 40; the Layers panel's top row wraps its two buttons under the title; the panel still caps at 40% of the window, the Opacity row moves into the list (Layers panel → Where the Opacity row lives), and the list scrolls with room for two rows at least. The empty card scrolls. Nothing is cut. Hindi at 200% is a screenshot (QA compares 7).
 - **Reduce motion:** see Motion.
 
 ## Analytics
@@ -445,7 +451,7 @@ I don't edit code, so these are requests. They sit beside the PM's must-knows, w
    - Decode each image at the size it is drawn at the canvas's **no-panel size**: never above the source's own size and never above 4096 px on the long side. Re-decode only on gesture release, and only if the drawn size changed by 25% or more. Never during a drag or an opacity slide.
    - One decoded bitmap per source file; layers keyed by id; a gesture moves the layer in the draw phase (a state read inside the draw lambda), so the scene is not recomposed per frame.
    - Opening or closing a panel scales the existing bitmaps; it never re-decodes.
-   - Layer row thumbnails come from the thumbnail reader (192 px at most, never the original) and are cached; the list is lazy.
+   - Layer row thumbnails are **not** from the thumbnail reader (it returns square center crops, and the row wants the picture fitted inside): they come from the scene decoder at about 128 px on the long side (never the original, never above 192), one per file, cached while the editor is open and released at close; the list is lazy (accepted in review P2-01, 28 Oct).
    - Release bitmaps when the editor closes.
    - Report the phone model, Android version and median and worst janky % (the PM's method), plus `dumpsys meminfo` Graphics and Native Heap on `photo-layers-10`.
 7. **Stage:** the canvas refit above a panel with the 200 ms scale; the frame inset `space-4`; the handle and guides clipped at the stage (P1-10 review M1).

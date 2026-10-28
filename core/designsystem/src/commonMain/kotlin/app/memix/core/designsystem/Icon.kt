@@ -25,6 +25,12 @@ import memix.core.designsystem.generated.resources.ic_edit_text
 import memix.core.designsystem.generated.resources.ic_fill
 import memix.core.designsystem.generated.resources.ic_fit
 import memix.core.designsystem.generated.resources.ic_globe
+import memix.core.designsystem.generated.resources.ic_eye
+import memix.core.designsystem.generated.resources.ic_eye_off
+import memix.core.designsystem.generated.resources.ic_layers
+import memix.core.designsystem.generated.resources.ic_lock
+import memix.core.designsystem.generated.resources.ic_opacity
+import memix.core.designsystem.generated.resources.ic_unlock
 import memix.core.designsystem.generated.resources.ic_heart
 import memix.core.designsystem.generated.resources.ic_heart_filled
 import memix.core.designsystem.generated.resources.ic_home
@@ -73,13 +79,18 @@ object MemixIcons {
     val Fill = Res.drawable.ic_fill
     val Fit = Res.drawable.ic_fit
     val EditText = Res.drawable.ic_edit_text
+    val Eye = Res.drawable.ic_eye
+    val EyeOff = Res.drawable.ic_eye_off
     val Globe = Res.drawable.ic_globe
     val Heart = Res.drawable.ic_heart
     val HeartFilled = Res.drawable.ic_heart_filled
     val Home = Res.drawable.ic_home
+    val Layers = Res.drawable.ic_layers
+    val Lock = Res.drawable.ic_lock
     val Minus = Res.drawable.ic_minus
     val More = Res.drawable.ic_more
     val MoveHere = Res.drawable.ic_move_here
+    val Opacity = Res.drawable.ic_opacity
     val Pause = Res.drawable.ic_pause
     val Photo = Res.drawable.ic_photo
     val Play = Res.drawable.ic_play
@@ -98,6 +109,7 @@ object MemixIcons {
     val Style = Res.drawable.ic_style
     val Templates = Res.drawable.ic_templates
     val Text = Res.drawable.ic_text
+    val Unlock = Res.drawable.ic_unlock
     val Undo = Res.drawable.ic_undo
     val Video = Res.drawable.ic_video
     val Volume = Res.drawable.ic_volume

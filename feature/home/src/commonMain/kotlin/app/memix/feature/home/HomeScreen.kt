@@ -52,7 +52,7 @@ import org.jetbrains.compose.resources.stringResource
 fun HomeScreen(
     state: HomeUiState,
     onStartVideoMeme: () -> Unit,
-    onOpenPhotoEditor: () -> Unit,
+    onStartPhotoMeme: () -> Unit,
     modifier: Modifier = Modifier,
     onOpenCatalog: (() -> Unit)? = null,
 ) {
@@ -86,7 +86,7 @@ fun HomeScreen(
                         description = stringResource(Res.string.entry_photo_body),
                         icon = MemixIcons.Photo,
                         emphasized = false,
-                        onClick = onOpenPhotoEditor,
+                        onClick = onStartPhotoMeme,
                         modifier = cardModifier,
                     )
                 }

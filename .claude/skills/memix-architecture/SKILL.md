@@ -17,9 +17,9 @@ Full detail: `docs/TECHNICAL_DESIGN.md`. This is the working summary.
 | `:core:domain` | Domain | use cases; repository + engine interfaces (`VideoEngine`, `PreviewSession`, `PhotoRenderer`, `Segmenter`, `MediaFiles`, `MediaInspector`, `LocalCalendar`, `Sharer`, `Ads`, `Analytics`) | `:core:model` |
 | `:core:data` | Data | repositories, supabase-kt remote, SQLDelight local, file cache, settings | `:core:domain` |
 | `:core:designsystem` | UI | `MemixTheme`, tokens, base components | — |
-| `:core:ui` | UI | shared composables with more than one user: time formatting, layer handles, sliders, pickers (the video timeline is in `:feature:video-editor`) | designsystem, model |
+| `:core:ui` | UI | shared composables with more than one user: time formatting, layer gestures and selection frame, Position and Canvas panel rows, editor frame pieces (`editor/`), the one photo-scene drawing function `drawPhotoScene` and the `SceneImageSource` decoder interface (`scene/`); public `Res` with the strings both editors share (the video timeline is in `:feature:video-editor`) | designsystem, model |
 | `:engine:video` | Platform | `VideoEngine`: Media3 (androidMain), AVFoundation (iosMain); `VideoPreviewSurface`, which the composition root passes to the editor screen | domain |
-| `:engine:photo` | Platform | photo renderer + PNG/JPG/GIF/WebP encoders | domain |
+| `:engine:photo` | Platform | the scene's `SceneImageSource` decoder (P2-01; interface lives in `:core:ui` because it returns `ImageBitmap`), later the photo renderer + PNG/JPG/GIF/WebP encoders | domain, ui |
 | `:engine:segmentation` | Platform | `Segmenter`: ML Kit + MediaPipe / Vision | domain |
 | `:platform:services` | Platform | AdMob+UMP, Firebase, share intents, gallery picker | domain |
 | `:feature:onboarding/home/templates/sounds/drafts/video-editor/photo-editor/export` | UI | screens + ViewModels | domain, ui |

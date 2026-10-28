@@ -13,6 +13,7 @@ import app.memix.debug.DraftsCheck
 import app.memix.debug.ExportCheck
 import app.memix.debug.ImportSaveFailure
 import app.memix.debug.MemixTestCrash
+import app.memix.debug.SceneRender
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -48,6 +49,13 @@ class MainActivity : ComponentActivity() {
         // Debug and benchmark builds (P1-14): --ez memix.draftsCheck true saves 25 drafts for the Drafts list checks. Logcat tag
         // MemixDraftsCheck; steps in docs/qa/phase-1/engineer-hand-checks.md → P1-14.
         if (handChecks && savedInstanceState == null && intent.getBooleanExtra("memix.draftsCheck", false)) lifecycleScope.launch { DraftsCheck().run() }
+        // Debug and benchmark builds (P2-01): --es memix.renderScene <photo project id> --ei memix.renderWidth 1080 writes the saved
+        // scene to cache/scene-renders/<id>-<width>.png through the editor's scene-drawing function. Logcat tag MemixSceneRender.
+        val renderScene = if (handChecks && savedInstanceState == null) intent.getStringExtra("memix.renderScene") else null
+        if (renderScene != null) {
+            val width = intent.getIntExtra("memix.renderWidth", 1080)
+            lifecycleScope.launch { SceneRender().run(renderScene, width) }
+        }
         setContent { App(isDebugBuild, debugEditorProject = editorCheck) }
     }
 }

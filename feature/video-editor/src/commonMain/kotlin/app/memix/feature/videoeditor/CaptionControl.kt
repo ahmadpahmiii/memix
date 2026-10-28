@@ -1,12 +1,9 @@
 package app.memix.feature.videoeditor
 
-import app.memix.core.domain.project.TEXT_MOVE_STEP
+import app.memix.core.domain.project.TEXT_SIZE_LADDER
 import app.memix.core.domain.project.addText
 import app.memix.core.domain.project.clampedForText
 import app.memix.core.domain.project.editText
-import app.memix.core.domain.project.nextTextRotation
-import app.memix.core.domain.project.nextTextSizeDown
-import app.memix.core.domain.project.nextTextSizeUp
 import app.memix.core.domain.project.setCaptionStyle
 import app.memix.core.domain.project.setTextTransform
 import app.memix.core.domain.project.textItem
@@ -18,6 +15,11 @@ import app.memix.core.model.project.CaptionCatalog
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.Transform
+import app.memix.core.ui.panels.PositionLimit
+import app.memix.core.ui.panels.PositionStep
+import app.memix.core.ui.panels.changesPlace
+import app.memix.core.ui.panels.limit
+import app.memix.core.ui.panels.steppedBy
 import app.memix.feature.videoeditor.timeline.nameOf
 import kotlin.math.roundToInt
 import kotlinx.collections.immutable.persistentSetOf
@@ -99,8 +101,8 @@ internal class CaptionControl(private val host: EditorHost) {
     /** A Position panel tap, or a held arrow's release ([repeats] steps): one step, or an explanation at a limit. */
     fun step(step: PositionStep, repeats: Int) {
         val item = selectedText() ?: return
-        val stepped = stepped(item.transform, step, repeats)
-        if (stepped == null) return host.showToast(ToastMessage.Explain(limitOf(step)))
+        val stepped = item.transform.steppedBy(step, repeats, TEXT_SIZE_LADDER)
+        if (stepped == null) return host.showToast(ToastMessage.Explain(explanationOf(step.limit)))
         val edit = if (step.changesPlace) VideoEdit.POSITION_TEXT else VideoEdit.TRANSFORM_TEXT
         if (!commitTransform(item, stepped, edit)) return
         // The result is spoken, never only seen (P1-10 review P3).
@@ -115,7 +117,7 @@ internal class CaptionControl(private val host: EditorHost) {
     /** A held Move arrow: the caption shows [repeats] steps along in the stand-in; the release commits. */
     fun stepHeld(step: PositionStep, repeats: Int) {
         val item = selectedText() ?: return
-        val stepped = stepped(item.transform, step, repeats) ?: return
+        val stepped = item.transform.steppedBy(step, repeats, TEXT_SIZE_LADDER) ?: return
         host.preview?.hideCaption(item.id)
         showStandIn(item.copy(transform = stepped), awaitingCommit = false)
     }
@@ -250,49 +252,15 @@ internal class CaptionControl(private val host: EditorHost) {
         return host.currentProject()?.textItem(itemId)
     }
 
-    // The transform after [repeats] taps of [step], or null when the first one already hits a limit.
-    private fun stepped(transform: Transform, step: PositionStep, repeats: Int): Transform? {
-        var current = transform
-        repeat(repeats) { index ->
-            val next = steppedOnce(current, step)
-            if (next == null) return if (index == 0) null else current
-            current = next
-        }
-        return current
+    private fun explanationOf(limit: PositionLimit): Explanation = when (limit) {
+        PositionLimit.SMALLEST -> Explanation.TEXT_SMALLEST
+        PositionLimit.BIGGEST -> Explanation.TEXT_BIGGEST
+        PositionLimit.EDGE -> Explanation.TEXT_EDGE
     }
-
-    private fun steppedOnce(transform: Transform, step: PositionStep): Transform? = when (step) {
-        PositionStep.SMALLER -> nextTextSizeDown(transform.scale)?.let { transform.copy(scale = it) }
-        PositionStep.BIGGER -> nextTextSizeUp(transform.scale)?.let { transform.copy(scale = it) }
-        PositionStep.ROTATE_LEFT -> transform.copy(rotationDegrees = nextTextRotation(transform.rotationDegrees, clockwise = false))
-        PositionStep.ROTATE_RIGHT -> transform.copy(rotationDegrees = nextTextRotation(transform.rotationDegrees, clockwise = true))
-        PositionStep.MOVE_LEFT -> transform.movedBy(-TEXT_MOVE_STEP, 0f)
-        PositionStep.MOVE_RIGHT -> transform.movedBy(TEXT_MOVE_STEP, 0f)
-        PositionStep.MOVE_UP -> transform.movedBy(0f, -TEXT_MOVE_STEP)
-        PositionStep.MOVE_DOWN -> transform.movedBy(0f, TEXT_MOVE_STEP)
-        PositionStep.CENTER -> transform.copy(centerX = CENTER, centerY = CENTER)
-    }
-
-    // Null when the center is already at that edge: the text can't go further.
-    private fun Transform.movedBy(dx: Float, dy: Float): Transform? {
-        val moved = copy(centerX = (centerX + dx).coerceIn(0f, 1f), centerY = (centerY + dy).coerceIn(0f, 1f))
-        return if (moved == this) null else moved
-    }
-
-    private fun limitOf(step: PositionStep): Explanation = when (step) {
-        PositionStep.SMALLER -> Explanation.TEXT_SMALLEST
-        PositionStep.BIGGER -> Explanation.TEXT_BIGGEST
-        PositionStep.ROTATE_LEFT, PositionStep.ROTATE_RIGHT, PositionStep.MOVE_LEFT, PositionStep.MOVE_UP,
-        PositionStep.MOVE_DOWN, PositionStep.MOVE_RIGHT, PositionStep.CENTER -> Explanation.TEXT_EDGE
-    }
-
-    private val PositionStep.changesPlace: Boolean
-        get() = this != PositionStep.SMALLER && this != PositionStep.BIGGER && this != PositionStep.ROTATE_LEFT && this != PositionStep.ROTATE_RIGHT
 
     private val Transform.scalePercent: Int get() = (scale * PERCENT).roundToInt()
 
     private companion object {
-        const val CENTER = 0.5f
         const val PERCENT = 100
         const val STAND_IN_TIMEOUT_MS = 2_000L
     }

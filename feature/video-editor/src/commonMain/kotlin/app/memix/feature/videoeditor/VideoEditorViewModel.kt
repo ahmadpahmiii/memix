@@ -44,7 +44,9 @@ import app.memix.core.model.project.Project
 import app.memix.core.model.project.RatioTerms
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TrackKind
+import app.memix.core.model.project.size
 import app.memix.core.ui.MemixViewModel
+import app.memix.core.ui.editor.SaveProblem
 import app.memix.feature.videoeditor.importmedia.ImportIntent
 import app.memix.feature.videoeditor.timeline.ItemName
 import app.memix.feature.videoeditor.timeline.TimelineThumbnails

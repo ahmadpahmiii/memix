@@ -1,5 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="editor_photo_title">Editor foto</string>
-    <string name="editor_photo_body">Editor foto hadir di fase 2.</string>
+    <!-- Machine-drafted until P5-06. P2-01 photo editor. English source, budgets and translator notes: docs/ux/specs/P2-01-photo-editor-shell.md -> Copy. Compose resources keep ' and % as written: use plain apostrophes and a single %. -->
+    <string name="tool_layers">Lapisan</string>
+    <string name="tool_layer_opacity">Opasitas</string>
+    <string name="tool_lock">Kunci</string>
+    <string name="tool_unlock">Buka kunci</string>
+    <string name="tool_hide_layer">Sembunyikan</string>
+    <string name="tool_show_layer">Tampilkan</string>
+    <string name="layer_tools_close">Tutup alat lapisan</string>
+    <string name="layers_title">Lapisan</string>
+    <string name="layers_move_up">Naikkan lapisan</string>
+    <string name="layers_move_down">Turunkan lapisan</string>
+    <string name="layers_opacity">Opasitas</string>
+    <string name="layers_locked_opacity">Terkunci. Buka kunci lapisan ini untuk mengubah opasitasnya.</string>
+    <string name="layer_name_photo">Foto</string>
+    <string name="layer_meta_locked">Terkunci</string>
+    <string name="layer_meta_hidden">Tersembunyi</string>
+    <string name="layer_meta_missing">File hilang</string>
+    <string name="layer_meta_opacity">Opasitas&#160;%1$d%</string>
+    <string name="layer_meta_separator">·</string>
+    <string name="layer_lock_a11y">Kunci lapisan</string>
+    <string name="layer_unlock_a11y">Buka kunci lapisan</string>
+    <string name="layer_hide_a11y">Sembunyikan lapisan</string>
+    <string name="layer_show_a11y">Tampilkan lapisan</string>
+    <string name="photo_stage_a11y">Kanvas meme, %1$s</string>
+    <string name="a11y_layer_row">%1$s, lapisan %2$d dari %3$d</string>
+    <string name="a11y_layer_locked">Terkunci.</string>
+    <string name="a11y_layer_hidden">Tersembunyi.</string>
+    <string name="a11y_layer_missing">File hilang.</string>
+    <string name="a11y_layer_opacity">Opasitas %1$d persen.</string>
+    <string name="a11y_layer_order">Lapisan %1$d dari %2$d</string>
+    <string name="explain_layer_locked">Lapisan ini terkunci. Buka kunci untuk mengubahnya.</string>
+    <string name="explain_layer_one">Mengurutkan ulang butuh minimal dua lapisan.</string>
+    <string name="explain_layer_front">Lapisan ini sudah paling depan.</string>
+    <string name="explain_layer_back">Lapisan ini sudah paling belakang.</string>
+    <string name="explain_layer_edge">Lapisan ini tidak bisa bergerak lebih jauh ke arah ini.</string>
+    <string name="explain_layers_empty">Belum ada apa-apa. Lapisan yang kamu tambahkan muncul di daftar ini.</string>
+    <string name="photo_missing_media">File sebuah foto hilang, jadi tidak digambar. Hapus lapisan itu untuk memperbaikinya.</string>
+    <string name="explain_layer_missing">File foto ini hilang. Hapus lapisannya untuk memperbaiki.</string>
+    <string name="photo_layers_moved">Lapisan dipindah agar tetap di dalam bingkai.</string>
+    <string name="photo_background_hidden">Fotomu menutupi seluruh bingkai, jadi latar tidak terlihat.</string>
+    <string name="photo_empty_title">Kanvas ini kosong</string>
+    <string name="photo_empty_body">Ketuk Urungkan untuk mengembalikan lapisanmu, atau tutup ini dan mulai meme foto baru.</string>
+    <string name="edit_transform_layer">Posisi dan ukuran</string>
+    <string name="edit_layer_opacity">Opasitas</string>
+    <string name="edit_lock">Kunci</string>
+    <string name="edit_unlock">Buka kunci</string>
+    <string name="edit_layer_hide">Sembunyikan</string>
+    <string name="edit_layer_show">Tampilkan</string>
 </resources>

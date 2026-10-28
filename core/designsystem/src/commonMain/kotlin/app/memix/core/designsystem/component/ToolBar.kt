@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,13 +87,17 @@ class ToolBarClose(val contentDescription: String, val onClick: () -> Unit)
 /**
  * The editors' bottom tool bar (`design/system/components/ToolBar/README.md`): a `surface` bar at least
  * `toolbar-height` tall under a `hairline`, with [tools] left-aligned in a row that scrolls sideways when they
- * overflow. With [close] it's in clip mode: a 48 dp back button and a divider lead the tools.
+ * overflow. With [close] it's in clip mode: a 48 dp back button and a divider lead the tools. When [scrollResetKey]
+ * changes the row scrolls back to its first tool.
  *
  * Each tool is `tool-item-width` wide with its label in `caption`, never cut; at large font sizes a tool widens only
  * when a word can't break, and the bar grows taller instead of cutting labels.
  */
 @Composable
-fun ToolBar(tools: ImmutableList<ToolBarItem>, modifier: Modifier = Modifier, close: ToolBarClose? = null) {
+fun ToolBar(tools: ImmutableList<ToolBarItem>, modifier: Modifier = Modifier, close: ToolBarClose? = null, scrollResetKey: Any = Unit) {
+    val scroll = rememberScrollState()
+    // A bar whose tools reorder under the user's finger starts again from its first tool (instant, no animation).
+    LaunchedEffect(scrollResetKey) { scroll.scrollTo(0) }
     Row(
         modifier
             .fillMaxWidth()
@@ -105,7 +110,7 @@ fun ToolBar(tools: ImmutableList<ToolBarItem>, modifier: Modifier = Modifier, cl
             IconButton(MemixIcons.ArrowBack, close.contentDescription, close.onClick, Modifier.padding(start = MemixSpacing.space1))
             Box(Modifier.width(MemixStroke.strokeHairline).height(MemixSpacing.space6).background(MemixColors.hairline))
         }
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = MemixSpacing.space1)) {
+        Row(Modifier.horizontalScroll(scroll).padding(horizontal = MemixSpacing.space1)) {
             tools.forEach { tool -> ToolButton(tool) }
         }
     }

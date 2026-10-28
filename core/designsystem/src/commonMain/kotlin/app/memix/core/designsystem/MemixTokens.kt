@@ -86,6 +86,9 @@ object MemixSize {
     /** The square thumbnail at the start of a list row (a draft's first frame, P1-14); `list-thumb-size` in design/tokens.json. */
     val listThumbSize = 56.dp
 
+    /** The square thumbnail at the start of a LayerRow in the photo editor's Layers panel (P2-01); `layer-thumb-size` in design/tokens.json. */
+    val layerThumbSize = 40.dp
+
     /** The square icon chip over a picture (the type badge on a draft's thumbnail, P1-14); `badge-size` in design/tokens.json. */
     val badge = 20.dp
 }
