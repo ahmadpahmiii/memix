@@ -8,21 +8,22 @@ Fourth spec for the photo editor. It reuses, and does not repeat:
 - `P1-10-text.md`, `P1-11-canvas.md`: captions, the Canvas panel and `OptionTile`.
 
 ## Job
-"Make a classic photo meme" and its relatives (PRD → Jobs, → Photo editor): choose a **format** and the meme's shape is made for you. Five formats (PRD): **Classic** (top and bottom text), **Caption bar** (a white bar above the image), **Panels** (2 to 6 cells, grid, side by side or stacked, draggable dividers), **Demotivational** (a frame with a title) and **Speech bubbles**. A format is a layout that holds **slots** (a place waiting for text or a picture); it never takes the user's words or pictures away.
+"Make a classic photo meme" and its relatives (PRD → Jobs, → Photo editor): choose a **format** and the meme's shape is made for you. Five formats (PRD): **Classic** (top and bottom text), **Caption bar** (a white bar above the image), **Panels** (2 to 6 cells, grid, side by side or stacked, draggable dividers), **Demotivational** (a frame with a title) and **Speech bubbles**. A format is a layout that holds **slots** (a place waiting for text or a picture); it never takes the user's words or pictures away. **A new photo meme starts plain, with no format** (owner, 28 Oct, question 2 answered B): the photo on its own canvas, exactly as P2-01 and P2-03 built it. Every format is an explicit choice in the Formats panel, and **Plain** is the way back.
 
 **Done when** (TICKETS): each format exports correctly at 1080 px and 2160 px. **Reading** (PM, 28 Oct; owner can veto): the two sizes are the canvas's **shorter side** (the export scales the canvas by 1 and by 2); "exports correctly" means the render equals the on-screen canvas (every layer and format part within 1% of the width in position, 2% in size, 1° in rotation, the same wrap and stacking), nothing is clipped, and the 2160 render equals the 1080 render scaled. Until P2-08 builds photo export the check is the P2-01 render hook at both sizes; the final check runs with P2-08's exporter at QA (method at the end).
 
 **The one blue action:** none. Formats and Layout are tools; blue appears nowhere new. White is selection (the selected tile, the selected cell's ring, the selected divider, frames and handles).
 
 **Fast path, with tap counts:**
-- **A classic meme** (the default): Photo meme (1), a photo (2), tap the top hint (3), type, Done (4); tap the bottom hint (5), type, Done (6). Two captions in six taps; the hints say where to tap, so no tool needs finding.
+- **A captioned photo, no format** (the start): Photo meme (1), a photo (2), Text (3), type, Done (4). A second caption: tap an empty spot of the canvas or Close layer tools (5), Text (6), type, Done (7). These are P2-03's counts; nothing in this ticket touches them.
+- **A classic meme with hints:** Photo meme (1), a photo (2), Formats (3), Classic (4), Done (5); then tap the top hint (6), type, Done (7); tap the bottom hint (8), type, Done (9). Classic costs three taps up front and then two per caption, so **two captions take nine taps against seven on the plain route** (the plain route's second caption first needs the selection cleared). What Classic adds is the **hints**, which show where captions go, and it pulls ahead only from about the fourth caption, which memes rarely have. (Assumption: the hints matter to beginners more than the two taps; the P2 test decides.)
 - **A caption bar meme:** Formats (1), Caption bar (2), Done (3), tap the bar's hint (4), type, Done (5).
 - **Two photos side by side:** Formats (1), Panels (2), Done, tap the empty cell (3), pick a photo (4). The first photo is already in cell 1.
-- **Go back to a plain look:** Formats, Classic. (Classic with empty slots is the plain canvas: empty slots aren't drawn in the file.)
+- **Go back to plain:** Formats (1), Plain (2).
 
 ## Entry and exit
 - **The Formats tool** is the first tool of the photo editor's main bar (icon `formats`, label "Formats"). It opens the **Formats panel**. **Decision (D1): a tool and a panel, not the board's permanent format row.** The board puts five chips between the stage and the tool bar. At 360 × 640 the stage is 440 dp, so a 52 dp row costs 12% of it on every screen, for a choice most memes make once, at the start. The panel refits the stage above it (P2-01) so every change is seen. Formats sits first so it is found without scrolling (the final main-bar order is in Layout).
-- **Starts:** every new photo project starts in **Classic** (gallery or Blank). A draft saved before this ticket has no format and opens as Classic (D2, below).
+- **Starts plain** (D2; owner, 28 Oct): every new photo project, from the gallery or Blank, has **no format** (`format` is null in the model). A **draft saved before this ticket opens plain too**, so old drafts look unchanged. The Formats panel opens with **Plain** selected.
 - **Closing the panel:** Done, system back, Escape (the P2-01 back order). The format stays.
 - **Kept:** the format and its parameters are in the project (autosave, undo). Not kept: selection, open panel.
 - **Back order** (P2-01, with P2-03's typing step): typing commits → menu → panel or sheet → gesture in progress cancelled → a lifted row dropped → selection (layer, cell or divider) clears → editor closes.
@@ -35,10 +36,11 @@ These rules are saved with every draft's look. All sizes are in **S, the canvas'
 3. **Switching format never deletes or moves the user's text, stickers, bubbles or extra photos** (D7). One undo step, "Format", covers everything the switch does. What it does do:
    - **Picture-area formats** (Caption bar, Demotivational): the **main photo** (the lowest image layer) is placed in the **picture area**: scale and center set so the whole photo lies inside it, centered. Leaving them, it goes back to filling the canvas (scale 1, centered). This only happens while the photo is **where the format put it** (its center within 0.5% of the canvas and its scale within 1% of the expected value); a photo the user has moved or zoomed stays where it is and the ratio-change rule keeps it inside. No toast.
    - **Panels:** the main photo **moves into cell 1** (its layer is removed, its file is kept in the cell). Other layers stay above the panels. Leaving Panels, **cell 1's photo comes back as the main photo layer** (fitted inside the canvas, scale 1); photos in cells 2 to 6 are dropped from the meme, with the toast "Photos in removed panels are gone from the meme. Undo brings them back." (the files stay while Undo can use them).
-   - **Bubbles, Classic:** nothing moves.
+   - **Plain, Classic, Bubbles:** nothing moves, except that going **to Plain** from a picture-area format or from Panels leaves that format by the rules above (the main photo returns to the full canvas, cell 1's photo comes back as a layer, the other cells' photos are dropped with the toast).
 4. **Slots** are empty places a format shows as hints; they are **not content**. A slot is **filled** when a visible text layer's center is within 0.1 of the slot's center, in canvas fractions (the same "taken" rule as P2-03's landing), so a caption the user already placed there fills it, and a text added by any route fills it. Deleting the text empties the slot again. **Empty slots draw nothing in the render or the export** (D3).
 5. **The empty project rule** (P2-01): a project with no layers is empty whatever its format; choosing a format alone doesn't save a blank project, and empty slots and cells are not content. (Panels: a photo in a cell counts as content, so a blank project that gets a cell photo is saved at that commit.)
-6. **Text added by the Text tool** (P2-03) first fills the format's first empty text slot, in the order of the format's slots; only when none is empty does P2-03's rule (top 0.25, bottom 0.75, middle 0.5) apply. A slot's **default style** applies to the new text (below), except in Classic, where the "last style used this visit" rule of P1-10 stays.
+6. **While a format with text slots is active,** the Text tool (P2-03) first fills the format's first empty text slot, in the order of the format's slots; only when none is empty does P2-03's rule (top 0.25, bottom 0.75, middle 0.5) apply. **While the canvas is plain, P2-03's landing rule applies as built** and no slot exists. A slot's **default style** applies to the new text (below), except in Classic, where the "last style used this visit" rule of P1-10 stays.
+7. **Plain is the absence of a format.** It draws no parts, shows no hints and no cells, and leaves P2-03's behavior untouched, including its empty-canvas card.
 
 ## Layout
 Board: `design/screens/PhotoEditor.dc.html`. **Differences from the board, and why:** (1) no permanent format row: a Formats tool and panel (above); (2) the tile is named **Bubbles**, as the board's chip says (the PRD calls the format "Speech bubbles"); (3) the board's text bar is P2-03's Style panel.
@@ -47,14 +49,15 @@ Board: `design/screens/PhotoEditor.dc.html`. **Differences from the board, and w
 Final order, replacing the line in P2-01: **Formats · [format tool] · Text · Stickers (P2-14) · Add photo (P2-13) · Layers · Draw (P2-05) · Adjust and Filters (P2-04) · Remove BG (P2-07) · Censor (P2-05) · Crop (P2-04)**. The **format tool** exists only for two formats and sits right after Formats because it belongs to it:
 - **Panels:** **Layout** (icon `panels`), opens the Layout panel.
 - **Bubbles:** **Add bubble** (icon `bubble`), adds a bubble and opens Typing at once.
-- Classic, Caption bar, Demotivational: none.
+- Plain, Classic, Caption bar, Demotivational: none.
 At 360 dp, five tools show whole (Formats, Layout or Add bubble, Text, Add photo, Layers): the main bar never scrolls in this ticket.
 
 ### Formats panel (ToolPanel)
-Title "Formats", Done. One row: five **OptionTiles** (`design/system/components/OptionTile/README.md`, stacked), in this order: **Classic · Caption bar · Panels · Demotivational · Bubbles**, in a horizontally scrolling row (padding inside the scroll, `space-2` gaps); the selected tile is scrolled into view when the panel opens. Each tile's picture is **drawn from data** like the ratio shapes (`FormatShape`, single color, solid, 1 dp corners, long side 20 dp):
+Title "Formats", Done. One row: six **OptionTiles** (`design/system/components/OptionTile/README.md`, stacked), in this order: **Plain · Classic · Caption bar · Panels · Demotivational · Bubbles**, in a horizontally scrolling row (padding inside the scroll, `space-2` gaps); the selected tile is scrolled into view when the panel opens. **Plain comes first**: it is where every project starts, it is the way back from any format, and a choice with no tile selected would read as broken (a radio group always has one). Each tile's picture is **drawn from data** like the ratio shapes (`FormatShape`, single color, solid, 1 dp corners, long side 20 dp):
 
 | Format | Picture |
 | --- | --- |
+| Plain | A stroked rectangle with nothing inside |
 | Classic | A stroked rectangle with a solid bar inside at the top and one at the bottom |
 | Caption bar | A solid bar across the top of a stroked rectangle |
 | Panels | Four solid squares in a 2 × 2 grid with gaps |
@@ -67,6 +70,7 @@ Title "Formats", Done. One row: five **OptionTiles** (`design/system/components/
 - **Canvas touches do nothing while the panel is open** (as the Canvas panel, P2-01: it is about the whole frame); the selection is kept, its frame and handle hidden.
 
 ### Classic
+- **Chosen explicitly** (never a start state). It is the plain canvas plus **two slot hints**: until the user picks Classic, no hint shows anywhere.
 - **Parts:** none (no bar, no frame).
 - **Slots:** two text slots, **top** and **bottom**: center `x` 0.5, center `y` at **0.14 S from the canvas edge** (so 0.14 H on a square, 0.079 H on a 9:16, 0.14 H on a 16:9): a caption of up to two lines sits inside the canvas, never against its edge. Default style: the last style used this visit, else Classic, White, Black outline (P1-10).
 - **Order of filling:** top, then bottom.
@@ -123,7 +127,7 @@ Title "Formats", Done. One row: five **OptionTiles** (`design/system/components/
 An empty text or bubble slot shows an **editor-only hint**: a `scrim` rounded rectangle (`radius-md`), `space-3` padding, at least `touch-target` tall, centered on the slot, with the label **Tap to add text** (`format_slot_hint`; **Tap to add a bubble** for the bubble slot) in `label` `text` (7.5:1 or more over any canvas color). Never wider than 90% of S. It is not saved, not rendered, not exported. A tap opens **Typing for a new text placed in that slot** (the slot's default style, the slot's position: for a text slot the block is centered on the slot's center). The hint is shown **while nothing is selected and no panel is open**, and is hidden while a gesture is in progress or Typing is open; the hint of the slot being typed into gives way to the live caption. When every slot is filled, no hint shows.
 
 ### The empty-canvas card
-P2-03's card (title "This canvas is empty") shows only when the canvas has **no layers and nothing invites**: no empty slot hint and no empty cell. Every format has at least one hint or pick tile, so **once this ticket is in the card never shows**: the hints and pick tiles are the call to action, on a fresh blank canvas and after the last layer is deleted alike (Undo stays in the top bar, enabled). The engineer may remove the card and its two bodies (`photo_empty_*`) in this ticket or leave them dormant; if P2-02 is split and 02a ships first, Classic's hints already take over.
+P2-03's card (title "This canvas is empty", its two bodies) **stays as built while the canvas is plain**: a fresh Blank canvas and an emptied plain canvas both show it, with P2-03's words. It shows only when the canvas has **no layers and nothing invites**: so it **gives way to a format's own call to action**, the hints of Classic, Caption bar, Demotivational and Bubbles and the pick tiles of Panels. With any of those formats active and no layers, the hints or pick tiles show and the card does not; when the user goes back to Plain the card returns. (A format's hints show whenever its slots are empty, so an emptied canvas under Classic shows the hints, with Undo enabled in the top bar.)
 
 ## Stage and panels
 As P2-01: opening a panel refits the frame above it, 200 ms scale, no re-decode. The Formats, Layout, Divider and cell Position panels are about the format and the frame; their heights are content-sized up to the 40% cap.
@@ -132,8 +136,9 @@ As P2-01: opening a panel refits the frame above it, 200 ms scale, no re-decode.
 | State | What shows | Copy |
 | --- | --- | --- |
 | Main bar | Formats · [Layout or Add bubble] · Text · Add photo · Layers | `tool_formats`, `tool_panels_layout`, `tool_add_bubble` |
-| Formats panel | Five tiles, the current one white; the hint line when the photo doesn't fill the area | `formats_title`, `format_*`, `formats_hint_room`, `panel_done` |
-| Classic, nothing placed | The photo on the canvas; two slot hints (top, bottom) | `format_slot_hint` |
+| Formats panel | Six tiles (Plain first), the current one white; the hint line when the photo doesn't fill the area | `formats_title`, `format_*`, `formats_hint_room`, `panel_done` |
+| Plain (the start; a draft from before P2-02) | The photo on its canvas as P2-01 and P2-03 built it: no parts, no hints; the Plain tile white; P2-03's empty card on an empty canvas | `format_plain`, `photo_empty_*` |
+| Classic, nothing placed | The photo on the canvas; two slot hints (top, bottom), only after Classic was chosen | `format_slot_hint` |
 | Caption bar | The white bar; the photo below; one slot hint in the bar | `format_slot_hint` |
 | Demotivational | Black poster, white frame, the photo inside it, two slot hints below | `format_slot_hint` |
 | Panels, empty cells | Cells with pick tiles; cell 1 holds the photo; dividers' handles | `tool_add_photo` |
@@ -151,7 +156,7 @@ As P2-01: opening a panel refits the frame above it, 200 ms scale, no re-decode.
 | Locked bubble or cell | As P2-01: drag, Style, Position, tail and Remove explain; Unlock first on a locked bubble | `explain_layer_locked` |
 | Ratio changed | The format re-lays itself; layers follow P2-01 and P2-03; the as-placed photo follows the picture area; the toast if a layer moved | `photo_layers_moved` |
 | A cell's file missing | The cell shows the pick tile with the line "File missing" instead of the label; draws as background in the render | `layer_meta_missing`, `photo_missing_media` |
-| A draft from a newer Memix names a format this build doesn't know | Opens as Classic; the unknown format's parts are not drawn; the id is kept until the user chooses a format | none |
+| A draft from a newer Memix | Refused by the schema check as every newer draft is (P1-14: "needs a newer Memix"); no format fallback is built | `drafts_needs_update` |
 | Long content (5 languages, 200% font) | Tile labels widen the tile (never cut); the hint wraps; panels scroll | none |
 | Offline, permission | Don't apply | none |
 | First run | Same as every run: no coach marks | none |
@@ -182,6 +187,7 @@ English source; the engineer machine-drafts id, es, pt and hi (until P5). Budget
 | `tool_formats` | Formats | 20 | Tool and panel name. A format is a ready-made meme layout |
 | `formats_title` | Formats | 20 | Panel title |
 | `formats_group` | Format | 16 | Spoken name of the tile group |
+| `format_plain` | Plain | 14 | Tile. No layout: just the photo, as it was before choosing a format. The way back from any format |
 | `format_classic` | Classic | 14 | Tile. The familiar meme: words at the top and bottom |
 | `format_caption_bar` | Caption bar | 16 | Tile. A white strip above the picture holding the words |
 | `format_panels` | Panels | 14 | Tile. A picture split into several frames |
@@ -244,7 +250,7 @@ Translator notes:
 - **Placeholders:** `%1$d` numbers and `%1$s` words are used as they are; the percent in `a11y_divider` is read "N percent".
 
 ## Accessibility
-- **Formats panel:** ToolPanel rules (focus to the title on open, back to the tool on close; what it covers is gone for TalkBack). The tiles are a single-choice group "Format"; each reads its label, "selected" and "2 of 5". After a tap, "Format: Caption bar" is announced politely (`a11y_format_set`). Focus return after a panel closes is the open device check of P2-01 (review P4).
+- **Formats panel:** ToolPanel rules (focus to the title on open, back to the tool on close; what it covers is gone for TalkBack). The tiles are a single-choice group "Format"; each reads its label, "selected" and "3 of 6" (Plain is "1 of 6"). After a tap, "Format: Caption bar" (or "Format: Plain") is announced politely (`a11y_format_set`). Focus return after a panel closes is the open device check of P2-01 (review P4).
 - **TalkBack order on the canvas** (P2-01's list): Close → pill → Undo → Redo → banner → **the canvas** → panel or tool bar. The canvas container's children: **cells** in reading order ("Panel 2 of 4", then "Empty. Double-tap to add a photo." or the photo state, "selected"), then **dividers** ("Divider 1 of 3, 50 percent"), then the **layers front to back** (P2-01, with bubbles reading `a11y_bubble_on_canvas` and "layer 2 of 4"), then the **slot hints** ("Top, empty. Tap to add text.", buttons).
 - **Dividers** are adjustable nodes (a slider role, the range being the divider's limits, step 2% of its extent): TalkBack's up and down actions, volume keys and the arrow keys on a keyboard move them; after a move the new value is announced politely. The Divider panel and the Layout panel's Make panels even are the visible single-pointer routes (WCAG 2.5.7).
 - **Actions on a cell node:** Add or Replace photo, Position, Remove (a filled cell). On a bubble node: the text actions of P2-03 plus **Move tail** is the Position panel's Tail row. Every drag has a button route: a divider (Divider panel), a cell's pan and zoom (cell Position panel), a bubble's tail (Position panel).
@@ -260,27 +266,28 @@ Translator notes:
 | Event | When | Parameters |
 | --- | --- | --- |
 | `tool_use` | A format is chosen (a tap on the active tile fires nothing) | `tool`: `format_classic`, `format_caption_bar`, `format_panels`, `format_demotivational`, `format_bubbles` |
+| `tool_use` | **Going back to plain** (a tap on Plain while a format is active; Plain is the start state, so a tap on it with no format fires nothing) | `tool: "format_plain"`, no parameter |
 | `tool_use` | A count or layout tap in the Layout panel, or Make panels even | `tool: "panels_layout"` |
 | `tool_use` | A divider drag releases, a Divider-panel step, Even | `tool: "panels_divider"` |
 | `tool_use` | A photo lands in a cell (pick or Replace) | `tool: "add_cell_photo"` |
 | `tool_use` | Remove in a selected cell | `tool: "remove_cell_photo"` |
 | `tool_use` | A cell's pan or zoom commits (gesture release or a Position-panel step) | `tool: "transform_layer"`, `"position_layer"` (P2-01's ids, as the PM clarified) |
-| `tool_use` | A new bubble is committed | `tool: "add_bubble"`, `font` (the font id, as `add_text`) |
+| `tool_use` | A new bubble is committed | `tool: "add_bubble"`, **no parameter** (`font` is approved only for `add_text` and `text_font`, owner 9 Oct; a bubble's font change is reported by `text_font`) |
 | `tool_use` | A bubble's words, font, color are edited | `edit_text`, `text_font` (with `font`), `text_color` (P1-10's ids) |
 | `tool_use` | A bubble's shape, fill or tail changes (the tail drag release or a Tail step) | `tool: "bubble_shape"`, `"bubble_fill"`, `"bubble_tail"` |
 | `tool_use` | A bubble gesture releases or a Position step | `transform_layer`, `position_layer` (PM, 28 Oct: bubbles reuse the layer ids) |
 | `tool_use` | Anything else (text in a slot, lock, hide, opacity, reorder, delete, duplicate, undo, redo) | P2-01 and P2-03's ids, unchanged |
 
-- **New ids for the PM to confirm:** `panels_layout`, `panels_divider`, `add_cell_photo`, `remove_cell_photo`, `add_bubble`, `bubble_shape`, `bubble_fill`, `bubble_tail` (the five `format_*` ids are the PM's of 28 Oct). They are the edit names' siblings, in the same style as `add_text`.
-- A format chosen by a state restore (a draft opening) fires nothing. Analytics stay off until consent (P5-01).
+- **Ids confirmed by the PM (29 Oct):** the five `format_*` ids, **`format_plain`**, `panels_layout`, `panels_divider`, `add_cell_photo`, `remove_cell_photo`, `add_bubble`, `bubble_shape`, `bubble_fill`, `bubble_tail`. They are the edit names' siblings, in the same style as `add_text`.
+- A format chosen by a state restore (a draft opening) fires nothing, and a tap on the active tile fires nothing. Analytics stay off until consent (P5-01).
 
 ## QA compares
 Use the debug drafts `photo-format-classic`, `photo-format-caption-bar`, `photo-format-demotivational`, `photo-format-panels`, `photo-format-bubbles` (request 5) and a gallery start with a 4:3 photo.
-1. **Formats panel** at 360 × 800 and 360 × 640: five tiles with Classic white, the hint line, the stage refit above it; then each tile selected (scrolled into view).
-2. **Classic, Caption bar, Demotivational on a 4:3 photo start** at 360 × 800: the format parts, the photo placed, the slot hints; then a caption typed into a slot in each (Caption bar: black on white; Demotivational: serif title, small subtitle).
+1. **Formats panel** at 360 × 800 and 360 × 640, opened on a fresh gallery start: six tiles with **Plain white**, no hint line, the stage refit above it; then each tile selected (scrolled into view). **A fresh start has no hints, no bar and no cells** (plain).
+2. **Classic, Caption bar, Demotivational on a 4:3 photo start** at 360 × 800: the format parts, the photo placed, the slot hints (Classic's appear only after Classic is chosen); then a caption typed into a slot in each (Caption bar: black on white; Demotivational: serif title, small subtitle).
 3. **Panels**: 4 cells at 2 × 2 with one photo and three pick tiles, dividers' handles; a cell selected (ring and the cell bar); the Layout panel; a divider selected (the Divider panel). Then the six-cell Grid and a Stacked layout.
 4. **Bubbles:** the slot hint; a Speech, a Round and a Thought bubble with text; a selected bubble with both handles; the Style panel with Shape tiles; the Position panel with the Tail row.
-5. **Switching:** Classic with a typed caption → Caption bar (the caption stays where it was; the photo placed) → Panels (the photo in cell 1, the caption above the panels) → back to Classic (the photo back, the toast about dropped photos if more cells were filled) → Undo of each step.
+5. **Switching:** a plain photo with a typed caption → Caption bar (the caption stays where it was; the photo placed) → Panels (the photo in cell 1, the caption above the panels) → **Plain** (the photo back as a layer, the toast about dropped photos if more cells were filled; the Plain tile white, no hints) → Classic (two hints) → Undo of each step. Also Plain → Classic → Plain, and the first tap on Plain in a fresh project (nothing happens, nothing is logged).
 6. **Ratio change** on each format (4:3 → 9:16 → 16:9 → 1:1): every part re-lays out inside the new canvas, the as-placed photo follows the picture area, a moved photo stays, the toast when a layer moved.
 7. **Hindi at 200% font**, 360 × 640: the Formats panel (tile labels, hint), the Layout panel, a slot hint, a Devanagari line in a bubble and in a Caption bar.
 8. **Locked layers and cells:** a locked bubble (Unlock first, the tail handle inert), a locked photo layer in Panels.
@@ -290,7 +297,7 @@ Use the debug drafts `photo-format-classic`, `photo-format-caption-bar`, `photo-
 - **Pass, per format and size:** every part (bar, poster, frame, cells, gutters, bubbles and tails) and every layer within 1% of the width in position, 2% in size, 1° in rotation; the same line breaks and glyphs; nothing clipped that the canvas shows; empty slots and empty cells draw nothing but the background; **the 2160 frame equals the 1080 frame scaled by 2** (lines, bars, corners, the frame stroke and the bubble stroke scale with S).
 - **Final check with P2-08's exporter** (gate): the files open, are exactly 1080 and 2160 on the shorter side, and match the references.
 - **Switching:** the sequence in compare 5 gives the specified results; one Undo reverses each switch exactly (the as-placed photo returns to its place; dropped cell photos come back).
-- **Old drafts:** a draft saved at the schema before this ticket (the last P2-12 draft with a photo and text) opens as Classic, nothing moved; a Phase 1 video draft opens unchanged.
+- **Old drafts:** a draft saved at the schema before this ticket (the last P2-12 draft with a photo and text) **opens plain** (no format, the Plain tile white, no hints, nothing moved, the picture exactly as it was saved); a Phase 1 video draft opens unchanged. Reopening a draft saved in a format (Panels with cells, a bubble) shows it as saved.
 - **Speed and memory** (the PM's must-know 9): a Panels project with **six 12 MP cells** (a debug draft): each cell decodes at the size it is drawn at (cap 4096), never six full decodes; three scripted divider drags of 3 s each stay under 5% janky frames on the owner's phone (release-type build); report peak Graphics and Native Heap.
 - **Leaks:** LeakCanary, 5 cycles of open, choose Panels, fill a cell, drag a divider, switch to Bubbles, add a bubble, close.
 
@@ -299,56 +306,51 @@ Changes needed from the design (the engineer owns the exact code; the PM's must-
 
 | Need | Model |
 | --- | --- |
-| The format | `PhotoScene.format`, a sealed type with five subtypes (`classic`, `caption_bar`, `demotivational`, `panels`, `bubbles`; stable `@SerialName`s), **default Classic**. A draft without the field is Classic. An unknown subtype (a newer draft) reads as Classic. Declarative and slot-based, so Phase 4's "photo format" templates (P4-05, P4-15) can carry it (PRD → Templates) |
+| The format | `PhotoScene.format`, **nullable: null means plain** (PM, 29 Oct), otherwise a sealed type with five subtypes (`classic`, `caption_bar`, `demotivational`, `panels`, `bubbles`; stable `@SerialName`s). **Classic is a real subtype**, not the default. A draft without the field is plain, so every old draft is unchanged. No fallback for an unknown subtype: a newer draft is refused by the schema check. Declarative and slot-based, so Phase 4's "photo format" templates (P4-05, P4-15) can carry it (PRD → Templates) |
 | Panels | `panels(layout: String, dividers: List<Float>, cells: List<PanelCell>)`. `layout` is one of the layout ids in the table (`grid-3`, `cols-3`, …); `dividers` are the split positions in the layout's fixed order, each 0 to 1 of its split's extent; `PanelCell(source: MediaRef?, zoom: Float = 1, centerX: Float = 0.5, centerY: Float = 0.5)`, the center being the point of the picture shown at the cell's center |
 | Bubbles | a new layer kind `BubbleLayer(id, text, style: CaptionStyle, shape, fill, tailX, tailY, transform, locked, hidden, opacity)`, `@SerialName("bubble_layer")`; `shape` one of `speech`, `round`, `thought`; `fill` a palette color |
 | Slots | **Not saved.** Derived from the format and the layers (a slot is filled when a text or bubble is near it) |
 | Media | `PanelCell.source` goes into `Project.mediaCopyPaths()` and `withMediaCopyPaths()` (`MediaInUse.kt`): otherwise the cleaner deletes the picture at the next start and a duplicate shares one file with its original |
-| Version | Bump `CURRENT_SCHEMA_VERSION` (read the constant: 5 if P2-12 landed as 4) with a version-only step: the new field defaults to Classic and the new layer kind leaves old JSON untouched. Check by opening a draft saved at the previous schema |
+| Version | Bump `CURRENT_SCHEMA_VERSION` (read the constant: 5 if P2-12 landed as 4) with a version-only step: the new field defaults to null (plain) and the new layer kind leaves old JSON untouched. Check by opening a draft saved at the previous schema: it opens plain and looks the same |
 
 **Constants** (not in `MemixTheme`; one commonMain place, say `PhotoFormatCatalog`, with a comment pointing to this spec and `design/tokens.json` → `photo.formats`): every number in this spec (bar height, poster margins, frame stroke, gutter, divider limits and snap, zoom range, bubble sizes and tail rules, slot positions, default slot styles). They are part of every saved draft's look.
 
 ## Requests to the principal mobile engineer
 I don't edit code, so these are requests. The PM's must-knows (28 Oct) carry the checklist; these are what the design needs.
-1. **Write the chosen model in `docs/TECHNICAL_DESIGN.md` before building** (the PM's must-know 1): the five subtypes, the layout table as data (a layout id gives the split tree, cell rects and divider order), `PanelCell`, `BubbleLayer`.
+1. **Write the chosen model in `docs/TECHNICAL_DESIGN.md` before building** (the PM's must-know 1): `format` nullable (null = plain), the five subtypes, the layout table as data (a layout id gives the split tree, cell rects and divider order), `PanelCell`, `BubbleLayer`.
 2. **Everything draws in `drawPhotoScene`:** background → format parts → layers, so the editor, the render hook and P2-08 can't disagree. Format parts are pure functions of (canvas, format, the main photo's shape): bar, poster and frame, the picture area, panels' cell rects and gutters, the slot positions. Bubbles draw as one path (body plus tail, one stroke), the words through the caption renderer with the bubble's wrap width and 60% size. A cell clips its picture at its rect.
 3. **Decode cells at the size they are drawn at** (the P2-01 rule, cap 4096); cell photos share the scene's bitmap cache; release at close. Cell pan and zoom, divider drags and tail drags move in the draw phase and commit once on release.
-4. **The hook:** `memix.renderScene` gains a shorter-side option (`memix.renderShortSide`, 1080 or 2160) beside the width (the caveat in the PM's row: a width of 1080 on a 4:3 landscape gives 1080 × 810). Debug scenes `photo-format-classic`, `-caption-bar`, `-demotivational`, `-panels` (a 2 × 2 with three photos) and `-bubbles` (all three shapes), each with real P2-03 text, plus `photo-panels-6` (six 12 MP cells) for the speed check.
+4. **The hook:** `memix.renderScene` gains a shorter-side option (`memix.renderShortSide`, 1080 or 2160) beside the width (the caveat in the PM's row: a width of 1080 on a 4:3 landscape gives 1080 × 810). The existing plain debug scenes (`photo-layers-10`, `photo-text-check` and the rest) must still render **exactly as before** (plain). Debug scenes `photo-format-classic`, `-caption-bar`, `-demotivational`, `-panels` (a 2 × 2 with three photos) and `-bubbles` (all three shapes), each with real P2-03 text, plus `photo-panels-6` (six 12 MP cells) for the speed check.
 5. **The main photo's placement** (rule 3 of How a format works) as one pure function (`placeMainPhoto(format, canvas, photoSize)` and `isAsPlaced(...)`) with a JVM check against the QA list; the as-placed test uses the 0.5% and 1% tolerances. Panels' move of the main photo into cell 1 and back is part of the same undo step.
 6. **Ratio change:** the one `LayerFit` rule gains the format's re-layout (parts are derived, so nothing to move) and the as-placed photo's follow; a bubble's box is its body and tail; margin 2%, shrink floor 25% (as text). **P2-03's `TODO` for text is already in; bubbles join it.**
 7. **Slots** are not state: compute filled or empty from the layers each frame in the draw or compose phase cheaply (a distance test on the text and bubble layers). The Text tool, the hints and "Add bubble" share the one landing function (P2-03 request).
 8. **Tools and panels:** the Formats tool and panel, the Layout and Add bubble tools (format-specific, second place), the selected-cell bar, the Divider panel, the cell Position panel (P2-01's lifted Position panel without Rotation), the bubble Style (Shape row, Fill row) and Position (Tail row) variants. Components: **OptionTile** takes a drawn shape (`FormatShape`, layout shapes, bubble shapes), as it does for ratios; no new component. **New icons** (to the grammar, in DESIGN_SYSTEM): `formats`, `panels`, `bubble`.
-9. **Analytics:** the ids above as new `EditorTool` values (`format_*`, `panels_layout`, `panels_divider`, `add_cell_photo`, `remove_cell_photo`, `add_bubble`, `bubble_shape`, `bubble_fill`, `bubble_tail`), once the PM confirms.
+9. **Analytics:** the ids above as new `EditorTool` values (`format_*`, **`format_plain`**, `panels_layout`, `panels_divider`, `add_cell_photo`, `remove_cell_photo`, `add_bubble`, `bubble_shape`, `bubble_fill`, `bubble_tail`), confirmed by the PM (29 Oct). `add_bubble` sends no `font`.
 10. **Strings:** the table above in five languages; `photo_missing_media` (P2-03 wording) is reused for a cell's missing file.
-11. **Size watch** (the PM's): past two build sessions, split as the PM proposes. **My suggestion for the line:** **02a** Classic, Caption bar, Demotivational (the model with all five subtypes so there is one schema bump, the Formats panel showing only the tiles that work, slots and hints, parts and the picture area, the as-placed rule, reference renders); **02b** Panels and Bubbles (dividers, cells, the pick destination, the new layer kind, the tail). Order inside the ticket: Classic, Caption bar, Demotivational, Bubbles, Panels last. A tile never appears before its format works (P0-05 rule: no dead controls).
+11. **Size watch** (the PM's): past two build sessions, split as the PM proposes. **My suggestion for the line:** **02a** Classic, Caption bar, Demotivational (the model with all five subtypes so there is one schema bump, the Formats panel showing only the tiles that work: **Plain first, then Classic, Caption bar, Demotivational**, slots and hints, parts and the picture area, the as-placed rule, reference renders); **02b** Panels and Bubbles (dividers, cells, the pick destination, the new layer kind, the tail). Order inside the ticket: Classic, Caption bar, Demotivational, Bubbles, Panels last. A tile never appears before its format works (P0-05 rule: no dead controls).
 
 ## Changes to other specs (made with this spec)
 - `P2-01-photo-editor-shell.md` → Main bar: the final order now starts with Formats and says how the format tool sits second.
-- `P2-03-photo-text-and-stickers.md` → Landing and the empty-canvas card: a pointer to this spec (slots fill first; the card gives way to the hints).
+- `P2-03-photo-text-and-stickers.md` → Landing and the empty-canvas card: a pointer to this spec (while a format with text slots is active its slots fill first; while plain, P2-03 applies as written; the card gives way to a format's hints and pick tiles only while a format is active).
 - `P2-13-image-layers.md` → What lands: a new photo lands inside the picture area when the format has one.
 
 ## Proposals and questions
 
-**For the PM**
-1. **Confirm the ids:** `panels_layout`, `panels_divider`, `add_cell_photo`, `remove_cell_photo`, `add_bubble`, `bubble_shape`, `bubble_fill`, `bubble_tail`; the five `format_*` ids are yours. A switch to the active format fires nothing.
-2. **Confirm the default** (below) and that a draft without a format opens as Classic.
+**For the PM** (the 29 Oct clarifications are applied)
+1. **Ids:** confirmed by you: the five `format_*`, `format_plain`, `panels_layout`, `panels_divider`, `add_cell_photo`, `remove_cell_photo`, `add_bubble` (no `font`), `bubble_shape`, `bubble_fill`, `bubble_tail`. A switch to the active format fires nothing.
+2. **The default is plain** (owner, below) and a draft without a format opens plain; `format` is nullable and Classic is a real subtype. Applied everywhere in this spec.
 3. **The reading of "1080 and 2160 px"** is yours (shorter side); the spec scales every part with S so the 2160 frame equals the 1080 frame scaled by 2.
 4. **The schema bump** carries all five subtypes even if the ticket is split, so only one bump happens.
 5. **Size:** L at the top and likely over: Panels and Bubbles are each M. The split line is in request 11.
 6. **P2-11 (shadow and box):** follows this ticket. Its Style rows apply to text and bubble words alike (the bubble's words are a caption). Nothing here reserves space.
 7. **Bubble words are a caption:** the renderer takes the wrap width and the size factor as parameters (55% of S and 60% for bubbles; 90% and 100% for text). The Done-when equality for captions (P2-03) is unaffected.
+8. **A watch item from the owner's answer 2:** with plain as the start, **nothing in the editor tells a new user that formats exist** except the Formats tool, the first tool of the bar. Classic's hints no longer do that job. If the P2 test shows people never open Formats, the cheapest fixes are a one-time hint on the tool or a Formats row after the photo pick; both are new scope and wait for evidence.
 
-**For the owner** (each: the problem, what each option costs and gives, a recommendation; short answers are fine, "1A, 2B")
+**For the owner: answered 28 Oct** (relayed by the main session; the PM logged them 29 Oct)
 
-**1. Should a Caption bar or a Demotivational frame add room to the picture, or fit inside the canvas?**
-- *Problem:* a caption bar normally makes the output taller (photo plus bar). This app's canvas has a chosen shape, so there are two ways to fit a bar in.
-- *Considerations:* **A. Fit inside the canvas** (this spec): the canvas shape never changes under the user's hands, switching between formats to compare them is free and exact, and the build is the simplest (every part is a fixed share of the canvas). The cost: the photo is a little smaller, and with a photo-shaped canvas the background shows beside it (white by default, which looks like a white margin; the panel tells the user a taller canvas fixes it). **B. The format grows the canvas** (taller output, photo untouched): the look many caption-bar tools have, but every tap through the formats changes the canvas size and ratio, moves every layer and resizes every caption, and leaving a format has to undo that growth; roughly 2 to 3 more days and more risk of drift between editor and export.
-- *Recommendation:* **A.** B can be added later as a "Fit canvas to format" button without changing saved drafts.
+**1. Should a Caption bar or a Demotivational frame add room to the picture, or fit inside the canvas?** **Answered A: fit inside the canvas** (my recommendation). The canvas shape never changes under the user's hands, switching between formats to compare them is free and exact, and every part is a fixed share of the canvas. The photo is a little smaller, and with a photo-shaped canvas the background shows beside it; the panel tells the user a taller canvas fixes it. B (the format grows the canvas) can be added later as a "Fit canvas to format" button without changing saved drafts.
 
-**2. Which format does a new photo start in?**
-- *Problem:* the board shows Classic selected; Classic needs no layout change but can show two "Tap to add text" hints.
-- *Considerations:* **A. Classic, with the hints** (this spec): the primary job, a photo with top and bottom words, gets two taps per caption and the hints show where to tap; the hints are editor-only and never exported. A user who wants a clean canvas sees two small gray hints until they type or pick another format (they cost nothing in the file). **B. No format (plain)**: nothing on the photo at start; the Text tool does the job in three taps per caption, and Classic would be an explicit extra tile that does little the Text tool doesn't.
-- *Recommendation:* **A.**
+**2. Which format does a new photo start in?** **Answered B: plain, no format; Classic is an explicit tile** (against my recommendation of A, Classic with hints). What follows, all in this spec: a new project and every old draft have `format` null; the Formats panel has **Plain** as its first tile, which is the way back from any format; Classic's two hints appear only after Classic is chosen; while plain, P2-03's landing and empty-canvas card apply as built; `format_plain` is the analytics id for going back. What the choice costs (told to the owner for the record): a first-time user sees no hint that formats exist, and Classic's value over the Text tool is only the hints, at two taps more for two captions (nine against seven). What it gives: a photo meme starts exactly as the user's photo, with nothing added, and every draft saved before this ticket looks the same.
 
 **Later, no ticket:** a bar color row for Caption bar; a bubble stroke color; cell rotation and flip; dragging a photo from one cell to another; photo templates (P4-05).
 
@@ -363,5 +365,5 @@ No other owner decision is needed. The constants (bar height, frame, gutter, bub
 | A visible label is part of the accessible name | Guidance | [WCAG 2.2 SC 2.5.3](https://www.w3.org/WAI/WCAG22/Understanding/label-in-name.html) |
 | Status messages reach screen readers without taking focus | Guidance | [WCAG 2.2 SC 4.1.3](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html) |
 | Undo beats confirmation for reversible actions | Guidance (expert) | [Aza Raskin, "Never use a warning when you mean undo"](https://alistapart.com/article/neveruseawarning/) |
-| Slot hints on an empty template cut the taps to a first caption from three to two | Assumption (tap-count reasoning; the P2 test decides) | none |
+| Slot hints on an active format make each caption two taps (the hint, Done) where the plain route needs two for the first and three for the next (clear the selection, Text, Done), at a cost of three taps to choose Classic | Assumption (tap-count reasoning; the P2 test decides) | none |
 | Five tools fit whole in the main bar at 360 dp | Computed from the P2-01 renders (a tool is 64 dp wide, so 5.6 fit in a bar with no close button) | `docs/ux/reviews/P2-01/02-selected-layers10.png`, `docs/ux/reviews/P2-01.md` |
