@@ -24,7 +24,7 @@ The caption is half of most memes: "When the build passes first try" over the cl
 - **Orange:** text items on the timeline (`track-text`).
 - **Caption colors** (white, yellow, …) are the user's content, not chrome. They live in their own palette (Caption rendering → Palette) and never appear in the interface except inside swatches.
 
-**Later, not P1:** keyboard shortcuts (L-01). Shadow and background box are PRD v1 features with no ticket yet (Decision for the owner). Animations and presets are P4-11; quick top/bottom caption is P4-14.
+**Later, not P1:** keyboard shortcuts (L-01). Shadow and background box are P2-11 (owner, 9 Oct, C; spec `P2-11-text-shadow-and-box.md`): two more Style rows in both editors. Animations and presets are P4-11; quick top/bottom caption is P4-14.
 
 ## Entry and exit
 | Surface | Opens when | Closes when |
