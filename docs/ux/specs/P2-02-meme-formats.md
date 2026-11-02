@@ -46,7 +46,7 @@ These rules are saved with every draft's look. All sizes are in **S, the canvas'
 Board: `design/screens/PhotoEditor.dc.html`. **Differences from the board, and why:** (1) no permanent format row: a Formats tool and panel (above); (2) the tile is named **Bubbles**, as the board's chip says (the PRD calls the format "Speech bubbles"); (3) the board's text bar is P2-03's Style panel.
 
 ### Main bar
-Final order, replacing the line in P2-01: **Formats · [format tool] · Text · Stickers (P2-14) · Add photo (P2-13) · Layers · Draw (P2-05) · Adjust and Filters (P2-04) · Remove BG (P2-07) · Censor (P2-05) · Crop (P2-04)**. The **format tool** exists only for two formats and sits right after Formats because it belongs to it:
+Final order (set in the P2-05 spec, 2 Nov; it replaces the line in P2-01 and this spec's first version): **Formats · [format tool] · Text · Stickers (P2-14) · Add photo (P2-13) · Draw (P2-05) · Edit photo (P2-04) · Crop (P2-04) · Censor (P2-05) · Remove BG (P2-07) · Layers**. The **format tool** exists only for two formats and sits right after Formats because it belongs to it:
 - **Panels:** **Layout** (icon `panels`), opens the Layout panel.
 - **Bubbles:** **Add bubble** (icon `bubble`), adds a bubble and opens Typing at once.
 - Plain, Classic, Caption bar, Demotivational: none.

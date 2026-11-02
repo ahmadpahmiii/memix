@@ -7,7 +7,7 @@ One layer in the photo editor's Layers panel (P2-01): a picture, a name, what is
   - At least `touch-target` plus `space-2` tall (56dp: `layer-thumb-size` 40 plus `space-2` above and below); grows with its text. `surface-raised` fill, `radius-md`, `space-1` between rows.
   - From the start: a `layer-thumb-size` square thumbnail in `radius-sm`, `space-2` from the row's edge; `space-3`; the text column; a lock IconButton and a visibility IconButton, each 48dp.
   - **Name:** `body-strong` `text`, one line, an ellipsis at the end. An image layer is "Photo"; a number is never added (it would change when rows are reordered).
-  - **Meta line** (only when needed): `label` `text-secondary`, parts in this order joined by a separator resource: Locked · Hidden · File missing · "40% opacity". It wraps and is never cut.
+  - **Meta line** (only when needed): `label` `text-secondary`, parts in this order joined by a separator resource: Locked · Hidden · File missing · **Edited** (P2-04: the image layer has a crop, a rotation, a filter or another edit) · "40% opacity". It wraps and is never cut.
   - **Lock button:** `unlock` icon in `text-muted` (4.6:1) when free, `lock` in `text` when locked. **Visibility button:** `eye` in `text-secondary` when shown, `eye_off` in `text` when hidden.
 - **States:**
   - **Selected:** a `stroke-selection` white ring inside the row's edge (17.2:1 on `surface`). `surface-raised` can't mark selection (1.4:1).

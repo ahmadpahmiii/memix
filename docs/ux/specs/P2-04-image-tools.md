@@ -27,8 +27,8 @@ Fifth spec for the photo editor. It reuses, and does not repeat:
 
 ## Entry and exit
 - **The tools:** two tools for image layers, **Crop** (icon `crop`) and **Edit photo** (icon `adjust`).
-  - **Selected image layer's bar:** **Position · Opacity · Delete · Crop · Edit photo · Duplicate · Lock · Hide · Layers** (P2-01's bar, the two tools inserted after Delete so Delete stays in view at 360 dp; Unlock first when locked, as P2-01). At 360 dp Position, Opacity, Delete and Crop show whole; Edit photo is the fifth place and is cut in half (the scroll cue). It is the one-level-down route for any photo.
-  - **Main bar:** **Crop** and **Edit photo** sit just before Layers (final order: Formats · [format tool] · Text · Stickers (P2-14) · Add photo · **Crop · Edit photo** · Layers · Draw (P2-05) · Remove BG (P2-07) · Censor (P2-05)). They exist only while the canvas has at least one image layer. **Tapping one with nothing selected selects the main photo (the lowest image layer) and opens the tool on it**: one tap for the common single-photo case, and the white frame shows which layer is being edited. (This replaces P2-01's earlier "Adjust and Filters" and "Crop" slots, which had no target.)
+  - **Selected image layer's bar:** **Position · Opacity · Delete · Edit photo · Crop · Duplicate · Lock · Hide · Layers** (P2-01's bar, the two tools inserted after Delete so Delete stays in view at 360 dp; Unlock first when locked, as P2-01). At 360 dp Position, Opacity, Delete and Edit photo show whole; Crop is the fifth place and is cut in half (the scroll cue). It is the one-level-down route for any photo.
+  - **Main bar:** **Edit photo** and **Crop** sit after Draw (final order, set in the P2-05 spec: Formats · [format tool] · Text · Stickers (P2-14) · Add photo · Draw (P2-05) · **Edit photo · Crop** · Censor (P2-05) · Remove BG (P2-07) · Layers). They exist only while the canvas has at least one image layer. **Tapping one with nothing selected selects the main photo (the lowest image layer) and opens the tool on it**: one tap for the common single-photo case, and the white frame shows which layer is being edited. (This replaces P2-01's earlier "Adjust and Filters" and "Crop" slots, which had no target.)
 - **Edit photo** opens the **Edit photo panel** (ToolPanel). **Crop** opens the **Crop screen** (below). Back, Done and Escape close the panel; the layer stays selected.
 - **Locked layer:** Crop and Edit photo explain with P2-03's toast ("This layer is locked. Unlock it to change it."). **Missing file:** they explain (`explain_layer_missing`). **Hidden layer:** allowed; the panel shows a line "This layer is hidden, so you won't see the change." (the picture on the canvas doesn't change). They never act while a gesture is in progress.
 - **Kept:** every edit is in the project (autosave, undo). Not kept: the panel's open tab (it opens on Filters).
@@ -135,7 +135,7 @@ Names are one short word each (budget 12). The looks are made by a script that w
 ## States
 | State | What shows | Copy |
 | --- | --- | --- |
-| Selected image layer | The bar with Crop and Edit photo; no other layer kind has them | `tool_crop`, `tool_edit_photo` |
+| Selected image layer | The bar with Edit photo and Crop; no other layer kind has them | `tool_crop`, `tool_edit_photo` |
 | Main bar, no image layer | No Crop or Edit photo (a text-only canvas, Panels' cells) | none |
 | Edit photo panel, Filters | The strip (None selected), no intensity row | `edit_photo_title`, `filters_none`, `edit_photo_tab_filters` |
 | A filter on | Its tile ringed, the Intensity row, the look on the canvas | `filters_intensity` |
@@ -252,7 +252,7 @@ Translator notes:
 
 ## QA compares
 Use a debug scene `photo-image-tools` (a patterned 4:3 photo, a portrait photo, a gray ramp) and a gallery start.
-1. **The bars:** an image layer selected at 360 × 800 (Position, Opacity, Delete, Crop whole, Edit photo cut in half); the main bar with Crop and Edit photo before Layers; a text layer's bar without them; a locked image layer (Unlock first).
+1. **The bars:** an image layer selected at 360 × 800 (Position, Opacity, Delete, Edit photo whole, Crop cut in half); the main bar with Edit photo and Crop after Draw; a text layer's bar without them; a locked image layer (Unlock first).
 2. **Filters:** the strip scrolled through all 21 tiles on the portrait photo; a filter on at 100% and at 50%; the Intensity row; the selected tile ringed. Hindi at 200% font (tile names wrapped).
 3. **Adjust:** each slider at −100, 0 and +100 on the gray ramp and the portrait; the panel scrolled; Reset.
 4. **Deep-fry** at 25%, 60% and 100%.
@@ -288,7 +288,7 @@ I don't edit code, so these are requests; the PM's must-knows (2 Nov) carry the 
 2. **One look in both engines:** the LUT data and the trilinear sampling are the shared artifact. Verify the current Media3 `SingleColorLut` and Android APIs at the start. **minSdk is 29:** AGSL (`RuntimeShader`) needs Android 13 and `RenderEffect` Android 12, so for 29 to 32 add a GL pass in `:engine:photo` behind a small interface in `:core:domain`; the `iosMain` implementation is a stub marked for the iOS port that **reports unsupported**, never a silent no-op. Test on an API 29 emulator.
 3. **Draw at the drawn size:** filters and adjustments run on the bitmap decoded at the layer's drawn size (P2-01); a slider drag recomputes only the affected pass, not the decode; full resolution only at export (P2-08). Cache the 21 thumbnails per picture for the panel's visit.
 4. **The Crop screen as a reusable component in `:core:ui`:** inputs a picture provider, a crop state and the aspect list; outputs a crop state; no knowledge of layers (P4-16 reuses it with a video frame).
-5. **The tools in the bars:** Crop and Edit photo in the selected image layer's bar (after Delete) and in the main bar (before Layers, only while an image layer exists; selecting the lowest image layer on tap); a locked, missing or hidden layer as the States table says; the Layers row's "Edited" meta part (ordered after "File missing", before the opacity part: Locked · Hidden · File missing · **Edited** · 40% opacity). The row thumbnail shows the crop, rotation and flip but not the color edits.
+5. **The tools in the bars:** Crop and Edit photo in the selected image layer's bar (after Delete) and in the main bar (after Draw, only while an image layer exists; selecting the lowest image layer on tap); a locked, missing or hidden layer as the States table says; the Layers row's "Edited" meta part (ordered after "File missing", before the opacity part: Locked · Hidden · File missing · **Edited** · 40% opacity). The row thumbnail shows the crop, rotation and flip but not the color edits.
 6. **Re-run P2-02's as-placed rule** after a crop (the picture's shape changed).
 7. **The LUT script:** written once (the backend engineer can own it), original work, the README in the repo; the generated files are committed.
 8. **Analytics:** the `EditorTool` values `crop`, `rotate_image`, `flip_image`, `straighten`, `adjust_*` (six), `filter`, `deep_fry`, and the optional `filter` parameter (PRD → Metrics, updated by the PM).
@@ -297,7 +297,7 @@ I don't edit code, so these are requests; the PM's must-knows (2 Nov) carry the 
 ## Proposals and questions
 **For the PM**
 1. **Confirm the ids** (yours, 2 Nov) and the `filter` parameter (delegated, applied).
-2. **The tools' place** (Crop and Edit photo in the selected image layer's bar after Delete, and in the main bar before Layers): this replaces P2-01's "Adjust and Filters" and "Crop" main-bar slots, which named no target. P2-01's final-order line is updated.
+2. **The tools' place** (Crop and Edit photo in the selected image layer's bar after Delete, and in the main bar after Draw): this replaces P2-01's "Adjust and Filters" and "Crop" main-bar slots, which named no target. P2-01's final-order line is updated.
 3. **Stickers and Panels cells** get no image tools in v1 (D1). Say if you want stickers included.
 4. **P2-10 flag:** "Make it a video meme" must carry the edits. The video overlay has no LUT in Phase 2, so P2-10 decides between baking the edited picture into the clip and warning.
 5. **P4-07 and P4-16:** they reuse the ids and LUT data and the Crop screen.

@@ -16,7 +16,7 @@ Two entries, the same flow, both live only once this ticket is built (nothing in
 
 | Entry | Where | Notes |
 | --- | --- | --- |
-| **Add photo** tool | The photo editor's main tool bar, in its final place just before Layers (P2-01 → Tool bars). Icon `create` (the plus; the video editor's Add media uses it too) | Shown when nothing is selected |
+| **Add photo** tool | The photo editor's main tool bar, in its final place after Text and Stickers and before Draw (P2-01 → Tool bars, as reordered in the P2-05 spec: Layers is now the last tool). Icon `create` (the plus; the video editor's Add media uses it too) | Shown when nothing is selected |
 | **Add photo** button | The first item of the Layers panel's list, above the front layer: where the new layer will land. A full-width Secondary Button with the `create` icon, `touch-target` tall, scrolling with the list | Shown whether or not a layer is selected |
 
 - A layer being selected hides the main bar (the selected-layer bar has no Add photo): from there, Close layer tools, then Add photo, or Layers, then the panel's button. A shortcut in the selected-layer bar would crowd Delete's place; two taps from a selection to Add photo is fine because adding follows deselecting (Assumption).
