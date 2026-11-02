@@ -36,12 +36,12 @@
     <string name="explain_layer_back">Lapisan ini sudah paling belakang.</string>
     <string name="explain_layer_edge">Lapisan ini tidak bisa bergerak lebih jauh ke arah ini.</string>
     <string name="explain_layers_empty">Belum ada apa-apa. Lapisan yang kamu tambahkan muncul di daftar ini.</string>
-    <string name="photo_missing_media">File sebuah foto hilang, jadi tidak digambar. Hapus lapisan itu untuk memperbaikinya.</string>
-    <string name="explain_layer_missing">File foto ini hilang. Hapus lapisannya untuk memperbaiki.</string>
+    <string name="photo_missing_media">File sebuah gambar hilang, jadi tidak digambar. Hapus lapisan itu untuk memperbaikinya.</string>
+    <string name="explain_layer_missing">File gambar ini hilang. Hapus lapisannya untuk memperbaiki.</string>
     <string name="photo_layers_moved">Lapisan dipindah agar tetap di dalam bingkai.</string>
     <string name="photo_background_hidden">Fotomu menutupi seluruh bingkai, jadi latar tidak terlihat.</string>
     <string name="photo_empty_title">Kanvas ini kosong</string>
-    <string name="photo_empty_body">Ketuk Urungkan untuk mengembalikan lapisanmu, atau tutup ini dan mulai meme foto baru.</string>
+    <string name="photo_empty_body">Ketuk Urungkan untuk mengembalikan lapisanmu, atau tambahkan sesuatu yang baru dengan Teks atau Tambah foto.</string>
     <string name="edit_transform_layer">Posisi dan ukuran</string>
     <string name="edit_layer_opacity">Opasitas</string>
     <string name="edit_lock">Kunci</string>
@@ -52,4 +52,8 @@
     <string name="tool_add_photo">Tambah foto</string>
     <string name="a11y_layer_added">Foto ditambahkan di depan</string>
     <string name="edit_add_photo">Tambah foto</string>
+    <!-- Text and stickers (P2-03). Budgets and translator notes: docs/ux/specs/P2-03-photo-text-and-stickers.md -> Copy. "Text", "Add photo" and "Undo" in the empty-canvas card are the names of buttons on the same screen. -->
+    <string name="layer_name_sticker">Stiker</string>
+    <string name="a11y_layer_text_added">Teks ditambahkan</string>
+    <string name="photo_empty_body_blank">Ketuk Teks untuk menambah kata, atau Tambah foto untuk menambah gambar.</string>
 </resources>

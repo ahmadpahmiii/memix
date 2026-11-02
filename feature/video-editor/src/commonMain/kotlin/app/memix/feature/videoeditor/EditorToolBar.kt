@@ -55,15 +55,15 @@ import memix.core.ui.generated.resources.tool_delete
 import memix.feature.video_editor.generated.resources.tool_detach_audio
 import memix.core.ui.generated.resources.tool_duplicate
 import memix.feature.video_editor.generated.resources.tool_edit
-import memix.feature.video_editor.generated.resources.tool_edit_text
+import memix.core.ui.generated.resources.tool_edit_text
 import memix.feature.video_editor.generated.resources.tool_meme_sounds
 import memix.feature.video_editor.generated.resources.tool_move_here
 import memix.feature.video_editor.generated.resources.tool_move_here_a11y
 import memix.core.ui.generated.resources.tool_position
 import memix.feature.video_editor.generated.resources.tool_reorder
 import memix.feature.video_editor.generated.resources.tool_split
-import memix.feature.video_editor.generated.resources.tool_style
-import memix.feature.video_editor.generated.resources.tool_text
+import memix.core.ui.generated.resources.tool_style
+import memix.core.ui.generated.resources.tool_text
 import memix.feature.video_editor.generated.resources.tool_volume
 import org.jetbrains.compose.resources.stringResource
 
@@ -184,7 +184,7 @@ private fun ReorderBar(onIntent: (VideoEditorIntent) -> Unit, moveEarlierFocus: 
 private fun rememberMainTools(isEmpty: Boolean, focus: EditorFocusTargets, onIntent: (VideoEditorIntent) -> Unit): ImmutableList<ToolBarItem> {
     val edit = stringResource(Res.string.tool_edit)
     val memeSounds = stringResource(Res.string.tool_meme_sounds)
-    val text = stringResource(Res.string.tool_text)
+    val text = stringResource(UiRes.string.tool_text)
     val addMedia = stringResource(Res.string.tool_add_media)
     return remember(isEmpty, edit, memeSounds, text, addMedia, focus, onIntent) {
         val addMediaTool = ToolBarItem(addMedia, MemixIcons.Create, { onIntent(VideoEditorIntent.AddMediaTool) }, focusRequester = focus.addMediaTool)
@@ -262,8 +262,8 @@ private fun rememberClipTools(
 /** Edit text, Style and Position: a caption's own tools, which always act (spec P1-10 → Text clip tools). */
 @Composable
 private fun rememberTextTools(onIntent: (VideoEditorIntent) -> Unit, focus: EditorFocusTargets): List<ToolBarItem> {
-    val editText = stringResource(Res.string.tool_edit_text)
-    val style = stringResource(Res.string.tool_style)
+    val editText = stringResource(UiRes.string.tool_edit_text)
+    val style = stringResource(UiRes.string.tool_style)
     val position = stringResource(UiRes.string.tool_position)
     return remember(editText, style, position, onIntent, focus) {
         listOf(

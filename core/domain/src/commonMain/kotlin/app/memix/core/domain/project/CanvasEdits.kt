@@ -16,6 +16,7 @@ import app.memix.core.model.project.Project
 import app.memix.core.model.project.ProjectType
 import app.memix.core.model.project.RatioTerms
 import app.memix.core.model.project.TextItem
+import app.memix.core.model.project.Transform
 import app.memix.core.model.project.TrackKind
 import app.memix.core.model.project.hasSameShape
 import app.memix.core.model.project.turnedBounds
@@ -120,13 +121,16 @@ fun Project.backgroundShows(): Boolean {
  */
 internal fun TextItem.keptInside(old: PixelSize, new: PixelSize, measure: CaptionBlockMeasure): TextItem {
     val kept = transform.keptInside(old, new, CaptionCatalog.MIN_SCALE, CanvasCatalog.LAYER_MARGIN_OF_SHORT_SIDE) { canvas, scale ->
-        boxOn(canvas, scale, measure)
+        captionBoxOn(text, style, transform, canvas, scale, measure)
     }
     return if (kept == transform) this else copy(transform = kept)
 }
 
-/** The caption's box at [scale] on a canvas [canvasSize]: its turned block's bounds, in canvas pixels. */
-private fun TextItem.boxOn(canvasSize: PixelSize, scale: Float, measure: CaptionBlockMeasure): BoxSize {
+/**
+ * A caption's box at [scale] on a canvas [canvasSize]: its turned block's bounds, in canvas pixels. Video captions and
+ * photo text layers share it (spec P2-03 → Ratio change with text).
+ */
+internal fun captionBoxOn(text: String, style: CaptionStyle, transform: Transform, canvasSize: PixelSize, scale: Float, measure: CaptionBlockMeasure): BoxSize {
     val block = measure.measure(text, style, canvasSize.widthPx, canvasSize.heightPx)
     // The outline is stroked on the letters' edges, so half its width lies outside the block.
     val shortSide = min(canvasSize.widthPx, canvasSize.heightPx)

@@ -22,6 +22,8 @@ import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
+import app.memix.core.ui.scene.NoSceneCaptions
+import app.memix.core.ui.scene.SceneCaptions
 import kotlin.math.ceil
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +32,8 @@ import org.koin.dsl.module
 actual val videoEngineModule = module {
     single<VideoEngine> { IosVideoEngine() }
     single<CaptionMeasurer> { EstimatedCaptionMeasurer }
+    // TODO(P7-04): draw photo text layers with the same Core Text layout; nothing draws captions on iOS until then.
+    single<SceneCaptions> { NoSceneCaptions }
 }
 
 // TODO(P7-04): measure with Core Text and the bundled fonts, the same rules as Android's AndroidCaptionRenderer. Until

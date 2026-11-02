@@ -1,4 +1,4 @@
-package app.memix.core.domain.text
+package app.memix.core.model.text
 
 /*
  * User-perceived characters (grapheme clusters), for the caption's 250-character limit (spec P1-10 → Typing → Limit):

@@ -37,6 +37,19 @@ fun fittedImageSize(image: PixelSize, canvas: PixelSize): BoxSize {
 }
 
 /**
+ * A sticker's size at scale 1 on [canvas] (spec P2-03 → Size at scale 1): its longer side is
+ * [PhotoCatalog.STICKER_LONG_SIDE_OF_SHORT_SIDE] of the canvas's shorter side, the picture's shape kept, centered on its own
+ * center. The shorter side is about 1080 in every shape, so a ratio change never resizes a sticker. A picture of unknown size
+ * is taken as a square.
+ */
+fun stickerSizeAtScaleOne(picture: PixelSize?, canvas: PixelSize): BoxSize {
+    val longSide = min(canvas.widthPx, canvas.heightPx) * PhotoCatalog.STICKER_LONG_SIDE_OF_SHORT_SIDE
+    if (picture == null || picture.widthPx <= 0 || picture.heightPx <= 0) return BoxSize(longSide, longSide)
+    val scale = longSide / max(picture.widthPx, picture.heightPx)
+    return BoxSize(picture.widthPx * scale, picture.heightPx * scale)
+}
+
+/**
  * A background picture's size on [canvas] (spec P2-12 → How it draws): scaled uniformly to cover the whole canvas, the
  * overflow cropped about the center. [image] is the size as shown (EXIF turn applied). The video engine and the photo
  * scene both use this, so a picture lies the same in the preview and the export.

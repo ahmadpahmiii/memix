@@ -17,8 +17,8 @@ Full detail: `docs/TECHNICAL_DESIGN.md`. This is the working summary.
 | `:core:domain` | Domain | use cases; repository + engine interfaces (`VideoEngine`, `PreviewSession`, `PhotoRenderer`, `Segmenter`, `MediaFiles`, `MediaInspector`, `LocalCalendar`, `Sharer`, `Ads`, `Analytics`) | `:core:model` |
 | `:core:data` | Data | repositories, supabase-kt remote, SQLDelight local, file cache, settings | `:core:domain` |
 | `:core:designsystem` | UI | `MemixTheme`, tokens, base components | — |
-| `:core:ui` | UI | shared composables with more than one user: time formatting, layer gestures and selection frame, Position and Canvas panel rows, editor frame pieces (`editor/`), the one photo-scene drawing function `drawPhotoScene` and the `SceneImageSource` decoder interface (`scene/`); public `Res` with the strings both editors share (the video timeline is in `:feature:video-editor`) | designsystem, model |
-| `:engine:video` | Platform | `VideoEngine`: Media3 (androidMain), AVFoundation (iosMain); `VideoPreviewSurface`, which the composition root passes to the editor screen | domain |
+| `:core:ui` | UI | shared composables with more than one user: time formatting, layer gestures and selection frame, Position and Canvas panel rows, editor frame pieces (`editor/`), the one photo-scene drawing function `drawPhotoScene`, the `SceneImageSource` decoder interface and the `SceneCaptions` caption-drawing interface (`scene/`), the typing bar, `TextEntryUi` and Style panel both editors use (`text/`); public `Res` with the strings both editors share (the video timeline is in `:feature:video-editor`) | designsystem, model |
+| `:engine:video` | Platform | `VideoEngine`: Media3 (androidMain), AVFoundation (iosMain); `VideoPreviewSurface`, which the composition root passes to the editor screen; `AndroidSceneCaptions`, the caption renderer bound to `SceneCaptions` so the photo scene draws text like video (P2-03) | domain, ui |
 | `:engine:photo` | Platform | the scene's `SceneImageSource` decoder (P2-01; interface lives in `:core:ui` because it returns `ImageBitmap`), later the photo renderer + PNG/JPG/GIF/WebP encoders | domain, ui |
 | `:engine:segmentation` | Platform | `Segmenter`: ML Kit + MediaPipe / Vision | domain |
 | `:platform:services` | Platform | AdMob+UMP, Firebase, share intents, gallery picker | domain |
@@ -61,6 +61,7 @@ interface VideoEngine {   // app.memix.core.domain.video; members join with the 
 // Export plans drop 0% items; preview plans keep them (plan(keepSilentItems = true)) so a live gain can raise them.
 // Captions (P1-10): CaptionClips in the plan, drawn by the engine's one caption renderer in a composition-level overlay;
 // the editor measures through CaptionMeasurer (:core:domain) and draws its stand-in with the engine's CaptionStandIn.
+// Photo text (P2-03): drawPhotoScene calls SceneCaptions (:core:ui), implemented by :engine:video and bound in Koin; no engine depends on another.
 interface Segmenter {
     suspend fun segmentImage(image: ImageRef): SegmentationResult
     fun videoSession(source: MediaRef): VideoSegmentationSession

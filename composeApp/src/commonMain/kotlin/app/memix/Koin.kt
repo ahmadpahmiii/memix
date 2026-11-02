@@ -134,6 +134,8 @@ private val appModule = module {
             startEditSession = get(),
             updateDraftThumbnail = get(),
             importMedia = get(),
+            prepareCaptions = get(),
+            measureCaption = get(),
         )
     }
     viewModel { params ->

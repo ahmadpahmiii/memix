@@ -2,6 +2,11 @@ package app.memix.feature.photoeditor
 
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import app.memix.core.designsystem.MemixColors
+import app.memix.core.designsystem.Icon
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
@@ -192,7 +197,7 @@ private fun LayerRowFor(
     val spoken = layerSpokenName(layer, missing, position, count)
     val meta = layerMeta(layer, missing)
     LayerRow(
-        name = layerName(),
+        name = rowName(layer),
         meta = meta,
         selected = selected,
         lifted = lifted,
@@ -213,8 +218,21 @@ private fun LayerRowFor(
         },
         modifier = modifier,
     ) {
-        val picture = layer.path?.let(thumbnails::pictureOf)
-        if (picture != null) Image(BitmapPainter(picture), contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+        when (layer.kind) {
+            // A text row says "this is text" with an icon on `surface`: no bitmap, nothing to decode (spec P2-03 → Layers panel rows).
+            LayerKind.TEXT -> Box(Modifier.fillMaxSize().background(MemixColors.surface), contentAlignment = Alignment.Center) {
+                Icon(MemixIcons.Text, contentDescription = null, tint = MemixColors.textSecondary)
+            }
+            // A sticker's picture is fitted inside the square on `surface`: a transparent one shows no checkerboard.
+            LayerKind.STICKER -> Box(Modifier.fillMaxSize().background(MemixColors.surface)) {
+                val picture = layer.path?.let(thumbnails::pictureOf)
+                if (picture != null) Image(BitmapPainter(picture), contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+            }
+            LayerKind.IMAGE -> {
+                val picture = layer.path?.let(thumbnails::pictureOf)
+                if (picture != null) Image(BitmapPainter(picture), contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+            }
+        }
     }
 }
 

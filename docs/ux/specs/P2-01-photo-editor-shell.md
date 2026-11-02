@@ -268,7 +268,7 @@ One tap on a ratio is **one undo step** ("Ratio") that changes the canvas and, i
 | Canvas panel, preset or Custom | As P1-11 without Blur and Fit or Fill | `canvas_*`, `color_*` |
 | Ratio changed, a layer moved | The new frame; the toast | `photo_layers_moved` |
 | Background can't show | The hint line | `photo_background_hidden` |
-| Empty canvas (no layers) | Over the stage, a `scrim` card with a title and one line (below); the frame shows the background. The Layers tool explains. Hidden while the Canvas panel is open | `photo_empty_title`, `photo_empty_body` |
+| Empty canvas (no layers) | Over the stage, a `surface-raised` card (opaque since the P2-03 fix check: a `scrim` card vanished over the black stage) with a title and one line (below); the frame shows the background. The Layers tool explains. Hidden while the Canvas panel is open | `photo_empty_title`, `photo_empty_body` |
 | A layer's file is missing or unreadable | The layer isn't drawn, in preview or export (the same, so what you see is what you export); its row says so; a toast once per open; selecting it works | `photo_missing_media`, `layer_meta_missing` |
 | Save failing, leaving while failing | P1-04's banner and sheet, unchanged | `editor_save_*`, `editor_unsaved_*` |
 | Draft from a newer Memix, damaged draft | P1-14's states: a toast, nothing opens | `drafts_needs_update`, `drafts_cant_open` |
@@ -276,7 +276,7 @@ One tap on a ratio is **one undo step** ("Ratio") that changes the canvas and, i
 | Offline, permission | Don't apply: everything is on the phone; the picker needs no permission | none |
 | First run | Same as every run: no coach marks | none |
 
-**Empty canvas card.** Centered on the **stage** (not the frame: P1-04's lesson, because a 9:16 frame's width cut the Hindi body at 200%), `space-4` in from the stage's sides, `scrim` fill, `radius-lg`, `space-4` padding, a title in `title` `text` and a body in `body` `text` (7.5:1 or more over any canvas color, the same pairing as the badges). It scrolls if still taller than the stage. It sits over the frame, so the canvas color stays visible around it. P2-03 changes its body when a blank start exists ("Add text to start", with the tool named); P2-13 adds Add photo.
+**Empty canvas card.** Centered on the **stage** (not the frame: P1-04's lesson, because a 9:16 frame's width cut the Hindi body at 200%), `space-4` in from the stage's sides, **`surface-raised` fill** (opaque; changed in the P2-03 fix check: the first choice, `scrim`, is 70% black and disappears over the black stage, so the card looked cut at the frame's edge while its text ran on), `radius-lg`, `space-4` padding, a title in `title` `text` and a body in `body` `text` (12.4:1 over any canvas or stage color). It scrolls if still taller than the stage. It sits over the frame, so the canvas color stays visible around it. P2-03 changes its body when a blank start exists ("Add text to start", with the tool named); P2-13 adds Add photo.
 
 ## Interactions
 - **Press feedback:** the token pressed states, 120 ms. Nothing moves.
@@ -375,7 +375,7 @@ Translator notes:
 - **What a panel covers is gone** for TalkBack and keyboard focus (`coveredByModal`, ToolPanel rule): the tool bar under it.
 - **Announcements, polite, never taking focus (SC 4.1.3):** `a11y_edit_on_item` after Delete, Duplicate, Lock, Hide; `a11y_layer_opacity` after the slider; `a11y_text_transformed` and `a11y_text_position` after the Position panel; toasts. Gestures announce nothing while moving.
 - **Touch targets:** every tool, button, row, tile and swatch is 48 dp or more; a layer's hit area grows to 48 dp; the handle's target is 48 dp (cut by the stage edge when it sits at a corner, where the inner 24 dp still works).
-- **Contrast:** row name `text` on `surface-raised` 12.4:1; meta `text-secondary` 5.7:1; a hidden row's name `text-secondary` 5.7:1; the free lock icon `text-muted` 4.6:1; the ring `selection` on `surface` 17.2:1; the lock badge `text` on `scrim` 7.5:1 or more; the empty card `text` on `scrim` over a white canvas 7.5:1; the frame and handle as P1-10 (4.3:1 or more over any content).
+- **Contrast:** row name `text` on `surface-raised` 12.4:1; meta `text-secondary` 5.7:1; a hidden row's name `text-secondary` 5.7:1; the free lock icon `text-muted` 4.6:1; the ring `selection` on `surface` 17.2:1; the lock badge `text` on `scrim` 7.5:1 or more; the empty card `text` on `surface-raised` 12.4:1 over any canvas or stage color (it was `scrim`, which is invisible over the black stage); the frame and handle as P1-10 (4.3:1 or more over any content).
 - **200% font:** the top bar keeps its height (icons only; only the pill grows). Tool labels wrap and the bar grows. Row text wraps, rows grow and the thumbnail stays 40; the Layers panel's top row wraps its two buttons under the title; the panel still caps at 40% of the window, the Opacity row moves into the list (Layers panel → Where the Opacity row lives), and the list scrolls with room for two rows at least. The empty card scrolls. Nothing is cut. Hindi at 200% is a screenshot (QA compares 7).
 - **Reduce motion:** see Motion.
 

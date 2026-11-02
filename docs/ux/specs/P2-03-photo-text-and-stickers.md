@@ -83,7 +83,7 @@ Exactly the **P2-01 selected-layer bar**: Position · Opacity · Delete · Dupli
 
 ### Style panel (a text layer)
 **As P1-10 → Style panel**: the ToolPanel with Font (five FontTiles), Color (ten Swatches), Outline ("No outline" and the ten). Every tap applies at once and is one undo step ("Font", "Color", "Outline"); tapping the selected option records nothing. Photo differences:
-- **Height:** the photo ToolPanel is as tall as its content up to 40% of the window (P2-01): about 292 dp of content, so at 360 × 800 (cap 320) it fits; at 360 × 640 (cap 256) it scrolls inside. The stage refits above it (P2-01), so every choice is seen on the real canvas.
+- **Height:** the photo ToolPanel is as tall as its content up to 40% of the window (P2-01): about 340 dp with its title (P2-03 review, measured: the 292 dp first written left the title out), so it **scrolls at both heights**: at 360 × 800 (cap 320) the Outline row peeks at the bottom as the scroll cue; at 360 × 640 (cap 256) it scrolls inside with no peek (QA checks it is discoverable). The stage refits above it (P2-01), so every choice is seen on the real canvas.
 - **Opening it** on a selected text keeps the canvas touches live (a drag still moves the text), as P2-01 says for the Opacity and Position panels.
 - P2-11 adds Shadow and Box rows to this panel later (its own spec); nothing here reserves space.
 

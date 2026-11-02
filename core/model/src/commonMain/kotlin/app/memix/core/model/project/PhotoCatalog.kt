@@ -53,10 +53,23 @@ object PhotoCatalog {
         0.1f, 0.15f, 0.25f, 0.33f, 0.5f, 0.67f, 0.75f, 0.9f, 1f, 1.1f, 1.25f, 1.5f, 1.75f, 2f, 2.5f, 3f, 4f, 5f,
     )
 
-    /** The scale range of [layer]: images (and stickers, until P2-03 gives them their own) 10% to 500%, text 25% to 500%. */
+    /** At scale 1 a sticker's longer side is this fraction of the canvas's shorter side (35%: 378 px on a 1080 canvas). Not "fitted inside the frame". */
+    const val STICKER_LONG_SIDE_OF_SHORT_SIDE = 0.35f
+
+    /** A sticker's scale runs 10% to 500% of its size at scale 1 (3.5% to 175% of the shorter side). P2-14 and P4-12 use the same rule. */
+    val STICKER_SCALE_RANGE: ClosedFloatingPointRange<Float> = 0.1f..5f
+
+    /** A new text lands on the first free of these `centerY` slots: top, bottom, middle (all taken: the middle). */
+    val TEXT_LANDING_SLOTS: List<Float> = listOf(0.25f, 0.75f, 0.5f)
+
+    /** A landing slot is taken when a visible text layer has its center within this of it. */
+    const val TEXT_SLOT_TAKEN_WITHIN = 0.1f
+
+    /** The scale range of [layer]: images and stickers 10% to 500%, text 25% to 500%. */
     fun scaleRangeOf(layer: Layer): ClosedFloatingPointRange<Float> = when (layer) {
         is TextLayer -> CaptionCatalog.MIN_SCALE..CaptionCatalog.MAX_SCALE
-        is ImageLayer, is StickerLayer -> IMAGE_SCALE_RANGE
+        is ImageLayer -> IMAGE_SCALE_RANGE
+        is StickerLayer -> STICKER_SCALE_RANGE
     }
 
     /** How far inside the edge [layer] moves on a ratio change, as a fraction of the shorter side. */

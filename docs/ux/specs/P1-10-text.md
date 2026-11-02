@@ -34,6 +34,7 @@ The caption is half of most memes: "When the build passes first try" over the cl
 | Style panel (ToolPanel) | The Style tool | Done, system back, Escape. The text stays selected. |
 | Position panel (ToolPanel) | The Position tool | Same |
 
+- **While the entry bar is open, the top bar's ratio pill (and Undo and Redo, where the editor has them) are inert** (drawn disabled, spoken "disabled"; P2-03, 28 Oct): the typed words aren't in the project yet. Close still commits and closes.
 - **Back order** (P1-04) gains one step at the front: **typing commits and the keyboard closes** → menu → panel → drag in progress (canvas or timeline) is cancelled → reorder → selection → editor.
 - **Opening Edit text, Style or Position while the playhead is outside the text's time** first moves the playhead to the text's start, so the user sees what they're changing. It **jumps** there (P1-10 review): the panel or the keyboard covers the timeline at once, so a 200 ms scroll would play under them, and the preview frame and the timecode already show the move. Selecting alone still never moves the playhead (P1-05).
 - **Kept:** every text edit is in the project (autosave, undo). Not kept: the "last style used" memory, which lasts for one editor visit.

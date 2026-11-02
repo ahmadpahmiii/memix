@@ -7,6 +7,12 @@ import app.memix.core.domain.ProjectSource
 import app.memix.core.domain.drafts.UpdateDraftThumbnailUseCase
 import app.memix.core.domain.media.ImportMediaUseCase
 import app.memix.core.domain.project.CanvasRatioChange
+import app.memix.core.domain.project.CaptionBlockMeasure
+import app.memix.core.domain.project.TEXT_SIZE_LADDER
+import app.memix.core.domain.project.addTextLayer
+import app.memix.core.domain.project.editTextLayer
+import app.memix.core.domain.project.photoTextLandingCenterY
+import app.memix.core.domain.project.setTextLayerStyle
 import app.memix.core.domain.project.CreatePhotoProjectUseCase
 import app.memix.core.domain.project.LayerEdit
 import app.memix.core.domain.project.LayerRefusal
@@ -14,10 +20,13 @@ import app.memix.core.domain.project.OpenPhotoDraftUseCase
 import app.memix.core.domain.project.ProjectEditSession
 import app.memix.core.domain.project.ProjectEditState
 import app.memix.core.domain.project.StartEditSessionUseCase
+import app.memix.core.domain.text.MeasureCaptionUseCase
+import app.memix.core.domain.text.PrepareCaptionsUseCase
 import app.memix.core.domain.project.addImageLayer
 import app.memix.core.domain.project.deleteLayer
 import app.memix.core.domain.project.duplicateLayer
 import app.memix.core.domain.project.isEmptyDraft
+import app.memix.core.domain.project.layer
 import app.memix.core.domain.project.layers
 import app.memix.core.domain.project.moveLayerDown
 import app.memix.core.domain.project.moveLayerUp
@@ -36,6 +45,8 @@ import app.memix.core.model.project.ArgbColor
 import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.CanvasCatalog
 import app.memix.core.model.project.CanvasRatio
+import app.memix.core.model.project.CaptionCatalog
+import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.MediaRef
@@ -43,11 +54,13 @@ import app.memix.core.model.project.PhotoCatalog
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.RatioTerms
 import app.memix.core.model.project.SizeLadder
+import app.memix.core.model.project.TextLayer
 import app.memix.core.model.project.Transform
 import app.memix.core.model.project.size
 import app.memix.core.designsystem.MemixMotion
 import app.memix.core.ui.MemixViewModel
 import app.memix.core.ui.editor.SaveProblem
+import app.memix.core.ui.text.TextEntryUi
 import app.memix.core.ui.panels.CanvasLimit
 import app.memix.core.ui.panels.PositionLimit
 import app.memix.core.ui.panels.PositionStep
@@ -87,6 +100,8 @@ class PhotoEditorViewModel(
     private val startEditSession: StartEditSessionUseCase,
     private val updateDraftThumbnail: UpdateDraftThumbnailUseCase,
     importMedia: ImportMediaUseCase,
+    private val prepareCaptions: PrepareCaptionsUseCase,
+    private val measureCaption: MeasureCaptionUseCase,
 ) : MemixViewModel<PhotoEditorUiState, PhotoEditorIntent>(PhotoEditorUiState()) {
     // A picked photo's copy, its sheet and its landing (spec P2-12); P2-13 adds Add photo to the same pick.
     private val pick = ProjectPickImport(importMedia, viewModelScope, projectId, PickLanding())
@@ -100,12 +115,24 @@ class PhotoEditorViewModel(
     // The background picture's file that couldn't be read, so a replaced picture isn't called missing.
     private var missingBackgroundPath: String? = null
     private var gestureActive = false
+    // The blank route found its draft already saved: it edits that draft, it isn't a new blank any more.
+    private var restoredBlank = false
     private var nextToastId = 0L
 
+    // Typing (spec P2-03 → Typing): the words in the field now, and the last style used in this visit (a new text takes it).
+    private val captionMeasure = CaptionBlockMeasure { text, style, width, height ->
+        measureCaption(text, style, width, height)
+    }
+    private var nextEntrySerial = 0L
+    private var entryText = ""
+    private var lastStyle: CaptionStyle = CaptionCatalog.defaultStyle
+
     init {
-        updateState { it.copy(photoImport = ProjectImportUi(pick.state)) }
+        updateState { it.copy(photoImport = ProjectImportUi(pick.state), captionMeasure = PhotoCaptionMeasure(measureCaption)) }
         viewModelScope.launch {
-            when (val opened = if (newBlank) Outcome.Success(createPhotoProject().copy(id = projectId)) else openPhotoDraft(projectId)) {
+            // The caption fonts load first, so every text's box is measured with the real fonts.
+            prepareCaptions()
+            when (val opened = openProject()) {
                 is Outcome.Success -> if (opened.value.photo != null) startEditing(opened.value) else couldntOpen()
                 // A damaged draft, one from a newer app, or one deleted meanwhile: the app says "This draft can't be opened".
                 is Outcome.Failure -> couldntOpen()
@@ -113,11 +140,24 @@ class PhotoEditorViewModel(
         }
     }
 
+    // A blank route carries its project id. After the process was killed with the app in the background, the saved draft (a
+    // text was added) opens first; a blank canvas that was never saved starts again as a new one, never a second draft.
+    private suspend fun openProject(): Outcome<Project> {
+        if (!newBlank) return openPhotoDraft(projectId)
+        val saved = openPhotoDraft(projectId)
+        if (saved is Outcome.Success && saved.value.photo != null) {
+            restoredBlank = true
+            return saved
+        }
+        return Outcome.Success(createPhotoProject().copy(id = projectId))
+    }
+
     override fun onIntent(intent: PhotoEditorIntent) {
         when (intent) {
             PhotoEditorIntent.Undo -> undo()
             PhotoEditorIntent.Redo -> redo()
-            PhotoEditorIntent.Close -> requestClose()
+            // Close commits and closes while typing (spec P2-03 → Typing).
+            PhotoEditorIntent.Close -> { commitEntry(); requestClose() }
             PhotoEditorIntent.Back -> goBack()
             PhotoEditorIntent.LeaveAnyway -> updateState { it.copy(unsavedSheetOpen = false, isClosing = true) }
             PhotoEditorIntent.StayInEditor -> updateState { it.copy(unsavedSheetOpen = false) }
@@ -130,7 +170,7 @@ class PhotoEditorViewModel(
             PhotoEditorIntent.AppStopped -> goToBackground()
             is PhotoEditorIntent.ToastTimedOut -> updateState { if (it.toast?.id == intent.id) it.copy(toast = null) else it }
             is PhotoEditorIntent.MediaMissing -> showMissing(intent.paths)
-            is PhotoEditorIntent.SelectLayer -> select(intent.layerId)
+            is PhotoEditorIntent.SelectLayer -> tapLayer(intent.layerId)
             PhotoEditorIntent.ClearSelection -> select(null)
             is PhotoEditorIntent.LayerGestureStarted -> startGesture(intent.layerId)
             is PhotoEditorIntent.LayerGestureEnded -> endGesture(intent.layerId, intent.transform)
@@ -147,7 +187,15 @@ class PhotoEditorViewModel(
             is PhotoEditorIntent.SetHidden -> setHidden(intent.layerId, intent.hidden)
             is PhotoEditorIntent.MoveLayer -> moveLayer(intent.layerId, intent.towardFront)
             is PhotoEditorIntent.ReorderLayer -> reorder(intent.layerId, intent.indexFromFront)
-            PhotoEditorIntent.RatioPill -> toggleCanvasPanel()
+            // Inert while typing: the canvas mustn't change under the keyboard (spec P2-03 → Typing).
+            PhotoEditorIntent.RatioPill -> if (state.value.textEntry == null) toggleCanvasPanel()
+            PhotoEditorIntent.AddText -> startNewText()
+            PhotoEditorIntent.EditText -> editSelectedText()
+            is PhotoEditorIntent.TextEntryChanged -> entryText = intent.text
+            PhotoEditorIntent.TextEntryDone -> commitEntry()
+            is PhotoEditorIntent.SetTextFont -> restyle(PhotoEdit.TEXT_FONT, font = intent.fontId) { it.copy(fontId = intent.fontId) }
+            is PhotoEditorIntent.SetTextColor -> restyle(PhotoEdit.TEXT_COLOR) { it.copy(color = ArgbColor(intent.argb)) }
+            is PhotoEditorIntent.SetTextOutline -> restyle(PhotoEdit.TEXT_OUTLINE) { it.copy(outlineColor = intent.argb?.let(::ArgbColor)) }
             is PhotoEditorIntent.SetCanvasRatio -> setRatio(intent.ratio)
             is PhotoEditorIntent.CanvasStepped -> stepRatio(intent.step, intent.repeats)
             is PhotoEditorIntent.CanvasStepHeld -> holdRatio(intent.step, intent.repeats)
@@ -164,7 +212,7 @@ class PhotoEditorViewModel(
     }
 
     private fun startEditing(project: Project) {
-        val session = startEditSession(project, if (newBlank) ProjectSource.BLANK else null)
+        val session = startEditSession(project, if (newBlank && !restoredBlank) ProjectSource.BLANK else null)
         addCloseable(session)
         // The drafts list's cover follows the lowest image layer; it's checked as the editor goes, after the last save starts.
         addCloseable(AutoCloseable { currentProject()?.takeUnless { it.isEmptyDraft() }?.let { updateDraftThumbnail(it) } })
@@ -184,7 +232,7 @@ class PhotoEditorViewModel(
     private fun showProject(project: Project) {
         shownProject = project
         val canvasSize = project.canvas.size()
-        val layers = project.layers().map { it.toUi(canvasSize) }.toImmutableList()
+        val layers = project.layers().map { it.toUi(canvasSize, measureCaption::invoke) }.toImmutableList()
         val ids = layers.map { it.id }.toSet()
         updateState { state ->
             // The selection outlives edits, undo and redo while its layer exists; a panel about a layer goes with it.
@@ -193,6 +241,7 @@ class PhotoEditorViewModel(
             state.copy(
                 scene = SceneUi(project.canvas, project.layers().toImmutableList()),
                 layers = layers,
+                hadLayers = state.hadLayers || layers.isNotEmpty(),
                 backgroundShows = project.photoBackgroundShows(),
                 backgroundMissing = project.backgroundImage()?.cachedCopyPath?.let { it == missingBackgroundPath } == true,
                 selectedLayerId = selected,
@@ -211,6 +260,16 @@ class PhotoEditorViewModel(
 
     // Selection --------------------------------------------------------------------------------------------------
 
+    // A tap on the selected text opens typing (spec P2-03 → Gestures), only with no panel open; locked, it explains instead.
+    private fun tapLayer(layerId: String) {
+        val current = state.value
+        val layer = layerOf(layerId)
+        if (layer?.kind == LayerKind.TEXT && current.selectedLayerId == layerId && current.panel == null && current.textEntry == null) {
+            return editSelectedText()
+        }
+        select(layerId)
+    }
+
     private fun select(layerId: String?) = updateState { state ->
         val selected = layerId?.takeIf { id -> state.layers.any { it.id == id } }
         state.copy(selectedLayerId = selected, panel = state.panel?.takeUnless { it.needsSelection && selected == null })
@@ -223,7 +282,8 @@ class PhotoEditorViewModel(
 
     private fun endGesture(layerId: String, transform: Transform) {
         gestureActive = false
-        editLayer(PhotoEdit.TRANSFORM) { it.setLayerTransform(layerId, transform) }
+        val tool = if (layerOf(layerId)?.kind == LayerKind.TEXT) PhotoEdit.TRANSFORM_TEXT else PhotoEdit.TRANSFORM
+        editLayer(tool) { it.setLayerTransform(layerId, transform) }
         // Even when nothing changed (locked, same place), the stage lets go of the layer it held.
         updateState { it.copy(gestureEndCount = it.gestureEndCount + 1) }
     }
@@ -241,9 +301,9 @@ class PhotoEditorViewModel(
     private fun stepPosition(layerId: String, step: PositionStep, repeats: Int) {
         val layer = layerOf(layerId) ?: return
         if (layer.locked) return explain(PhotoExplanation.LAYER_LOCKED)
-        val stepped = layer.transform.steppedBy(step, repeats, SIZE_LADDER)
+        val stepped = layer.transform.steppedBy(step, repeats, ladderOf(layer))
         if (stepped == null) return explain(explanationOf(step.limit))
-        if (!editLayer(PhotoEdit.POSITION) { it.setLayerTransform(layerId, stepped) }) {
+        if (!editLayer(if (layer.kind == LayerKind.TEXT) PhotoEdit.POSITION_TEXT else PhotoEdit.POSITION) { it.setLayerTransform(layerId, stepped) }) {
             updateState { it.copy(held = null) }
             return
         }
@@ -260,7 +320,7 @@ class PhotoEditorViewModel(
     /** A held Move arrow: the layer shows [repeats] steps along; the release commits. Nothing is committed here. */
     private fun holdPosition(layerId: String, step: PositionStep, repeats: Int) {
         val layer = layerOf(layerId)?.takeUnless { it.locked } ?: return
-        val stepped = layer.transform.steppedBy(step, repeats, SIZE_LADDER) ?: return
+        val stepped = layer.transform.steppedBy(step, repeats, ladderOf(layer)) ?: return
         updateState { it.copy(held = HeldTransform(layerId, stepped)) }
     }
 
@@ -298,6 +358,67 @@ class PhotoEditorViewModel(
         if (editLayer(PhotoEdit.REORDER) { it.reorderLayer(layerId, indexFromFront) }) {
             positionOf(layerId).let { showToast(PhotoToastMessage.LayerOrder(it.first, it.second), spokenOnly = true) }
         }
+    }
+
+    // Text (spec P2-03) ---------------------------------------------------------------------------------------------
+
+    /** The Text tool: typing a new text, in the last style, at the first free slot (top, bottom, middle). */
+    private fun startNewText() {
+        val project = currentProject() ?: return
+        if (state.value.textEntry != null) return
+        val transform = Transform(centerX = 0.5f, centerY = project.photoTextLandingCenterY())
+        entryText = ""
+        updateState { it.copy(textEntry = TextEntryUi(nextEntrySerial++, itemId = null, initialText = "", lastStyle, transform), panel = null, canvasPanel = null) }
+    }
+
+    /** Edit text on the bar, or a tap on the selected text: typing its words. A locked text explains instead. */
+    private fun editSelectedText() {
+        val layer = state.value.selectedLayer?.takeIf { it.kind == LayerKind.TEXT } ?: return
+        if (state.value.textEntry != null) return
+        if (layer.locked) return explain(PhotoExplanation.LAYER_LOCKED)
+        val text = layer.text.orEmpty()
+        val style = currentProject()?.layer(layer.id).let { (it as? TextLayer)?.style } ?: return
+        entryText = text
+        updateState { it.copy(textEntry = TextEntryUi(nextEntrySerial++, layer.id, text, style, layer.transform), panel = null, canvasPanel = null) }
+    }
+
+    /** Every way out of typing keeps the words (spec → Typing → commit). A blank new text adds nothing and records nothing. */
+    private fun commitEntry() {
+        val entry = state.value.textEntry ?: return
+        updateState { it.copy(textEntry = null) }
+        val text = entryText
+        val layerId = entry.itemId
+        if (layerId == null) addNewText(text, entry.style) else commitTextEdit(layerId, text)
+    }
+
+    private fun addNewText(text: String, style: CaptionStyle) {
+        if (text.isBlank()) return
+        val newId = Uuid.random().toString()
+        if (!commit(PhotoEdit.ADD_TEXT, font = style.fontId) { it.addTextLayer(text, style, newId) }) return
+        select(newId)
+        showToast(PhotoToastMessage.TextAdded, spokenOnly = true)
+    }
+
+    // Changed words are "Edit text"; cleared to blank the layer goes, as one Delete step (undo brings it back).
+    private fun commitTextEdit(layerId: String, text: String) {
+        val position = positionOf(layerId)
+        val edit = if (text.isBlank()) PhotoEdit.DELETE else PhotoEdit.EDIT_TEXT
+        if (!editLayer(edit) { it.editTextLayer(layerId, text) }) return
+        if (edit == PhotoEdit.DELETE) {
+            select(null)
+            announce(PhotoEdit.DELETE, position.first, position.second)
+        }
+    }
+
+    // A font, color or outline tap: one undo step, or nothing when it is the current one (spec → Style panel).
+    private fun restyle(edit: PhotoEdit, font: String? = null, change: (CaptionStyle) -> CaptionStyle) {
+        val layer = state.value.selectedLayer?.takeIf { it.kind == LayerKind.TEXT } ?: return
+        val current = (currentProject()?.layer(layer.id) as? TextLayer)?.style ?: return
+        val style = change(current)
+        if (layer.locked) return explain(PhotoExplanation.LAYER_LOCKED)
+        lastStyle = style
+        if (style == current) return
+        editLayer(edit, font = font) { it.setTextLayerStyle(layer.id, style) }
     }
 
     // Panels and the canvas ---------------------------------------------------------------------------------------
@@ -353,7 +474,7 @@ class PhotoEditorViewModel(
 
     // One "Ratio" step; null when it changed nothing.
     private fun commitRatio(ratio: CanvasRatio, customTerms: RatioTerms?, analyticsValue: String): CanvasRatioChange? {
-        val change = currentProject()?.setPhotoCanvasRatio(ratio, customTerms) ?: return null
+        val change = currentProject()?.setPhotoCanvasRatio(ratio, customTerms, captionMeasure) ?: return null
         return change.takeIf { commit(PhotoEdit.CANVAS_RATIO, analyticsValue) { change.project } }
     }
 
@@ -435,28 +556,29 @@ class PhotoEditorViewModel(
     // Editing -----------------------------------------------------------------------------------------------------
 
     /** Applies [change] as one [edit] step; false when it changed nothing (no step, no `tool_use`). */
-    private fun commit(edit: PhotoEdit, value: String? = null, change: (Project) -> Project): Boolean {
+    private fun commit(edit: PhotoEdit, value: String? = null, font: String? = null, change: (Project) -> Project): Boolean {
         val session = editSession ?: return false
-        val recorded = session.commit(edit.tool, value = value, edit = change)
+        val recorded = session.commit(edit.tool, font = font, value = value, edit = change)
         if (recorded) showEditState(session.state.value)
         return recorded
     }
 
     /** Commits a layer edit, or explains why it was refused. True when a step was recorded. */
-    private fun editLayer(edit: PhotoEdit, change: (Project) -> LayerEdit): Boolean {
+    private fun editLayer(edit: PhotoEdit, font: String? = null, change: (Project) -> LayerEdit): Boolean {
         val project = currentProject() ?: return false
         return when (val result = change(project)) {
             is LayerEdit.Refused -> {
                 explain(explanationOf(result.reason))
                 false
             }
-            is LayerEdit.Edited -> commit(edit) { result.project }
+            is LayerEdit.Edited -> commit(edit, font = font) { result.project }
         }
     }
 
     private fun undo() {
         val session = editSession ?: return
-        if (gestureActive) return
+        // Inert during a gesture and while typing: the typed words aren't in the project yet (spec P2-03 → Typing).
+        if (gestureActive || state.value.textEntry != null) return
         val tool = session.state.value.takeIf { it.canUndo }?.undoTool ?: return
         session.undo()
         PhotoEdit.of(tool)?.let { showToast(PhotoToastMessage.Undone(it)) }
@@ -464,7 +586,7 @@ class PhotoEditorViewModel(
 
     private fun redo() {
         val session = editSession ?: return
-        if (gestureActive) return
+        if (gestureActive || state.value.textEntry != null) return
         val tool = session.state.value.takeIf { it.canRedo }?.redoTool ?: return
         session.redo()
         PhotoEdit.of(tool)?.let { showToast(PhotoToastMessage.Redone(it)) }
@@ -475,6 +597,8 @@ class PhotoEditorViewModel(
     private fun goBack() {
         val current = state.value
         when {
+            // Typing commits and the keyboard closes first (spec P2-03 → Typing → back order).
+            current.textEntry != null -> commitEntry()
             current.panel != null -> updateState { it.copy(panel = null, canvasPanel = null) }
             current.selectedLayerId != null -> select(null)
             else -> requestClose()
@@ -487,6 +611,8 @@ class PhotoEditorViewModel(
     }
 
     private fun goToBackground() {
+        // The keyboard goes with the app: typed words are kept, as on Done (spec P2-03 → Typing → commit).
+        commitEntry()
         // Android may end a background app without warning, so the newest change is written now.
         editSession?.saveNow()
         currentProject()?.takeUnless { it.isEmptyDraft() }?.let { updateDraftThumbnail(it) }
@@ -579,12 +705,15 @@ class PhotoEditorViewModel(
         CanvasLimit.MAX -> PhotoExplanation.CANVAS_MAX
     }
 
-    private val PhotoPanel.needsSelection: Boolean get() = this == PhotoPanel.OPACITY || this == PhotoPanel.POSITION
+    private val PhotoPanel.needsSelection: Boolean get() = this == PhotoPanel.OPACITY || this == PhotoPanel.POSITION || this == PhotoPanel.STYLE
+
+    // Text keeps P1-10's size ladder (25 to 500%); images and stickers the wider one (10 to 500%).
+    private fun ladderOf(layer: SceneLayerUi): SizeLadder = if (layer.kind == LayerKind.TEXT) TEXT_SIZE_LADDER else IMAGE_LADDER
 
     private companion object {
         const val PERCENT = 100
         /** `tool_use.value` for a custom ratio: never its numbers (spec → Analytics). */
         const val CUSTOM_VALUE = "custom"
-        val SIZE_LADDER = SizeLadder(PhotoCatalog.IMAGE_SIZE_STEPS)
+        val IMAGE_LADDER = SizeLadder(PhotoCatalog.IMAGE_SIZE_STEPS)
     }
 }

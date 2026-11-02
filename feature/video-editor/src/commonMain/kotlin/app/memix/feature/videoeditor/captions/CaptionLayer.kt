@@ -25,6 +25,7 @@ import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.MemixStroke
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.Transform
+import app.memix.core.ui.text.TextEntryUi
 import app.memix.core.ui.layers.CanvasFrameRect
 import app.memix.core.ui.layers.LayerBox
 import app.memix.core.ui.layers.LayerSelectionFrame
@@ -37,16 +38,14 @@ import app.memix.core.ui.layers.drawTwoToneFrame
 import app.memix.feature.videoeditor.CanvasUi
 import app.memix.feature.videoeditor.CaptionUi
 import app.memix.feature.videoeditor.EditorCaptionMeasure
-import app.memix.feature.videoeditor.TextEntryUi
 import app.memix.feature.videoeditor.TextPanel
 import app.memix.feature.videoeditor.VideoEditorIntent
 import kotlin.math.max
 import kotlin.math.roundToInt
 import memix.core.ui.generated.resources.Res as UiRes
 import memix.core.ui.generated.resources.tool_position
-import memix.feature.video_editor.generated.resources.Res
-import memix.feature.video_editor.generated.resources.a11y_text_on_canvas
-import memix.feature.video_editor.generated.resources.tool_style
+import memix.core.ui.generated.resources.a11y_text_on_canvas
+import memix.core.ui.generated.resources.tool_style
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -156,10 +155,10 @@ private fun BoxScope.CaptionNodes(
     onIntent: (VideoEditorIntent) -> Unit,
 ) {
     val density = LocalDensity.current
-    val styleLabel = stringResource(Res.string.tool_style)
+    val styleLabel = stringResource(UiRes.string.tool_style)
     val positionLabel = stringResource(UiRes.string.tool_position)
     for (caption in visible.sortedBy { it.transform.centerY }) {
-        val label = stringResource(Res.string.a11y_text_on_canvas, caption.text)
+        val label = stringResource(UiRes.string.a11y_text_on_canvas, caption.text)
         val box = caption.boxIn(state.frame, canvas.widthPx)
         val corners = listOf(box.corner(-1, -1, 0f), box.corner(1, -1, 0f), box.corner(1, 1, 0f), box.corner(-1, 1, 0f))
         val left = corners.minOf { it.x }

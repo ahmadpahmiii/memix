@@ -12,7 +12,10 @@ import app.memix.core.domain.project.GetProjectUseCase
 import app.memix.core.domain.project.layers
 import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.ImageLayer
+import app.memix.core.domain.text.PrepareCaptionsUseCase
+import app.memix.core.model.project.StickerLayer
 import app.memix.core.ui.scene.SceneBitmap
+import app.memix.core.ui.scene.SceneCaptions
 import app.memix.core.ui.scene.SceneImageSource
 import app.memix.core.ui.scene.SceneImageUse
 import app.memix.core.ui.scene.SceneImages
@@ -31,6 +34,8 @@ import org.koin.core.component.inject
 class SceneRender : KoinComponent {
     private val getProject: GetProjectUseCase by inject()
     private val imageSource: SceneImageSource by inject()
+    private val captions: SceneCaptions by inject()
+    private val prepareCaptions: PrepareCaptionsUseCase by inject()
     private val logger: Logger by inject()
 
     suspend fun run(projectId: String, widthPx: Int) {
@@ -39,7 +44,7 @@ class SceneRender : KoinComponent {
         val heightPx = (widthPx.toLong() * project.canvas.heightPx / project.canvas.widthPx).toInt()
         val pictures = HashMap<String, SceneBitmap>()
         // The layers' pictures and the background picture (P2-12), each decoded once.
-        val sources = project.layers().filterIsInstance<ImageLayer>().map { it.source } + listOfNotNull(project.canvas.background.let { (it as? CanvasBackground.Image)?.source })
+        val sources = project.layers().mapNotNull { (it as? ImageLayer)?.source ?: (it as? StickerLayer)?.source } + listOfNotNull(project.canvas.background.let { (it as? CanvasBackground.Image)?.source })
         for (source in sources) {
             val path = source.cachedCopyPath ?: continue
             if (path in pictures) continue
@@ -50,9 +55,11 @@ class SceneRender : KoinComponent {
 
             override fun appearanceOf(path: String): Float = 1f
         }
+        // The caption fonts load before text layers draw (P2-03).
+        prepareCaptions()
         val bitmap = ImageBitmap(widthPx, heightPx)
         CanvasDrawScope().draw(Density(1f), LayoutDirection.Ltr, Canvas(bitmap), Size(widthPx.toFloat(), heightPx.toFloat())) {
-            drawPhotoScene(project.canvas, project.layers(), images)
+            drawPhotoScene(project.canvas, project.layers(), images, captions = captions)
         }
         val written = writeDebugPng(bitmap, "$projectId-$widthPx.png")
         logger.debug(TAG, "renderScene: ${written ?: "writing failed"} (${pictures.size} pictures, ${widthPx} x $heightPx)")

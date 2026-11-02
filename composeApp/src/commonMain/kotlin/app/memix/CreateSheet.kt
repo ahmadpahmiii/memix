@@ -52,14 +52,14 @@ internal fun CreateSheet(
     Sheet(visible, onDismiss, stringResource(Res.string.create_title), heroTitle = true, drawScrim = false) {
         EditorRow(stringResource(Res.string.create_video_title), stringResource(Res.string.create_video_body), MemixIcons.Video, emphasized = true, onVideoMeme)
         EditorRow(stringResource(Res.string.create_photo_title), stringResource(Res.string.create_photo_body), MemixIcons.Photo, emphasized = false, onPhotoMeme)
-        // A blank canvas can hold nothing until a ticket can add a layer, so its row stays out until P2-03 (P0-05 rule).
-        if (BLANK_ROW_VISIBLE) TemplateRow(stringResource(Res.string.create_blank), MemixIcons.Photo, onBlankCanvas)
+        // Under Photo meme because it opens the photo editor; the `create` icon, so it doesn't repeat Photo meme's (spec P2-03 → The Blank start).
+        if (BLANK_ROW_VISIBLE) TemplateRow(stringResource(Res.string.create_blank), MemixIcons.Create, onBlankCanvas)
         TemplateRow(stringResource(Res.string.create_template), MemixIcons.Templates, onTemplates)
     }
 }
 
-/** Turns on the Create sheet's "Start with a blank canvas" row. P2-03 sets it (the PM's ready check owns that). */
-private const val BLANK_ROW_VISIBLE = false
+/** The Create sheet's "Start with a blank canvas" row: on since P2-03, which can put text on it (the PM's ready check owns the constant). */
+private const val BLANK_ROW_VISIBLE = true
 
 /** Video meme is the sheet's one blue action; Photo meme stays neutral with a blue icon, as on Home. */
 @Composable

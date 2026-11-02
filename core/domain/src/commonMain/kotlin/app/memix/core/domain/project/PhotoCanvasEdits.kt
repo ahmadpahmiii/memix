@@ -5,12 +5,16 @@ import app.memix.core.model.project.Canvas
 import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.CanvasCatalog
 import app.memix.core.model.project.CanvasRatio
+import app.memix.core.model.project.CaptionCatalog
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.Layer
 import app.memix.core.model.project.PhotoCatalog
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.RatioTerms
+import app.memix.core.model.project.StickerLayer
+import app.memix.core.model.project.TextLayer
+import app.memix.core.model.project.stickerSizeAtScaleOne
 import app.memix.core.model.project.fittedImageSize
 import app.memix.core.model.project.turnedBounds
 import kotlin.math.abs
@@ -41,15 +45,16 @@ fun photoCanvasFor(photo: PixelSize): Canvas {
  * enough to touch the edge (never a gap, [PhotoCatalog.IMAGE_MARGIN_OF_SHORT_SIDE]), shrinking first if it's too big;
  * every layer keeps its center, scale and turn otherwise, and an image's size at scale 1 follows the new shape. One the user
  * hung off the edge keeps its place. Unchanged when the canvas already has that size and ratio, or the custom terms aren't
- * allowed. Text and sticker layers join this rule with P2-03.
+ * allowed. Text layers join the rule with their box from [measure] (the caption renderer's layout), a 2% margin and a floor
+ * of 25%; stickers with their picture's box, a 2% margin and a floor of 10% (spec P2-03 → Ratio change with text).
  */
-fun Project.setPhotoCanvasRatio(ratio: CanvasRatio, customTerms: RatioTerms? = null): CanvasRatioChange {
+fun Project.setPhotoCanvasRatio(ratio: CanvasRatio, customTerms: RatioTerms? = null, measure: CaptionBlockMeasure): CanvasRatioChange {
     val size = canvasSizeFor(ratio, customTerms) ?: return CanvasRatioChange(this, movedLayers = false)
     val old = PixelSize(canvas.widthPx, canvas.heightPx)
     if (canvas.ratio == ratio && old == size) return CanvasRatioChange(this, movedLayers = false)
     var moved = false
     val kept = layers().map { layer ->
-        val keptLayer = layer.keptInside(old, size)
+        val keptLayer = layer.keptInside(old, size, measure)
         if (keptLayer != layer) moved = true
         keptLayer
     }
@@ -67,15 +72,31 @@ fun Project.photoBackgroundShows(): Boolean {
     return layers().none { layer -> layer is ImageLayer && layer.coversCanvas(canvasSize) }
 }
 
-private fun Layer.keptInside(old: PixelSize, new: PixelSize): Layer = when (this) {
+private fun Layer.keptInside(old: PixelSize, new: PixelSize, measure: CaptionBlockMeasure): Layer = when (this) {
     is ImageLayer -> {
         val kept = transform.keptInside(old, new, PhotoCatalog.IMAGE_SCALE_RANGE.start, PhotoCatalog.ratioChangeMarginOf(this)) { canvas, scale ->
             boxOn(canvas, scale)
         }
         if (kept == transform) this else copy(transform = kept)
     }
-    // TODO(P2-03): text and stickers join the rule (their boxes come from the caption renderer and the sticker's size).
-    else -> this
+    is TextLayer -> {
+        val kept = transform.keptInside(old, new, CaptionCatalog.MIN_SCALE, PhotoCatalog.ratioChangeMarginOf(this)) { canvas, scale ->
+            captionBoxOn(text, style, transform, canvas, scale, measure)
+        }
+        if (kept == transform) this else copy(transform = kept)
+    }
+    is StickerLayer -> {
+        val kept = transform.keptInside(old, new, PhotoCatalog.STICKER_SCALE_RANGE.start, PhotoCatalog.ratioChangeMarginOf(this)) { canvas, scale ->
+            boxOn(canvas, scale)
+        }
+        if (kept == transform) this else copy(transform = kept)
+    }
+}
+
+/** The sticker's box at [scale] on [canvas]: its size at scale 1 (35% of the shorter side) turned by its rotation, in canvas pixels. */
+internal fun StickerLayer.boxOn(canvas: PixelSize, scale: Float): BoxSize {
+    val size = stickerSizeAtScaleOne(source.pixelSize, canvas)
+    return turnedBounds(BoxSize(size.width * scale, size.height * scale), transform.rotationDegrees)
 }
 
 /** The image's box at [scale] on [canvas]: its fitted size turned by its rotation, in canvas pixels. A picture of unknown size has none. */

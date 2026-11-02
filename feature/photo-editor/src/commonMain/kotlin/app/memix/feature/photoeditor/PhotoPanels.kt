@@ -24,6 +24,8 @@ import app.memix.core.ui.panels.BackgroundGroup
 import app.memix.core.ui.panels.BackgroundUi
 import app.memix.core.ui.panels.toUi
 import app.memix.core.ui.scene.SceneThumbnails
+import app.memix.core.ui.text.StyleActions
+import app.memix.core.ui.text.StylePanel
 import app.memix.core.ui.panels.CanvasRatioRow
 import app.memix.core.ui.panels.CustomRatioRows
 import app.memix.core.ui.panels.PositionRows
@@ -62,6 +64,16 @@ internal fun PhotoPanels(state: PhotoEditorUiState, live: PhotoLive, thumbnails:
             )
         }
     }
+    val styleActions = remember(onIntent) {
+        object : StyleActions {
+            override fun onFont(fontId: String) = onIntent(PhotoEditorIntent.SetTextFont(fontId))
+            override fun onColor(argb: Long) = onIntent(PhotoEditorIntent.SetTextColor(argb))
+            override fun onOutline(argb: Long?) = onIntent(PhotoEditorIntent.SetTextOutline(argb))
+            override fun onClose() = onIntent(PhotoEditorIntent.ClosePanel)
+        }
+    }
+    // The shared Style panel (P1-10), as tall as its content up to 40% of the window (spec P2-03 → Style panel).
+    StylePanel(state.panel == PhotoPanel.STYLE && layer != null, layer?.style, styleActions, modifier, contentMaxHeight = maxHeight)
     val canvas = state.canvas
     val canvasPanel = state.canvasPanel
     ToolPanel(state.panel == PhotoPanel.CANVAS && canvas != null && canvasPanel != null, stringResource(UiRes.string.canvas_title), done, close, modifier, contentMaxHeight = maxHeight) {

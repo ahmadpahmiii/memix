@@ -57,12 +57,31 @@ private fun writePicture(file: File, picture: DebugPicture, hue: Int) {
         canvas.drawRect(0f, 0f, corner, corner, paint)
         paint.color = Color.RED
         canvas.drawRect(picture.widthPx - corner, picture.heightPx - corner, picture.widthPx.toFloat(), picture.heightPx.toFloat(), paint)
-        file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
+        if (picture.sticker) {
+            // A sticker: the picture clipped to a rounded blob over a transparent background (alpha), saved as PNG.
+            file.outputStream().use { stickerOf(bitmap).compress(Bitmap.CompressFormat.PNG, JPEG_QUALITY, it) }
+        } else {
+            file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
+        }
     } finally {
         bitmap.recycle()
     }
 }
 
+// [source] inside a rounded rectangle with a margin all round, the rest fully transparent.
+private fun stickerOf(source: Bitmap): Bitmap {
+    val result = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(result)
+    val margin = minOf(source.width, source.height) / STICKER_MARGIN_DIVISOR.toFloat()
+    val rect = android.graphics.RectF(margin, margin, source.width - margin, source.height - margin)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    canvas.drawRoundRect(rect, margin * 2, margin * 2, paint)
+    paint.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN)
+    canvas.drawBitmap(source, 0f, 0f, paint)
+    return result
+}
+
+private const val STICKER_MARGIN_DIVISOR = 10
 private const val HUE_STEP = 47
 private const val FULL_HUE = 360
 private const val GRID_CELLS = 10

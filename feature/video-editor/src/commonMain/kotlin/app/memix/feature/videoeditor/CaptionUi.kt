@@ -62,19 +62,6 @@ class EditorCaptionMeasure internal constructor(private val measure: MeasureCapt
         measure(text, style, canvasWidthPx, canvasHeightPx)
 }
 
-/**
- * Typing a caption (spec P1-10 → Typing): a new one ([itemId] null) or caption [itemId]'s words. The field starts with
- * [initialText]; [style] and [transform] are how it shows on the preview while typed. A new [serial] is a new entry.
- */
-@Immutable
-data class TextEntryUi(
-    val serial: Long,
-    val itemId: String?,
-    val initialText: String,
-    val style: CaptionStyle,
-    val transform: Transform,
-)
-
 /** The selected caption's panel over the timeline and tool bar. */
 enum class TextPanel { STYLE, POSITION }
 

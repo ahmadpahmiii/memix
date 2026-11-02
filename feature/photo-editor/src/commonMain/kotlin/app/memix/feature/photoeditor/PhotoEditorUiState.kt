@@ -1,8 +1,15 @@
 package app.memix.feature.photoeditor
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
 import app.memix.core.domain.EditorTool
+import app.memix.core.domain.text.CaptionBlockSize
+import app.memix.core.domain.text.MeasureCaptionUseCase
+import app.memix.core.model.project.BoxSize
 import app.memix.core.model.project.Canvas
+import app.memix.core.model.project.CaptionStyle
+import app.memix.core.model.project.stickerSizeAtScaleOne
+import app.memix.core.ui.text.TextEntryUi
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.MediaOrigin
@@ -44,6 +51,8 @@ data class PhotoEditorUiState(
     /** A layer a held Position arrow has moved but not committed yet; the stage draws it there until the release. */
     val held: HeldTransform? = null,
     val canUndo: Boolean = false,
+    /** A layer has been on the canvas at some point in this visit. */
+    val hadLayers: Boolean = false,
     val canRedo: Boolean = false,
     /** Goes up on every gesture release, so the stage lets go of the layer it held at its final place. */
     val gestureEndCount: Int = 0,
@@ -53,6 +62,10 @@ data class PhotoEditorUiState(
     val canFreeUpSpace: Boolean = true,
     /** The canvas's background picture can't be read (its file is gone); the Canvas panel says so and the canvas is black (P2-12). */
     val backgroundMissing: Boolean = false,
+    /** Measures a text as it's typed, with the engine's renderer; null until the editor has started. */
+    val captionMeasure: PhotoCaptionMeasure? = null,
+    /** Typing a text (spec P2-03 → Typing); while set, Undo, Redo and the ratio pill are inert and the tool bar is the entry bar. */
+    val textEntry: TextEntryUi? = null,
     /** The picker the app should open now; the app opens it and sends [PhotoEditorIntent.PickerOpened] (P2-12). */
     val pickRequest: PhotoPickRequest? = null,
     /** The import sheet's state while a picked photo copies; read only by the sheet. Null until the editor starts. */
@@ -66,6 +79,9 @@ data class PhotoEditorUiState(
 ) {
     val selectedLayer: SceneLayerUi? get() = selectedLayerId?.let { id -> layers.firstOrNull { it.id == id } }
     val isEmpty: Boolean get() = scene != null && layers.isEmpty()
+
+    /** The empty card points to Undo only after a layer was on the canvas and Undo has a step; a ratio or color change alone leaves nothing to bring back. */
+    val emptiedByUser: Boolean get() = hadLayers && canUndo
     val canvas: Canvas? get() = scene?.canvas
 
     /** Whether a panel hides the tool bar (and then the selected-layer bar too). */
@@ -106,8 +122,12 @@ data class SceneLayerUi(
     override val locked: Boolean,
     val hidden: Boolean,
     val opacity: Float,
-    /** The app's copy of the picture, relative to the files directory; null for text. */
+    /** The app's copy of the picture, relative to the files directory (an image or a sticker); null for text. */
     val path: String?,
+    /** A text layer's words, as typed; null for the other kinds. */
+    val text: String? = null,
+    /** A text layer's look; null for the other kinds. */
+    val style: CaptionStyle? = null,
     /** The picture's long side in pixels as shown, 0 when it wasn't measured: pictures are never decoded above it. */
     val pictureLongSidePx: Int,
     override val boxWidthPx: Float,
@@ -117,10 +137,22 @@ data class SceneLayerUi(
 
 enum class LayerKind { IMAGE, TEXT, STICKER }
 
-/** [this] layer for the editor, on a canvas of [canvasSize]. */
-internal fun Layer.toUi(canvasSize: PixelSize): SceneLayerUi {
-    val picture = (this as? ImageLayer)?.source?.pixelSize
-    val box = picture?.let { fittedImageSize(it, canvasSize) }
+/**
+ * [this] layer for the editor, on a canvas of [canvasSize]: an image's box is its picture fitted inside the frame, a
+ * sticker's its picture at 35% of the shorter side, a text's its laid-out block from [measure] (the caption renderer), all
+ * at scale 1.
+ */
+internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int) -> CaptionBlockSize): SceneLayerUi {
+    val picture = when (this) {
+        is ImageLayer -> source.pixelSize
+        is StickerLayer -> source.pixelSize
+        is TextLayer -> null
+    }
+    val box = when (this) {
+        is ImageLayer -> picture?.let { fittedImageSize(it, canvasSize) }
+        is StickerLayer -> stickerSizeAtScaleOne(picture, canvasSize)
+        is TextLayer -> measure(text, style, canvasSize.widthPx, canvasSize.heightPx).let { BoxSize(it.widthPx, it.heightPx) }
+    }
     return SceneLayerUi(
         id = id,
         kind = when (this) {
@@ -132,7 +164,13 @@ internal fun Layer.toUi(canvasSize: PixelSize): SceneLayerUi {
         locked = locked,
         hidden = hidden,
         opacity = opacity,
-        path = (this as? ImageLayer)?.source?.cachedCopyPath,
+        path = when (this) {
+            is ImageLayer -> source.cachedCopyPath
+            is StickerLayer -> source.cachedCopyPath
+            is TextLayer -> null
+        },
+        text = (this as? TextLayer)?.text,
+        style = (this as? TextLayer)?.style,
         pictureLongSidePx = picture?.let { maxOf(it.widthPx, it.heightPx) } ?: 0,
         boxWidthPx = box?.width ?: 0f,
         boxHeightPx = box?.height ?: 0f,
@@ -141,7 +179,7 @@ internal fun Layer.toUi(canvasSize: PixelSize): SceneLayerUi {
 }
 
 /** The tool panels over the tool bar. They never stack: opening one closes another. */
-enum class PhotoPanel { LAYERS, OPACITY, POSITION, CANVAS }
+enum class PhotoPanel { LAYERS, OPACITY, POSITION, CANVAS, STYLE }
 
 /** The Canvas panel's custom ratio: the steppers' numbers, and the numbers a held stepper shows before its release commits. */
 @Immutable
@@ -164,6 +202,16 @@ enum class PhotoEdit(val tool: EditorTool) {
     CANVAS_RATIO(EditorTool.CANVAS_RATIO),
     CANVAS_BACKGROUND(EditorTool.CANVAS_BACKGROUND),
     ADD_PHOTO(EditorTool.ADD_PHOTO),
+
+    // Text layers use P1-10's ids, so text analytics join across editors (spec P2-03 → Analytics). A gesture on a text is
+    // `transform_text`, a Position-panel step `position_text`.
+    ADD_TEXT(EditorTool.ADD_TEXT),
+    EDIT_TEXT(EditorTool.EDIT_TEXT),
+    TEXT_FONT(EditorTool.TEXT_FONT),
+    TEXT_COLOR(EditorTool.TEXT_COLOR),
+    TEXT_OUTLINE(EditorTool.TEXT_OUTLINE),
+    TRANSFORM_TEXT(EditorTool.TRANSFORM_TEXT),
+    POSITION_TEXT(EditorTool.POSITION_TEXT),
     ;
 
     companion object {
@@ -234,6 +282,9 @@ sealed interface PhotoToastMessage {
 
     /** Spoken only, after a photo landed as a new top layer: "Photo added in front". */
     data object LayerAdded : PhotoToastMessage
+
+    /** Spoken only, after a new text landed: "Text added". */
+    data object TextAdded : PhotoToastMessage
 }
 
 sealed interface PhotoEditorIntent {
@@ -313,6 +364,26 @@ sealed interface PhotoEditorIntent {
 
     data class SetCanvasBackground(val argb: Long) : PhotoEditorIntent
 
+    // Text (P2-03).
+    /** The Text tool: typing a new text at the first free slot. */
+    data object AddText : PhotoEditorIntent
+
+    /** Edit text on the bar, or a tap on the selected text. */
+    data object EditText : PhotoEditorIntent
+
+    /** The words in the entry field now. */
+    data class TextEntryChanged(val text: String) : PhotoEditorIntent
+
+    /** Done, back, Escape, Close or the keyboard going away: the words are kept. */
+    data object TextEntryDone : PhotoEditorIntent
+
+    data class SetTextFont(val fontId: String) : PhotoEditorIntent
+
+    data class SetTextColor(val argb: Long) : PhotoEditorIntent
+
+    /** The outline color, or null for "No outline". */
+    data class SetTextOutline(val argb: Long?) : PhotoEditorIntent
+
     // The background picture (P2-12).
     /** The Image swatch with no picture yet, or Replace. */
     data object PickBackgroundImage : PhotoEditorIntent
@@ -336,4 +407,15 @@ sealed interface PhotoEditorIntent {
 
     /** "Pick again" on the import sheet: it closes, then the same picker opens again. */
     data object PickAgain : PhotoEditorIntent
+}
+
+/**
+ * Measures a caption with the engine's renderer while it's typed, so its frame fits the words on every keystroke. Compared by
+ * identity: one per editor.
+ */
+@Stable
+class PhotoCaptionMeasure internal constructor(private val measure: MeasureCaptionUseCase) {
+    /** [text] in [style] at scale 1, in canvas pixels on a canvas [canvasWidthPx] x [canvasHeightPx]. */
+    fun blockOf(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int): CaptionBlockSize =
+        measure(text, style, canvasWidthPx, canvasHeightPx)
 }

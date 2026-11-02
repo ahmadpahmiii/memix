@@ -114,7 +114,7 @@ import app.memix.core.ui.spokenTimeOf
 import app.memix.feature.videoeditor.canvas.CanvasPanel
 import app.memix.feature.videoeditor.captions.CaptionLayer
 import app.memix.feature.videoeditor.captions.CaptionStandInSlot
-import app.memix.feature.videoeditor.captions.TextEntryBar
+import app.memix.core.ui.text.TextEntryBar
 import app.memix.feature.videoeditor.captions.TextPanels
 import app.memix.feature.videoeditor.export.ExportSheet
 import app.memix.core.ui.panels.BackgroundUi
@@ -151,7 +151,7 @@ import memix.feature.video_editor.generated.resources.canvas_layers_moved
 import memix.core.ui.generated.resources.canvas_pill_a11y
 import memix.feature.video_editor.generated.resources.edit_add_media
 import memix.feature.video_editor.generated.resources.edit_add_sound
-import memix.feature.video_editor.generated.resources.edit_add_text
+import memix.core.ui.generated.resources.edit_add_text
 import memix.core.ui.generated.resources.edit_canvas_background
 import memix.feature.video_editor.generated.resources.edit_canvas_fill
 import memix.feature.video_editor.generated.resources.edit_canvas_fit
@@ -159,16 +159,16 @@ import memix.core.ui.generated.resources.edit_canvas_ratio
 import memix.core.ui.generated.resources.edit_delete
 import memix.feature.video_editor.generated.resources.edit_detach_audio
 import memix.core.ui.generated.resources.edit_duplicate
-import memix.feature.video_editor.generated.resources.edit_edit_text
+import memix.core.ui.generated.resources.edit_edit_text
 import memix.feature.video_editor.generated.resources.edit_move
 import memix.feature.video_editor.generated.resources.edit_move_text
 import memix.feature.video_editor.generated.resources.edit_mute_original
 import memix.core.ui.generated.resources.edit_reorder
 import memix.feature.video_editor.generated.resources.edit_replace
 import memix.feature.video_editor.generated.resources.edit_split
-import memix.feature.video_editor.generated.resources.edit_text_color
-import memix.feature.video_editor.generated.resources.edit_text_font
-import memix.feature.video_editor.generated.resources.edit_text_outline
+import memix.core.ui.generated.resources.edit_text_color
+import memix.core.ui.generated.resources.edit_text_font
+import memix.core.ui.generated.resources.edit_text_outline
 import memix.feature.video_editor.generated.resources.edit_transform_text
 import memix.feature.video_editor.generated.resources.edit_trim
 import memix.feature.video_editor.generated.resources.edit_unmute_original
@@ -284,7 +284,7 @@ fun VideoEditorScreen(
                 .coveredByModal(sheetOpen)
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         ) {
-            TopBar(state.canvas, state.canvasPanel, focusTargets, onIntent)
+            TopBar(state.canvas, state.canvasPanel, state.textEntry != null, focusTargets, onIntent)
             EditorLayout(
                 stage = { PreviewStage(state, onIntent, previewSurface, captionStandIn, captionLayer, typingFrame, { entryField.text.toString() }, focusTargets, freeUpSpaceForSave) },
                 transport = { TransportRow(state, onIntent) },
@@ -316,7 +316,7 @@ fun VideoEditorScreen(
                     TextPanels(state.textPanel, panelCaption?.style, panelCaption?.transform, onIntent, Modifier.fillMaxSize())
                     CanvasPanel(state.canvasPanel, state.canvas, backgroundThumbnails, onIntent, Modifier.fillMaxSize())
                 },
-                entryBar = entry?.let { { TextEntryBar(it, entryField, onIntent) } },
+                entryBar = entry?.let { { TextEntryBar(it, entryField, onChanged = { text -> onIntent(VideoEditorIntent.TextEntryChanged(text)) }, onDone = { onIntent(VideoEditorIntent.TextEntryDone) }) } },
                 timelineMinHeight = timelineMinHeight(),
                 // While typing, the layout ends at the keyboard: the entry bar rides on it.
                 modifier = Modifier.weight(1f).then(if (entry != null) Modifier.windowInsetsPadding(WindowInsets.ime) else Modifier),
@@ -412,7 +412,7 @@ private fun selectedIsMissing(state: VideoEditorUiState): Boolean {
  * never move or shrink (spec P1-12 → Export button, at large font).
  */
 @Composable
-private fun TopBar(canvas: CanvasUi?, canvasPanel: CanvasPanelUi?, focusTargets: EditorFocusTargets, onIntent: (VideoEditorIntent) -> Unit) {
+private fun TopBar(canvas: CanvasUi?, canvasPanel: CanvasPanelUi?, typing: Boolean, focusTargets: EditorFocusTargets, onIntent: (VideoEditorIntent) -> Unit) {
     val gap = MemixSpacing.space2
     Layout(
         content = {
@@ -426,6 +426,8 @@ private fun TopBar(canvas: CanvasUi?, canvasPanel: CanvasPanelUi?, focusTargets:
                     expanded = canvasPanel != null,
                     onClick = { onIntent(VideoEditorIntent.RatioPill) },
                     modifier = Modifier.focusRequester(focusTargets.ratioPill),
+                    // Inert while a caption is typed: the canvas mustn't change under the keyboard (spec P2-03 → Typing).
+                    enabled = !typing,
                 )
             }
         },
@@ -843,11 +845,11 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.MUTE_ORIGINAL -> Res.string.edit_mute_original
         VideoEdit.UNMUTE_ORIGINAL -> Res.string.edit_unmute_original
         VideoEdit.DETACH_AUDIO -> Res.string.edit_detach_audio
-        VideoEdit.ADD_TEXT -> Res.string.edit_add_text
-        VideoEdit.EDIT_TEXT -> Res.string.edit_edit_text
-        VideoEdit.TEXT_FONT -> Res.string.edit_text_font
-        VideoEdit.TEXT_COLOR -> Res.string.edit_text_color
-        VideoEdit.TEXT_OUTLINE -> Res.string.edit_text_outline
+        VideoEdit.ADD_TEXT -> UiRes.string.edit_add_text
+        VideoEdit.EDIT_TEXT -> UiRes.string.edit_edit_text
+        VideoEdit.TEXT_FONT -> UiRes.string.edit_text_font
+        VideoEdit.TEXT_COLOR -> UiRes.string.edit_text_color
+        VideoEdit.TEXT_OUTLINE -> UiRes.string.edit_text_outline
         VideoEdit.POSITION_TEXT -> Res.string.edit_move_text
         VideoEdit.TRANSFORM_TEXT -> Res.string.edit_transform_text
         VideoEdit.CANVAS_RATIO -> UiRes.string.edit_canvas_ratio

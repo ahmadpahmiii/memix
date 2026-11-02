@@ -2,6 +2,10 @@ package app.memix.debug
 
 import app.memix.core.domain.project.photoCanvasFor
 import app.memix.core.model.project.Canvas
+import app.memix.core.model.project.TextLayer
+import app.memix.core.model.project.StickerLayer
+import app.memix.core.model.project.CaptionStyle
+import app.memix.core.model.project.ArgbColor
 import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.Layer
@@ -14,8 +18,8 @@ import app.memix.core.model.project.Project
 import app.memix.core.model.project.ProjectType
 import app.memix.core.model.project.Transform
 
-/** One generated test picture (see [writeDebugPhotos]). */
-internal class DebugPicture(val fileName: String, val widthPx: Int, val heightPx: Int, val label: String)
+/** One generated test picture (see [writeDebugPhotos]); a [sticker] is a PNG with a transparent background. */
+internal class DebugPicture(val fileName: String, val widthPx: Int, val heightPx: Int, val label: String, val sticker: Boolean = false)
 
 /**
  * The photo editor's hand-check scenes (spec docs/ux/specs/P2-01-photo-editor-shell.md → Requests 1), opened with
@@ -28,6 +32,13 @@ internal class DebugPicture(val fileName: String, val widthPx: Int, val heightPx
  * - `photo-background-image` (P2-12): a 1:1 canvas with a patterned picture (3000 x 2000, a grid and marked corners, so any
  *   shift shows) behind three smaller layers, one at 60%: the picture covers the canvas, cropped at the sides.
  * - `photo-background-missing` (P2-12): the same scene whose background picture's file is gone: black, a toast, a line in the panel.
+ * - `photo-text-check` (P2-03): a 9:16 1080 x 1920 canvas with a plain full-bleed picture and the same six captions as the video
+ *   editor's `text-check` (Classic Hindi and emoji over the top, Modern accented Latin at 50% and -15°, Bubbly two lines at 250%
+ *   and 30° partly off the right edge, Handwritten with Devanagari, Serif "THE END", and Classic red "OVERLAP" above it in the
+ *   stack): compare the screen, the render hook and the video export frame (spec P2-03 → Measured).
+ * - `photo-stickers` (P2-03): a photo, one text and five stickers with transparent backgrounds: a 512 px square, a 3:1 (locked),
+ *   a 1:3 (hidden), a 96 px tiny one and one whose file is gone.
+ * - `photo-layers-10` also carries three text layers on top (Classic at the top, Bubbly at 250% and 30°, a Hindi line).
  * The pictures for the photo-shape check (4:3, 3:2, 1:1, 9:16, 6:13, 3:1) are written too, for picking from the gallery.
  */
 internal object PhotoCheckProjects {
@@ -36,7 +47,9 @@ internal object PhotoCheckProjects {
     const val MISSING_MEDIA = "photo-missing-media"
     const val BACKGROUND_IMAGE = "photo-background-image"
     const val BACKGROUND_MISSING = "photo-background-missing"
-    val NAMES = listOf(LAYERS_10, EMPTY, MISSING_MEDIA, BACKGROUND_IMAGE, BACKGROUND_MISSING)
+    const val TEXT_CHECK = "photo-text-check"
+    const val STICKERS = "photo-stickers"
+    val NAMES = listOf(LAYERS_10, EMPTY, MISSING_MEDIA, BACKGROUND_IMAGE, BACKGROUND_MISSING, TEXT_CHECK, STICKERS)
 
     const val PICTURES_DIR = "${ExportCheckProject.MEDIA_DIR}/photo-scenes"
 
@@ -58,11 +71,26 @@ internal object PhotoCheckProjects {
         DebugPicture("shape-3x1.jpg", 6000, 2000, "3:1"),
     )
 
+    private val stickerSquare = DebugPicture("sticker-square.png", 512, 512, "SQ", sticker = true)
+    private val stickerWide = DebugPicture("sticker-wide.png", 1536, 512, "WIDE 3:1", sticker = true)
+    private val stickerTall = DebugPicture("sticker-tall.png", 512, 1536, "TALL 1:3", sticker = true)
+    private val stickerTiny = DebugPicture("sticker-tiny.png", 96, 96, "S", sticker = true)
+
     /** Every picture the scenes and the photo-shape check use. */
-    val pictures: List<DebugPicture> = listOf(base) + big + mid + hidden + backgroundPattern + shapes
+    val pictures: List<DebugPicture> = listOf(base) + big + mid + hidden + backgroundPattern + shapes + stickerSquare + stickerWide + stickerTall + stickerTiny
 
     private fun image(id: String, picture: DebugPicture, transform: Transform, locked: Boolean = false, hidden: Boolean = false, opacity: Float = 1f): Layer =
         ImageLayer(id, mediaOf(picture.fileName, PixelSize(picture.widthPx, picture.heightPx)), transform, locked, hidden, opacity)
+
+    private val WHITE = ArgbColor(0xFFFFFFFF)
+    private val BLACK = ArgbColor(0xFF000000)
+    private val YELLOW = ArgbColor(0xFFFFD60A)
+    private val CAPTION = CaptionStyle(fontId = "anton", color = WHITE, outlineColor = BLACK)
+
+    private fun text(id: String, words: String, style: CaptionStyle, transform: Transform): Layer = TextLayer(id, words, style, transform)
+
+    private fun sticker(id: String, picture: DebugPicture, transform: Transform, locked: Boolean = false, hidden: Boolean = false): Layer =
+        StickerLayer(id, mediaOf(picture.fileName, PixelSize(picture.widthPx, picture.heightPx)), transform, locked, hidden)
 
     // Pushed by hand or generated, so the origin is a stand-in; the editor reads the copy.
     private fun mediaOf(fileName: String, size: PixelSize) = MediaRef(
@@ -80,6 +108,8 @@ internal object PhotoCheckProjects {
     fun build(name: String): Project? = when (name) {
         LAYERS_10 -> layers10()
         MISSING_MEDIA -> missingMedia()
+        TEXT_CHECK -> textCheck()
+        STICKERS -> stickers()
         BACKGROUND_IMAGE -> backgroundImage(BACKGROUND_IMAGE, missing = false)
         BACKGROUND_MISSING -> backgroundImage(BACKGROUND_MISSING, missing = true)
         else -> null
@@ -99,8 +129,44 @@ internal object PhotoCheckProjects {
             image("l-mid-3", mid[2], Transform(0.5f, 0.5f, 0.45f)),
             image("l-mid-4", mid[3], Transform(0.8f, 0.5f, 0.35f)),
             image("l-hidden", hidden, Transform(0.5f, 0.5f, 0.5f), hidden = true),
+            // Three text layers on top (spec P2-03 request 1): the drag-speed bars must hold with text in the scene.
+            text("l-text-classic", "WHEN THE BUILD PASSES FIRST TRY", CAPTION, Transform(0.5f, 0.12f)),
+            text("l-text-bubbly", "BUBBLY\nTWO LINES", CaptionStyle("baloo2", WHITE, ArgbColor(0xFFAF52DE)), Transform(0.7f, 0.65f, 2.5f, rotationDegrees = 30f)),
+            text("l-text-hindi", "जब BUILD PASS हो", CaptionStyle("kalam", ArgbColor(0xFF64D2FF), BLACK), Transform(0.4f, 0.85f)),
         )
         return project(LAYERS_10, photoCanvasFor(PixelSize(base.widthPx, base.heightPx)), layers)
+    }
+
+    /** The six captions of the video's `text-check` on a 9:16 photo canvas, in its lane order (a lower lane draws over a higher one). */
+    private fun textCheck(): Project {
+        val canvas = photoCanvasFor(PixelSize(2160, 3840))
+        val layers = listOf(
+            image("t-photo", shapes[3], Transform()),
+            text("text-classic", "जब BUILD PASS हो 😂", CAPTION, Transform(0.5f, 0.2f)),
+            text("text-modern", "Ação rápida, ¿sí? ¡Ñandú!", CaptionStyle("poppins", YELLOW, null), Transform(0.5f, 0.45f, scale = 0.5f, rotationDegrees = -15f)),
+            text("text-serif", "THE END", CaptionStyle("rozha", WHITE, null), Transform(0.5f, 0.45f)),
+            text("text-handwritten", "me: हाँ, sure", CaptionStyle("kalam", ArgbColor(0xFF64D2FF), BLACK), Transform(0.5f, 0.75f)),
+            // Over THE END, later in the stack, so it is drawn on top.
+            text("text-over", "OVERLAP", CaptionStyle("anton", ArgbColor(0xFFFF3B30), BLACK), Transform(0.55f, 0.47f)),
+            // Partly off the frame's right edge: clipped there.
+            text("text-bubbly", "BUBBLY\nTWO LINES", CaptionStyle("baloo2", WHITE, ArgbColor(0xFFAF52DE)), Transform(0.85f, 0.7f, scale = 2.5f, rotationDegrees = 30f)),
+        )
+        return project(TEXT_CHECK, canvas, layers)
+    }
+
+    /** A photo, one text and five stickers (spec P2-03 request 1): the landing size, a locked, a hidden and a missing one. */
+    private fun stickers(): Project {
+        val gone = DebugPicture("gone-sticker.png", 512, 512, "GONE", sticker = true)
+        val layers = listOf(
+            image("s-photo", shapes[0], Transform()),
+            text("s-text", "STICKERS", CAPTION, Transform(0.5f, 0.12f)),
+            sticker("s-square", stickerSquare, Transform(0.25f, 0.4f)),
+            sticker("s-wide-locked", stickerWide, Transform(0.7f, 0.35f), locked = true),
+            sticker("s-tall-hidden", stickerTall, Transform(0.5f, 0.55f), hidden = true),
+            sticker("s-tiny", stickerTiny, Transform(0.3f, 0.75f)),
+            sticker("s-missing", gone, Transform(0.75f, 0.75f)),
+        )
+        return project(STICKERS, photoCanvasFor(PixelSize(shapes[0].widthPx, shapes[0].heightPx)), layers)
     }
 
     private fun missingMedia(): Project {

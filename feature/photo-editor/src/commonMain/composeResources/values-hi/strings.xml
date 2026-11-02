@@ -36,12 +36,12 @@
     <string name="explain_layer_back">यह लेयर पहले से सबसे पीछे है।</string>
     <string name="explain_layer_edge">यह लेयर इस तरफ़ और आगे नहीं जा सकती।</string>
     <string name="explain_layers_empty">अभी यहाँ कुछ नहीं है। आपके जोड़े गए लेयर इस सूची में दिखेंगे।</string>
-    <string name="photo_missing_media">किसी फ़ोटो की फ़ाइल नहीं मिली, इसलिए वह नहीं दिख रही। ठीक करने के लिए वह लेयर हटाएँ।</string>
-    <string name="explain_layer_missing">इस फ़ोटो की फ़ाइल नहीं मिली। ठीक करने के लिए लेयर हटाएँ।</string>
+    <string name="photo_missing_media">किसी तस्वीर की फ़ाइल नहीं मिली, इसलिए वह नहीं दिख रही। ठीक करने के लिए वह लेयर हटाएँ।</string>
+    <string name="explain_layer_missing">इस तस्वीर की फ़ाइल नहीं मिली। ठीक करने के लिए लेयर हटाएँ।</string>
     <string name="photo_layers_moved">लेयर फ़्रेम के अंदर रहने के लिए खिसकाई गईं।</string>
     <string name="photo_background_hidden">आपकी फ़ोटो पूरे फ़्रेम को ढकती है, इसलिए बैकग्राउंड नहीं दिखता।</string>
     <string name="photo_empty_title">यह कैनवास खाली है</string>
-    <string name="photo_empty_body">अपनी लेयर वापस पाने के लिए पूर्ववत करें दबाएँ, या इसे बंद करके नया फ़ोटो मीम शुरू करें।</string>
+    <string name="photo_empty_body">अपनी लेयर वापस पाने के लिए पूर्ववत करें दबाएँ, या टेक्स्ट या फ़ोटो जोड़ें दबाकर कुछ नया जोड़ें।</string>
     <string name="edit_transform_layer">स्थिति और आकार</string>
     <string name="edit_layer_opacity">पारदर्शिता</string>
     <string name="edit_lock">लॉक</string>
@@ -52,4 +52,8 @@
     <string name="tool_add_photo">फ़ोटो जोड़ें</string>
     <string name="a11y_layer_added">फ़ोटो सबसे ऊपर जोड़ी गई</string>
     <string name="edit_add_photo">फ़ोटो जोड़ें</string>
+    <!-- Text and stickers (P2-03). Budgets and translator notes: docs/ux/specs/P2-03-photo-text-and-stickers.md -> Copy. "Text", "Add photo" and "Undo" in the empty-canvas card are the names of buttons on the same screen. -->
+    <string name="layer_name_sticker">स्टिकर</string>
+    <string name="a11y_layer_text_added">टेक्स्ट जोड़ा गया</string>
+    <string name="photo_empty_body_blank">शब्द जोड़ने के लिए टेक्स्ट दबाएँ, या तस्वीर जोड़ने के लिए फ़ोटो जोड़ें दबाएँ।</string>
 </resources>

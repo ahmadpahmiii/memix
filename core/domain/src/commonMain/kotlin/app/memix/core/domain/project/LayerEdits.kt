@@ -145,13 +145,13 @@ private inline fun Project.editUnlocked(layerId: String, edit: (Layer) -> Layer)
     return LayerEdit.Edited(replaceLayer(layerId, edit))
 }
 
-private inline fun Project.replaceLayer(layerId: String, change: (Layer) -> Layer): Project {
+internal inline fun Project.replaceLayer(layerId: String, change: (Layer) -> Layer): Project {
     val all = layers()
     if (all.none { it.id == layerId }) return this
     return withLayers(all.map { if (it.id == layerId) change(it) else it })
 }
 
-private fun Project.withLayers(layers: List<Layer>): Project {
+internal fun Project.withLayers(layers: List<Layer>): Project {
     val scene = photo ?: return this
     return copy(photo = scene.copy(layers = layers))
 }

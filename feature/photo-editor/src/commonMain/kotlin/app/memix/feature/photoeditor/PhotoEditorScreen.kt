@@ -68,6 +68,8 @@ import app.memix.core.ui.editor.WHAT_HAPPENED_TOAST_MILLIS
 import app.memix.core.ui.editor.recommendedTimeoutMillis
 import app.memix.core.ui.layers.LayerStageState
 import app.memix.core.ui.scene.SceneImageSource
+import app.memix.core.ui.text.TextEntryBar
+import app.memix.core.ui.scene.SceneCaptions
 import app.memix.core.ui.scene.SceneThumbnails
 import app.memix.feature.mediaimport.ImportWording
 import app.memix.feature.mediaimport.ProjectImportSheet
@@ -76,6 +78,17 @@ import kotlin.math.max
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import memix.core.ui.generated.resources.Res as UiRes
+import memix.feature.photo_editor.generated.resources.a11y_layer_text_added
+import memix.core.ui.generated.resources.edit_add_text
+import memix.core.ui.generated.resources.edit_edit_text
+import memix.core.ui.generated.resources.edit_text_color
+import memix.core.ui.generated.resources.edit_text_font
+import memix.core.ui.generated.resources.edit_text_outline
+import memix.core.ui.generated.resources.tool_edit_text
+import memix.core.ui.generated.resources.tool_style
+import memix.core.ui.generated.resources.tool_text
+import androidx.compose.ui.text.TextRange
+import androidx.compose.foundation.text.input.TextFieldState
 import memix.core.ui.generated.resources.a11y_canvas_image_removed
 import memix.core.ui.generated.resources.a11y_canvas_image_set
 import memix.core.ui.generated.resources.canvas_image_missing_toast
@@ -140,8 +153,9 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * The photo editor frame (spec docs/ux/specs/P2-01-photo-editor-shell.md → Layout): the top bar, the stage with the canvas
- * and its layers, and the tool bar, which a tool panel replaces. [imageSource] decodes the pictures: the composition root
- * passes the engine's, which a feature can't depend on. [onFreeUpSpace] opens the phone's storage manager asking for the
+ * and its layers, and the tool bar, which a tool panel replaces and the entry bar replaces while a text is typed.
+ * [imageSource] decodes the pictures and [captions] draws the text layers: the composition root passes the engines', which a
+ * feature can't depend on. [onFreeUpSpace] opens the phone's storage manager asking for the
  * given number of bytes.
  */
 @Composable
@@ -149,6 +163,7 @@ fun PhotoEditorScreen(
     state: PhotoEditorUiState,
     onIntent: (PhotoEditorIntent) -> Unit,
     imageSource: SceneImageSource,
+    captions: SceneCaptions,
     onFreeUpSpace: (requestedBytes: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -156,7 +171,7 @@ fun PhotoEditorScreen(
     // itself while something inside it comes first (a panel, the selection) or while saving fails, to ask first.
     NavigationBackHandler(
         rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled = !state.unsavedSheetOpen && (state.panel != null || state.selectedLayerId != null || state.isSaveFailing),
+        isBackEnabled = !state.unsavedSheetOpen && (state.textEntry != null || state.panel != null || state.selectedLayerId != null || state.isSaveFailing),
         onBackCompleted = { onIntent(PhotoEditorIntent.Back) },
     )
     LifecycleEventEffect(Lifecycle.Event.ON_START) { onIntent(PhotoEditorIntent.AppStarted) }
@@ -164,6 +179,9 @@ fun PhotoEditorScreen(
     val freeUpSpaceForSave = remember(onFreeUpSpace) { { onFreeUpSpace(ImportMediaUseCase.HEADROOM_BYTES) } }
 
     val importSheetShown = rememberImportSheetShown(state.photoImport)
+    // The typed words live here, so a keystroke redraws only the scene's text, never the screen (spec P2-03 → Performance).
+    val entry = state.textEntry
+    val entryField = remember(entry?.serial) { TextFieldState(entry?.initialText.orEmpty(), TextRange(entry?.initialText.orEmpty().length)) }
     val scope = rememberCoroutineScope()
     val bitmaps = remember(imageSource) { SceneBitmaps(imageSource, scope) }
     DisposableEffect(bitmaps) { onDispose { bitmaps.release() } }
@@ -200,11 +218,11 @@ fun PhotoEditorScreen(
         ) {
             TopBar(state, onIntent)
             Box(Modifier.weight(1f).fillMaxWidth()) {
-                PhotoStage(state, state.scene, bitmaps, stage, live, coverPx, onIntent, Modifier.fillMaxSize())
+                PhotoStage(state, state.scene, bitmaps, captions, stage, live, coverPx, entryField, onIntent, Modifier.fillMaxSize())
                 StageMessages(state, onIntent, freeUpSpaceForSave, Modifier.align(Alignment.TopCenter).semantics { traversalIndex = -1f })
             }
             Box(Modifier.coveredByModal(panelOpen).onSizeChanged { toolRegionPx = it.height }) {
-                ToolBarRegion(state, onIntent)
+                ToolBarRegion(state, entryField, onIntent)
             }
         }
         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { if (it.height > 0) panelHeightPx = it.height }) {
@@ -238,12 +256,14 @@ fun PhotoEditorScreen(
 private fun TopBar(state: PhotoEditorUiState, onIntent: (PhotoEditorIntent) -> Unit) {
     val gap = MemixSpacing.space2
     val scene = state.scene
+    val typing = state.textEntry != null
     Layout(
         content = {
             IconButton(MemixIcons.Close, stringResource(UiRes.string.editor_close), { onIntent(PhotoEditorIntent.Close) })
             Row(horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space2)) {
-                IconButton(MemixIcons.Undo, stringResource(UiRes.string.editor_undo), { onIntent(PhotoEditorIntent.Undo) }, enabled = state.canUndo)
-                IconButton(MemixIcons.Redo, stringResource(UiRes.string.editor_redo), { onIntent(PhotoEditorIntent.Redo) }, enabled = state.canRedo)
+                // Undo, Redo and the pill are inert while typing: the typed words aren't in the project yet (spec P2-03 → Typing).
+                IconButton(MemixIcons.Undo, stringResource(UiRes.string.editor_undo), { onIntent(PhotoEditorIntent.Undo) }, enabled = state.canUndo && !typing)
+                IconButton(MemixIcons.Redo, stringResource(UiRes.string.editor_redo), { onIntent(PhotoEditorIntent.Redo) }, enabled = state.canRedo && !typing)
             }
             if (scene != null) {
                 val label = state.canvasPanel?.shownTerms?.lowest()?.toString() ?: scene.ratioLabel
@@ -252,6 +272,7 @@ private fun TopBar(state: PhotoEditorUiState, onIntent: (PhotoEditorIntent) -> U
                     stringResource(UiRes.string.canvas_pill_a11y, label),
                     expanded = state.panel == PhotoPanel.CANVAS,
                     onClick = { onIntent(PhotoEditorIntent.RatioPill) },
+                    enabled = !typing,
                 )
             }
         },
@@ -279,7 +300,15 @@ private fun TopBar(state: PhotoEditorUiState, onIntent: (PhotoEditorIntent) -> U
 
 /** The main bar with nothing selected, the selected-layer bar with a layer (spec → Tool bars); they crossfade in 120 ms. */
 @Composable
-private fun ToolBarRegion(state: PhotoEditorUiState, onIntent: (PhotoEditorIntent) -> Unit) {
+private fun ToolBarRegion(state: PhotoEditorUiState, entryField: TextFieldState, onIntent: (PhotoEditorIntent) -> Unit) {
+    val entry = state.textEntry
+    if (entry != null) {
+        // The entry bar rides the keyboard in place of the tool bar (spec P2-03 → Typing).
+        Box(Modifier.fillMaxWidth().background(MemixColors.surface).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))) {
+            TextEntryBar(entry, entryField, onChanged = { onIntent(PhotoEditorIntent.TextEntryChanged(it)) }, onDone = { onIntent(PhotoEditorIntent.TextEntryDone) })
+        }
+        return
+    }
     Box(
         Modifier
             .fillMaxWidth()
@@ -292,7 +321,7 @@ private fun ToolBarRegion(state: PhotoEditorUiState, onIntent: (PhotoEditorInten
         Crossfade(state.selectedLayerId != null, animationSpec = tween(MemixMotion.durationPress), label = "tool bar") { hasSelection ->
             val layer = if (hasSelection) state.selectedLayer ?: lastLayer[0] else null
             if (layer == null) {
-                ToolBar(persistentListOf(addPhotoTool(onIntent), layersTool(onIntent)))
+                ToolBar(persistentListOf(textTool(onIntent), addPhotoTool(onIntent), layersTool(onIntent)))
             } else {
                 val closeLabel = stringResource(Res.string.layer_tools_close)
                 ToolBar(
@@ -305,6 +334,11 @@ private fun ToolBarRegion(state: PhotoEditorUiState, onIntent: (PhotoEditorInten
     }
 }
 
+// Typing a new text, no menu (spec P2-03 → The Text tool); first on the main bar, before Add photo and Layers.
+@Composable
+private fun textTool(onIntent: (PhotoEditorIntent) -> Unit) =
+    ToolBarItem(stringResource(UiRes.string.tool_text), MemixIcons.Text, { onIntent(PhotoEditorIntent.AddText) })
+
 // Opens the picker for a new top layer (spec P2-13 → Entry and exit); in its final place just before Layers.
 @Composable
 private fun addPhotoTool(onIntent: (PhotoEditorIntent) -> Unit) =
@@ -316,7 +350,8 @@ private fun layersTool(onIntent: (PhotoEditorIntent) -> Unit) =
     ToolBarItem(stringResource(Res.string.tool_layers), MemixIcons.Layers, { onIntent(PhotoEditorIntent.OpenPanel(PhotoPanel.LAYERS)) })
 
 /**
- * Position · Opacity · Delete · Duplicate · Lock · Hide · Layers for the selected layer. Delete comes first when its file
+ * Position · Opacity · Delete · Duplicate · Lock · Hide · Layers for the selected layer (a text: Edit text · Style · Position ·
+ * Delete · Opacity · Duplicate · Lock · Hide · Layers). Delete comes first when its file
  * is missing (it is what fixes it); Unlock comes before everything when the layer is locked, since the next three only
  * explain. Lock and Hide show the layer's current state in the icon and name the action in the label.
  */
@@ -341,12 +376,29 @@ private fun selectedLayerTools(layer: SceneLayerUi, missing: Boolean, onIntent: 
         { onIntent(PhotoEditorIntent.SetHidden(layer.id, !layer.hidden)) },
     )
     val layers = layersTool(onIntent)
+    val isText = layer.kind == LayerKind.TEXT
+    // A text's own tools come first (spec P2-03 → Selected-text bar); while locked they only explain.
+    val editText = ToolBarItem(stringResource(UiRes.string.tool_edit_text), MemixIcons.EditText, {
+        if (layer.locked) onIntent(PhotoEditorIntent.LockedLayerTouched(layer.id)) else onIntent(PhotoEditorIntent.EditText)
+    })
+    val style = ToolBarItem(stringResource(UiRes.string.tool_style), MemixIcons.Style, {
+        if (layer.locked) onIntent(PhotoEditorIntent.LockedLayerTouched(layer.id)) else onIntent(PhotoEditorIntent.OpenPanel(PhotoPanel.STYLE))
+    })
     val tools = buildList {
         if (layer.locked) add(lock)
-        if (missing) add(delete)
-        add(position)
-        add(opacity)
-        if (!missing) add(delete)
+        if (isText) {
+            // Edit text · Style · Position · Delete · Opacity · Duplicate · Lock · Hide · Layers: Delete stays 4th (four tools fit in view at 360 dp).
+            add(editText)
+            add(style)
+            add(position)
+            add(delete)
+            add(opacity)
+        } else {
+            if (missing) add(delete)
+            add(position)
+            add(opacity)
+            if (!missing) add(delete)
+        }
         add(duplicate)
         if (!layer.locked) add(lock)
         add(hide)
@@ -393,7 +445,7 @@ private fun ToastTimer(toast: PhotoToast, onTimedOut: (id: Long) -> Unit) {
             is PhotoToastMessage.Undone, is PhotoToastMessage.Redone, is PhotoToastMessage.Edited, is PhotoToastMessage.LayerOrder,
             is PhotoToastMessage.PositionTransformed, is PhotoToastMessage.PositionMoved, is PhotoToastMessage.OpacityChanged,
             is PhotoToastMessage.RatioStepped, PhotoToastMessage.BackgroundImageSet, PhotoToastMessage.BackgroundImageRemoved,
-            PhotoToastMessage.LayerAdded,
+            PhotoToastMessage.LayerAdded, PhotoToastMessage.TextAdded,
             -> WHAT_HAPPENED_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
@@ -427,12 +479,13 @@ private fun toastText(message: PhotoToastMessage): String = when (message) {
     PhotoToastMessage.BackgroundImageSet -> stringResource(UiRes.string.a11y_canvas_image_set)
     PhotoToastMessage.BackgroundImageRemoved -> stringResource(UiRes.string.a11y_canvas_image_removed)
     PhotoToastMessage.LayerAdded -> stringResource(Res.string.a11y_layer_added)
+    PhotoToastMessage.TextAdded -> stringResource(Res.string.a11y_layer_text_added)
 }
 
 @Composable
 private fun editName(edit: PhotoEdit): String = stringResource(
     when (edit) {
-        PhotoEdit.TRANSFORM, PhotoEdit.POSITION -> Res.string.edit_transform_layer
+        PhotoEdit.TRANSFORM, PhotoEdit.POSITION, PhotoEdit.TRANSFORM_TEXT, PhotoEdit.POSITION_TEXT -> Res.string.edit_transform_layer
         PhotoEdit.OPACITY -> Res.string.edit_layer_opacity
         PhotoEdit.LOCK -> Res.string.edit_lock
         PhotoEdit.UNLOCK -> Res.string.edit_unlock
@@ -444,6 +497,11 @@ private fun editName(edit: PhotoEdit): String = stringResource(
         PhotoEdit.CANVAS_RATIO -> UiRes.string.edit_canvas_ratio
         PhotoEdit.CANVAS_BACKGROUND -> UiRes.string.edit_canvas_background
         PhotoEdit.ADD_PHOTO -> Res.string.edit_add_photo
+        PhotoEdit.ADD_TEXT -> UiRes.string.edit_add_text
+        PhotoEdit.EDIT_TEXT -> UiRes.string.edit_edit_text
+        PhotoEdit.TEXT_FONT -> UiRes.string.edit_text_font
+        PhotoEdit.TEXT_COLOR -> UiRes.string.edit_text_color
+        PhotoEdit.TEXT_OUTLINE -> UiRes.string.edit_text_outline
     },
 )
 

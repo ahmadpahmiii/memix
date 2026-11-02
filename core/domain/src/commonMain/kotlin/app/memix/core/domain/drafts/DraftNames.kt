@@ -1,7 +1,7 @@
 package app.memix.core.domain.drafts
 
-import app.memix.core.domain.text.graphemeCount
-import app.memix.core.domain.text.takeGraphemes
+import app.memix.core.model.text.graphemeCount
+import app.memix.core.model.text.takeGraphemes
 
 /** The longest draft name, in user-perceived characters (spec P1-14 → Rename sheet). */
 const val MAX_DRAFT_NAME_CHARACTERS = 60

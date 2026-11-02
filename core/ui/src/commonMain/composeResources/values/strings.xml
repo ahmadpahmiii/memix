@@ -115,4 +115,29 @@
     <string name="canvas_image_missing_toast">The background image is missing. Tap %1$s at the top to replace or remove it.</string>
     <string name="a11y_canvas_image_set">Background image set</string>
     <string name="a11y_canvas_image_removed">Background image removed</string>
+    <!-- Captions, shared by both editors (P1-10, P2-03): the Text tools, the typing bar, the Style panel, the fonts. Budgets and translator notes: docs/ux/specs/P1-10-text.md -> Copy. -->
+    <string name="text_entry_hint">Type your text</string>
+    <string name="text_entry_label">Your text</string>
+    <string name="text_entry_count">%1$d/%2$d</string>
+    <string name="text_entry_count_a11y">%1$d of %2$d characters</string>
+    <string name="text_entry_limit_a11y">Character limit reached</string>
+    <string name="style_title">Style</string>
+    <string name="style_font">Font</string>
+    <string name="style_color">Color</string>
+    <string name="style_outline">Outline</string>
+    <string name="font_classic">Classic</string>
+    <string name="font_modern">Modern</string>
+    <string name="font_bubbly">Bubbly</string>
+    <string name="font_handwritten">Handwritten</string>
+    <string name="font_serif">Serif</string>
+    <string name="outline_none">No outline</string>
+    <string name="a11y_text_on_canvas">Text: %1$s</string>
+    <string name="tool_text">Text</string>
+    <string name="tool_edit_text">Edit text</string>
+    <string name="tool_style">Style</string>
+    <string name="edit_add_text">Add text</string>
+    <string name="edit_edit_text">Edit text</string>
+    <string name="edit_text_font">Font</string>
+    <string name="edit_text_color">Color</string>
+    <string name="edit_text_outline">Outline</string>
 </resources>

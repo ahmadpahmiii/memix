@@ -35,7 +35,7 @@ Make the meme the right shape for where it's going (9:16 for TikTok, Reels and S
 - **Opening from other states:**
   - Nothing or an item selected: the panel covers the timeline and the tool bar as every ToolPanel does. The selection stays.
   - Another ToolPanel open (Volume, Style, Position): that panel closes (its changes are already applied) and Canvas opens in its place. Panels never stack.
-  - Typing a caption (P1-10): typing commits first, then the panel opens.
+  - Typing a caption (P1-10): **the pill is inert** while the entry bar is open (drawn disabled, spoken "disabled"; changed 28 Oct with P2-03, replacing "typing commits first, then the panel opens"): the typed words aren't in the project yet and the canvas must not change under the keyboard. After Done the pill works again.
   - Reorder mode: the pill explains instead ("Tap Done to finish reordering first."). It doesn't cancel the user's reorder.
   - A sheet is open: the pill is under the scrim and out of reach (Sheet rule).
 - **Back order** (P1-04) is unchanged: the Canvas panel is "an open sheet or tool panel".

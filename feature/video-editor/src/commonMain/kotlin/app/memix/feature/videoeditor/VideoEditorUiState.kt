@@ -15,6 +15,7 @@ import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.RatioTerms
 import app.memix.core.model.project.Transform
+import app.memix.core.ui.text.TextEntryUi
 import app.memix.core.ui.editor.SaveProblem
 import app.memix.core.ui.panels.PositionStep
 import app.memix.core.ui.panels.RatioStep

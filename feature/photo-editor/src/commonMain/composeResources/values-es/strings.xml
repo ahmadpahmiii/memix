@@ -36,12 +36,12 @@
     <string name="explain_layer_back">Esta capa ya está al fondo.</string>
     <string name="explain_layer_edge">Esta capa no puede ir más lejos por aquí.</string>
     <string name="explain_layers_empty">Aún no hay nada. Las capas que añadas aparecerán en esta lista.</string>
-    <string name="photo_missing_media">Falta el archivo de una foto, así que no se dibuja. Elimina esa capa para arreglarlo.</string>
-    <string name="explain_layer_missing">Falta el archivo de esta foto. Elimina la capa para arreglarlo.</string>
+    <string name="photo_missing_media">Falta el archivo de una imagen, así que no se dibuja. Elimina esa capa para arreglarlo.</string>
+    <string name="explain_layer_missing">Falta el archivo de esta imagen. Elimina la capa para arreglarlo.</string>
     <string name="photo_layers_moved">Las capas se movieron para quedarse dentro del marco.</string>
     <string name="photo_background_hidden">Tu foto cubre todo el marco, así que el fondo no se ve.</string>
     <string name="photo_empty_title">Este lienzo está vacío</string>
-    <string name="photo_empty_body">Toca Deshacer para recuperar tu capa, o cierra esto y empieza un meme de foto nuevo.</string>
+    <string name="photo_empty_body">Toca Deshacer para recuperar tu capa, o añade algo nuevo con Texto o Añadir foto.</string>
     <string name="edit_transform_layer">Posición y tamaño</string>
     <string name="edit_layer_opacity">Opacidad</string>
     <string name="edit_lock">Bloquear</string>
@@ -52,4 +52,8 @@
     <string name="tool_add_photo">Añadir foto</string>
     <string name="a11y_layer_added">Foto añadida delante</string>
     <string name="edit_add_photo">Añadir foto</string>
+    <!-- Text and stickers (P2-03). Budgets and translator notes: docs/ux/specs/P2-03-photo-text-and-stickers.md -> Copy. "Text", "Add photo" and "Undo" in the empty-canvas card are the names of buttons on the same screen. -->
+    <string name="layer_name_sticker">Sticker</string>
+    <string name="a11y_layer_text_added">Texto añadido</string>
+    <string name="photo_empty_body_blank">Toca Texto para añadir palabras, o Añadir foto para añadir una imagen.</string>
 </resources>

@@ -36,12 +36,12 @@
     <string name="explain_layer_back">This layer is already at the back.</string>
     <string name="explain_layer_edge">This layer can't go further this way.</string>
     <string name="explain_layers_empty">Nothing here yet. Layers you add show up in this list.</string>
-    <string name="photo_missing_media">A photo's file is missing, so it isn't drawn. Delete that layer to fix it.</string>
-    <string name="explain_layer_missing">This photo's file is missing. Delete the layer to fix it.</string>
+    <string name="photo_missing_media">A picture's file is missing, so it isn't drawn. Delete that layer to fix it.</string>
+    <string name="explain_layer_missing">This picture's file is missing. Delete the layer to fix it.</string>
     <string name="photo_layers_moved">Layers moved to stay inside the frame.</string>
     <string name="photo_background_hidden">Your photo covers the whole frame, so the background doesn't show.</string>
     <string name="photo_empty_title">This canvas is empty</string>
-    <string name="photo_empty_body">Tap Undo to bring your layer back, or close this and start a new photo meme.</string>
+    <string name="photo_empty_body">Tap Undo to bring your layer back, or add something new with Text or Add photo.</string>
     <string name="edit_transform_layer">Position and size</string>
     <string name="edit_layer_opacity">Opacity</string>
     <string name="edit_lock">Lock</string>
@@ -52,4 +52,8 @@
     <string name="tool_add_photo">Add photo</string>
     <string name="a11y_layer_added">Photo added in front</string>
     <string name="edit_add_photo">Add photo</string>
+    <!-- Text and stickers (P2-03). Budgets and translator notes: docs/ux/specs/P2-03-photo-text-and-stickers.md -> Copy. "Text", "Add photo" and "Undo" in the empty-canvas card are the names of buttons on the same screen. -->
+    <string name="layer_name_sticker">Sticker</string>
+    <string name="a11y_layer_text_added">Text added</string>
+    <string name="photo_empty_body_blank">Tap Text to add words, or Add photo to add a picture.</string>
 </resources>

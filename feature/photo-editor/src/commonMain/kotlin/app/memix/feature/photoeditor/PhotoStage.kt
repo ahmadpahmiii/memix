@@ -10,6 +10,15 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.offset
+import app.memix.core.ui.text.TextEntryUi
+import app.memix.core.ui.scene.SceneCaptions
+import app.memix.core.ui.layers.LayerBox
+import app.memix.core.ui.layers.drawTwoToneFrame
+import app.memix.core.model.project.Layer
+import app.memix.core.model.project.TextLayer
+import app.memix.core.designsystem.MemixStroke
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -76,7 +85,10 @@ import app.memix.core.ui.scene.drawPhotoScene
 import kotlin.math.max
 import kotlin.math.roundToInt
 import memix.core.ui.generated.resources.Res as UiRes
+import memix.core.ui.generated.resources.a11y_text_on_canvas
 import memix.core.ui.generated.resources.tool_delete
+import memix.core.ui.generated.resources.tool_edit_text
+import memix.core.ui.generated.resources.tool_style
 import memix.core.ui.generated.resources.tool_duplicate
 import memix.core.ui.generated.resources.tool_position
 import memix.feature.photo_editor.generated.resources.Res
@@ -88,7 +100,9 @@ import memix.feature.photo_editor.generated.resources.a11y_layer_row
 import memix.feature.photo_editor.generated.resources.layer_name_photo
 import memix.feature.photo_editor.generated.resources.layers_move_down
 import memix.feature.photo_editor.generated.resources.layers_move_up
+import memix.feature.photo_editor.generated.resources.layer_name_sticker
 import memix.feature.photo_editor.generated.resources.photo_empty_body
+import memix.feature.photo_editor.generated.resources.photo_empty_body_blank
 import memix.feature.photo_editor.generated.resources.photo_empty_title
 import memix.feature.photo_editor.generated.resources.photo_stage_a11y
 import memix.feature.photo_editor.generated.resources.tool_hide_layer
@@ -152,31 +166,41 @@ internal fun PhotoStage(
     state: PhotoEditorUiState,
     scene: SceneUi?,
     bitmaps: SceneBitmaps,
+    captions: SceneCaptions,
     stage: LayerStageState,
     live: PhotoLive,
     coverPx: Int,
+    entryField: TextFieldState,
     onIntent: (PhotoEditorIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val canvasPanelOpen = state.panel == PhotoPanel.CANVAS
+    val entry = state.textEntry
     BoxWithConstraints(modifier.clipToBounds().background(MemixColors.stage).semantics { isTraversalGroup = true }) {
         val density = LocalDensity.current
         val geometry = scene?.let { StageGeometry(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat(), it.aspectRatio, with(density) { MemixSpacing.space4.toPx() }) }
+        // While typing the keyboard shrinks the stage; the pictures keep the size they were decoded for (the stage without it).
+        var normalHeight by remember { mutableFloatStateOf(0f) }
+        SideEffect { if (entry == null) normalHeight = constraints.maxHeight.toFloat() }
         if (scene != null && geometry != null) {
             FrameRefit(stage, geometry, coverPx)
             // The pictures are decoded for the frame without a panel, and again only when a committed change needs it.
-            val normalWidth = geometry.frameFor(0f).width
+            val normalWidth = (if (entry != null && normalHeight > 0f) geometry.copy(height = normalHeight) else geometry).frameFor(0f).width
             val needed = remember(state.layers, scene.canvas, normalWidth) { neededLongSides(state.layers, scene.canvas, normalWidth) }
             val currentOnIntent by rememberUpdatedState(onIntent)
             LaunchedEffect(needed) {
                 bitmaps.ensure(needed) { failed -> currentOnIntent(PhotoEditorIntent.MediaMissing(failed)) }
             }
-            SceneLayer(scene, bitmaps, stage, live)
-            GestureLayer(state, stage, live, enabled = !canvasPanelOpen, onIntent)
+            SceneLayer(scene, bitmaps, captions, stage, live, entry, entryField)
+            GestureLayer(state, stage, live, enabled = !canvasPanelOpen && entry == null, onIntent)
             FrameEdge({ stage.frame }, visible = canvasPanelOpen || stage.gesture != null)
-            SelectionOverlay(state, scene, stage, canvasPanelOpen)
-            LayerNodes(state, scene, stage, onIntent, interactive = !canvasPanelOpen)
-            if (state.isEmpty && !canvasPanelOpen) EmptyCanvasCard(Modifier.align(Alignment.Center))
+            if (entry != null) {
+                TypingFrame(entry, entryField, state.captionMeasure, scene, stage)
+            } else {
+                SelectionOverlay(state, scene, stage, canvasPanelOpen)
+                LayerNodes(state, scene, stage, onIntent, interactive = !canvasPanelOpen)
+            }
+            if (state.isEmpty && !canvasPanelOpen && entry == null) EmptyCanvasCard(hasHistory = state.emptiedByUser, Modifier.align(Alignment.Center))
         }
     }
 }
@@ -203,14 +227,54 @@ private fun FrameRefit(stage: LayerStageState, geometry: StageGeometry, coverPx:
 
 // The scene, drawn in the frame in the draw phase: a gesture, a held arrow or a slider moves a layer without recomposing.
 @Composable
-private fun BoxScope.SceneLayer(scene: SceneUi, bitmaps: SceneBitmaps, stage: LayerStageState, live: PhotoLive) {
+private fun BoxScope.SceneLayer(scene: SceneUi, bitmaps: SceneBitmaps, captions: SceneCaptions, stage: LayerStageState, live: PhotoLive, entry: TextEntryUi?, entryField: TextFieldState) {
     Box(
         Modifier.matchParentSize().drawBehind {
             val frame = stage.frame
             if (frame.isEmpty) return@drawBehind
+            // A text being typed draws live from the field, over the stack or in the place of the layer it edits.
+            val layers = if (entry == null) scene.layers else typingLayers(scene.layers, entry, entryField.text.toString())
             inset(frame.left, frame.top, size.width - frame.left - frame.width, size.height - frame.top - frame.height) {
-                drawPhotoScene(scene.canvas, scene.layers, bitmaps, live)
+                drawPhotoScene(scene.canvas, layers, bitmaps, live, captions)
             }
+        },
+    )
+}
+
+// The scene while [text] is typed: a new text is one more layer at the front; an edited text is its layer with the new words
+// (the committed copy is never drawn twice).
+private fun typingLayers(layers: List<Layer>, entry: TextEntryUi, text: String): List<Layer> =
+    if (entry.itemId == null) {
+        layers + TextLayer(TYPING_LAYER_ID, text, entry.style, entry.transform)
+    } else {
+        layers.map { if (it.id == entry.itemId && it is TextLayer) it.copy(text = text) else it }
+    }
+
+private const val TYPING_LAYER_ID = "typing"
+
+/**
+ * The frame of the text being typed (spec P2-03 → Typing): its words measured on every keystroke with the caption renderer, the
+ * two-tone frame around them, or an empty `touch-target` square at the landing spot before the first letter. No handle:
+ * nothing can be dragged while the keyboard is up.
+ */
+@Composable
+private fun BoxScope.TypingFrame(entry: TextEntryUi, field: TextFieldState, measure: PhotoCaptionMeasure?, scene: SceneUi, stage: LayerStageState) {
+    val density = LocalDensity.current
+    val targetPx = with(density) { MemixSize.touchTarget.toPx() }
+    val outsetPx = with(density) { MemixSpacing.space1.toPx() }
+    val selectionPx = with(density) { MemixStroke.strokeSelection.toPx() }
+    val hairlinePx = with(density) { MemixStroke.strokeHairline.toPx() }
+    val text = field.text.toString()
+    val block = remember(text, entry.style, scene.canvas, measure) {
+        if (text.isEmpty() || measure == null) null else measure.blockOf(text, entry.style, scene.canvas.widthPx, scene.canvas.heightPx)
+    }
+    Spacer(
+        Modifier.matchParentSize().drawBehind {
+            val frame = stage.frame
+            if (frame.isEmpty) return@drawBehind
+            val box = LayerBox.of(block?.widthPx ?: 0f, block?.heightPx ?: 0f, entry.transform, frame, scene.canvas.widthPx)
+            val shown = if (block == null) box.copy(halfWidth = targetPx / 2 - outsetPx, halfHeight = targetPx / 2 - outsetPx) else box
+            drawTwoToneFrame(shown, outsetPx, selectionPx, hairlinePx)
         },
     )
 }
@@ -322,7 +386,7 @@ private fun BoxScope.LayerNodes(state: PhotoEditorUiState, scene: SceneUi, stage
         state.layers.forEachIndexed { index, layer ->
             if (layer.hidden) return@forEachIndexed
             val missing = layer.id in state.missingLayerIds
-            val spoken = layerSpokenName(layer, missing, position = count - index, count = count)
+            val spoken = layerSpokenName(layer, missing, position = count - index, count = count, allWords = true)
             val box = layer.boxIn(stage.frame, scene.canvas.widthPx)
             val corners = listOf(box.corner(-1, -1, 0f), box.corner(1, -1, 0f), box.corner(1, 1, 0f), box.corner(-1, 1, 0f))
             val left = corners.minOf { it.x }
@@ -358,6 +422,8 @@ internal class LayerActionLabels(
     val delete: String,
     val moveUp: String,
     val moveDown: String,
+    val editText: String,
+    val style: String,
 ) {
     companion object {
         @Composable
@@ -372,6 +438,8 @@ internal class LayerActionLabels(
             delete = stringResource(UiRes.string.tool_delete),
             moveUp = stringResource(Res.string.layers_move_up),
             moveDown = stringResource(Res.string.layers_move_down),
+            editText = stringResource(UiRes.string.tool_edit_text),
+            style = stringResource(UiRes.string.tool_style),
         )
     }
 }
@@ -384,7 +452,16 @@ internal fun layerActions(layer: SceneLayerUi, labels: LayerActionLabels, onInte
         onIntent(PhotoEditorIntent.OpenPanel(panel))
         true
     }
-    return listOf(
+    val textActions = if (layer.kind != LayerKind.TEXT) emptyList() else listOf(
+        CustomAccessibilityAction(labels.editText) {
+            onIntent(PhotoEditorIntent.SelectLayer(layer.id))
+            // A tap on the selected text opens typing, so a second select would; EditText is the direct route.
+            onIntent(PhotoEditorIntent.EditText)
+            true
+        },
+        open(labels.style, PhotoPanel.STYLE),
+    )
+    return textActions + listOf(
         open(labels.position, PhotoPanel.POSITION),
         open(labels.opacity, PhotoPanel.OPACITY),
         action(if (layer.locked) labels.unlock else labels.lock, PhotoEditorIntent.SetLocked(layer.id, !layer.locked)),
@@ -398,8 +475,8 @@ internal fun layerActions(layer: SceneLayerUi, labels: LayerActionLabels, onInte
 
 /** "Photo, layer 2 of 3. Locked. 40 percent opacity." (`position` counts from the front); the extras are sentences, never a state. */
 @Composable
-internal fun layerSpokenName(layer: SceneLayerUi, missing: Boolean, position: Int, count: Int): String {
-    val name = stringResource(Res.string.a11y_layer_row, layerName(), position, count)
+internal fun layerSpokenName(layer: SceneLayerUi, missing: Boolean, position: Int, count: Int, allWords: Boolean = false): String {
+    val name = stringResource(Res.string.a11y_layer_row, spokenKindName(layer, allWords), position, count)
     val locked = if (layer.locked) stringResource(Res.string.a11y_layer_locked) else null
     val hidden = if (layer.hidden) stringResource(Res.string.a11y_layer_hidden) else null
     val gone = if (missing) stringResource(Res.string.a11y_layer_missing) else null
@@ -408,25 +485,43 @@ internal fun layerSpokenName(layer: SceneLayerUi, missing: Boolean, position: In
     return listOfNotNull(name, locked, hidden, gone, faded).joinToString(" ")
 }
 
-/** The row and node name of a layer: "Photo" for every image layer (a number that changes on reorder would mislead). */
+/**
+ * What a layer is called: "Photo" for every image layer and "Sticker" for every sticker (a number that changes on reorder
+ * would mislead); a text is its words, [allWords] or only the first non-blank line (a row never reads 250 characters).
+ */
 @Composable
-internal fun layerName(): String = stringResource(Res.string.layer_name_photo)
+internal fun spokenKindName(layer: SceneLayerUi, allWords: Boolean): String = when (layer.kind) {
+    LayerKind.IMAGE -> stringResource(Res.string.layer_name_photo)
+    LayerKind.STICKER -> stringResource(Res.string.layer_name_sticker)
+    LayerKind.TEXT -> stringResource(UiRes.string.a11y_text_on_canvas, if (allWords) layer.text.orEmpty() else firstLineOf(layer.text.orEmpty()))
+}
+
+/** A row's visible name: "Photo", "Sticker", or a text's first non-blank line as typed, in the interface font. */
+@Composable
+internal fun rowName(layer: SceneLayerUi): String = when (layer.kind) {
+    LayerKind.IMAGE -> stringResource(Res.string.layer_name_photo)
+    LayerKind.STICKER -> stringResource(Res.string.layer_name_sticker)
+    LayerKind.TEXT -> firstLineOf(layer.text.orEmpty())
+}
+
+private fun firstLineOf(text: String): String = text.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
 
 // Over the stage, not the frame, so a narrow 9:16 frame doesn't cut the Hindi body at 200% (P1-04's lesson).
 @Composable
-private fun EmptyCanvasCard(modifier: Modifier = Modifier) {
+private fun EmptyCanvasCard(hasHistory: Boolean, modifier: Modifier = Modifier) {
     Column(
         modifier
             .padding(horizontal = MemixSpacing.space4)
             .clip(MemixShapes.radiusLg)
-            .background(MemixColors.scrim)
+            .background(MemixColors.surfaceRaised)
             .verticalScroll(rememberScrollState())
             .padding(MemixSpacing.space4),
         verticalArrangement = Arrangement.spacedBy(MemixSpacing.space2),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(stringResource(Res.string.photo_empty_title), MemixTheme.type.title, textAlign = TextAlign.Center)
-        Text(stringResource(Res.string.photo_empty_body), MemixTheme.type.body, textAlign = TextAlign.Center)
+        // Two bodies: a canvas that never had a layer says what to tap; an emptied one points to Undo first (spec P2-03 → The empty-canvas card).
+        Text(stringResource(if (hasHistory) Res.string.photo_empty_body else Res.string.photo_empty_body_blank), MemixTheme.type.body, textAlign = TextAlign.Center)
     }
 }
 

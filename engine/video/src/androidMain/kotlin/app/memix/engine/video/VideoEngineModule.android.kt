@@ -2,6 +2,7 @@ package app.memix.engine.video
 
 import app.memix.core.domain.text.CaptionMeasurer
 import app.memix.core.domain.video.VideoEngine
+import app.memix.core.ui.scene.SceneCaptions
 import kotlinx.coroutines.Dispatchers
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
@@ -20,4 +21,6 @@ actual val videoEngineModule = module {
     // One renderer for the editor's caption measures and stand-in and the engine's overlays (P1-10).
     single { AndroidCaptionRenderer(fontSource = get(), ioDispatcher = Dispatchers.IO, logger = get()) }
     single<CaptionMeasurer> { get<AndroidCaptionRenderer>() }
+    // The photo editor's text layers draw with the same renderer (P2-03).
+    single<SceneCaptions> { AndroidSceneCaptions(get<AndroidCaptionRenderer>()) }
 }

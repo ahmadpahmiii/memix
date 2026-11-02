@@ -1,4 +1,4 @@
-package app.memix.feature.videoeditor.captions
+package app.memix.core.ui.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -46,21 +46,18 @@ import app.memix.core.designsystem.MemixTheme
 import app.memix.core.designsystem.Text
 import app.memix.core.designsystem.component.Button
 import app.memix.core.designsystem.component.ButtonVariant
-import app.memix.core.domain.text.graphemeCount
-import app.memix.core.domain.text.takeGraphemes
+import app.memix.core.model.text.graphemeCount
+import app.memix.core.model.text.takeGraphemes
 import app.memix.core.model.project.CaptionCatalog
-import app.memix.feature.videoeditor.TextEntryUi
-import app.memix.feature.videoeditor.VideoEditorIntent
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
-import memix.feature.video_editor.generated.resources.Res
-import memix.core.ui.generated.resources.Res as UiRes
+import memix.core.ui.generated.resources.Res
 import memix.core.ui.generated.resources.panel_done
-import memix.feature.video_editor.generated.resources.text_entry_count
-import memix.feature.video_editor.generated.resources.text_entry_count_a11y
-import memix.feature.video_editor.generated.resources.text_entry_hint
-import memix.feature.video_editor.generated.resources.text_entry_label
-import memix.feature.video_editor.generated.resources.text_entry_limit_a11y
+import memix.core.ui.generated.resources.text_entry_count
+import memix.core.ui.generated.resources.text_entry_count_a11y
+import memix.core.ui.generated.resources.text_entry_hint
+import memix.core.ui.generated.resources.text_entry_label
+import memix.core.ui.generated.resources.text_entry_limit_a11y
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -69,18 +66,19 @@ import org.jetbrains.compose.resources.stringResource
  * characters. Every way out commits: Done here, back and Escape through the editor, and the keyboard going away.
  */
 @Composable
-internal fun TextEntryBar(entry: TextEntryUi, field: TextFieldState, onIntent: (VideoEditorIntent) -> Unit, modifier: Modifier = Modifier) {
+fun TextEntryBar(entry: TextEntryUi, field: TextFieldState, onChanged: (String) -> Unit, onDone: () -> Unit, modifier: Modifier = Modifier) {
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
-    val currentOnIntent by rememberUpdatedState(onIntent)
+    val currentOnChanged by rememberUpdatedState(onChanged)
+    val currentOnDone by rememberUpdatedState(onDone)
     LaunchedEffect(entry.serial) {
         focus.requestFocus()
         keyboard?.show()
     }
     LaunchedEffect(field) {
-        snapshotFlow { field.text.toString() }.drop(1).collect { currentOnIntent(VideoEditorIntent.TextEntryChanged(it)) }
+        snapshotFlow { field.text.toString() }.drop(1).collect { currentOnChanged(it) }
     }
-    CommitWhenKeyboardGoes { currentOnIntent(VideoEditorIntent.TextEntryDone) }
+    CommitWhenKeyboardGoes { currentOnDone() }
     val label = stringResource(Res.string.text_entry_label)
     val count = field.text.toString().graphemeCount()
     Column(
@@ -116,7 +114,7 @@ internal fun TextEntryBar(entry: TextEntryUi, field: TextFieldState, onIntent: (
                     }
                 },
             )
-            Button(stringResource(UiRes.string.panel_done), { onIntent(VideoEditorIntent.TextEntryDone) }, variant = ButtonVariant.Ghost)
+            Button(stringResource(Res.string.panel_done), onDone, variant = ButtonVariant.Ghost)
         }
         if (count >= COUNTER_FROM) Counter(count)
     }

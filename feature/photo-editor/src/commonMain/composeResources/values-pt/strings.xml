@@ -36,12 +36,12 @@
     <string name="explain_layer_back">Esta camada já está no fundo.</string>
     <string name="explain_layer_edge">Esta camada não pode ir mais longe por aqui.</string>
     <string name="explain_layers_empty">Ainda não há nada. As camadas que você adicionar aparecem nesta lista.</string>
-    <string name="photo_missing_media">O arquivo de uma foto está ausente, então ela não é desenhada. Exclua essa camada para corrigir.</string>
-    <string name="explain_layer_missing">O arquivo desta foto está ausente. Exclua a camada para corrigir.</string>
+    <string name="photo_missing_media">O arquivo de uma imagem está ausente, então ela não é desenhada. Exclua essa camada para corrigir.</string>
+    <string name="explain_layer_missing">O arquivo desta imagem está ausente. Exclua a camada para corrigir.</string>
     <string name="photo_layers_moved">As camadas foram movidas para ficar dentro do quadro.</string>
     <string name="photo_background_hidden">Sua foto cobre todo o quadro, então o fundo não aparece.</string>
     <string name="photo_empty_title">Esta tela está vazia</string>
-    <string name="photo_empty_body">Toque em Desfazer para trazer sua camada de volta, ou feche isto e comece um novo meme de foto.</string>
+    <string name="photo_empty_body">Toque em Desfazer para trazer sua camada de volta, ou adicione algo novo com Texto ou Adicionar foto.</string>
     <string name="edit_transform_layer">Posição e tamanho</string>
     <string name="edit_layer_opacity">Opacidade</string>
     <string name="edit_lock">Bloquear</string>
@@ -52,4 +52,8 @@
     <string name="tool_add_photo">Adicionar foto</string>
     <string name="a11y_layer_added">Foto adicionada na frente</string>
     <string name="edit_add_photo">Adicionar foto</string>
+    <!-- Text and stickers (P2-03). Budgets and translator notes: docs/ux/specs/P2-03-photo-text-and-stickers.md -> Copy. "Text", "Add photo" and "Undo" in the empty-canvas card are the names of buttons on the same screen. -->
+    <string name="layer_name_sticker">Figurinha</string>
+    <string name="a11y_layer_text_added">Texto adicionado</string>
+    <string name="photo_empty_body_blank">Toque em Texto para adicionar palavras, ou em Adicionar foto para adicionar uma imagem.</string>
 </resources>

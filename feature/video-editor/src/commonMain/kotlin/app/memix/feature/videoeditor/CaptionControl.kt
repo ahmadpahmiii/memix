@@ -15,6 +15,7 @@ import app.memix.core.model.project.CaptionCatalog
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.Transform
+import app.memix.core.ui.text.TextEntryUi
 import app.memix.core.ui.panels.PositionLimit
 import app.memix.core.ui.panels.PositionStep
 import app.memix.core.ui.panels.changesPlace

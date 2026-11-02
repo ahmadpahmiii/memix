@@ -3,6 +3,7 @@ package app.memix.core.ui.scene
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -17,6 +18,7 @@ import app.memix.core.model.project.TextLayer
 import app.memix.core.model.project.Transform
 import app.memix.core.model.project.coveredImageSize
 import app.memix.core.model.project.fittedImageSize
+import app.memix.core.model.project.stickerSizeAtScaleOne
 
 /**
  * Values that differ from the project while a finger or a slider is down: read while drawing, so the scene redraws without
@@ -32,10 +34,11 @@ interface SceneLive {
  * THE one function that draws a photo scene, at any pixel size: the editor at screen size, the render hook and (P2-08)
  * export at theirs, so preview and export can't disagree. The scene fills this [DrawScope]'s whole size, with [canvas]'s
  * shape; layers draw bottom to top, hidden ones skipped, each with its opacity and transform, clipped at the canvas edge.
- * A layer whose picture isn't ready or whose file is missing isn't drawn. A background picture (P2-12) is drawn first, to
+ * A layer whose picture isn't ready or whose file is missing isn't drawn. A text layer is drawn by [captions] (the video's caption
+ * renderer, laid out once in canvas pixels), a sticker like an image layer at its own size at scale 1 (35% of the shorter side). A background picture (P2-12) is drawn first, to
  * cover the canvas; while it isn't ready or when its file is missing the canvas is black.
  */
-fun DrawScope.drawPhotoScene(canvas: Canvas, layers: List<Layer>, images: SceneImages, live: SceneLive? = null) {
+fun DrawScope.drawPhotoScene(canvas: Canvas, layers: List<Layer>, images: SceneImages, live: SceneLive? = null, captions: SceneCaptions = NoSceneCaptions) {
     val canvasSize = PixelSize(canvas.widthPx, canvas.heightPx)
     val pixelScale = size.width / canvas.widthPx
     clipRect(0f, 0f, size.width, size.height) {
@@ -48,8 +51,8 @@ fun DrawScope.drawPhotoScene(canvas: Canvas, layers: List<Layer>, images: SceneI
                 val opacity = live?.opacityOf(layer.id) ?: layer.opacity
                 when (layer) {
                     is ImageLayer -> drawImageLayer(layer, transform, opacity, canvasSize, images)
-                    // TODO(P2-03): text and stickers draw here, with the same caption renderer and sticker bitmaps as the video.
-                    is TextLayer, is StickerLayer -> Unit
+                    is TextLayer -> captions.draw(this, layer.text, layer.style, transform, opacity, canvasSize.widthPx, canvasSize.heightPx)
+                    is StickerLayer -> drawStickerLayer(layer, transform, opacity, canvasSize, images)
                 }
             }
         }
@@ -85,15 +88,26 @@ private fun DrawScope.drawBackgroundImage(background: CanvasBackground.Image, ca
     }
 }
 
+// A sticker: its size at scale 1 is 35% of the shorter side on its longer side (never fitted inside the frame), else as an image.
+private fun DrawScope.drawStickerLayer(layer: StickerLayer, transform: Transform, opacity: Float, canvasSize: PixelSize, images: SceneImages) {
+    val path = layer.source.cachedCopyPath ?: return
+    val picture = images.imageOf(path) ?: return
+    val image = picture.image
+    val size = stickerSizeAtScaleOne(layer.source.pixelSize ?: picture.sourceSize, canvasSize)
+    drawPicture(image, size.width * transform.scale, size.height * transform.scale, transform, opacity * images.appearanceOf(path), canvasSize)
+}
+
 // Placed in canvas pixels: the picture's fitted size at scale 1, times the layer's scale, turned about its center.
 private fun DrawScope.drawImageLayer(layer: ImageLayer, transform: Transform, opacity: Float, canvasSize: PixelSize, images: SceneImages) {
     val path = layer.source.cachedCopyPath ?: return
     val picture = images.imageOf(path) ?: return
-    val image = picture.image
     val shown = layer.source.pixelSize ?: picture.sourceSize
     val fitted = fittedImageSize(shown, canvasSize)
-    val width = fitted.width * transform.scale
-    val height = fitted.height * transform.scale
+    drawPicture(picture.image, fitted.width * transform.scale, fitted.height * transform.scale, transform, opacity * images.appearanceOf(path), canvasSize)
+}
+
+// [image] drawn [width] × [height] canvas pixels big, centered at the transform's center and turned about it.
+private fun DrawScope.drawPicture(image: ImageBitmap, width: Float, height: Float, transform: Transform, alpha: Float, canvasSize: PixelSize) {
     withTransform({
         translate(transform.centerX * canvasSize.widthPx, transform.centerY * canvasSize.heightPx)
         rotate(transform.rotationDegrees, Offset.Zero)
@@ -104,7 +118,7 @@ private fun DrawScope.drawImageLayer(layer: ImageLayer, transform: Transform, op
             image,
             srcSize = IntSize(image.width, image.height),
             dstSize = IntSize(image.width, image.height),
-            alpha = opacity * images.appearanceOf(path),
+            alpha = alpha,
             filterQuality = FilterQuality.Medium,
         )
     }

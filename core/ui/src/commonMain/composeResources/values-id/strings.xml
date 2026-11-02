@@ -111,4 +111,29 @@
     <string name="canvas_image_missing_toast">Gambar latar hilang. Ketuk %1$s di atas untuk menggantinya atau menghapusnya.</string>
     <string name="a11y_canvas_image_set">Gambar latar diatur</string>
     <string name="a11y_canvas_image_removed">Gambar latar dihapus</string>
+    <!-- Captions, shared by both editors (P1-10, P2-03): the Text tools, the typing bar, the Style panel, the fonts. Budgets and translator notes: docs/ux/specs/P1-10-text.md -> Copy. -->
+    <string name="text_entry_hint">Ketik teks kamu</string>
+    <string name="text_entry_label">Teks kamu</string>
+    <string name="text_entry_count">%1$d/%2$d</string>
+    <string name="text_entry_count_a11y">%1$d dari %2$d karakter</string>
+    <string name="text_entry_limit_a11y">Batas karakter tercapai</string>
+    <string name="style_title">Gaya</string>
+    <string name="style_font">Font</string>
+    <string name="style_color">Warna</string>
+    <string name="style_outline">Garis tepi</string>
+    <string name="font_classic">Klasik</string>
+    <string name="font_modern">Modern</string>
+    <string name="font_bubbly">Bulat</string>
+    <string name="font_handwritten">Tulisan tangan</string>
+    <string name="font_serif">Serif</string>
+    <string name="outline_none">Tanpa garis tepi</string>
+    <string name="a11y_text_on_canvas">Teks: %1$s</string>
+    <string name="tool_text">Teks</string>
+    <string name="tool_edit_text">Edit teks</string>
+    <string name="tool_style">Gaya</string>
+    <string name="edit_add_text">Tambah teks</string>
+    <string name="edit_edit_text">Edit teks</string>
+    <string name="edit_text_font">Font</string>
+    <string name="edit_text_color">Warna</string>
+    <string name="edit_text_outline">Garis tepi</string>
 </resources>

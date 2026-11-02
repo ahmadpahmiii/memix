@@ -242,11 +242,8 @@ class VideoEditorViewModel(
             is VideoEditorIntent.CaptionGestureStarted -> captions.startGesture(intent.itemId)
             is VideoEditorIntent.CaptionGestureEnded -> captions.endGesture(intent.itemId, intent.transform)
             VideoEditorIntent.CaptionGestureCancelled -> captions.cancelGesture()
-            VideoEditorIntent.RatioPill -> {
-                // Typing commits first, then the panel opens (spec P1-11 → Opening from other states).
-                captions.commitEntry()
-                canvasPanel.togglePanel()
-            }
+            // Inert while typing (spec P2-03 → Typing; before P2-03 typing committed first and the panel opened).
+            VideoEditorIntent.RatioPill -> if (state.value.textEntry == null) canvasPanel.togglePanel()
             VideoEditorIntent.CloseCanvasPanel -> canvasPanel.close()
             is VideoEditorIntent.SetCanvasRatio -> canvasPanel.setRatio(intent.ratio)
             is VideoEditorIntent.CanvasStepped -> canvasPanel.step(intent.step, intent.repeats)

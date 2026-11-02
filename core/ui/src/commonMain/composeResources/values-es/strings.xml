@@ -112,4 +112,29 @@
     <string name="canvas_image_missing_toast">Falta la imagen de fondo. Toca %1$s arriba para reemplazarla o quitarla.</string>
     <string name="a11y_canvas_image_set">Imagen de fondo establecida</string>
     <string name="a11y_canvas_image_removed">Imagen de fondo quitada</string>
+    <!-- Captions, shared by both editors (P1-10, P2-03): the Text tools, the typing bar, the Style panel, the fonts. Budgets and translator notes: docs/ux/specs/P1-10-text.md -> Copy. -->
+    <string name="text_entry_hint">Escribe tu texto</string>
+    <string name="text_entry_label">Tu texto</string>
+    <string name="text_entry_count">%1$d/%2$d</string>
+    <string name="text_entry_count_a11y">%1$d de %2$d caracteres</string>
+    <string name="text_entry_limit_a11y">Límite de caracteres alcanzado</string>
+    <string name="style_title">Estilo</string>
+    <string name="style_font">Fuente</string>
+    <string name="style_color">Color</string>
+    <string name="style_outline">Contorno</string>
+    <string name="font_classic">Clásica</string>
+    <string name="font_modern">Moderna</string>
+    <string name="font_bubbly">Burbuja</string>
+    <string name="font_handwritten">A mano</string>
+    <string name="font_serif">Serif</string>
+    <string name="outline_none">Sin contorno</string>
+    <string name="a11y_text_on_canvas">Texto: %1$s</string>
+    <string name="tool_text">Texto</string>
+    <string name="tool_edit_text">Editar texto</string>
+    <string name="tool_style">Estilo</string>
+    <string name="edit_add_text">Añadir texto</string>
+    <string name="edit_edit_text">Editar texto</string>
+    <string name="edit_text_font">Fuente</string>
+    <string name="edit_text_color">Color</string>
+    <string name="edit_text_outline">Contorno</string>
 </resources>
