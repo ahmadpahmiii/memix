@@ -71,6 +71,7 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 > 28 Oct 2026 (owner, [proposal](pm/proposals/2026-10-28-p2-03-before-p2-02.md) A): P2-03 (text and stickers) is built before P2-02 (meme formats), because four of the five formats are made of text and the photo scene draws none until P2-03. Build order: P2-01, P2-12, P2-13, P2-03, P2-02, P2-11 and on. P2-02 now needs P2-01, P2-03 and P2-12 (the pick path for Panels cells).
 > 28 Oct 2026 (owner, [proposal](pm/proposals/2026-10-28-photo-stickers.md) C): no sticker exists before P3 and P4, so P2-03 builds the sticker layer only, checked with generated test pictures, and the new S ticket P2-14 adds the Stickers tool and the "My stickers" picker right after P2-07 (which saves cut-outs as stickers). Catalog packs join the same picker when P4-15 loads them. No bundled stickers in Phase 2.
 > 2 Nov 2026 (owner's standing delegation, [proposal](pm/proposals/2026-11-02-p2-04-image-tools.md), 1A 2A 3A): P2-04's Done when no longer says the filters "match the video filters" (the video filters are P4-07, which matches these): P2-04 defines the ids, LUT data and reference renders. The 20 filters are original, made by a script; `tool_use` gets an optional `filter` parameter for the filter tool. The owner reviews after Phase 2.
+> 5 Nov 2026 (owner's standing delegation, [proposal](pm/proposals/2026-11-05-p2-08-09-10-decisions.md), 1A 2A 3B): the watermark goes on photo PNG, JPG and clipboard exports but not on WhatsApp stickers; GIF export moves from P2-08 to P4-12; P2-10 bakes the photo scene into one picture and keeps the top text layers as video captions. The owner reviews after Phase 2.
 
 | ID | Ticket | Done when | Size | Needs |
 | --- | --- | --- | --- | --- |
@@ -85,7 +86,7 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 | P2-06 | `Segmenter` interface and ML Kit subject segmentation, with model availability check and "Preparing…" state | A person, pet or object cut-out takes under 1.5 s for a 12 MP photo on the owner's phone | M | P0-03 |
 | P2-07 | Photo background removal UX: one tap, checkerboard result, refine brush, edge softness, save as sticker | Refine strokes survive save and reopen | M | P2-06, P2-01 |
 | P2-14 | Stickers in the photo editor: the Stickers tool and a picker with a "My stickers" list (cut-outs saved by P2-07) that places one as a sticker layer; catalog packs join the same picker when P4-15 loads them | A cut-out saved as a sticker in P2-07 appears in My stickers and lands on the canvas as a sticker layer in one tap, as one undo step, and is still there after a restart | S | P2-03, P2-07 |
-| P2-08 | Photo export: PNG, JPG with quality, GIF for animated layers, copy to clipboard, save to the "Memix" album | Each format opens correctly in the gallery and in chat apps; LeakCanary shows no leaks | M | P2-01 |
+| P2-08 | Photo export: PNG, JPG with quality, copy to clipboard, save to the "Memix" album (GIF moves to P4-12, where animated layers first exist); the Memix watermark on PNG, JPG and clipboard exports, not on WhatsApp stickers | Each format opens correctly in the gallery and in chat apps; LeakCanary shows no leaks | M | P2-01 |
 | P2-09 | WhatsApp sticker pack export (check WhatsApp's current sticker spec first) | A pack installs into WhatsApp on a test phone | M | P2-08 |
 | P2-10 | Make it a video meme: convert the photo scene to a video timeline, then open the sound picker | Every layer keeps its position, size and style | M | P2-01, P1-03 |
 
@@ -127,7 +128,7 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 | P4-10 | Reverse and freeze frame | Reversed clips play smoothly in preview | M | P1-06 |
 | P4-16 | Clip crop, rotate, flip and per-clip Fit or Fill in the video editor (reuses P4-01's on-frame gestures and P2-04's crop screen); declarative params with a reference render | A cropped, rotated and flipped clip looks the same in preview and export and matches its reference render; Fit or Fill set on one clip changes only that clip; each change is one undo step | M | P4-01, P2-04 |
 | P4-11 | Text animations (in, out, loop) and text presets | Animations look the same in preview and export | M | P1-10 |
-| P4-12 | Stickers in video: catalog packs, animated GIF and WebP, the user's own files | Animated stickers loop in sync with the timeline | M | P3-01 |
+| P4-12 | Stickers in video: catalog packs, animated GIF and WebP, the user's own files; photo GIF export (moved from P2-08) | Animated stickers loop in sync with the timeline | M | P3-01, P2-08 |
 | P4-13 | Video background removal for people: MediaPipe person segmentation, per-frame mask cache, low-res preview, full-res export, refine | Progress shows while processing, and the export matches the preview | L | P2-06, P4-01 |
 | P4-14 | Meme shortcuts: Sound + zoom combo, quick top/bottom caption, manual beat markers | Sound + zoom places both items in one tap | M | P4-06, P3-05 |
 | P4-15 | Load 40 video templates, 60 photo templates and 20 sticker packs | Every item has complete license fields | L | P4-05 |
