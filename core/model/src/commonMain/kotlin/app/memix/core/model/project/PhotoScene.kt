@@ -3,11 +3,13 @@ package app.memix.core.model.project
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/** The photo editor's content. Meme formats, drawing, censor and cut-out layers arrive with their Phase 2 tickets. */
+/** The photo editor's content. Drawing, censor and cut-out layers arrive with their Phase 2 tickets. */
 @Serializable
 data class PhotoScene(
     /** Bottom to top: later layers draw over earlier ones. */
     val layers: List<Layer>,
+    /** The meme format under the layers; null is plain (spec P2-02: every new photo meme and every draft saved before it). */
+    val format: PhotoFormat? = null,
 )
 
 /**

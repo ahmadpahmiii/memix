@@ -5,12 +5,28 @@ import androidx.compose.runtime.Stable
 import app.memix.core.domain.EditorTool
 import app.memix.core.domain.text.CaptionBlockSize
 import app.memix.core.domain.text.MeasureCaptionUseCase
+import app.memix.core.model.project.ArgbColor
 import app.memix.core.model.project.BoxSize
+import app.memix.core.model.project.BubbleLayer
+import app.memix.core.model.project.BubbleShape
+import app.memix.core.model.project.CaptionLook
+import app.memix.core.model.project.bubbleBox
+import app.memix.core.model.project.tipIn
+import app.memix.core.domain.project.bodyOn
 import app.memix.core.model.project.Canvas
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.stickerSizeAtScaleOne
 import app.memix.core.ui.text.TextEntryUi
 import app.memix.core.model.project.CanvasRatio
+import app.memix.core.model.project.CaptionBarFormat
+import app.memix.core.model.project.ClassicFormat
+import app.memix.core.model.project.DemotivationalFormat
+import app.memix.core.model.project.FormatSlot
+import app.memix.core.model.project.BubblesFormat
+import app.memix.core.model.project.PanelLayouts
+import app.memix.core.model.project.PanelsFormat
+import app.memix.core.model.project.PhotoFormat
+import app.memix.core.model.project.panelsFormatOf
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.Layer
@@ -50,6 +66,12 @@ data class PhotoEditorUiState(
     val missingLayerIds: ImmutableSet<String> = persistentSetOf(),
     /** A layer a held Position arrow has moved but not committed yet; the stage draws it there until the release. */
     val held: HeldTransform? = null,
+    /** The scene's meme format; null is plain (spec P2-02). */
+    val format: PhotoFormat? = null,
+    /** The format's slots nothing fills yet: each shows an editor-only hint while nothing is selected and no panel is open. */
+    val emptySlots: ImmutableList<FormatSlot> = persistentListOf(),
+    /** Caption bar or Demotivational with a photo that doesn't fill the picture area's width: the Formats panel says why (spec → Formats panel). */
+    val formatHintRoom: Boolean = false,
     val canUndo: Boolean = false,
     /** A layer has been on the canvas at some point in this visit. */
     val hadLayers: Boolean = false,
@@ -78,7 +100,8 @@ data class PhotoEditorUiState(
     val couldntOpen: Boolean = false,
 ) {
     val selectedLayer: SceneLayerUi? get() = selectedLayerId?.let { id -> layers.firstOrNull { it.id == id } }
-    val isEmpty: Boolean get() = scene != null && layers.isEmpty()
+    /** Whether the empty-canvas card shows: nothing on a plain canvas (a format's own hints and pick tiles invite instead). */
+    val showsEmptyCard: Boolean get() = scene != null && layers.isEmpty() && format == null
 
     /** The empty card points to Undo only after a layer was on the canvas and Undo has a step; a ratio or color change alone leaves nothing to bring back. */
     val emptiedByUser: Boolean get() = hadLayers && canUndo
@@ -103,7 +126,7 @@ data class HeldTransform(val layerId: String, val transform: Transform)
 
 /** What the scene draws: the canvas and the layers, bottom to top. Compared by value, so the stage redraws only when it changes. */
 @Immutable
-data class SceneUi(val canvas: Canvas, val layers: ImmutableList<Layer>) {
+data class SceneUi(val canvas: Canvas, val layers: ImmutableList<Layer>, val format: PhotoFormat? = null) {
     val aspectRatio: Float get() = canvas.widthPx.toFloat() / canvas.heightPx
 
     /** "4:3": the ratio in lowest terms, never translated. */
@@ -133,25 +156,36 @@ data class SceneLayerUi(
     override val boxWidthPx: Float,
     override val boxHeightPx: Float,
     override val scaleRange: ClosedFloatingPointRange<Float>,
+    /** A bubble's own parts; null for the other kinds. */
+    val bubble: BubbleUi? = null,
+    override val boxOffsetXPx: Float = 0f,
+    override val boxOffsetYPx: Float = 0f,
 ) : GestureTarget
 
-enum class LayerKind { IMAGE, TEXT, STICKER }
+/** A bubble as the editor handles it: its look, its body at scale 1 and its tail tip (body widths and heights from the center). */
+@Immutable
+data class BubbleUi(val shape: BubbleShape, val fill: ArgbColor, val tailX: Float, val tailY: Float, val bodyWidthPx: Float, val bodyHeightPx: Float)
+
+enum class LayerKind { IMAGE, TEXT, STICKER, BUBBLE }
 
 /**
  * [this] layer for the editor, on a canvas of [canvasSize]: an image's box is its picture fitted inside the frame, a
  * sticker's its picture at 35% of the shorter side, a text's its laid-out block from [measure] (the caption renderer), all
  * at scale 1.
  */
-internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int) -> CaptionBlockSize): SceneLayerUi {
+internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook) -> CaptionBlockSize): SceneLayerUi {
     val picture = when (this) {
         is ImageLayer -> source.pixelSize
         is StickerLayer -> source.pixelSize
-        is TextLayer -> null
+        is TextLayer, is BubbleLayer -> null
     }
+    val bubbleBody = (this as? BubbleLayer)?.let { bodyOn(canvasSize) { text, style, w, h, look -> measure(text, style, w, h, look) } }
+    val bubbleBox = (this as? BubbleLayer)?.let { layer -> bubbleBody?.let { bubbleBox(layer.shape, it, layer.tipIn(it), canvasSize) } }
     val box = when (this) {
+        is BubbleLayer -> bubbleBox?.let { BoxSize(it.width, it.height) }
         is ImageLayer -> picture?.let { fittedImageSize(it, canvasSize) }
         is StickerLayer -> stickerSizeAtScaleOne(picture, canvasSize)
-        is TextLayer -> measure(text, style, canvasSize.widthPx, canvasSize.heightPx).let { BoxSize(it.widthPx, it.heightPx) }
+        is TextLayer -> measure(text, style, canvasSize.widthPx, canvasSize.heightPx, CaptionLook.Text).let { BoxSize(it.widthPx, it.heightPx) }
     }
     return SceneLayerUi(
         id = id,
@@ -159,6 +193,7 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
             is ImageLayer -> LayerKind.IMAGE
             is TextLayer -> LayerKind.TEXT
             is StickerLayer -> LayerKind.STICKER
+            is BubbleLayer -> LayerKind.BUBBLE
         },
         transform = transform,
         locked = locked,
@@ -167,19 +202,52 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
         path = when (this) {
             is ImageLayer -> source.cachedCopyPath
             is StickerLayer -> source.cachedCopyPath
-            is TextLayer -> null
+            is TextLayer, is BubbleLayer -> null
         },
-        text = (this as? TextLayer)?.text,
-        style = (this as? TextLayer)?.style,
+        text = (this as? TextLayer)?.text ?: (this as? BubbleLayer)?.text,
+        style = (this as? TextLayer)?.style ?: (this as? BubbleLayer)?.style,
         pictureLongSidePx = picture?.let { maxOf(it.widthPx, it.heightPx) } ?: 0,
         boxWidthPx = box?.width ?: 0f,
         boxHeightPx = box?.height ?: 0f,
         scaleRange = PhotoCatalog.scaleRangeOf(this),
+        bubble = (this as? BubbleLayer)?.let { BubbleUi(it.shape, it.fill, it.tailX, it.tailY, bubbleBody?.width ?: 0f, bubbleBody?.height ?: 0f) },
+        boxOffsetXPx = bubbleBox?.offsetX ?: 0f,
+        boxOffsetYPx = bubbleBox?.offsetY ?: 0f,
     )
 }
 
 /** The tool panels over the tool bar. They never stack: opening one closes another. */
-enum class PhotoPanel { LAYERS, OPACITY, POSITION, CANVAS, STYLE }
+enum class PhotoPanel { LAYERS, OPACITY, POSITION, CANVAS, STYLE, FORMATS }
+
+/** The six tiles of the Formats panel, in the spec's order; [PLAIN] is no format (null in the model). */
+enum class FormatChoice(val edit: PhotoEdit) {
+    PLAIN(PhotoEdit.FORMAT_PLAIN),
+    CLASSIC(PhotoEdit.FORMAT_CLASSIC),
+    CAPTION_BAR(PhotoEdit.FORMAT_CAPTION_BAR),
+    PANELS(PhotoEdit.FORMAT_PANELS),
+    DEMOTIVATIONAL(PhotoEdit.FORMAT_DEMOTIVATIONAL),
+    BUBBLES(PhotoEdit.FORMAT_BUBBLES),
+}
+
+/** The format a tile chooses; Panels starts as two photos side by side, the main photo in the first cell (the edit fills it). */
+internal fun FormatChoice.toFormat(): PhotoFormat? = when (this) {
+    FormatChoice.PLAIN -> null
+    FormatChoice.CLASSIC -> ClassicFormat
+    FormatChoice.CAPTION_BAR -> CaptionBarFormat
+    FormatChoice.PANELS -> panelsFormatOf(PanelLayouts.default, emptyList())
+    FormatChoice.DEMOTIVATIONAL -> DemotivationalFormat
+    FormatChoice.BUBBLES -> BubblesFormat
+}
+
+/** The tile that is selected for [this] format. */
+internal fun PhotoFormat?.toChoice(): FormatChoice = when (this) {
+    null -> FormatChoice.PLAIN
+    ClassicFormat -> FormatChoice.CLASSIC
+    CaptionBarFormat -> FormatChoice.CAPTION_BAR
+    is PanelsFormat -> FormatChoice.PANELS
+    DemotivationalFormat -> FormatChoice.DEMOTIVATIONAL
+    BubblesFormat -> FormatChoice.BUBBLES
+}
 
 /** The Canvas panel's custom ratio: the steppers' numbers, and the numbers a held stepper shows before its release commits. */
 @Immutable
@@ -212,6 +280,14 @@ enum class PhotoEdit(val tool: EditorTool) {
     TEXT_OUTLINE(EditorTool.TEXT_OUTLINE),
     TRANSFORM_TEXT(EditorTool.TRANSFORM_TEXT),
     POSITION_TEXT(EditorTool.POSITION_TEXT),
+
+    // Meme formats (P2-02): every format tool is "Format" in the undo history; the analytics id is the tool's.
+    FORMAT_PLAIN(EditorTool.FORMAT_PLAIN),
+    FORMAT_CLASSIC(EditorTool.FORMAT_CLASSIC),
+    FORMAT_CAPTION_BAR(EditorTool.FORMAT_CAPTION_BAR),
+    FORMAT_PANELS(EditorTool.FORMAT_PANELS),
+    FORMAT_DEMOTIVATIONAL(EditorTool.FORMAT_DEMOTIVATIONAL),
+    FORMAT_BUBBLES(EditorTool.FORMAT_BUBBLES),
     ;
 
     companion object {
@@ -285,6 +361,12 @@ sealed interface PhotoToastMessage {
 
     /** Spoken only, after a new text landed: "Text added". */
     data object TextAdded : PhotoToastMessage
+
+    /** Spoken only, after a format tile: "Format: Caption bar". */
+    data class FormatSet(val choice: FormatChoice) : PhotoToastMessage
+
+    /** The photos in removed Panels cells left the meme (a lower count, or Panels was left); Undo brings them back. */
+    data object PanelPhotosDropped : PhotoToastMessage
 }
 
 sealed interface PhotoEditorIntent {
@@ -383,6 +465,13 @@ sealed interface PhotoEditorIntent {
 
     /** The outline color, or null for "No outline". */
     data class SetTextOutline(val argb: Long?) : PhotoEditorIntent
+
+    // Meme formats (P2-02).
+    /** A tile of the Formats panel; the active tile does nothing. */
+    data class SetFormat(val choice: FormatChoice) : PhotoEditorIntent
+
+    /** A tap on an empty slot's hint: typing a new text placed in that slot. */
+    data class TapSlot(val slot: FormatSlot) : PhotoEditorIntent
 
     // The background picture (P2-12).
     /** The Image swatch with no picture yet, or Replace. */

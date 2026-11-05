@@ -16,6 +16,7 @@ import app.memix.core.domain.text.CaptionFontSource
 import app.memix.core.domain.text.CaptionMeasurer
 import app.memix.core.model.project.CaptionCatalog
 import app.memix.core.model.project.CaptionFont
+import app.memix.core.model.project.CaptionLook
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.Transform
 import java.io.IOException
@@ -55,15 +56,18 @@ internal class AndroidCaptionRenderer(
         }
     }
 
-    override fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int): CaptionBlockSize {
-        val layout = layout(text, style, canvasWidthPx, canvasHeightPx)
+    override fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook): CaptionBlockSize {
+        val layout = layout(text, style, canvasWidthPx, canvasHeightPx, look)
         return CaptionBlockSize(layout.blockWidthPx, layout.blockHeightPx)
     }
 
-    /** [text] in [style] laid out in canvas pixels for a canvas [canvasWidthPx] × [canvasHeightPx]; any thread. */
-    fun layout(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int): CaptionLayout {
+    /**
+     * [text] in [style] laid out in canvas pixels for a canvas [canvasWidthPx] × [canvasHeightPx]; any thread. [look] is the
+     * size and wrap of the words (a caption's, or a speech bubble's).
+     */
+    fun layout(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook = CaptionLook.Text): CaptionLayout {
         val shortSidePx = min(canvasWidthPx, canvasHeightPx).toFloat()
-        val fontSizePx = shortSidePx * CaptionCatalog.FONT_SIZE_OF_SHORT_SIDE
+        val fontSizePx = shortSidePx * CaptionCatalog.FONT_SIZE_OF_SHORT_SIDE * look.sizeFactor
         val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = typefaceOf(style.fontId)
             textSize = fontSizePx
@@ -72,7 +76,7 @@ internal class AndroidCaptionRenderer(
             strokeCap = Paint.Cap.ROUND
             strokeWidth = fontSizePx / CaptionCatalog.OUTLINE_WIDTH_DIVISOR
         }
-        val wrapWidthPx = ceil(shortSidePx * CaptionCatalog.WRAP_WIDTH_OF_SHORT_SIDE).toInt()
+        val wrapWidthPx = ceil(shortSidePx * look.wrapOfShortSide).toInt()
         val staticLayout = StaticLayout.Builder.obtain(text, 0, text.length, paint, wrapWidthPx)
             .setAlignment(Layout.Alignment.ALIGN_NORMAL)
             .setIncludePad(true)

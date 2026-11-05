@@ -145,7 +145,7 @@ fun CanvasRatioRow(ratio: CanvasRatio, customPicked: Boolean, onPick: (CanvasRat
  * or in a long language; P1-11 review P1).
  */
 @Composable
-private fun Modifier.keptInViewWhen(selected: Boolean): Modifier {
+fun Modifier.keptInViewWhen(selected: Boolean): Modifier {
     val requester = remember { BringIntoViewRequester() }
     val firstRun = remember { FirstRun() }
     LaunchedEffect(selected) {

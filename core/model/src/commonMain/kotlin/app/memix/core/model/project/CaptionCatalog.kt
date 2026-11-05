@@ -60,3 +60,18 @@ object CaptionCatalog {
  * Devanagari ([devanagariFallbackFileName]). Anything none of them has falls back to the system font.
  */
 data class CaptionFont(val id: String, val fileName: String, val devanagariFallbackFileName: String? = null)
+
+/**
+ * How a caption's words are laid out: [sizeFactor] times the caption's base size ([CaptionCatalog.FONT_SIZE_OF_SHORT_SIDE] of
+ * the shorter side) and wrapped at [wrapOfShortSide] of the shorter side. Text uses [Text]; the words of a bubble use
+ * [Bubble] (spec P2-02 → Bubbles). The one renderer takes it as a parameter, so a bubble's words are a caption too.
+ */
+data class CaptionLook(
+    val sizeFactor: Float = 1f,
+    val wrapOfShortSide: Float = CaptionCatalog.WRAP_WIDTH_OF_SHORT_SIDE,
+) {
+    companion object {
+        val Text = CaptionLook()
+        val Bubble = CaptionLook(PhotoFormatCatalog.BUBBLE_TEXT_SCALE_OF_CAPTION, PhotoFormatCatalog.BUBBLE_WRAP_OF_SHORT_SIDE)
+    }
+}

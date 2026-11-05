@@ -17,6 +17,7 @@ import app.memix.core.domain.video.Thumbnail
 import app.memix.core.domain.video.ThumbnailReader
 import app.memix.core.domain.video.VideoEngine
 import app.memix.core.model.project.CaptionCatalog
+import app.memix.core.model.project.CaptionLook
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaRef
@@ -41,10 +42,10 @@ actual val videoEngineModule = module {
 private object EstimatedCaptionMeasurer : CaptionMeasurer {
     override suspend fun prepare() = Unit
 
-    override fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int): CaptionBlockSize {
+    override fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook): CaptionBlockSize {
         val shortSidePx = minOf(canvasWidthPx, canvasHeightPx).toFloat()
-        val fontSizePx = shortSidePx * CaptionCatalog.FONT_SIZE_OF_SHORT_SIDE
-        val wrapPx = shortSidePx * CaptionCatalog.WRAP_WIDTH_OF_SHORT_SIDE
+        val fontSizePx = shortSidePx * CaptionCatalog.FONT_SIZE_OF_SHORT_SIDE * look.sizeFactor
+        val wrapPx = shortSidePx * look.wrapOfShortSide
         val lines = text.lines()
         val widestPx = lines.maxOf { it.length } * fontSizePx * AVERAGE_GLYPH_WIDTH
         val wrappedLines = lines.sumOf { maxOf(1, ceil(it.length * fontSizePx * AVERAGE_GLYPH_WIDTH / wrapPx).toInt()) }

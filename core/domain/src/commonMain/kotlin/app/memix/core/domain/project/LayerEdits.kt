@@ -3,9 +3,14 @@ package app.memix.core.domain.project
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.Layer
 import app.memix.core.model.project.MediaRef
+import app.memix.core.model.project.PanelsFormat
+import app.memix.core.model.project.PixelSize
+import app.memix.core.model.project.pictureArea
+import app.memix.core.model.project.placeMainPhoto
 import app.memix.core.model.project.PhotoCatalog
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.Transform
+import app.memix.core.model.project.photos
 import app.memix.core.model.project.normalizedDegrees
 import kotlin.math.min
 
@@ -43,8 +48,15 @@ fun Project.layers(): List<Layer> = photo?.layers.orEmpty()
 /** Layer [layerId], or null when there is no such layer. */
 fun Project.layer(layerId: String): Layer? = layers().firstOrNull { it.id == layerId }
 
-/** True for a photo project with no layer left: nothing to keep, so leaving the editor deletes the draft. */
-fun Project.hasNoLayers(): Boolean = photo?.layers?.isEmpty() == true
+/**
+ * True for a photo project with nothing left to keep, so leaving the editor deletes the draft: no layer, and no photo in a Panels
+ * cell either (empty slots and cells are not content; a format alone doesn't make a project, spec P2-02 → How a format works).
+ */
+fun Project.hasNoLayers(): Boolean {
+    val scene = photo ?: return false
+    val cellPhotos = (scene.format as? PanelsFormat)?.photos().orEmpty()
+    return scene.layers.isEmpty() && cellPhotos.isEmpty()
+}
 
 /** Layer [layerId]'s place, size and turn, kept inside the limits ([clampedFor]). Refused while it's locked. */
 fun Project.setLayerTransform(layerId: String, transform: Transform): LayerEdit =
@@ -91,11 +103,16 @@ fun Project.duplicateLayer(layerId: String, newId: String): Project {
 
 /**
  * A new image layer [id] of [media] at the front of the stack (spec P2-13 → What lands): centered, scale 1, no turn, unlocked,
- * shown, fully opaque. Its size at scale 1 is the picture fitted inside the canvas ([fittedImageSize], the same rule as every
+ * shown, fully opaque, or placed in the format's picture area when the format has one. Its size at scale 1 is the picture fitted inside the canvas ([fittedImageSize], the same rule as every
  * image layer, computed when it is drawn), so the canvas doesn't change.
  */
-fun Project.addImageLayer(media: MediaRef, id: String): Project =
-    withLayers(layers() + ImageLayer(id, media, Transform()))
+fun Project.addImageLayer(media: MediaRef, id: String): Project {
+    // Under a format with a picture area (Caption bar, Demotivational) a new photo lands inside it (spec P2-02 → How a format works).
+    val size = media.pixelSize
+    val area = photo?.format.pictureArea(PixelSize(canvas.widthPx, canvas.heightPx))
+    val transform = if (area != null && size != null) placeMainPhoto(photo?.format, PixelSize(canvas.widthPx, canvas.heightPx), size) else Transform()
+    return withLayers(layers() + ImageLayer(id, media, transform))
+}
 
 /** One place toward the front. Refused at the front, with a single layer, or while it's locked. */
 fun Project.moveLayerUp(layerId: String): LayerEdit = moveLayerBy(layerId, 1)

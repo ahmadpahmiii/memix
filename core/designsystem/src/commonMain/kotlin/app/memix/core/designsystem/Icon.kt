@@ -12,6 +12,7 @@ import memix.core.designsystem.generated.resources.Res
 import memix.core.designsystem.generated.resources.ic_arrow
 import memix.core.designsystem.generated.resources.ic_arrow_back
 import memix.core.designsystem.generated.resources.ic_blur
+import memix.core.designsystem.generated.resources.ic_bubble
 import memix.core.designsystem.generated.resources.ic_check
 import memix.core.designsystem.generated.resources.ic_chevron_right
 import memix.core.designsystem.generated.resources.ic_close
@@ -24,6 +25,8 @@ import memix.core.designsystem.generated.resources.ic_edit
 import memix.core.designsystem.generated.resources.ic_edit_text
 import memix.core.designsystem.generated.resources.ic_fill
 import memix.core.designsystem.generated.resources.ic_fit
+import memix.core.designsystem.generated.resources.ic_formats
+import memix.core.designsystem.generated.resources.ic_panels
 import memix.core.designsystem.generated.resources.ic_globe
 import memix.core.designsystem.generated.resources.ic_eye
 import memix.core.designsystem.generated.resources.ic_eye_off
@@ -67,6 +70,7 @@ object MemixIcons {
     val Arrow = Res.drawable.ic_arrow
     val ArrowBack = Res.drawable.ic_arrow_back
     val Blur = Res.drawable.ic_blur
+    val Bubble = Res.drawable.ic_bubble
     val Check = Res.drawable.ic_check
     val ChevronRight = Res.drawable.ic_chevron_right
     val Close = Res.drawable.ic_close
@@ -78,6 +82,8 @@ object MemixIcons {
     val Edit = Res.drawable.ic_edit
     val Fill = Res.drawable.ic_fill
     val Fit = Res.drawable.ic_fit
+    val Formats = Res.drawable.ic_formats
+    val Panels = Res.drawable.ic_panels
     val EditText = Res.drawable.ic_edit_text
     val Eye = Res.drawable.ic_eye
     val EyeOff = Res.drawable.ic_eye_off

@@ -54,7 +54,9 @@ class MainActivity : ComponentActivity() {
         val renderScene = if (handChecks && savedInstanceState == null) intent.getStringExtra("memix.renderScene") else null
         if (renderScene != null) {
             val width = intent.getIntExtra("memix.renderWidth", 1080)
-            lifecycleScope.launch { SceneRender().run(renderScene, width) }
+            // P2-02: --ei memix.renderShortSide 1080|2160 sizes the canvas's shorter side instead of the width (the formats' two export sizes).
+            val shortSide = intent.getIntExtra("memix.renderShortSide", 0)
+            lifecycleScope.launch { SceneRender().run(renderScene, width, shortSide) }
         }
         setContent { App(isDebugBuild, debugEditorProject = editorCheck) }
     }

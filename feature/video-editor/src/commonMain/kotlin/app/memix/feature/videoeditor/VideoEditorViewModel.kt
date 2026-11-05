@@ -134,7 +134,7 @@ class VideoEditorViewModel(
     private val move = MoveControl(host)
     private val originalAudio = OriginalAudioControl(host)
     private val captions = CaptionControl(host)
-    private val canvasPanel = CanvasPanelControl(host) { text, style, widthPx, heightPx -> captionRendering.measure(text, style, widthPx, heightPx) }
+    private val canvasPanel = CanvasPanelControl(host) { text, style, widthPx, heightPx, look -> captionRendering.measure(text, style, widthPx, heightPx, look) }
     private val exportSheet = ExportSheetControl(host, export)
     // The canvas size of the picture on screen, as the preview last reported it.
     private var shownCanvasSize: PixelSize? = null

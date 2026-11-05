@@ -1,5 +1,6 @@
 package app.memix.core.domain.text
 
+import app.memix.core.model.project.CaptionLook
 import app.memix.core.model.project.CaptionStyle
 
 /**
@@ -15,9 +16,10 @@ interface CaptionMeasurer {
     /**
      * The laid-out block of [text] in [style] at scale 1, in canvas pixels, on a canvas [canvasWidthPx] ×
      * [canvasHeightPx]: the widest line by all the lines' height. Cheap enough to call on every keystroke; main thread.
-     * Before [prepare] has finished it measures with the system font.
+     * Before [prepare] has finished it measures with the system font. [look] is the size and wrap of the words: a caption's
+     * ([CaptionLook.Text]) or a speech bubble's (spec P2-02 → Bubbles).
      */
-    fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int): CaptionBlockSize
+    fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook = CaptionLook.Text): CaptionBlockSize
 }
 
 /** A caption's laid-out block at scale 1, canvas pixels. */
@@ -38,6 +40,6 @@ class PrepareCaptionsUseCase(private val measurer: CaptionMeasurer) {
 
 /** A caption's laid-out block (see [CaptionMeasurer.measure]). */
 class MeasureCaptionUseCase(private val measurer: CaptionMeasurer) {
-    operator fun invoke(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int): CaptionBlockSize =
-        measurer.measure(text, style, canvasWidthPx, canvasHeightPx)
+    operator fun invoke(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook = CaptionLook.Text): CaptionBlockSize =
+        measurer.measure(text, style, canvasWidthPx, canvasHeightPx, look)
 }

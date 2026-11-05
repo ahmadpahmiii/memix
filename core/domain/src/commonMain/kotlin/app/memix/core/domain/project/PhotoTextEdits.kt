@@ -1,6 +1,10 @@
 package app.memix.core.domain.project
 
 import app.memix.core.model.project.CaptionStyle
+import app.memix.core.model.project.FormatSlot
+import app.memix.core.model.project.PixelSize
+import app.memix.core.model.project.SlotKind
+import app.memix.core.model.project.emptySlots
 import app.memix.core.model.project.PhotoCatalog
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.TextLayer
@@ -21,12 +25,19 @@ fun Project.photoTextLandingCenterY(): Float {
 }
 
 /**
- * Adds [text] in [style] as layer [id] at the front of the stack, centered horizontally at 100% and 0°, at the first free
- * landing slot ([photoTextLandingCenterY]). Blank text adds nothing.
+ * The first empty text slot of the active format (spec P2-02 → How a format works, rule 6), or null while the canvas is plain or
+ * every slot of the format is filled: then [photoTextLandingCenterY] applies.
  */
-fun Project.addTextLayer(text: String, style: CaptionStyle, id: String): Project {
+fun Project.nextTextSlot(): FormatSlot? =
+    photo?.format.emptySlots(PixelSize(canvas.widthPx, canvas.heightPx), layers()).firstOrNull { it.kind == SlotKind.TEXT }
+
+/**
+ * Adds [text] in [style] as layer [id] at the front of the stack, at 100% and 0°: centered horizontally at the first free
+ * landing slot ([photoTextLandingCenterY]), or at [transform] when the caller has one (a format's slot). Blank text adds nothing.
+ */
+fun Project.addTextLayer(text: String, style: CaptionStyle, id: String, transform: Transform? = null): Project {
     if (text.isBlank()) return this
-    val layer = TextLayer(id, text, style, Transform(centerX = 0.5f, centerY = photoTextLandingCenterY()))
+    val layer = TextLayer(id, text, style, transform ?: Transform(centerX = 0.5f, centerY = photoTextLandingCenterY()))
     return withLayers(layers() + layer)
 }
 

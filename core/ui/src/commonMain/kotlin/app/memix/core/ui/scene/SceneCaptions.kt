@@ -1,6 +1,8 @@
 package app.memix.core.ui.scene
 
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import app.memix.core.model.project.BoxSize
+import app.memix.core.model.project.CaptionLook
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.Transform
 
@@ -15,13 +17,21 @@ import app.memix.core.model.project.Transform
 interface SceneCaptions {
     /**
      * Draws [text] in [style] with [transform] (its block centered at the transform's center, scaled and turned clockwise
-     * about it) at [opacity]: the whole caption, outline under fill, is drawn at full strength into a group and the group is
+     * about it) at [opacity], its words laid out as [look] says (a caption's, or a bubble's): the whole caption, outline under fill, is drawn at full strength into a group and the group is
      * composited at [opacity], so a translucent caption never shows its outline through the fill.
      */
-    fun draw(scope: DrawScope, text: String, style: CaptionStyle, transform: Transform, opacity: Float, canvasWidthPx: Int, canvasHeightPx: Int)
+    fun draw(scope: DrawScope, text: String, style: CaptionStyle, transform: Transform, opacity: Float, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook = CaptionLook.Text)
+
+    /**
+     * The laid-out block of [text] in [style] as [look] says, at scale 1 in canvas pixels (the widest line by all the lines'
+     * height): a speech bubble's body grows around it (spec P2-02 → Bubbles). Cached with the layout [draw] uses.
+     */
+    fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook): BoxSize
 }
 
 /** Draws nothing: previews, harnesses and iOS until its renderer exists. */
 object NoSceneCaptions : SceneCaptions {
-    override fun draw(scope: DrawScope, text: String, style: CaptionStyle, transform: Transform, opacity: Float, canvasWidthPx: Int, canvasHeightPx: Int) = Unit
+    override fun draw(scope: DrawScope, text: String, style: CaptionStyle, transform: Transform, opacity: Float, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook) = Unit
+
+    override fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook): BoxSize = BoxSize(0f, 0f)
 }

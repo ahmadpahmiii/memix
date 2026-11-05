@@ -1,6 +1,18 @@
 package app.memix.debug
 
 import app.memix.core.domain.project.photoCanvasFor
+import app.memix.core.domain.project.setPhotoFormat
+import app.memix.core.model.project.BubbleLayer
+import app.memix.core.model.project.BubbleShape
+import app.memix.core.model.project.BubblesFormat
+import app.memix.core.model.project.CaptionBarFormat
+import app.memix.core.model.project.ClassicFormat
+import app.memix.core.model.project.DemotivationalFormat
+import app.memix.core.model.project.PanelCell
+import app.memix.core.model.project.PanelLayouts
+import app.memix.core.model.project.PhotoFormat
+import app.memix.core.model.project.PhotoFormatCatalog
+import app.memix.core.model.project.panelsFormatOf
 import app.memix.core.model.project.Canvas
 import app.memix.core.model.project.TextLayer
 import app.memix.core.model.project.StickerLayer
@@ -36,6 +48,8 @@ internal class DebugPicture(val fileName: String, val widthPx: Int, val heightPx
  *   editor's `text-check` (Classic Hindi and emoji over the top, Modern accented Latin at 50% and -15°, Bubbly two lines at 250%
  *   and 30° partly off the right edge, Handwritten with Devanagari, Serif "THE END", and Classic red "OVERLAP" above it in the
  *   stack): compare the screen, the render hook and the video export frame (spec P2-03 → Measured).
+ * - `photo-format-classic`, `-caption-bar`, `-demotivational`, `-panels`, `-bubbles` (P2-02): a 4:3 photo canvas (1440 x 1080) in each format with real text
+ *   (panels: a 2 x 2 grid, three cells filled; bubbles: one of each shape): render each at both sizes with `--ei memix.renderShortSide 1080|2160`.
  * - `photo-stickers` (P2-03): a photo, one text and five stickers with transparent backgrounds: a 512 px square, a 3:1 (locked),
  *   a 1:3 (hidden), a 96 px tiny one and one whose file is gone.
  * - `photo-layers-10` also carries three text layers on top (Classic at the top, Bubbly at 250% and 30°, a Hindi line).
@@ -49,7 +63,15 @@ internal object PhotoCheckProjects {
     const val BACKGROUND_MISSING = "photo-background-missing"
     const val TEXT_CHECK = "photo-text-check"
     const val STICKERS = "photo-stickers"
-    val NAMES = listOf(LAYERS_10, EMPTY, MISSING_MEDIA, BACKGROUND_IMAGE, BACKGROUND_MISSING, TEXT_CHECK, STICKERS)
+    const val FORMAT_CLASSIC = "photo-format-classic"
+    const val FORMAT_CAPTION_BAR = "photo-format-caption-bar"
+    const val FORMAT_DEMOTIVATIONAL = "photo-format-demotivational"
+    const val FORMAT_PANELS = "photo-format-panels"
+    const val FORMAT_BUBBLES = "photo-format-bubbles"
+    val NAMES = listOf(
+        LAYERS_10, EMPTY, MISSING_MEDIA, BACKGROUND_IMAGE, BACKGROUND_MISSING, TEXT_CHECK, STICKERS,
+        FORMAT_CLASSIC, FORMAT_CAPTION_BAR, FORMAT_DEMOTIVATIONAL, FORMAT_PANELS, FORMAT_BUBBLES,
+    )
 
     const val PICTURES_DIR = "${ExportCheckProject.MEDIA_DIR}/photo-scenes"
 
@@ -110,6 +132,15 @@ internal object PhotoCheckProjects {
         MISSING_MEDIA -> missingMedia()
         TEXT_CHECK -> textCheck()
         STICKERS -> stickers()
+        FORMAT_CLASSIC -> formatScene(FORMAT_CLASSIC, ClassicFormat, text("c-top", "WHEN THE BUILD PASSES", CAPTION, Transform(0.5f, 0.14f)), text("c-bottom", "FIRST TRY", CAPTION, Transform(0.5f, 0.86f)))
+        FORMAT_CAPTION_BAR -> formatScene(FORMAT_CAPTION_BAR, CaptionBarFormat, text("b-text", "ME EXPLAINING THE BUG\nTO THE DUCK", CaptionStyle("poppins", BLACK, null), Transform(0.5f, 0.125f)))
+        FORMAT_DEMOTIVATIONAL -> formatScene(
+            FORMAT_DEMOTIVATIONAL, DemotivationalFormat,
+            text("d-title", "PROGRESS", CaptionStyle("rozha", WHITE, null), Transform(0.5f, 0.69f)),
+            text("d-sub", "It compiled. Nobody asked how.", CaptionStyle("poppins", WHITE, null), Transform(0.5f, 0.84f, 0.45f)),
+        )
+        FORMAT_PANELS -> panelsScene()
+        FORMAT_BUBBLES -> bubblesScene()
         BACKGROUND_IMAGE -> backgroundImage(BACKGROUND_IMAGE, missing = false)
         BACKGROUND_MISSING -> backgroundImage(BACKGROUND_MISSING, missing = true)
         else -> null
@@ -167,6 +198,37 @@ internal object PhotoCheckProjects {
             sticker("s-missing", gone, Transform(0.75f, 0.75f)),
         )
         return project(STICKERS, photoCanvasFor(PixelSize(shapes[0].widthPx, shapes[0].heightPx)), layers)
+    }
+
+    /** A 4:3 photo (1440 x 1080) in [format], with real text from P2-03 (the P2-02 reference frames: 1080 and 2160 px on the shorter side). */
+    private fun formatScene(id: String, format: PhotoFormat, vararg texts: Layer): Project {
+        val canvas = photoCanvasFor(PixelSize(shapes[0].widthPx, shapes[0].heightPx))
+        val photo = ImageLayer("f-photo", mediaOf(shapes[0].fileName, PixelSize(shapes[0].widthPx, shapes[0].heightPx)), Transform())
+        val base = project(id, canvas, listOf<Layer>(photo) + texts.toList())
+        return base.setPhotoFormat(format, "restored").project
+    }
+
+    /** A 2 x 2 grid with three filled cells and one empty (the empty cell draws the background). */
+    private fun panelsScene(): Project {
+        val canvas = photoCanvasFor(PixelSize(shapes[0].widthPx, shapes[0].heightPx))
+        fun cell(picture: DebugPicture) = PanelCell(mediaOf(picture.fileName, PixelSize(picture.widthPx, picture.heightPx)))
+        val panels = panelsFormatOf(PanelLayouts.of("grid-4")!!, listOf(cell(shapes[0]), cell(mid[0]), cell(mid[1])))
+        return project(FORMAT_PANELS, canvas, emptyList()).let { it.copy(photo = PhotoScene(emptyList(), panels)) }
+    }
+
+    /** One bubble of each shape over a photo. */
+    private fun bubblesScene(): Project {
+        val canvas = photoCanvasFor(PixelSize(shapes[0].widthPx, shapes[0].heightPx))
+        val photo = ImageLayer("f-photo", mediaOf(shapes[0].fileName, PixelSize(shapes[0].widthPx, shapes[0].heightPx)), Transform())
+        fun bubble(id: String, words: String, shape: BubbleShape, at: Transform, tailX: Float, tailY: Float) =
+            BubbleLayer(id, words, PhotoFormatCatalog.BUBBLE_DEFAULT_STYLE, shape, PhotoFormatCatalog.BUBBLE_DEFAULT_FILL, tailX, tailY, at)
+        val layers = listOf(
+            photo,
+            bubble("speech", "Did it compile?", BubbleShape.SPEECH, Transform(0.3f, 0.25f), -0.25f, 0.85f),
+            bubble("round", "Yes!", BubbleShape.ROUND, Transform(0.7f, 0.5f), 0.25f, 0.85f),
+            bubble("thought", "…but why?", BubbleShape.THOUGHT, Transform(0.35f, 0.78f), -0.2f, -0.9f),
+        )
+        return project(FORMAT_BUBBLES, canvas, layers).let { it.copy(photo = it.photo!!.copy(format = BubblesFormat)) }
     }
 
     private fun missingMedia(): Project {

@@ -223,6 +223,10 @@ private fun LayerRowFor(
             LayerKind.TEXT -> Box(Modifier.fillMaxSize().background(MemixColors.surface), contentAlignment = Alignment.Center) {
                 Icon(MemixIcons.Text, contentDescription = null, tint = MemixColors.textSecondary)
             }
+            // A bubble row says "this is a bubble" the same way (spec P2-02 → Bubbles).
+            LayerKind.BUBBLE -> Box(Modifier.fillMaxSize().background(MemixColors.surface), contentAlignment = Alignment.Center) {
+                Icon(MemixIcons.Bubble, contentDescription = null, tint = MemixColors.textSecondary)
+            }
             // A sticker's picture is fitted inside the square on `surface`: a transparent one shows no checkerboard.
             LayerKind.STICKER -> Box(Modifier.fillMaxSize().background(MemixColors.surface)) {
                 val picture = layer.path?.let(thumbnails::pictureOf)

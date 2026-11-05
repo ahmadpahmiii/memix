@@ -38,6 +38,13 @@ interface GestureTarget {
     val boxWidthPx: Float
     val boxHeightPx: Float
 
+    /**
+     * Where the box's center is from the layer's own center, in the layer's own unturned axes at scale 1 (canvas pixels): zero for
+     * every layer but a speech bubble, whose box covers its tail and so sits off its body's center.
+     */
+    val boxOffsetXPx: Float get() = 0f
+    val boxOffsetYPx: Float get() = 0f
+
     /** The scales a pinch or the handle can reach. */
     val scaleRange: ClosedFloatingPointRange<Float>
 
@@ -47,7 +54,7 @@ interface GestureTarget {
 
 /** [this] layer's box on the stage frame [frame], for a canvas [canvasWidthPx] wide. */
 fun GestureTarget.boxIn(frame: CanvasFrameRect, canvasWidthPx: Int, transform: Transform = this.transform): LayerBox =
-    LayerBox.of(boxWidthPx, boxHeightPx, transform, frame, canvasWidthPx)
+    LayerBox.of(boxWidthPx, boxHeightPx, transform, frame, canvasWidthPx, boxOffsetXPx, boxOffsetYPx)
 
 /** What a gesture on a layer is doing (spec P1-10 → On the preview). */
 enum class LayerGestureKind {

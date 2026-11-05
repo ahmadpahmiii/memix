@@ -1,6 +1,7 @@
 package app.memix.core.domain.project
 
 import app.memix.core.model.project.BoxSize
+import app.memix.core.model.project.BubbleLayer
 import app.memix.core.model.project.Canvas
 import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.CanvasCatalog
@@ -8,6 +9,12 @@ import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.CaptionCatalog
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.Layer
+import app.memix.core.model.project.PhotoFormat
+import app.memix.core.model.project.PhotoFormatCatalog
+import app.memix.core.model.project.isAsPlaced
+import app.memix.core.model.project.mainPhoto
+import app.memix.core.model.project.pictureArea
+import app.memix.core.model.project.placeMainPhoto
 import app.memix.core.model.project.PhotoCatalog
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
@@ -53,7 +60,13 @@ fun Project.setPhotoCanvasRatio(ratio: CanvasRatio, customTerms: RatioTerms? = n
     val old = PixelSize(canvas.widthPx, canvas.heightPx)
     if (canvas.ratio == ratio && old == size) return CanvasRatioChange(this, movedLayers = false)
     var moved = false
+    // A main photo the format put in its picture area follows the area on the new canvas (spec P2-02 → Ratio change).
+    val format = photo?.format
+    val main = layers().mainPhoto()
+    val follows = main != null && format.pictureArea(old) != null && isAsPlaced(main, format, old)
     val kept = layers().map { layer ->
+        // Following the area is the format doing its job, not a layer pushed in from an edge: no "moved" report (spec: no toast).
+        if (follows && layer === main) return@map layer.placedIn(format, size)
         val keptLayer = layer.keptInside(old, size, measure)
         if (keptLayer != layer) moved = true
         keptLayer
@@ -91,6 +104,19 @@ private fun Layer.keptInside(old: PixelSize, new: PixelSize, measure: CaptionBlo
         }
         if (kept == transform) this else copy(transform = kept)
     }
+    is BubbleLayer -> {
+        val kept = transform.keptInside(old, new, PhotoFormatCatalog.BUBBLE_SCALE_RANGE.start, PhotoCatalog.ratioChangeMarginOf(this)) { canvas, scale ->
+            coveringBoxOn(canvas, scale, measure)
+        }
+        if (kept == transform) this else copy(transform = kept)
+    }
+}
+
+// The main photo in [format]'s picture area on [canvas]; the photo's own size decides, so one without a size stays as it is.
+private fun Layer.placedIn(format: PhotoFormat?, canvas: PixelSize): Layer {
+    val image = this as? ImageLayer ?: return this
+    val size = image.source.pixelSize ?: return this
+    return image.copy(transform = placeMainPhoto(format, canvas, size))
 }
 
 /** The sticker's box at [scale] on [canvas]: its size at scale 1 (35% of the shorter side) turned by its rotation, in canvas pixels. */

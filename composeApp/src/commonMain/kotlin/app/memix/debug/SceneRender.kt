@@ -12,6 +12,7 @@ import app.memix.core.domain.project.GetProjectUseCase
 import app.memix.core.domain.project.layers
 import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.ImageLayer
+import app.memix.core.model.project.PanelsFormat
 import app.memix.core.domain.text.PrepareCaptionsUseCase
 import app.memix.core.model.project.StickerLayer
 import app.memix.core.ui.scene.SceneBitmap
@@ -28,6 +29,7 @@ import org.koin.core.component.inject
  * The debug render hook (spec docs/ux/specs/P2-01-photo-editor-shell.md → Requests 5; builds with hand checks):
  * `--es memix.renderScene <project id> --ei memix.renderWidth 1080` draws the saved photo project through the one
  * scene-drawing function, at that pixel width, into a PNG at `cache/scene-renders/<id>-<width>.png`, and logs where
+ * (`--ei memix.renderShortSide 1080|2160` sizes the canvas's shorter side instead, for the meme formats' two export sizes: `<id>-s<size>.png`)
  * (logcat tag [TAG]). The editor draws the same function at screen size, so the two can be compared; export (P2-08)
  * will call it at export size. Pictures are decoded at their own size (up to the decode cap) as software bitmaps.
  */
@@ -38,13 +40,19 @@ class SceneRender : KoinComponent {
     private val prepareCaptions: PrepareCaptionsUseCase by inject()
     private val logger: Logger by inject()
 
-    suspend fun run(projectId: String, widthPx: Int) {
+    /** Draws [projectId] [widthPx] wide, or, when [shortSidePx] is above 0, with the canvas's shorter side that many pixels (1080 or 2160 for a format check). */
+    suspend fun run(projectId: String, widthPx: Int, shortSidePx: Int = 0) {
         val project = (getProject(projectId) as? Outcome.Success)?.value
         if (project?.photo == null) return logger.error(TAG, "renderScene: '$projectId' isn't a saved photo project")
+        val shortSide = minOf(project.canvas.widthPx, project.canvas.heightPx)
+        val widthPx = if (shortSidePx > 0) (shortSidePx.toLong() * project.canvas.widthPx / shortSide).toInt() else widthPx
         val heightPx = (widthPx.toLong() * project.canvas.heightPx / project.canvas.widthPx).toInt()
+        val fileName = if (shortSidePx > 0) "$projectId-s$shortSidePx.png" else "$projectId-$widthPx.png"
         val pictures = HashMap<String, SceneBitmap>()
         // The layers' pictures and the background picture (P2-12), each decoded once.
-        val sources = project.layers().mapNotNull { (it as? ImageLayer)?.source ?: (it as? StickerLayer)?.source } + listOfNotNull(project.canvas.background.let { (it as? CanvasBackground.Image)?.source })
+        val cellPhotos = (project.photo?.format as? PanelsFormat)?.cells?.mapNotNull { it.source }.orEmpty()
+        val sources = project.layers().mapNotNull { (it as? ImageLayer)?.source ?: (it as? StickerLayer)?.source } + cellPhotos +
+            listOfNotNull(project.canvas.background.let { (it as? CanvasBackground.Image)?.source })
         for (source in sources) {
             val path = source.cachedCopyPath ?: continue
             if (path in pictures) continue
@@ -59,9 +67,9 @@ class SceneRender : KoinComponent {
         prepareCaptions()
         val bitmap = ImageBitmap(widthPx, heightPx)
         CanvasDrawScope().draw(Density(1f), LayoutDirection.Ltr, Canvas(bitmap), Size(widthPx.toFloat(), heightPx.toFloat())) {
-            drawPhotoScene(project.canvas, project.layers(), images, captions = captions)
+            drawPhotoScene(project.canvas, project.layers(), images, captions = captions, format = project.photo?.format)
         }
-        val written = writeDebugPng(bitmap, "$projectId-$widthPx.png")
+        val written = writeDebugPng(bitmap, fileName)
         logger.debug(TAG, "renderScene: ${written ?: "writing failed"} (${pictures.size} pictures, ${widthPx} x $heightPx)")
     }
 

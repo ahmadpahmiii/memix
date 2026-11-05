@@ -6,6 +6,7 @@ import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.CanvasCatalog
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.CaptionCatalog
+import app.memix.core.model.project.CaptionLook
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.MediaClip
@@ -33,7 +34,7 @@ import kotlin.math.min
  * canvas pixels, on a canvas of the given width and height.
  */
 fun interface CaptionBlockMeasure {
-    fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int): CaptionBlockSize
+    fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook): CaptionBlockSize
 }
 
 /** What [setCanvasRatio] did: the new project, and whether it moved or shrank a caption (the toast says so). */
@@ -131,7 +132,7 @@ internal fun TextItem.keptInside(old: PixelSize, new: PixelSize, measure: Captio
  * photo text layers share it (spec P2-03 → Ratio change with text).
  */
 internal fun captionBoxOn(text: String, style: CaptionStyle, transform: Transform, canvasSize: PixelSize, scale: Float, measure: CaptionBlockMeasure): BoxSize {
-    val block = measure.measure(text, style, canvasSize.widthPx, canvasSize.heightPx)
+    val block = measure.measure(text, style, canvasSize.widthPx, canvasSize.heightPx, CaptionLook.Text)
     // The outline is stroked on the letters' edges, so half its width lies outside the block.
     val shortSide = min(canvasSize.widthPx, canvasSize.heightPx)
     val outlineOutside = if (style.outlineColor == null) 0f else shortSide * CaptionCatalog.FONT_SIZE_OF_SHORT_SIDE / CaptionCatalog.OUTLINE_WIDTH_DIVISOR / 2

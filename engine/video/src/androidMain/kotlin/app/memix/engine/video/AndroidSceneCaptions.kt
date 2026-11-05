@@ -3,6 +3,8 @@ package app.memix.engine.video
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import app.memix.core.model.project.BoxSize
+import app.memix.core.model.project.CaptionLook
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.Transform
 import app.memix.core.ui.scene.SceneCaptions
@@ -18,16 +20,24 @@ import kotlin.math.roundToInt
  * layout is used by one thread at a time.
  */
 internal class AndroidSceneCaptions(private val renderer: AndroidCaptionRenderer) : SceneCaptions {
-    private data class Key(val text: String, val style: CaptionStyle, val canvasWidthPx: Int, val canvasHeightPx: Int)
+    private data class Key(val text: String, val style: CaptionStyle, val canvasWidthPx: Int, val canvasHeightPx: Int, val look: CaptionLook)
 
     private val layouts = object : LinkedHashMap<Key, CaptionLayout>(INITIAL_CAPACITY, LOAD_FACTOR, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Key, CaptionLayout>): Boolean = size > MAX_LAYOUTS
     }
 
-    override fun draw(scope: DrawScope, text: String, style: CaptionStyle, transform: Transform, opacity: Float, canvasWidthPx: Int, canvasHeightPx: Int) {
+    override fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook): BoxSize {
+        if (text.isBlank()) return BoxSize(0f, 0f)
+        val layout = layoutOf(text, style, canvasWidthPx, canvasHeightPx, look)
+        return BoxSize(layout.blockWidthPx, layout.blockHeightPx)
+    }
+
+    private fun layoutOf(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook): CaptionLayout =
+        synchronized(layouts) { layouts.getOrPut(Key(text, style, canvasWidthPx, canvasHeightPx, look)) { renderer.layout(text, style, canvasWidthPx, canvasHeightPx, look) } }
+
+    override fun draw(scope: DrawScope, text: String, style: CaptionStyle, transform: Transform, opacity: Float, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook) {
         if (text.isBlank()) return
-        val key = Key(text, style, canvasWidthPx, canvasHeightPx)
-        val layout = synchronized(layouts) { layouts.getOrPut(key) { renderer.layout(text, style, canvasWidthPx, canvasHeightPx) } }
+        val layout = layoutOf(text, style, canvasWidthPx, canvasHeightPx, look)
         scope.drawIntoCanvas { canvas ->
             val native = canvas.nativeCanvas
             synchronized(layout) {

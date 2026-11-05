@@ -65,16 +65,17 @@ object PhotoCatalog {
     /** A landing slot is taken when a visible text layer has its center within this of it. */
     const val TEXT_SLOT_TAKEN_WITHIN = 0.1f
 
-    /** The scale range of [layer]: images and stickers 10% to 500%, text 25% to 500%. */
+    /** The scale range of [layer]: images and stickers 10% to 500%, text and bubbles 25% to 500%. */
     fun scaleRangeOf(layer: Layer): ClosedFloatingPointRange<Float> = when (layer) {
         is TextLayer -> CaptionCatalog.MIN_SCALE..CaptionCatalog.MAX_SCALE
         is ImageLayer -> IMAGE_SCALE_RANGE
         is StickerLayer -> STICKER_SCALE_RANGE
+        is BubbleLayer -> PhotoFormatCatalog.BUBBLE_SCALE_RANGE
     }
 
     /** How far inside the edge [layer] moves on a ratio change, as a fraction of the shorter side. */
     fun ratioChangeMarginOf(layer: Layer): Float = when (layer) {
         is ImageLayer -> IMAGE_MARGIN_OF_SHORT_SIDE
-        is TextLayer, is StickerLayer -> CanvasCatalog.LAYER_MARGIN_OF_SHORT_SIDE
+        is TextLayer, is StickerLayer, is BubbleLayer -> CanvasCatalog.LAYER_MARGIN_OF_SHORT_SIDE
     }
 }

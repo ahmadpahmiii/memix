@@ -141,7 +141,11 @@ import memix.feature.photo_editor.generated.resources.layer_tools_close
 import memix.feature.photo_editor.generated.resources.photo_layers_moved
 import memix.feature.photo_editor.generated.resources.photo_missing_media
 import memix.feature.photo_editor.generated.resources.tool_add_photo
+import memix.feature.photo_editor.generated.resources.tool_formats
 import memix.feature.photo_editor.generated.resources.tool_hide_layer
+import memix.feature.photo_editor.generated.resources.a11y_format_set
+import memix.feature.photo_editor.generated.resources.edit_format
+import memix.feature.photo_editor.generated.resources.panels_photo_dropped
 import memix.feature.photo_editor.generated.resources.tool_layer_opacity
 import memix.feature.photo_editor.generated.resources.tool_layers
 import memix.feature.photo_editor.generated.resources.tool_lock
@@ -321,7 +325,7 @@ private fun ToolBarRegion(state: PhotoEditorUiState, entryField: TextFieldState,
         Crossfade(state.selectedLayerId != null, animationSpec = tween(MemixMotion.durationPress), label = "tool bar") { hasSelection ->
             val layer = if (hasSelection) state.selectedLayer ?: lastLayer[0] else null
             if (layer == null) {
-                ToolBar(persistentListOf(textTool(onIntent), addPhotoTool(onIntent), layersTool(onIntent)))
+                ToolBar(persistentListOf(formatsTool(onIntent), textTool(onIntent), addPhotoTool(onIntent), layersTool(onIntent)))
             } else {
                 val closeLabel = stringResource(Res.string.layer_tools_close)
                 ToolBar(
@@ -333,6 +337,11 @@ private fun ToolBarRegion(state: PhotoEditorUiState, entryField: TextFieldState,
         }
     }
 }
+
+// Opens the Formats panel; first on the main bar so it is found without scrolling (spec P2-02 → Main bar).
+@Composable
+private fun formatsTool(onIntent: (PhotoEditorIntent) -> Unit) =
+    ToolBarItem(stringResource(Res.string.tool_formats), MemixIcons.Formats, { onIntent(PhotoEditorIntent.OpenPanel(PhotoPanel.FORMATS)) })
 
 // Typing a new text, no menu (spec P2-03 → The Text tool); first on the main bar, before Add photo and Layers.
 @Composable
@@ -441,11 +450,11 @@ private fun ToastTimer(toast: PhotoToast, onTimedOut: (id: Long) -> Unit) {
     val accessibilityManager = LocalAccessibilityManager.current
     LaunchedEffect(toast.id) {
         val baseMillis = when (toast.message) {
-            is PhotoToastMessage.Explain, PhotoToastMessage.MissingMedia, PhotoToastMessage.LayersMoved, is PhotoToastMessage.BackgroundMissing -> EXPLANATION_TOAST_MILLIS
+            is PhotoToastMessage.Explain, PhotoToastMessage.MissingMedia, PhotoToastMessage.LayersMoved, PhotoToastMessage.PanelPhotosDropped, is PhotoToastMessage.BackgroundMissing -> EXPLANATION_TOAST_MILLIS
             is PhotoToastMessage.Undone, is PhotoToastMessage.Redone, is PhotoToastMessage.Edited, is PhotoToastMessage.LayerOrder,
             is PhotoToastMessage.PositionTransformed, is PhotoToastMessage.PositionMoved, is PhotoToastMessage.OpacityChanged,
             is PhotoToastMessage.RatioStepped, PhotoToastMessage.BackgroundImageSet, PhotoToastMessage.BackgroundImageRemoved,
-            PhotoToastMessage.LayerAdded, PhotoToastMessage.TextAdded,
+            PhotoToastMessage.LayerAdded, PhotoToastMessage.TextAdded, is PhotoToastMessage.FormatSet,
             -> WHAT_HAPPENED_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
@@ -480,6 +489,8 @@ private fun toastText(message: PhotoToastMessage): String = when (message) {
     PhotoToastMessage.BackgroundImageRemoved -> stringResource(UiRes.string.a11y_canvas_image_removed)
     PhotoToastMessage.LayerAdded -> stringResource(Res.string.a11y_layer_added)
     PhotoToastMessage.TextAdded -> stringResource(Res.string.a11y_layer_text_added)
+    is PhotoToastMessage.FormatSet -> stringResource(Res.string.a11y_format_set, formatName(message.choice))
+    PhotoToastMessage.PanelPhotosDropped -> stringResource(Res.string.panels_photo_dropped)
 }
 
 @Composable
@@ -502,6 +513,9 @@ private fun editName(edit: PhotoEdit): String = stringResource(
         PhotoEdit.TEXT_FONT -> UiRes.string.edit_text_font
         PhotoEdit.TEXT_COLOR -> UiRes.string.edit_text_color
         PhotoEdit.TEXT_OUTLINE -> UiRes.string.edit_text_outline
+        PhotoEdit.FORMAT_PLAIN, PhotoEdit.FORMAT_CLASSIC, PhotoEdit.FORMAT_CAPTION_BAR, PhotoEdit.FORMAT_PANELS,
+        PhotoEdit.FORMAT_DEMOTIVATIONAL, PhotoEdit.FORMAT_BUBBLES,
+        -> Res.string.edit_format
     },
 )
 

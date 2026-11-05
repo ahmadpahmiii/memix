@@ -8,10 +8,13 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.IntSize
+import app.memix.core.model.project.BubbleLayer
+import app.memix.core.model.project.BubblePoint
 import app.memix.core.model.project.Canvas
 import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.Layer
+import app.memix.core.model.project.PhotoFormat
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.StickerLayer
 import app.memix.core.model.project.TextLayer
@@ -28,23 +31,37 @@ interface SceneLive {
     fun transformOf(layerId: String): Transform?
 
     fun opacityOf(layerId: String): Float?
+
+    /** The format as a finger or a held arrow has it now (a divider, a cell's view, a bubble's tail), or null for the project's own. */
+    fun formatOf(): PhotoFormat? = null
+
+    /** A bubble's tail tip as the finger has it now, or null for the project's own. */
+    fun tailOf(layerId: String): BubblePoint? = null
 }
 
 /**
  * THE one function that draws a photo scene, at any pixel size: the editor at screen size, the render hook and (P2-08)
  * export at theirs, so preview and export can't disagree. The scene fills this [DrawScope]'s whole size, with [canvas]'s
  * shape; layers draw bottom to top, hidden ones skipped, each with its opacity and transform, clipped at the canvas edge.
- * A layer whose picture isn't ready or whose file is missing isn't drawn. A text layer is drawn by [captions] (the video's caption
+ * The format's parts (a bar, a poster and frame, panels' cells) are drawn after the background and under the layers (spec P2-02 → How a format works); [format] is the scene's. A layer whose picture isn't ready or whose file is missing isn't drawn. A bubble is one path, then its words. A text layer is drawn by [captions] (the video's caption
  * renderer, laid out once in canvas pixels), a sticker like an image layer at its own size at scale 1 (35% of the shorter side). A background picture (P2-12) is drawn first, to
  * cover the canvas; while it isn't ready or when its file is missing the canvas is black.
  */
-fun DrawScope.drawPhotoScene(canvas: Canvas, layers: List<Layer>, images: SceneImages, live: SceneLive? = null, captions: SceneCaptions = NoSceneCaptions) {
+fun DrawScope.drawPhotoScene(
+    canvas: Canvas,
+    layers: List<Layer>,
+    images: SceneImages,
+    live: SceneLive? = null,
+    captions: SceneCaptions = NoSceneCaptions,
+    format: PhotoFormat? = null,
+) {
     val canvasSize = PixelSize(canvas.widthPx, canvas.heightPx)
     val pixelScale = size.width / canvas.widthPx
     clipRect(0f, 0f, size.width, size.height) {
         drawRect(backgroundOf(canvas))
         withTransform({ scale(pixelScale, pixelScale, Offset.Zero) }) {
             (canvas.background as? CanvasBackground.Image)?.let { drawBackgroundImage(it, canvasSize, images) }
+            drawFormatParts(live?.formatOf() ?: format, canvasSize, images)
             for (layer in layers) {
                 if (layer.hidden) continue
                 val transform = live?.transformOf(layer.id) ?: layer.transform
@@ -53,6 +70,7 @@ fun DrawScope.drawPhotoScene(canvas: Canvas, layers: List<Layer>, images: SceneI
                     is ImageLayer -> drawImageLayer(layer, transform, opacity, canvasSize, images)
                     is TextLayer -> captions.draw(this, layer.text, layer.style, transform, opacity, canvasSize.widthPx, canvasSize.heightPx)
                     is StickerLayer -> drawStickerLayer(layer, transform, opacity, canvasSize, images)
+                    is BubbleLayer -> drawBubbleLayer(layer, transform, opacity, live?.tailOf(layer.id), canvasSize, captions)
                 }
             }
         }

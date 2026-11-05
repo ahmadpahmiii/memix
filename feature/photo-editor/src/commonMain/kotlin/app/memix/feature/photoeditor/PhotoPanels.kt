@@ -38,6 +38,8 @@ import memix.feature.photo_editor.generated.resources.Res
 import memix.feature.photo_editor.generated.resources.layers_locked_opacity
 import memix.feature.photo_editor.generated.resources.layers_opacity
 import memix.feature.photo_editor.generated.resources.photo_background_hidden
+import memix.feature.photo_editor.generated.resources.canvas_background_format
+import app.memix.core.model.project.DemotivationalFormat
 import memix.feature.photo_editor.generated.resources.tool_unlock
 import org.jetbrains.compose.resources.stringResource
 
@@ -74,6 +76,7 @@ internal fun PhotoPanels(state: PhotoEditorUiState, live: PhotoLive, thumbnails:
     }
     // The shared Style panel (P1-10), as tall as its content up to 40% of the window (spec P2-03 → Style panel).
     StylePanel(state.panel == PhotoPanel.STYLE && layer != null, layer?.style, styleActions, modifier, contentMaxHeight = maxHeight)
+    FormatsPanel(state, maxHeight, onIntent, modifier)
     val canvas = state.canvas
     val canvasPanel = state.canvasPanel
     ToolPanel(state.panel == PhotoPanel.CANVAS && canvas != null && canvasPanel != null, stringResource(UiRes.string.canvas_title), done, close, modifier, contentMaxHeight = maxHeight) {
@@ -84,7 +87,7 @@ internal fun PhotoPanels(state: PhotoEditorUiState, live: PhotoLive, thumbnails:
                 onHeld = { step, repeats -> onIntent(PhotoEditorIntent.CanvasStepHeld(step, repeats)) },
                 onStepped = { step, repeats -> onIntent(PhotoEditorIntent.CanvasStepped(step, repeats)) },
             )
-            BackgroundRow(canvas.background.toUi(state.backgroundMissing), state.backgroundShows, thumbnails, onIntent)
+            BackgroundRow(canvas.background.toUi(state.backgroundMissing), state.backgroundShows, state.format is DemotivationalFormat, thumbnails, onIntent)
         }
     }
 }
@@ -128,8 +131,12 @@ private fun LockedOpacityMessage(onUnlock: () -> Unit) {
 // Image first (no Blur in a photo), then the caption palette; the line under them explains why the background shows nothing
 // when a photo covers the whole frame (spec P2-12 → Layout).
 @Composable
-private fun BackgroundRow(background: BackgroundUi, backgroundShows: Boolean, thumbnails: SceneThumbnails, onIntent: (PhotoEditorIntent) -> Unit) {
-    val hint = if (backgroundShows) null else stringResource(Res.string.photo_background_hidden)
+private fun BackgroundRow(background: BackgroundUi, backgroundShows: Boolean, posterHidesIt: Boolean, thumbnails: SceneThumbnails, onIntent: (PhotoEditorIntent) -> Unit) {
+    val hint = when {
+        posterHidesIt -> stringResource(Res.string.canvas_background_format)
+        backgroundShows -> null
+        else -> stringResource(Res.string.photo_background_hidden)
+    }
     val actions = remember(onIntent) {
         object : BackgroundActions {
             override fun onBlur() = Unit

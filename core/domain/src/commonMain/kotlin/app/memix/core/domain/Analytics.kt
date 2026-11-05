@@ -161,6 +161,29 @@ enum class EditorTool(val eventValue: String?) {
 
     /** P2-13: a photo landed as a new top layer, once per pick. */
     ADD_PHOTO("add_photo"),
+
+    /**
+     * P2-02: meme formats (PM, 29 Oct 2026): one id per format, none with a parameter; `format_plain` is going back to plain.
+     * `add_bubble` sends no `font` (a bubble's font change is `text_font`).
+     */
+    FORMAT_PLAIN("format_plain"),
+    FORMAT_CLASSIC("format_classic"),
+    FORMAT_CAPTION_BAR("format_caption_bar"),
+    FORMAT_PANELS("format_panels"),
+    FORMAT_DEMOTIVATIONAL("format_demotivational"),
+    FORMAT_BUBBLES("format_bubbles"),
+    PANELS_LAYOUT("panels_layout"),
+    PANELS_DIVIDER("panels_divider"),
+    ADD_CELL_PHOTO("add_cell_photo"),
+    REMOVE_CELL_PHOTO("remove_cell_photo"),
+
+    /** A Panels cell's pan or zoom: P2-01's ids (PM), but their own entries so the undo history says "Panel photo". */
+    CELL_TRANSFORM("transform_layer"),
+    CELL_POSITION("position_layer"),
+    ADD_BUBBLE("add_bubble"),
+    BUBBLE_SHAPE("bubble_shape"),
+    BUBBLE_FILL("bubble_fill"),
+    BUBBLE_TAIL("bubble_tail"),
 }
 
 /** `sound_add.tab` and `sound_preview.tab`: where in the sounds UI it happened. "starter" until P3-05 (PM, 8 Oct 2026). */

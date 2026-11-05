@@ -11,6 +11,8 @@ import app.memix.core.domain.project.CaptionBlockMeasure
 import app.memix.core.domain.project.TEXT_SIZE_LADDER
 import app.memix.core.domain.project.addTextLayer
 import app.memix.core.domain.project.editTextLayer
+import app.memix.core.domain.project.nextTextSlot
+import app.memix.core.domain.project.setPhotoFormat
 import app.memix.core.domain.project.photoTextLandingCenterY
 import app.memix.core.domain.project.setTextLayerStyle
 import app.memix.core.domain.project.CreatePhotoProjectUseCase
@@ -47,6 +49,10 @@ import app.memix.core.model.project.CanvasCatalog
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.CaptionCatalog
 import app.memix.core.model.project.CaptionStyle
+import app.memix.core.model.project.FormatSlot
+import app.memix.core.model.project.emptySlots
+import app.memix.core.model.project.mainPhoto
+import app.memix.core.model.project.pictureArea
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.MediaRef
@@ -120,8 +126,8 @@ class PhotoEditorViewModel(
     private var nextToastId = 0L
 
     // Typing (spec P2-03 → Typing): the words in the field now, and the last style used in this visit (a new text takes it).
-    private val captionMeasure = CaptionBlockMeasure { text, style, width, height ->
-        measureCaption(text, style, width, height)
+    private val captionMeasure = CaptionBlockMeasure { text, style, width, height, look ->
+        measureCaption(text, style, width, height, look)
     }
     private var nextEntrySerial = 0L
     private var entryText = ""
@@ -190,6 +196,8 @@ class PhotoEditorViewModel(
             // Inert while typing: the canvas mustn't change under the keyboard (spec P2-03 → Typing).
             PhotoEditorIntent.RatioPill -> if (state.value.textEntry == null) toggleCanvasPanel()
             PhotoEditorIntent.AddText -> startNewText()
+            is PhotoEditorIntent.SetFormat -> setFormat(intent.choice)
+            is PhotoEditorIntent.TapSlot -> startNewText(intent.slot)
             PhotoEditorIntent.EditText -> editSelectedText()
             is PhotoEditorIntent.TextEntryChanged -> entryText = intent.text
             PhotoEditorIntent.TextEntryDone -> commitEntry()
@@ -232,16 +240,19 @@ class PhotoEditorViewModel(
     private fun showProject(project: Project) {
         shownProject = project
         val canvasSize = project.canvas.size()
-        val layers = project.layers().map { it.toUi(canvasSize, measureCaption::invoke) }.toImmutableList()
+        val layers = project.layers().map { it.toUi(canvasSize) { text, style, w, h, look -> measureCaption(text, style, w, h, look) } }.toImmutableList()
         val ids = layers.map { it.id }.toSet()
         updateState { state ->
             // The selection outlives edits, undo and redo while its layer exists; a panel about a layer goes with it.
             val selected = state.selectedLayerId?.takeIf { it in ids }
             val panel = state.panel?.takeUnless { it.needsSelection && selected == null }
             state.copy(
-                scene = SceneUi(project.canvas, project.layers().toImmutableList()),
+                scene = SceneUi(project.canvas, project.layers().toImmutableList(), project.photo?.format),
                 layers = layers,
                 hadLayers = state.hadLayers || layers.isNotEmpty(),
+                format = project.photo?.format,
+                emptySlots = project.photo?.format.emptySlots(canvasSize, project.layers()).toImmutableList(),
+                formatHintRoom = photoLeavesRoom(project),
                 backgroundShows = project.photoBackgroundShows(),
                 backgroundMissing = project.backgroundImage()?.cachedCopyPath?.let { it == missingBackgroundPath } == true,
                 selectedLayerId = selected,
@@ -362,13 +373,23 @@ class PhotoEditorViewModel(
 
     // Text (spec P2-03) ---------------------------------------------------------------------------------------------
 
-    /** The Text tool: typing a new text, in the last style, at the first free slot (top, bottom, middle). */
-    private fun startNewText() {
+    /**
+     * The Text tool: typing a new text. While a format with text slots is active it goes in [slot], or the format's first empty
+     * text slot, with the slot's style and size (Classic's slots keep the last style used); otherwise in the last style at the
+     * first free landing slot (top, bottom, middle).
+     */
+    private fun startNewText(slot: FormatSlot? = null) {
         val project = currentProject() ?: return
         if (state.value.textEntry != null) return
-        val transform = Transform(centerX = 0.5f, centerY = project.photoTextLandingCenterY())
+        val inSlot = slot ?: project.nextTextSlot()
+        val transform = if (inSlot != null) Transform(inSlot.centerX, inSlot.centerY, inSlot.scale) else Transform(centerX = 0.5f, centerY = project.photoTextLandingCenterY())
         entryText = ""
-        updateState { it.copy(textEntry = TextEntryUi(nextEntrySerial++, itemId = null, initialText = "", lastStyle, transform), panel = null, canvasPanel = null) }
+        updateState {
+            it.copy(
+                textEntry = TextEntryUi(nextEntrySerial++, itemId = null, initialText = "", inSlot?.style ?: lastStyle, transform),
+                panel = null, canvasPanel = null,
+            )
+        }
     }
 
     /** Edit text on the bar, or a tap on the selected text: typing its words. A locked text explains instead. */
@@ -388,13 +409,13 @@ class PhotoEditorViewModel(
         updateState { it.copy(textEntry = null) }
         val text = entryText
         val layerId = entry.itemId
-        if (layerId == null) addNewText(text, entry.style) else commitTextEdit(layerId, text)
+        if (layerId == null) addNewText(text, entry.style, entry.transform) else commitTextEdit(layerId, text)
     }
 
-    private fun addNewText(text: String, style: CaptionStyle) {
+    private fun addNewText(text: String, style: CaptionStyle, transform: Transform) {
         if (text.isBlank()) return
         val newId = Uuid.random().toString()
-        if (!commit(PhotoEdit.ADD_TEXT, font = style.fontId) { it.addTextLayer(text, style, newId) }) return
+        if (!commit(PhotoEdit.ADD_TEXT, font = style.fontId) { it.addTextLayer(text, style, newId, transform) }) return
         select(newId)
         showToast(PhotoToastMessage.TextAdded, spokenOnly = true)
     }
@@ -419,6 +440,29 @@ class PhotoEditorViewModel(
         lastStyle = style
         if (style == current) return
         editLayer(edit, font = font) { it.setTextLayerStyle(layer.id, style) }
+    }
+
+    // Meme formats (spec P2-02) ------------------------------------------------------------------------------------
+
+    /** A tile: one "Format" step that places the main photo and keeps every layer; the active tile does nothing, records nothing. */
+    private fun setFormat(choice: FormatChoice) {
+        val project = currentProject() ?: return
+        if (choice == project.photo?.format.toChoice()) return
+        val change = project.setPhotoFormat(choice.toFormat(), Uuid.random().toString())
+        if (!commit(choice.edit) { change.project }) return
+        updateState { it.copy(selectedLayerId = null) }
+        // The toast says photos left the meme (visible); otherwise the new format is only spoken.
+        showToast(if (change.droppedPhotos) PhotoToastMessage.PanelPhotosDropped else PhotoToastMessage.FormatSet(choice), spokenOnly = !change.droppedPhotos)
+    }
+
+    // Caption bar and Demotivational: the photo is placed whole in the picture area; when it doesn't reach the area's sides the
+    // canvas background shows beside it, and the panel says a taller canvas gives it more room.
+    private fun photoLeavesRoom(project: Project): Boolean {
+        val area = project.photo?.format.pictureArea(project.canvas.size()) ?: return false
+        val photo = project.layers().mainPhoto()?.source?.pixelSize ?: return false
+        if (photo.widthPx <= 0 || photo.heightPx <= 0) return false
+        val placedWidth = photo.widthPx * minOf(area.width / photo.widthPx, area.height / photo.heightPx)
+        return placedWidth < area.width * (1f - PhotoCatalog.PRESET_TOLERANCE)
     }
 
     // Panels and the canvas ---------------------------------------------------------------------------------------

@@ -93,6 +93,7 @@ import memix.core.ui.generated.resources.tool_duplicate
 import memix.core.ui.generated.resources.tool_position
 import memix.feature.photo_editor.generated.resources.Res
 import memix.feature.photo_editor.generated.resources.a11y_layer_hidden
+import memix.feature.photo_editor.generated.resources.a11y_bubble_on_canvas
 import memix.feature.photo_editor.generated.resources.a11y_layer_locked
 import memix.feature.photo_editor.generated.resources.a11y_layer_missing
 import memix.feature.photo_editor.generated.resources.a11y_layer_opacity
@@ -175,6 +176,8 @@ internal fun PhotoStage(
     modifier: Modifier = Modifier,
 ) {
     val canvasPanelOpen = state.panel == PhotoPanel.CANVAS
+    // Canvas touches do nothing while the Canvas or Formats panel is open (spec P2-02 → Formats panel).
+    val panelHoldsCanvas = canvasPanelOpen || state.panel == PhotoPanel.FORMATS
     val entry = state.textEntry
     BoxWithConstraints(modifier.clipToBounds().background(MemixColors.stage).semantics { isTraversalGroup = true }) {
         val density = LocalDensity.current
@@ -192,15 +195,16 @@ internal fun PhotoStage(
                 bitmaps.ensure(needed) { failed -> currentOnIntent(PhotoEditorIntent.MediaMissing(failed)) }
             }
             SceneLayer(scene, bitmaps, captions, stage, live, entry, entryField)
-            GestureLayer(state, stage, live, enabled = !canvasPanelOpen && entry == null, onIntent)
+            GestureLayer(state, stage, live, enabled = !panelHoldsCanvas && entry == null, onIntent)
             FrameEdge({ stage.frame }, visible = canvasPanelOpen || stage.gesture != null)
             if (entry != null) {
                 TypingFrame(entry, entryField, state.captionMeasure, scene, stage)
             } else {
-                SelectionOverlay(state, scene, stage, canvasPanelOpen)
-                LayerNodes(state, scene, stage, onIntent, interactive = !canvasPanelOpen)
+                SelectionOverlay(state, scene, stage, panelHoldsCanvas)
+                LayerNodes(state, scene, stage, onIntent, interactive = !panelHoldsCanvas)
+                SlotHints(state, scene, stage, onIntent)
             }
-            if (state.isEmpty && !canvasPanelOpen && entry == null) EmptyCanvasCard(hasHistory = state.emptiedByUser, Modifier.align(Alignment.Center))
+            if (state.showsEmptyCard && !canvasPanelOpen && entry == null) EmptyCanvasCard(hasHistory = state.emptiedByUser, Modifier.align(Alignment.Center))
         }
     }
 }
@@ -235,7 +239,7 @@ private fun BoxScope.SceneLayer(scene: SceneUi, bitmaps: SceneBitmaps, captions:
             // A text being typed draws live from the field, over the stack or in the place of the layer it edits.
             val layers = if (entry == null) scene.layers else typingLayers(scene.layers, entry, entryField.text.toString())
             inset(frame.left, frame.top, size.width - frame.left - frame.width, size.height - frame.top - frame.height) {
-                drawPhotoScene(scene.canvas, layers, bitmaps, live, captions)
+                drawPhotoScene(scene.canvas, layers, bitmaps, live, captions, scene.format)
             }
         },
     )
@@ -494,6 +498,7 @@ internal fun spokenKindName(layer: SceneLayerUi, allWords: Boolean): String = wh
     LayerKind.IMAGE -> stringResource(Res.string.layer_name_photo)
     LayerKind.STICKER -> stringResource(Res.string.layer_name_sticker)
     LayerKind.TEXT -> stringResource(UiRes.string.a11y_text_on_canvas, if (allWords) layer.text.orEmpty() else firstLineOf(layer.text.orEmpty()))
+    LayerKind.BUBBLE -> stringResource(Res.string.a11y_bubble_on_canvas, if (allWords) layer.text.orEmpty() else firstLineOf(layer.text.orEmpty()))
 }
 
 /** A row's visible name: "Photo", "Sticker", or a text's first non-blank line as typed, in the interface font. */
@@ -501,7 +506,7 @@ internal fun spokenKindName(layer: SceneLayerUi, allWords: Boolean): String = wh
 internal fun rowName(layer: SceneLayerUi): String = when (layer.kind) {
     LayerKind.IMAGE -> stringResource(Res.string.layer_name_photo)
     LayerKind.STICKER -> stringResource(Res.string.layer_name_sticker)
-    LayerKind.TEXT -> firstLineOf(layer.text.orEmpty())
+    LayerKind.TEXT, LayerKind.BUBBLE -> firstLineOf(layer.text.orEmpty())
 }
 
 private fun firstLineOf(text: String): String = text.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()

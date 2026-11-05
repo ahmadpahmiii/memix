@@ -26,4 +26,7 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     // 3 → 4 (P2-12): CanvasBackground gained the "image" subtype. A new subtype leaves every saved "color" and "blur"
     // background as it was, so version-3 JSON decodes as it is and the step only moves the version on.
     ProjectMigration(fromVersion = 3) { json -> json },
+    // 4 → 5 (P2-02): PhotoScene gained the nullable "format" (null is plain) and Layer the "bubble_layer" subtype. Version-4 JSON
+    // has no "format", which decodes as null, and no bubble, so it decodes as it is and opens plain, looking as saved.
+    ProjectMigration(fromVersion = 4) { json -> json },
 )

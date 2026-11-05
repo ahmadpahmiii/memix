@@ -3,6 +3,8 @@ package app.memix.core.domain.project
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaRef
+import app.memix.core.model.project.PanelsFormat
+import app.memix.core.model.project.photos
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.ProjectType
 import app.memix.core.model.project.TrackKind
@@ -28,13 +30,17 @@ class DraftCover(val source: MediaRef, val atUs: Long)
 
 /**
  * The picture a draft's thumbnail shows (P1-14, P2-01): a video's first main clip at its trim-in; a photo's lowest image
- * layer, whatever its place, opacity or visibility (no scene is rendered for it). Null when there is none.
+ * layer, whatever its place, opacity or visibility (no scene is rendered for it), else the first photo of a Panels meme's cells.
+ * Null when there is none.
  */
 fun Project.cover(): DraftCover? {
     val clip = mainVideoClips().minByOrNull { it.startUs }
     if (clip != null) return DraftCover(clip.source, clip.trimInUs)
-    val image = photo?.layers.orEmpty().firstOrNull { it is ImageLayer } as? ImageLayer ?: return null
-    return DraftCover(image.source, atUs = 0L)
+    val image = photo?.layers.orEmpty().firstOrNull { it is ImageLayer } as? ImageLayer
+    if (image != null) return DraftCover(image.source, atUs = 0L)
+    // A Panels meme with no photo layer: its first cell's photo (spec P2-02).
+    val cellPhoto = (photo?.format as? PanelsFormat)?.photos()?.firstOrNull()?.value ?: return null
+    return DraftCover(cellPhoto, atUs = 0L)
 }
 
 private fun Project.mainVideoClips(): List<MediaClip> =
