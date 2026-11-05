@@ -14,7 +14,7 @@ Siblings: `P2-12-canvas-background-image.md` (a picture behind the layers, both 
 
 **Done when** (TICKETS): a 10-layer scene stays smooth while dragging; LeakCanary shows no leaks. The PM's method is in `docs/pm/acceptance-log.md` (P2-01 ready check). Measured items are at the end of this file.
 
-**The one blue action:** none in P2-01. The board's blue **Save** stays out until P2-08 builds photo export, the same rule as P1-04, which left Export empty until P1-12: a control that does nothing is a dead control (P0-05 rule). P2-08 puts the button in the top bar's end slot and names it (a note for that spec: the video editor says "Export"; one word for both editors is the better default). The board's **Make it a video meme** pill waits for P2-10.
+**The one blue action:** none in P2-01. The board's blue **Save** stays out until P2-08 builds photo export, the same rule as P1-04, which left Export empty until P1-12: a control that does nothing is a dead control (P0-05 rule). P2-08 puts the button in the top bar's end slot and names it (a note for that spec: the video editor says "Export"; one word for both editors is the better default). The board's **Make it a video meme** pill waits for P2-10, which makes it a Secondary Button in its own 56 dp row under the stage (`P2-10-make-it-a-video-meme.md` → Layout; the stage gives up 56 dp).
 
 **Fast path, with tap counts:**
 - **Photo meme from the gallery:** Home or Create → Photo meme (1) → a photo in the picker (2) → the editor, photo already on the canvas. Same three steps as the video editor.
@@ -82,7 +82,7 @@ Board: `design/screens/PhotoEditor.dc.html` (390 × 844). The regions, top to bo
 
 ### Top bar
 `canvas`, no divider, as P1-04. **Start:** Close (`MemixIcons.Close`, 48 dp target; spoken "Close editor"). **Center:** the ratio pill (SettingPill, `P1-11-canvas.md`; label the current ratio in lowest terms, "4:3"; open look while the Canvas panel is open). **End:** Undo, Redo (IconButtons, 48 dp, `text`, disabled `text-muted` with a spoken "disabled", exactly as P1-04 → Undo and redo). P2-08's button joins them at the end.
-- **Collision rule (P1-12's lesson):** the bar is a custom layout. Close and the end group are measured first and never shrink; the pill is centered on the screen but clamped between them with `space-2` to spare. At 200% font the pill is the only part that grows, and 360 dp leaves room (Close 48, pill about 120, Undo and Redo 96). **P2-08 must re-check this at 200% in es and pt when it adds its button**; if the pill no longer fits, it moves under the bar, not under the button.
+- **Collision rule (P1-12's lesson):** the bar is a custom layout. Close and the end group are measured first and never shrink; the pill is centered on the screen but clamped between them with `space-2` to spare. At 200% font the pill is the only part that grows, and 360 dp leaves room (Close 48, pill about 120, Undo and Redo 96). **P2-08 must re-check this at 200% in es and pt when it adds its button**; if the pill no longer fits, it moves under the bar, not under the button. **Settled in `P2-08-photo-export.md` → Export button:** the ratio pill, Undo and Redo move together to a second 48 dp row, Close and Export stay in row 1; the button is the primary "Export" (`editor_export`).
 
 ### Stage and canvas frame
 - **Stage:** `stage` black, from under the top bar to the top of the tool bar or panel.
