@@ -12,6 +12,7 @@ import app.memix.core.model.project.BubbleLayer
 import app.memix.core.model.project.BubblePoint
 import app.memix.core.model.project.Canvas
 import app.memix.core.model.project.CanvasBackground
+import app.memix.core.model.project.ImageEdit
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.Layer
 import app.memix.core.model.project.PhotoFormat
@@ -20,6 +21,10 @@ import app.memix.core.model.project.StickerLayer
 import app.memix.core.model.project.TextLayer
 import app.memix.core.model.project.Transform
 import app.memix.core.model.project.coveredImageSize
+import app.memix.core.model.project.editOrNull
+import app.memix.core.model.project.shownSize
+import app.memix.core.model.project.straightenScale
+import app.memix.core.model.project.turnedSize
 import app.memix.core.model.project.fittedImageSize
 import app.memix.core.model.project.stickerSizeAtScaleOne
 
@@ -115,14 +120,69 @@ private fun DrawScope.drawStickerLayer(layer: StickerLayer, transform: Transform
     drawPicture(image, size.width * transform.scale, size.height * transform.scale, transform, opacity * images.appearanceOf(path), canvasSize)
 }
 
-// Placed in canvas pixels: the picture's fitted size at scale 1, times the layer's scale, turned about its center.
+// Placed in canvas pixels: the picture (turned and cropped by its edit) fitted inside the canvas at scale 1, times the layer's scale,
+// turned about its center. The whole picture is drawn under a clip at the crop's edges (spec P2-04 → How it draws).
 private fun DrawScope.drawImageLayer(layer: ImageLayer, transform: Transform, opacity: Float, canvasSize: PixelSize, images: SceneImages) {
     val path = layer.source.cachedCopyPath ?: return
     val picture = images.imageOf(path) ?: return
     val shown = layer.source.pixelSize ?: picture.sourceSize
-    val fitted = fittedImageSize(shown, canvasSize)
-    drawPicture(picture.image, fitted.width * transform.scale, fitted.height * transform.scale, transform, opacity * images.appearanceOf(path), canvasSize)
+    val alpha = opacity * images.appearanceOf(path)
+    val edit = layer.editOrNull()
+    if (edit == null || !edit.changesGeometry) {
+        val fitted = fittedImageSize(shown, canvasSize)
+        drawPicture(picture.image, fitted.width * transform.scale, fitted.height * transform.scale, transform, alpha, canvasSize)
+        return
+    }
+    drawEditedPicture(picture.image, shown, edit, transform, alpha, canvasSize)
 }
+
+// The layer's picture: centered at the transform's center and turned about it, filling a box of the cropped shape.
+private fun DrawScope.drawEditedPicture(image: ImageBitmap, source: PixelSize, edit: ImageEdit, transform: Transform, alpha: Float, canvasSize: PixelSize) {
+    val fitted = fittedImageSize(edit.shownSize(source), canvasSize)
+    withTransform({
+        translate(transform.centerX * canvasSize.widthPx, transform.centerY * canvasSize.heightPx)
+        rotate(transform.rotationDegrees, Offset.Zero)
+    }) {
+        drawPictureWithEdit(image, source, edit, fitted.width * transform.scale, fitted.height * transform.scale, alpha)
+    }
+}
+
+/**
+ * [image] (the whole picture, [source] pixels as shown) with [edit]'s turn, mirrors, straighten and crop, filling a box
+ * [boxWidth] × [boxHeight] centered on the origin of this scope: the part inside the crop fills the box and the rest is
+ * clipped away. The scene's image layers and the Crop screen (which draws with a full crop) both use it, so the picture the
+ * user shapes is the picture the scene draws. Order of the picture's transforms: quarter turns, mirrors, straighten (scaled up
+ * to keep covering the frame), crop (spec P2-04 → How it draws).
+ */
+fun DrawScope.drawPictureWithEdit(image: ImageBitmap, source: PixelSize, edit: ImageEdit, boxWidth: Float, boxHeight: Float, alpha: Float = 1f) {
+    val turned = edit.turnedSize(source)
+    // Canvas pixels per source pixel.
+    val unit = boxWidth / (turned.widthPx * edit.crop.width)
+    val frameWidth = turned.widthPx * unit
+    val frameHeight = turned.heightPx * unit
+    val straightenZoom = if (edit.straighten != 0f) straightenScale(edit.straighten, turned.widthPx.toFloat() / turned.heightPx) else 1f
+    clipRect(-boxWidth / 2f, -boxHeight / 2f, boxWidth / 2f, boxHeight / 2f) {
+        withTransform({
+            translate(-((edit.crop.left + edit.crop.right) / 2f - 0.5f) * frameWidth, -((edit.crop.top + edit.crop.bottom) / 2f - 0.5f) * frameHeight)
+            rotate(edit.straighten, Offset.Zero)
+            scale(straightenZoom, straightenZoom, Offset.Zero)
+            scale(if (edit.flipH) -1f else 1f, if (edit.flipV) -1f else 1f, Offset.Zero)
+            rotate(edit.quarterTurns * QUARTER_TURN_DEGREES, Offset.Zero)
+            scale(unit * source.widthPx / image.width, unit * source.heightPx / image.height, Offset.Zero)
+            translate(-image.width / 2f, -image.height / 2f)
+        }) {
+            drawImage(
+                image,
+                srcSize = IntSize(image.width, image.height),
+                dstSize = IntSize(image.width, image.height),
+                alpha = alpha,
+                filterQuality = FilterQuality.Medium,
+            )
+        }
+    }
+}
+
+private const val QUARTER_TURN_DEGREES = 90f
 
 // [image] drawn [width] × [height] canvas pixels big, centered at the transform's center and turned about it.
 private fun DrawScope.drawPicture(image: ImageBitmap, width: Float, height: Float, transform: Transform, alpha: Float, canvasSize: PixelSize) {

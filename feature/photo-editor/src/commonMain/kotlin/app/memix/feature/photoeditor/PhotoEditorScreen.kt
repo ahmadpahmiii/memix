@@ -1,6 +1,14 @@
 package app.memix.feature.photoeditor
 
 import androidx.compose.animation.Crossfade
+import app.memix.core.ui.crop.CropScreen
+import app.memix.core.model.project.ImageEdit
+import app.memix.core.designsystem.MemixTheme
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -86,6 +94,8 @@ import memix.core.ui.generated.resources.edit_text_font
 import memix.core.ui.generated.resources.edit_text_outline
 import memix.core.ui.generated.resources.edit_text_shadow
 import memix.core.ui.generated.resources.edit_text_box
+import memix.core.ui.generated.resources.edit_crop
+import memix.core.ui.generated.resources.tool_crop
 import memix.core.ui.generated.resources.tool_edit_text
 import memix.core.ui.generated.resources.tool_style
 import memix.core.ui.generated.resources.tool_text
@@ -190,7 +200,7 @@ fun PhotoEditorScreen(
     // itself while something inside it comes first (a panel, the selection) or while saving fails, to ask first.
     NavigationBackHandler(
         rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled = !state.unsavedSheetOpen && (state.textEntry != null || state.panel != null || state.selectedLayerId != null || state.selectedCell != null || state.selectedDivider != null || state.isSaveFailing),
+        isBackEnabled = !state.unsavedSheetOpen && (state.cropLayerId != null || state.textEntry != null || state.panel != null || state.selectedLayerId != null || state.selectedCell != null || state.selectedDivider != null || state.isSaveFailing),
         onBackCompleted = { onIntent(PhotoEditorIntent.Back) },
     )
     LifecycleEventEffect(Lifecycle.Event.ON_START) { onIntent(PhotoEditorIntent.AppStarted) }
@@ -227,7 +237,8 @@ fun PhotoEditorScreen(
             // Escape does what system back does (spec → Interactions); an open sheet handles its own.
             .onPreviewKeyEvent { event ->
                 val goesBack = event.key == Key.Escape && !state.unsavedSheetOpen
-                if (goesBack && event.type == KeyEventType.KeyUp) onIntent(PhotoEditorIntent.Back)
+                // The Crop screen is a mode: Escape discards it (spec P2-04 → Interactions).
+                if (goesBack && event.type == KeyEventType.KeyUp) onIntent(if (state.cropLayerId != null) PhotoEditorIntent.CropClosed else PhotoEditorIntent.Back)
                 goesBack
             },
     ) {
@@ -260,6 +271,7 @@ fun PhotoEditorScreen(
                 onFreeUpSpace = onFreeUpSpace,
             )
         }
+        CropOverlay(state, bitmaps, onIntent)
         UnsavedChangesSheet(
             state.unsavedSheetOpen,
             onStay = { onIntent(PhotoEditorIntent.StayInEditor) },
@@ -351,7 +363,7 @@ private fun ToolBarRegion(state: PhotoEditorUiState, entryField: TextFieldState,
             } else if (layer == null) {
                 // The format's own tool sits right after Formats (spec P2-02 → Main bar).
                 val formatTool = formatSpecificTool(state.format, onIntent)
-                ToolBar(persistentListOf(*listOfNotNull(formatsTool(onIntent), formatTool, textTool(onIntent), addPhotoTool(onIntent), layersTool(onIntent)).toTypedArray()))
+                ToolBar(persistentListOf(*listOfNotNull(formatsTool(onIntent), formatTool, textTool(onIntent), addPhotoTool(onIntent), cropTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), layersTool(onIntent)).toTypedArray()))
             } else {
                 val closeLabel = stringResource(Res.string.layer_tools_close)
                 ToolBar(
@@ -390,6 +402,12 @@ private fun formatSpecificTool(format: app.memix.core.model.project.PhotoFormat?
 private fun textTool(onIntent: (PhotoEditorIntent) -> Unit) =
     ToolBarItem(stringResource(UiRes.string.tool_text), MemixIcons.Text, { onIntent(PhotoEditorIntent.AddText) })
 
+// Crop on the main bar exists only while the canvas has an image layer; a tap selects the main photo and opens the Crop screen
+// (spec P2-04 → Entry and exit). The final order has Edit photo and Crop after Draw; both join the bar as their tickets land.
+@Composable
+private fun cropTool(onIntent: (PhotoEditorIntent) -> Unit, hasImage: Boolean): ToolBarItem? =
+    if (hasImage) ToolBarItem(stringResource(UiRes.string.tool_crop), MemixIcons.Crop, { onIntent(PhotoEditorIntent.OpenCrop(null)) }) else null
+
 // Opens the picker for a new top layer (spec P2-13 → Entry and exit); in its final place just before Layers.
 @Composable
 private fun addPhotoTool(onIntent: (PhotoEditorIntent) -> Unit) =
@@ -426,6 +444,9 @@ private fun selectedLayerTools(layer: SceneLayerUi, missing: Boolean, onIntent: 
         if (layer.hidden) MemixIcons.EyeOff else MemixIcons.Eye,
         { onIntent(PhotoEditorIntent.SetHidden(layer.id, !layer.hidden)) },
     )
+    val crop = ToolBarItem(stringResource(UiRes.string.tool_crop), MemixIcons.Crop, {
+        if (layer.locked) onIntent(PhotoEditorIntent.LockedLayerTouched(layer.id)) else onIntent(PhotoEditorIntent.OpenCrop(layer.id))
+    })
     val layers = layersTool(onIntent)
     val isText = layer.kind == LayerKind.TEXT || layer.kind == LayerKind.BUBBLE
     // A text's own tools come first (spec P2-03 → Selected-text bar); while locked they only explain.
@@ -449,6 +470,7 @@ private fun selectedLayerTools(layer: SceneLayerUi, missing: Boolean, onIntent: 
             add(position)
             add(opacity)
             if (!missing) add(delete)
+            if (layer.kind == LayerKind.IMAGE) add(crop)
         }
         add(duplicate)
         if (!layer.locked) add(lock)
@@ -558,6 +580,7 @@ private fun editName(edit: PhotoEdit): String = stringResource(
         PhotoEdit.TEXT_OUTLINE -> UiRes.string.edit_text_outline
         PhotoEdit.TEXT_SHADOW -> UiRes.string.edit_text_shadow
         PhotoEdit.TEXT_BOX -> UiRes.string.edit_text_box
+        PhotoEdit.CROP -> UiRes.string.edit_crop
         PhotoEdit.FORMAT_PLAIN, PhotoEdit.FORMAT_CLASSIC, PhotoEdit.FORMAT_CAPTION_BAR, PhotoEdit.FORMAT_PANELS,
         PhotoEdit.FORMAT_DEMOTIVATIONAL, PhotoEdit.FORMAT_BUBBLES,
         -> Res.string.edit_format
@@ -592,3 +615,28 @@ private fun explanationText(explanation: PhotoExplanation): String = stringResou
 
 /** A panel is as tall as its content up to this share of the window (spec → Layers panel). */
 private const val PANEL_MAX_SHARE_OF_WINDOW = 0.4f
+
+// The Crop screen over the editor while a layer is being cropped (a mode: 200 ms slide up, or a 120 ms fade with reduce motion).
+@Composable
+private fun CropOverlay(state: PhotoEditorUiState, bitmaps: SceneBitmaps, onIntent: (PhotoEditorIntent) -> Unit) {
+    val reduceMotion = MemixTheme.reduceMotion
+    AnimatedVisibility(
+        state.cropLayerId != null,
+        enter = if (reduceMotion) fadeIn(tween(MemixMotion.durationPress)) else slideInVertically(tween(MemixMotion.durationSheet)) { it },
+        exit = if (reduceMotion) fadeOut(tween(MemixMotion.durationPress)) else slideOutVertically(tween(MemixMotion.durationSheet)) { it },
+    ) {
+        // Kept for the slide-out, once the layer id is gone.
+        val layer = state.layers.firstOrNull { it.id == state.cropLayerId } ?: return@AnimatedVisibility
+        val picture = layer.path?.let(bitmaps::imageOf)
+        val size = layer.pictureSize ?: picture?.sourceSize ?: return@AnimatedVisibility
+        val canvas = state.scene?.canvas
+        CropScreen(
+            picture = picture?.image,
+            pictureSize = size,
+            initial = layer.edit ?: ImageEdit.NONE,
+            canvasAspect = canvas?.let { it.widthPx.toFloat() / it.heightPx } ?: 1f,
+            onDone = { onIntent(PhotoEditorIntent.CropDone(it)) },
+            onClose = { onIntent(PhotoEditorIntent.CropClosed) },
+        )
+    }
+}

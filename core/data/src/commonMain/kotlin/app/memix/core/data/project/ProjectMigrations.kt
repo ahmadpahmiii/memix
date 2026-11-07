@@ -33,4 +33,7 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     // photo drafts both pass here; version-5 JSON has neither field, which decodes as null, so a caption saved before looks
     // as saved and the step only moves the version on.
     ProjectMigration(fromVersion = 5) { json -> json },
+    // 6 → 7 (P2-04): ImageLayer gained the nullable "edit" (crop, turn, flip, straighten, adjustments, filter, deep-fry). Version-6
+    // JSON has none, which decodes as null (a layer with no edit), so a picture saved before looks as saved.
+    ProjectMigration(fromVersion = 6) { json -> json },
 )

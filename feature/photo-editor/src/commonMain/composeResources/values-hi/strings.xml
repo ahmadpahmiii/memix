@@ -17,6 +17,7 @@
     <string name="layer_meta_locked">लॉक</string>
     <string name="layer_meta_hidden">छिपी</string>
     <string name="layer_meta_missing">फ़ाइल नहीं मिली</string>
+    <string name="layer_meta_edited">एडिट की गई</string>
     <string name="layer_meta_opacity">%1$d%&#160;पारदर्शिता</string>
     <string name="layer_meta_separator">·</string>
     <string name="layer_lock_a11y">लेयर लॉक करें</string>

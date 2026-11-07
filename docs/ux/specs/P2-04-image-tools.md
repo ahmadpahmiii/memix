@@ -162,7 +162,7 @@ Names are one short word each (budget 12). The looks are made by a script that w
 - **Several edits on one layer** stack in the fixed pipeline order, whatever order they were made in.
 - **Selecting another layer** while the panel is open closes the panel if that layer is not an image layer, and otherwise shows its values (the panel follows the selection).
 - **Haptics:** SegmentTick at each slider's snap; nothing else.
-- **Keyboard:** Tab reaches the tabs, the tiles, the sliders (arrow keys step by 10, Home and End to the ends), the Crop screen's controls and the frame; the crop frame can be moved and resized with the arrow keys (1%, Shift 5%) when it is focused; Escape is system back (the Crop screen discards).
+- **Keyboard:** Tab reaches the tabs, the tiles, the sliders (arrow keys step by 10, Home and End to the ends), the Crop screen's controls and the frame; the crop frame's arrow keys (1%, Shift 5%) are **Later with the other keyboard shortcuts (L-01)**; the Edges panel is the keyboard and single-pointer route (review P2-04a); Escape is system back (the Crop screen discards).
 
 ## Motion
 | What | Motion | Reduce motion |

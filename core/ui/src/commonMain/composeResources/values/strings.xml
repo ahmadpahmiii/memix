@@ -154,4 +154,22 @@
     <string name="edit_text_outline">Outline</string>
     <string name="edit_text_shadow">Shadow</string>
     <string name="edit_text_box">Box</string>
+    <string name="tool_crop">Crop</string>
+    <string name="crop_title">Crop</string>
+    <string name="crop_cancel_a11y">Cancel crop</string>
+    <string name="crop_free">Free</string>
+    <string name="crop_original">Original</string>
+    <string name="crop_flip_h">Flip horizontally</string>
+    <string name="crop_flip_v">Flip vertically</string>
+    <string name="crop_straighten">Straighten</string>
+    <string name="crop_edges">Edges</string>
+    <string name="crop_edge_left">Left</string>
+    <string name="crop_edge_right">Right</string>
+    <string name="crop_edge_top">Top</string>
+    <string name="crop_edge_bottom">Bottom</string>
+    <string name="crop_edge_more_a11y">Trim more from %1$s</string>
+    <string name="crop_edge_less_a11y">Trim less from %1$s</string>
+    <string name="explain_crop_min">The crop can\'t get smaller than this.</string>
+    <string name="edit_crop">Crop</string>
+    <string name="edit_photo_reset">Reset</string>
 </resources>

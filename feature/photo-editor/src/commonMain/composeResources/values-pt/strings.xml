@@ -17,6 +17,7 @@
     <string name="layer_meta_locked">Bloqueada</string>
     <string name="layer_meta_hidden">Oculta</string>
     <string name="layer_meta_missing">Arquivo ausente</string>
+    <string name="layer_meta_edited">Editada</string>
     <string name="layer_meta_opacity">Opacidade&#160;%1$d%</string>
     <string name="layer_meta_separator">·</string>
     <string name="layer_lock_a11y">Bloquear camada</string>

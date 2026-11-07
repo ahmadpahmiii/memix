@@ -19,6 +19,8 @@ import app.memix.core.model.project.StickerLayer
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.ArgbColor
 import app.memix.core.model.project.CanvasBackground
+import app.memix.core.model.project.CropRect
+import app.memix.core.model.project.ImageEdit
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.Layer
 import app.memix.core.model.project.MediaKind
@@ -50,6 +52,7 @@ internal class DebugPicture(val fileName: String, val widthPx: Int, val heightPx
  *   stack): compare the screen, the render hook and the video export frame (spec P2-03 → Measured).
  * - `photo-text-shadow-box` (P2-11): the same canvas with seven captions in shadow, box and both (`ShadowBoxCheckCaptions`), the
  *   same as the video editor's `text-shadow-check`: compare the screen, the render hook and the export frame.
+ * - `photo-image-tools` (P2-04): a 4:3 photo plus a portrait one with a turn, mirror, straighten and crop already saved.
  * - `photo-format-classic`, `-caption-bar`, `-demotivational`, `-panels`, `-bubbles` (P2-02): a 4:3 photo canvas (1440 x 1080) in each format with real text
  *   (panels: a 2 x 2 grid, three cells filled; bubbles: one of each shape): render each at both sizes with `--ei memix.renderShortSide 1080|2160`.
  * - `photo-panels-6` (P2-02): a 2 x 3 grid of six 12 MP cells for the speed bar (three 3 s divider drags under 5% janky frames; peak Graphics and Native Heap).
@@ -67,6 +70,7 @@ internal object PhotoCheckProjects {
     const val TEXT_CHECK = "photo-text-check"
     const val STICKERS = "photo-stickers"
     const val TEXT_SHADOW_BOX = "photo-text-shadow-box"
+    const val IMAGE_TOOLS = "photo-image-tools"
     const val FORMAT_CLASSIC = "photo-format-classic"
     const val FORMAT_CAPTION_BAR = "photo-format-caption-bar"
     const val FORMAT_DEMOTIVATIONAL = "photo-format-demotivational"
@@ -74,7 +78,7 @@ internal object PhotoCheckProjects {
     const val FORMAT_BUBBLES = "photo-format-bubbles"
     const val PANELS_6 = "photo-panels-6"
     val NAMES = listOf(
-        LAYERS_10, EMPTY, MISSING_MEDIA, BACKGROUND_IMAGE, BACKGROUND_MISSING, TEXT_CHECK, TEXT_SHADOW_BOX, STICKERS,
+        LAYERS_10, EMPTY, MISSING_MEDIA, BACKGROUND_IMAGE, BACKGROUND_MISSING, TEXT_CHECK, TEXT_SHADOW_BOX, IMAGE_TOOLS, STICKERS,
         FORMAT_CLASSIC, FORMAT_CAPTION_BAR, FORMAT_DEMOTIVATIONAL, FORMAT_PANELS, FORMAT_BUBBLES, PANELS_6,
     )
 
@@ -137,6 +141,7 @@ internal object PhotoCheckProjects {
         MISSING_MEDIA -> missingMedia()
         TEXT_CHECK -> textCheck()
         TEXT_SHADOW_BOX -> textShadowBox()
+        IMAGE_TOOLS -> imageTools()
         STICKERS -> stickers()
         FORMAT_CLASSIC -> formatScene(FORMAT_CLASSIC, ClassicFormat, text("c-top", "WHEN THE BUILD PASSES", CAPTION, Transform(0.5f, 0.14f)), text("c-bottom", "FIRST TRY", CAPTION, Transform(0.5f, 0.86f)))
         FORMAT_CAPTION_BAR -> formatScene(FORMAT_CAPTION_BAR, CaptionBarFormat, text("b-text", "ME EXPLAINING THE BUG\nTO THE DUCK", CaptionStyle("poppins", BLACK, null), Transform(0.5f, 0.125f)))
@@ -190,6 +195,17 @@ internal object PhotoCheckProjects {
             text("text-bubbly", "BUBBLY\nTWO LINES", CaptionStyle("baloo2", WHITE, ArgbColor(0xFFAF52DE)), Transform(0.85f, 0.7f, scale = 2.5f, rotationDegrees = 30f)),
         )
         return project(TEXT_CHECK, canvas, layers)
+    }
+
+    /**
+     * The P2-04 check scene: the patterned 4:3 photo as the base layer (open Crop on it from the main bar), and a portrait photo
+     * on top that already has a quarter turn, a mirror, a straighten and a crop saved, so the render hook and the editor can be
+     * compared on an edited layer and the Crop screen reopens with the saved edit.
+     */
+    private fun imageTools(): Project {
+        val edit = ImageEdit(quarterTurns = 1, flipH = true, straighten = -8f, crop = CropRect(0.1f, 0.1f, 0.9f, 0.75f))
+        val edited = ImageLayer("it-portrait", mediaOf(shapes[3].fileName, PixelSize(shapes[3].widthPx, shapes[3].heightPx)), Transform(0.7f, 0.5f, 0.45f), edit = edit)
+        return project(IMAGE_TOOLS, photoCanvasFor(PixelSize(shapes[0].widthPx, shapes[0].heightPx)), listOf(image("it-base", shapes[0], Transform()), edited))
     }
 
     /** The seven captions of the video's `text-shadow-check` on the same 9:16 photo canvas (spec P2-11 → QA compares → Measured). */

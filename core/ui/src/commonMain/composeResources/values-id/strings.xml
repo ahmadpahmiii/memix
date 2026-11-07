@@ -150,4 +150,22 @@
     <string name="edit_text_outline">Garis tepi</string>
     <string name="edit_text_shadow">Bayangan</string>
     <string name="edit_text_box">Kotak</string>
+    <string name="tool_crop">Pangkas</string>
+    <string name="crop_title">Pangkas</string>
+    <string name="crop_cancel_a11y">Batalkan pangkas</string>
+    <string name="crop_free">Bebas</string>
+    <string name="crop_original">Asli</string>
+    <string name="crop_flip_h">Balik horizontal</string>
+    <string name="crop_flip_v">Balik vertikal</string>
+    <string name="crop_straighten">Luruskan</string>
+    <string name="crop_edges">Tepi</string>
+    <string name="crop_edge_left">Kiri</string>
+    <string name="crop_edge_right">Kanan</string>
+    <string name="crop_edge_top">Atas</string>
+    <string name="crop_edge_bottom">Bawah</string>
+    <string name="crop_edge_more_a11y">Pangkas lebih banyak dari %1$s</string>
+    <string name="crop_edge_less_a11y">Pangkas lebih sedikit dari %1$s</string>
+    <string name="explain_crop_min">Pangkasan tidak bisa lebih kecil dari ini.</string>
+    <string name="edit_crop">Pangkas</string>
+    <string name="edit_photo_reset">Atur ulang</string>
 </resources>

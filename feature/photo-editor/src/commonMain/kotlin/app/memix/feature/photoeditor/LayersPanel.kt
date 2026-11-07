@@ -65,6 +65,7 @@ import memix.feature.photo_editor.generated.resources.layer_hide_a11y
 import memix.feature.photo_editor.generated.resources.layer_lock_a11y
 import memix.feature.photo_editor.generated.resources.layer_meta_hidden
 import memix.feature.photo_editor.generated.resources.layer_meta_locked
+import memix.feature.photo_editor.generated.resources.layer_meta_edited
 import memix.feature.photo_editor.generated.resources.layer_meta_missing
 import memix.feature.photo_editor.generated.resources.layer_meta_opacity
 import memix.feature.photo_editor.generated.resources.layer_meta_separator
@@ -240,7 +241,7 @@ private fun LayerRowFor(
     }
 }
 
-/** "Locked · Hidden · File missing · 40% opacity": only what is worth saying, in this order, or null (spec → LayerRow). */
+/** "Locked · Hidden · File missing · Edited · 40% opacity": only what is worth saying, in this order, or null (spec → LayerRow). */
 @Composable
 private fun layerMeta(layer: SceneLayerUi, missing: Boolean): String? {
     val percent = (layer.opacity * PERCENT).roundToInt()
@@ -248,6 +249,7 @@ private fun layerMeta(layer: SceneLayerUi, missing: Boolean): String? {
         if (layer.locked) stringResource(Res.string.layer_meta_locked) else null,
         if (layer.hidden) stringResource(Res.string.layer_meta_hidden) else null,
         if (missing) stringResource(Res.string.layer_meta_missing) else null,
+        if (layer.edited) stringResource(Res.string.layer_meta_edited) else null,
         if (percent < PERCENT) stringResource(Res.string.layer_meta_opacity, percent) else null,
     )
     if (parts.isEmpty()) return null

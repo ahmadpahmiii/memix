@@ -1,5 +1,6 @@
 package app.memix.core.domain.project
 
+import app.memix.core.model.project.shownSize
 import app.memix.core.model.project.BoxSize
 import app.memix.core.model.project.BubbleLayer
 import app.memix.core.model.project.Canvas
@@ -115,7 +116,7 @@ private fun Layer.keptInside(old: PixelSize, new: PixelSize, measure: CaptionBlo
 // The main photo in [format]'s picture area on [canvas]; the photo's own size decides, so one without a size stays as it is.
 private fun Layer.placedIn(format: PhotoFormat?, canvas: PixelSize): Layer {
     val image = this as? ImageLayer ?: return this
-    val size = image.source.pixelSize ?: return this
+    val size = image.source.pixelSize?.let { image.shownSize(it) } ?: return this
     return image.copy(transform = placeMainPhoto(format, canvas, size))
 }
 
@@ -127,7 +128,7 @@ internal fun StickerLayer.boxOn(canvas: PixelSize, scale: Float): BoxSize {
 
 /** The image's box at [scale] on [canvas]: its fitted size turned by its rotation, in canvas pixels. A picture of unknown size has none. */
 internal fun ImageLayer.boxOn(canvas: PixelSize, scale: Float): BoxSize {
-    val picture = source.pixelSize ?: return BoxSize(0f, 0f)
+    val picture = source.pixelSize?.let { shownSize(it) } ?: return BoxSize(0f, 0f)
     val fitted = fittedImageSize(picture, canvas)
     return turnedBounds(BoxSize(fitted.width * scale, fitted.height * scale), transform.rotationDegrees)
 }

@@ -2,6 +2,12 @@ package app.memix.feature.photoeditor
 
 import androidx.lifecycle.viewModelScope
 import app.memix.core.domain.AppError
+import app.memix.core.domain.EditorTool
+import app.memix.core.domain.project.changedGeometryTools
+import app.memix.core.domain.project.imageEditOf
+import app.memix.core.domain.project.setImageEdit
+import app.memix.core.model.project.ImageEdit
+import app.memix.core.model.project.shownSize
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.ProjectSource
 import app.memix.core.domain.drafts.UpdateDraftThumbnailUseCase
@@ -198,6 +204,9 @@ class PhotoEditorViewModel(
             // Close commits and closes while typing (spec P2-03 → Typing).
             PhotoEditorIntent.Close -> { commitEntry(); requestClose() }
             PhotoEditorIntent.Back -> goBack()
+            is PhotoEditorIntent.OpenCrop -> openCrop(intent.layerId)
+            is PhotoEditorIntent.CropDone -> applyCrop(intent.edit)
+            PhotoEditorIntent.CropClosed -> updateState { it.copy(cropLayerId = null) }
             PhotoEditorIntent.LeaveAnyway -> updateState { it.copy(unsavedSheetOpen = false, isClosing = true) }
             PhotoEditorIntent.StayInEditor -> updateState { it.copy(unsavedSheetOpen = false) }
             PhotoEditorIntent.DismissSaveBanner -> dismissSaveBanner()
@@ -625,7 +634,9 @@ class PhotoEditorViewModel(
     // canvas background shows beside it, and the panel says a taller canvas gives it more room.
     private fun photoLeavesRoom(project: Project): Boolean {
         val area = project.photo?.format.pictureArea(project.canvas.size()) ?: return false
-        val photo = project.layers().mainPhoto()?.source?.pixelSize ?: return false
+        // The shape the photo shows, so a crop counts (spec P2-04).
+        val main = project.layers().mainPhoto() ?: return false
+        val photo = main.source.pixelSize?.let(main::shownSize) ?: return false
         if (photo.widthPx <= 0 || photo.heightPx <= 0) return false
         val placedWidth = photo.widthPx * minOf(area.width / photo.widthPx, area.height / photo.heightPx)
         return placedWidth < area.width * (1f - PhotoCatalog.PRESET_TOLERANCE)
@@ -728,6 +739,27 @@ class PhotoEditorViewModel(
     }
 
     // Panels and the canvas ---------------------------------------------------------------------------------------
+
+    // The Crop tool (spec P2-04 → Entry and exit): a locked or missing layer explains; from the main bar it selects the main photo.
+    private fun openCrop(layerId: String?) {
+        val project = currentProject() ?: return
+        val id = layerId ?: project.layers().mainPhoto()?.id ?: return
+        val layer = layerOf(id)?.takeIf { it.kind == LayerKind.IMAGE } ?: return
+        if (layer.locked) return explain(PhotoExplanation.LAYER_LOCKED)
+        if (id in state.value.missingLayerIds) return explain(PhotoExplanation.LAYER_MISSING)
+        select(id)
+        updateState { it.copy(cropLayerId = id, panel = null) }
+    }
+
+    // Done: everything made on the screen is one "Crop" step; one event for each part that changed (spec → Analytics).
+    private fun applyCrop(edit: ImageEdit) {
+        val id = state.value.cropLayerId ?: return
+        updateState { it.copy(cropLayerId = null) }
+        val before = currentProject()?.imageEditOf(id) ?: ImageEdit.NONE
+        val parts = changedGeometryTools(before, edit)
+        if (parts.isEmpty()) return
+        editLayer(PhotoEdit.CROP, loggedAs = parts) { it.setImageEdit(id, edit.takeUnless { e -> e.isNeutral }) }
+    }
 
     private fun openPanel(panel: PhotoPanel) {
         // Panels never stack: another one closes, its changes already applied. A tool on an empty canvas explains.
@@ -872,22 +904,22 @@ class PhotoEditorViewModel(
     // Editing -----------------------------------------------------------------------------------------------------
 
     /** Applies [change] as one [edit] step; false when it changed nothing (no step, no `tool_use`). */
-    private fun commit(edit: PhotoEdit, value: String? = null, font: String? = null, change: (Project) -> Project): Boolean {
+    private fun commit(edit: PhotoEdit, value: String? = null, font: String? = null, loggedAs: List<EditorTool> = listOf(edit.tool), change: (Project) -> Project): Boolean {
         val session = editSession ?: return false
-        val recorded = session.commit(edit.tool, font = font, value = value, edit = change)
+        val recorded = session.commit(edit.tool, font = font, value = value, loggedAs = loggedAs, edit = change)
         if (recorded) showEditState(session.state.value)
         return recorded
     }
 
     /** Commits a layer edit, or explains why it was refused. True when a step was recorded. */
-    private fun editLayer(edit: PhotoEdit, font: String? = null, change: (Project) -> LayerEdit): Boolean {
+    private fun editLayer(edit: PhotoEdit, font: String? = null, loggedAs: List<EditorTool> = listOf(edit.tool), change: (Project) -> LayerEdit): Boolean {
         val project = currentProject() ?: return false
         return when (val result = change(project)) {
             is LayerEdit.Refused -> {
                 explain(explanationOf(result.reason))
                 false
             }
-            is LayerEdit.Edited -> commit(edit, font = font) { result.project }
+            is LayerEdit.Edited -> commit(edit, font = font, loggedAs = loggedAs) { result.project }
         }
     }
 
@@ -913,6 +945,8 @@ class PhotoEditorViewModel(
     private fun goBack() {
         val current = state.value
         when {
+            // The Crop screen is a mode: back discards it (spec P2-04 → The Crop screen).
+            current.cropLayerId != null -> updateState { it.copy(cropLayerId = null) }
             // Typing commits and the keyboard closes first (spec P2-03 → Typing → back order).
             current.textEntry != null -> commitEntry()
             current.panel != null -> updateState { it.copy(panel = null, canvasPanel = null) }

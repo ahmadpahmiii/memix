@@ -7,6 +7,10 @@ import app.memix.core.domain.text.CaptionBlockSize
 import app.memix.core.domain.text.MeasureCaptionUseCase
 import app.memix.core.model.project.ArgbColor
 import app.memix.core.model.project.BoxSize
+import app.memix.core.model.project.ImageEdit
+import app.memix.core.model.project.editOrNull
+import app.memix.core.model.project.pictureZoom
+import app.memix.core.model.project.shownSize
 import app.memix.core.model.project.BubbleLayer
 import app.memix.core.model.project.BubbleShape
 import app.memix.core.model.project.CaptionLook
@@ -63,6 +67,8 @@ data class PhotoEditorUiState(
     val backgroundShows: Boolean = true,
     /** The open tool panel, or null (spec → Tool bars: the main bar or the selected-layer bar shows then). */
     val panel: PhotoPanel? = null,
+    /** The image layer whose Crop screen is open (a mode over the editor), or null (spec P2-04 → The Crop screen). */
+    val cropLayerId: String? = null,
     /** The Canvas panel's own state while it is open (the custom ratio's steppers). */
     val canvasPanel: PhotoCanvasPanelUi? = null,
     /** Layers whose file is missing or can't be decoded; reported by the scene as it tries to draw them. */
@@ -179,6 +185,13 @@ data class SceneLayerUi(
     val style: CaptionStyle? = null,
     /** The picture's long side in pixels as shown, 0 when it wasn't measured: pictures are never decoded above it. */
     val pictureLongSidePx: Int,
+    /** How many times the box the whole picture is drawn (a crop or a straighten): the decode size grows with it (P2-04). */
+    val pictureZoom: Float = 1f,
+    /** The image tools changed the picture (crop, turn, filter, ...): the Layers row says "Edited". */
+    val edited: Boolean = false,
+    /** An image's edit and size as shown, for the Crop screen; null for the other kinds. */
+    val edit: ImageEdit? = null,
+    val pictureSize: PixelSize? = null,
     override val boxWidthPx: Float,
     override val boxHeightPx: Float,
     override val scaleRange: ClosedFloatingPointRange<Float>,
@@ -213,7 +226,7 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
     val bubbleBox = (this as? BubbleLayer)?.let { layer -> bubbleBody?.let { bubbleBox(layer.shape, it, layer.tipIn(it), canvasSize) } }
     val box = when (this) {
         is BubbleLayer -> bubbleBox?.let { BoxSize(it.width, it.height) }
-        is ImageLayer -> picture?.let { fittedImageSize(it, canvasSize) }
+        is ImageLayer -> picture?.let { fittedImageSize(shownSize(it), canvasSize) }
         is StickerLayer -> stickerSizeAtScaleOne(picture, canvasSize)
         is TextLayer -> measure(text, style, canvasSize.widthPx, canvasSize.heightPx, CaptionLook.Text).let { BoxSize(it.widthPx, it.heightPx) }
     }
@@ -237,6 +250,10 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
         text = (this as? TextLayer)?.text ?: (this as? BubbleLayer)?.text,
         style = (this as? TextLayer)?.style ?: (this as? BubbleLayer)?.style,
         pictureLongSidePx = picture?.let { maxOf(it.widthPx, it.heightPx) } ?: 0,
+        pictureZoom = (this as? ImageLayer)?.let { layer -> picture?.let { layer.edit.pictureZoom(it) } } ?: 1f,
+        edited = (this as? ImageLayer)?.editOrNull() != null,
+        edit = (this as? ImageLayer)?.editOrNull(),
+        pictureSize = if (this is ImageLayer) picture else null,
         boxWidthPx = box?.width ?: 0f,
         boxHeightPx = box?.height ?: 0f,
         scaleRange = PhotoCatalog.scaleRangeOf(this),
@@ -310,6 +327,8 @@ enum class PhotoEdit(val tool: EditorTool) {
     TEXT_OUTLINE(EditorTool.TEXT_OUTLINE),
     TEXT_SHADOW(EditorTool.TEXT_SHADOW),
     TEXT_BOX(EditorTool.TEXT_BOX),
+    // Every part of a crop screen's Done is one step called "Crop" (the events logged are the parts).
+    CROP(EditorTool.CROP),
     TRANSFORM_TEXT(EditorTool.TRANSFORM_TEXT),
     POSITION_TEXT(EditorTool.POSITION_TEXT),
 
@@ -514,6 +533,15 @@ sealed interface PhotoEditorIntent {
     /** Shadow and box (P2-11): the new setting, or null for "No shadow" / "No box". */
     data class SetTextShadow(val shadow: CaptionShadow?) : PhotoEditorIntent
     data class SetTextBox(val box: CaptionBox?) : PhotoEditorIntent
+
+    /** The Crop tool: on [layerId], or with null (the main bar) on the main photo, which it selects (spec P2-04 → Entry and exit). */
+    data class OpenCrop(val layerId: String?) : PhotoEditorIntent
+
+    /** The Crop screen's Done: its whole edit as one step. */
+    data class CropDone(val edit: ImageEdit) : PhotoEditorIntent
+
+    /** The Crop screen's Close, back or Escape: nothing was applied. */
+    data object CropClosed : PhotoEditorIntent
 
     // Meme formats (P2-02).
     /** A tile of the Formats panel; the active tile does nothing. */

@@ -54,16 +54,17 @@ class ProjectEditSession internal constructor(
      * and [ProjectEditState.redoTool]. A recorded step logs `tool_use` for [tool] once, unless [tool] has no event
      * value (its own event counts it); an edit that changes nothing logs nothing (PRD analytics, PM 8 Oct 2026).
      * Returns whether a step was recorded. [font] goes with `tool_use` for the caption tools that name one
-     * (`add_text`, `text_font`), [value] for the canvas tools (`canvas_ratio`, `canvas_fit`, `canvas_background`).
+     * (`add_text`, `text_font`), [value] for the canvas tools (`canvas_ratio`, `canvas_fit`, `canvas_background`), [filter] for `filter`. [loggedAs] are the events logged for the one step (default: [tool] alone); [tool] names the step in the undo history.
      *
      * A drag, trim or pinch is one step: keep its in-between positions in UI state and commit once, when the
      * finger lifts (mobile-performance skill), so 60 frames of dragging are one undo, not 60.
      */
-    fun commit(tool: EditorTool, font: String? = null, value: String? = null, edit: (Project) -> Project): Boolean {
+    fun commit(tool: EditorTool, font: String? = null, value: String? = null, filter: String? = null, loggedAs: List<EditorTool> = listOf(tool), edit: (Project) -> Project): Boolean {
         val recorded = changeHistory { history -> history.record(tool, edit(history.current)) }
         if (recorded) {
             logProjectCreateOnFirstContent()
-            logToolUse(tool, font, value)
+            // One step can log several events (a crop screen's Done: one per part it changed).
+            loggedAs.forEach { logToolUse(it, font, value, filter) }
         }
         return recorded
     }
@@ -117,9 +118,9 @@ class ProjectEditSession internal constructor(
 
     // PRD tool_use: every tool, undo and redo included, counts only when it changes the project (PM, 8 Oct 2026).
     // A step without an event value is counted by its own event (a landed sound: sound_add).
-    private fun logToolUse(tool: EditorTool, font: String? = null, value: String? = null) {
+    private fun logToolUse(tool: EditorTool, font: String? = null, value: String? = null, filter: String? = null) {
         if (tool.eventValue == null) return
-        analytics.log(AnalyticsEvent.ToolUse(editor = mutableState.value.project.type, tool = tool, font = font, value = value))
+        analytics.log(AnalyticsEvent.ToolUse(editor = mutableState.value.project.type, tool = tool, font = font, value = value, filter = filter))
     }
 
     private fun showSaveFailure(failure: AppError?) {

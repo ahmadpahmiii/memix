@@ -30,15 +30,16 @@ sealed interface AnalyticsEvent {
      * one with a [EditorTool.eventValue]. [font] is the caption font id, sent only with `add_text` and `text_font`
      * (owner, 9 Oct 2026: PRD → Analytics). [value] is the choice a canvas tool made, sent only with `canvas_ratio`
      * (`9:16` … `16:9` or `custom`, never the custom numbers), `canvas_fit` (`fit`, `fill`) and `canvas_background`
-     * (`blur`, `color`, never the color itself) (owner, 21 Oct 2026). The photo editor sends `editor: photo` (P2-01).
+     * (`blur`, `color`, never the color itself) (owner, 21 Oct 2026). [filter] is the filter id, sent only with `filter` (`none` when removed; owner, 2 Nov 2026). The photo editor sends `editor: photo` (P2-01).
      */
-    data class ToolUse(val editor: ProjectType, val tool: EditorTool, val font: String? = null, val value: String? = null) : AnalyticsEvent {
+    data class ToolUse(val editor: ProjectType, val tool: EditorTool, val font: String? = null, val value: String? = null, val filter: String? = null) : AnalyticsEvent {
         override val name = "tool_use"
         override val params = buildMap {
             put("editor", editor.eventValue)
             put("tool", requireNotNull(tool.eventValue))
             if (font != null) put("font", font)
             if (value != null) put("value", value)
+            if (filter != null) put("filter", filter)
         }
     }
 
@@ -137,6 +138,23 @@ enum class EditorTool(val eventValue: String?) {
     /** P2-11: one id per Style panel row, with no parameter (PM, 2 Nov 2026); a softness or corners step counts as its row. */
     TEXT_SHADOW("text_shadow"),
     TEXT_BOX("text_box"),
+
+    /**
+     * P2-04: the image tools (PM, 2 Nov 2026), the ids P4-07 and P4-16 reuse. A crop screen's Done sends one event per part
+     * that changed; `filter` also sends the optional `filter` parameter (the filter id, `none` when removed).
+     */
+    CROP("crop"),
+    ROTATE_IMAGE("rotate_image"),
+    FLIP_IMAGE("flip_image"),
+    STRAIGHTEN("straighten"),
+    ADJUST_BRIGHTNESS("adjust_brightness"),
+    ADJUST_CONTRAST("adjust_contrast"),
+    ADJUST_SATURATION("adjust_saturation"),
+    ADJUST_WARMTH("adjust_warmth"),
+    ADJUST_SHARPEN("adjust_sharpen"),
+    ADJUST_VIGNETTE("adjust_vignette"),
+    FILTER("filter"),
+    DEEP_FRY("deep_fry"),
     POSITION_TEXT("position_text"),
     TRANSFORM_TEXT("transform_text"),
 

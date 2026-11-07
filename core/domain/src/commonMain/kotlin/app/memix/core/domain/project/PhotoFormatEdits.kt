@@ -1,5 +1,6 @@
 package app.memix.core.domain.project
 
+import app.memix.core.model.project.shownSize
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.Layer
 import app.memix.core.model.project.MediaRef
@@ -57,7 +58,7 @@ fun Project.setPhotoFormat(target: PhotoFormat?, restoredPhotoId: String): Forma
         if (photoCell != null) layers = layers.filterNot { it.id == main?.id }
         format = panelsFormatOf(PanelLayouts.default, listOf(PanelCell(source = photoCell)))
     } else if (wasPlaced && main != null) {
-        val size = main.source.pixelSize
+        val size = main.source.pixelSize?.let { main.shownSize(it) }
         val placed = if (size != null) placeMainPhoto(target, canvasSize, size) else Transform()
         layers = layers.map { if (it.id == main.id) main.copy(transform = placed) else it }
     }

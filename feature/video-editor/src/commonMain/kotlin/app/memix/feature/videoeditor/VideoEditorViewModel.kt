@@ -732,7 +732,7 @@ class VideoEditorViewModel(
     ): Boolean {
         val session = editSession ?: return false
         if (pausesPlayback) preview?.pause()
-        val recorded = session.commit(edit.tool, font, value, change)
+        val recorded = session.commit(edit.tool, font, value, edit = change)
         if (recorded) showEditState(session.state.value)
         return recorded
     }

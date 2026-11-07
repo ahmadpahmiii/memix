@@ -52,6 +52,8 @@ data class ImageLayer(
     override val locked: Boolean = false,
     override val hidden: Boolean = false,
     override val opacity: Float = 1f,
+    /** What the image tools did to the picture (P2-04); null is none. */
+    val edit: ImageEdit? = null,
 ) : Layer {
     override fun withId(id: String): ImageLayer = copy(id = id)
 

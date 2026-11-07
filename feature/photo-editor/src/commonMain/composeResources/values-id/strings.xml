@@ -17,6 +17,7 @@
     <string name="layer_meta_locked">Terkunci</string>
     <string name="layer_meta_hidden">Tersembunyi</string>
     <string name="layer_meta_missing">File hilang</string>
+    <string name="layer_meta_edited">Diedit</string>
     <string name="layer_meta_opacity">Opasitas&#160;%1$d%</string>
     <string name="layer_meta_separator">·</string>
     <string name="layer_lock_a11y">Kunci lapisan</string>

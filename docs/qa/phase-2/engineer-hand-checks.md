@@ -188,3 +188,24 @@ adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor t
 12. **Leaks (debug build, LeakCanary):** five cycles of open, style a caption with shadow and box, edit it, close.
 13. **Re-run because the renderer changed:** P1-10 steps 2 to 5 and 11 (typing, style, position, preview equals export) on `text-check`; P2-03 text steps (add, type, style, Position, opacity group) and the ratio-change step on `photo-text-check`.
 14. **Spanish and Portuguese at 200%** (design review M1): Softness and Corners segments stack one per row at full width and no word is broken (the frame `docs/ux/reviews/P2-11/70-spanish-200-style-panel-shadow-box.png` shows es).
+
+## P2-04a · image tools, part a: Crop screen (crop, rotate, flip, straighten)
+
+Spec: `docs/ux/specs/P2-04-image-tools.md`. Renders: `docs/ux/reviews/P2-04/` (desktop, stand-in picture); references: `docs/qa/references/P2-04-image-tools/`. Part b (adjustments, 20 filters, LUT script, deep-fry, Edit photo panel) is not built. Nothing here has run on a phone.
+
+```
+adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor photo-image-tools
+```
+
+1. **Bars:** an image layer selected: Position, Opacity, Delete, Crop (cut by the scroll at 360 dp), Duplicate, ...; a text layer has no Crop; the main bar shows Crop after Add photo only while an image layer exists; tapping it with nothing selected selects the main photo and opens the screen. Locked layer: Crop explains (the toast). Missing file: explains.
+2. **Crop screen:** opens with the whole picture, the frame the whole picture, Free selected. Drag a corner, an edge, inside; the grid shows only while dragging; the frame stops at 10% and at the picture's edges. Aspect tiles: 1:1 replaces the frame by the largest centered one and locks it (corners keep the shape, edges do nothing); Free unlocks. Rotate left/right and flip: the frame turns/mirrors with the picture, a locked shape inverts on a turn. Straighten -10 deg: no empty corners, the frame does not move; snap to 0 with a tick.
+3. **Edges:** the four rows trim 1% a tap, hold repeats (the held steps apply on release in this build), the readouts, the limit line at the minimum; Done returns to the crop screen. With a locked aspect the other side follows.
+4. **Done is one step "Crop"**: Undo restores exactly; the layer's row says "Edited"; reopening Crop shows the saved crop, turn, flip and straighten. Close, system back and Escape discard (no question): QA watches for lost work. Edges open: back closes only Edges.
+5. **After a crop** (4:3 photo cropped to 1:1 in a 4:3 canvas): the canvas keeps its shape, the photo is fitted inside, its transform kept; selection frame and hit area follow the cropped shape; pinch and turn still work; the ratio-change rule keeps it inside.
+6. **P2-02 as-placed re-run:** Caption bar with the main photo as placed: crop it: it is placed again in the picture area; a photo you moved first stays put.
+7. **Picture sharpness:** crop a 12 MP photo to 10%: still sharp on the canvas (decoded larger by the crop's zoom), no jank while dragging the frame (release build).
+8. **Old drafts:** a photo draft saved before this build opens unchanged (schema 7, "edit" absent); a draft with an edit, killed and reopened, keeps it.
+9. **Analytics:** a Done that only rotated logs `rotate_image` alone; crop + flip logs `crop` and `flip_image`; one undo step for all.
+10. **200% font, es and hi:** top bar wraps (Reset and Done on a second line), "Edges" and the aspect tiles are whole, the bottom area scrolls.
+11. **Not built yet (04b):** the Edit photo tool, Filters, Adjust, Deep-fry, "Edited" for color edits, the API 29 GL path, the LUT script.
+12. **Leaks (debug build, LeakCanary):** 5 cycles of open Crop, rotate, drag, Done, close.

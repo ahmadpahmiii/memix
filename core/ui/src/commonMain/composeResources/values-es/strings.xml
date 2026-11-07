@@ -151,4 +151,22 @@
     <string name="edit_text_outline">Contorno</string>
     <string name="edit_text_shadow">Sombra</string>
     <string name="edit_text_box">Caja</string>
+    <string name="tool_crop">Recortar</string>
+    <string name="crop_title">Recortar</string>
+    <string name="crop_cancel_a11y">Cancelar recorte</string>
+    <string name="crop_free">Libre</string>
+    <string name="crop_original">Original</string>
+    <string name="crop_flip_h">Voltear horizontalmente</string>
+    <string name="crop_flip_v">Voltear verticalmente</string>
+    <string name="crop_straighten">Enderezar</string>
+    <string name="crop_edges">Bordes</string>
+    <string name="crop_edge_left">Izquierda</string>
+    <string name="crop_edge_right">Derecha</string>
+    <string name="crop_edge_top">Arriba</string>
+    <string name="crop_edge_bottom">Abajo</string>
+    <string name="crop_edge_more_a11y">Recortar más por %1$s</string>
+    <string name="crop_edge_less_a11y">Recortar menos por %1$s</string>
+    <string name="explain_crop_min">El recorte no puede ser más pequeño.</string>
+    <string name="edit_crop">Recortar</string>
+    <string name="edit_photo_reset">Restablecer</string>
 </resources>

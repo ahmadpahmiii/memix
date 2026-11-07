@@ -145,7 +145,7 @@ internal fun neededLongSides(layers: List<SceneLayerUi>, canvas: Canvas, frameWi
     }
     for (layer in layers) {
         val path = layer.path ?: continue
-        val drawn = max(layer.boxWidthPx, layer.boxHeightPx) * layer.transform.scale * pixelScale
+        val drawn = max(layer.boxWidthPx, layer.boxHeightPx) * layer.pictureZoom * layer.transform.scale * pixelScale
         val capped = min(drawn.roundToInt(), layer.pictureLongSidePx.takeIf { it > 0 } ?: Int.MAX_VALUE)
         needed[path] = max(needed[path] ?: 0, capped)
     }

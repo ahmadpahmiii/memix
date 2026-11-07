@@ -16,6 +16,7 @@ import memix.core.designsystem.generated.resources.ic_bubble
 import memix.core.designsystem.generated.resources.ic_check
 import memix.core.designsystem.generated.resources.ic_chevron_right
 import memix.core.designsystem.generated.resources.ic_close
+import memix.core.designsystem.generated.resources.ic_crop
 import memix.core.designsystem.generated.resources.ic_create
 import memix.core.designsystem.generated.resources.ic_delete
 import memix.core.designsystem.generated.resources.ic_detach_audio
@@ -25,6 +26,7 @@ import memix.core.designsystem.generated.resources.ic_edit
 import memix.core.designsystem.generated.resources.ic_edit_text
 import memix.core.designsystem.generated.resources.ic_fill
 import memix.core.designsystem.generated.resources.ic_fit
+import memix.core.designsystem.generated.resources.ic_flip
 import memix.core.designsystem.generated.resources.ic_formats
 import memix.core.designsystem.generated.resources.ic_panels
 import memix.core.designsystem.generated.resources.ic_globe
@@ -74,6 +76,7 @@ object MemixIcons {
     val Check = Res.drawable.ic_check
     val ChevronRight = Res.drawable.ic_chevron_right
     val Close = Res.drawable.ic_close
+    val Crop = Res.drawable.ic_crop
     val Create = Res.drawable.ic_create
     val Delete = Res.drawable.ic_delete
     val DetachAudio = Res.drawable.ic_detach_audio
@@ -82,6 +85,7 @@ object MemixIcons {
     val Edit = Res.drawable.ic_edit
     val Fill = Res.drawable.ic_fill
     val Fit = Res.drawable.ic_fit
+    val Flip = Res.drawable.ic_flip
     val Formats = Res.drawable.ic_formats
     val Panels = Res.drawable.ic_panels
     val EditText = Res.drawable.ic_edit_text

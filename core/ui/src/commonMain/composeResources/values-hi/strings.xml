@@ -151,4 +151,22 @@
     <string name="edit_text_outline">आउटलाइन</string>
     <string name="edit_text_shadow">छाया</string>
     <string name="edit_text_box">बॉक्स</string>
+    <string name="tool_crop">क्रॉप</string>
+    <string name="crop_title">क्रॉप</string>
+    <string name="crop_cancel_a11y">क्रॉप रद्द करें</string>
+    <string name="crop_free">फ्री</string>
+    <string name="crop_original">ओरिजिनल</string>
+    <string name="crop_flip_h">आड़ा पलटें</string>
+    <string name="crop_flip_v">खड़ा पलटें</string>
+    <string name="crop_straighten">सीधा करें</string>
+    <string name="crop_edges">किनारे</string>
+    <string name="crop_edge_left">बायाँ</string>
+    <string name="crop_edge_right">दायाँ</string>
+    <string name="crop_edge_top">ऊपर</string>
+    <string name="crop_edge_bottom">नीचे</string>
+    <string name="crop_edge_more_a11y">%1$s से और काटें</string>
+    <string name="crop_edge_less_a11y">%1$s से कम काटें</string>
+    <string name="explain_crop_min">क्रॉप इससे छोटा नहीं हो सकता।</string>
+    <string name="edit_crop">क्रॉप</string>
+    <string name="edit_photo_reset">रीसेट</string>
 </resources>

@@ -148,7 +148,7 @@ fun placeMainPhoto(format: PhotoFormat?, canvas: PixelSize, photo: PixelSize): T
  * stays where it is when the format changes (the ratio-change rule keeps it inside).
  */
 fun isAsPlaced(layer: ImageLayer, format: PhotoFormat?, canvas: PixelSize): Boolean {
-    val expected = if (format.pictureArea(canvas) == null) Transform() else placeMainPhoto(format, canvas, layer.source.pixelSize ?: return false)
+    val expected = if (format.pictureArea(canvas) == null) Transform() else placeMainPhoto(format, canvas, layer.source.pixelSize?.let { layer.shownSize(it) } ?: return false)
     val transform = layer.transform
     return abs(transform.centerX - expected.centerX) <= PhotoFormatCatalog.AS_PLACED_CENTER_TOLERANCE &&
         abs(transform.centerY - expected.centerY) <= PhotoFormatCatalog.AS_PLACED_CENTER_TOLERANCE &&
