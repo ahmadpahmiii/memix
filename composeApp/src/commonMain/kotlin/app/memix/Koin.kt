@@ -23,6 +23,7 @@ import app.memix.core.domain.project.OpenPhotoDraftUseCase
 import app.memix.core.domain.project.OpenVideoDraftUseCase
 import app.memix.core.domain.project.SaveProjectUseCase
 import app.memix.core.domain.project.StartEditSessionUseCase
+import app.memix.core.domain.segmentation.RemoveBackgroundUseCase
 import app.memix.core.domain.share.ShareVideoUseCase
 import app.memix.core.domain.sound.LoadStarterSoundsUseCase
 import app.memix.core.domain.sound.LogSoundEventsUseCase
@@ -43,6 +44,7 @@ import app.memix.debug.DebugEdits
 import app.memix.debug.EditorSaveDiffLog
 import app.memix.debug.ImportSaveFailure
 import app.memix.engine.photo.photoEngineModule
+import app.memix.engine.segmentation.segmentationEngineModule
 import app.memix.engine.video.HAND_CHECKS_PROPERTY
 import app.memix.engine.video.videoEngineModule
 import app.memix.feature.drafts.DraftsViewModel
@@ -91,6 +93,7 @@ private val appModule = module {
     // Created at start-up so it clears last run's leftover media in the background before any import copies.
     single(createdAtStart = true) { LeftoverMediaCleaner(get(), get(), get(), get(), get(appScope)) }
     factoryOf(::ImportMediaUseCase)
+    factoryOf(::RemoveBackgroundUseCase)
     factoryOf(::SaveGalleryProjectUseCase)
     factoryOf(::SaveGalleryPhotoProjectUseCase)
     // Drafts list (P1-14). The thumbnail writer and the delete with undo outlive every screen: singles in the app's scope.
@@ -175,7 +178,7 @@ fun initKoin(handChecks: Boolean = false, platformSetup: KoinAppDeclaration = {}
     startKoin {
         platformSetup()
         properties(mapOf(HAND_CHECKS_PROPERTY to handChecks))
-        modules(platformServicesModule, databaseDriverModule, settingsModule, dataModule, videoEngineModule, photoEngineModule, appModule)
+        modules(platformServicesModule, databaseDriverModule, settingsModule, dataModule, videoEngineModule, photoEngineModule, segmentationEngineModule, appModule)
         if (handChecks) modules(handCheckModule)
     }
 }

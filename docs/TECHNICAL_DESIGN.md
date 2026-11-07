@@ -56,7 +56,7 @@ The code is one Gradle multi-module Kotlin Multiplatform project using clean arc
 | `:core:ui` | Presentation | Shared composables and the strings both editors use: time formatting; layer gestures, selection frame, handle, guides and bubble (`layers/`); the Position and Canvas panel rows and the stepping logic (`panels/`); the save banner, unsaved sheet, frame edge and canvas frame (`editor/`); the one photo-scene drawing function, the picture-decoder interface and the caption-drawing interface `SceneCaptions` (`scene/`); the typing bar, `TextEntryUi` and the Style panel both editors use (`text/`, P2-03); `Res` is public here so features reach the shared strings (the video timeline lives in `:feature:video-editor`, its only user) | `:core:designsystem`, `:core:model` |
 | `:engine:video` | Platform | `VideoEngine`: Media3 in `androidMain`, AVFoundation in `iosMain`; the preview surface composable (`VideoPreviewSurface`) the composition root hands to the editor; `AndroidSceneCaptions`, the caption renderer behind the photo scene's `SceneCaptions` (P2-03) | `:core:domain`, `:core:ui` |
 | `:engine:photo` | Platform | The scene's picture decoder (`SceneImageSource`: `ImageDecoder` on Android, a stub on iOS until P7-09); P2-08 adds the platform encoders (PNG, JPG, GIF, WebP) and draws the scene offscreen | `:core:domain`, `:core:ui` |
-| `:engine:segmentation` | Platform | `Segmenter`: ML Kit and MediaPipe on Android, Vision on iOS | `:core:domain` |
+| `:engine:segmentation` | Platform | `Segmenter`: ML Kit on Android (MediaPipe joins with P4-13), Vision on iOS | `:core:domain` |
 | `:platform:services` | Platform | AdMob and UMP, Firebase, share intents; the gallery picker, storage-screen launcher and editor portrait lock (Compose hooks for the composition root) media copies and checks (`MediaFiles`, `MediaInspector`) and the phone's calendar and date format (`LocalCalendar`, P1-14) | `:core:domain` |
 | `:feature:onboarding`, `:feature:home`, `:feature:templates`, `:feature:sounds`, `:feature:drafts`, `:feature:video-editor`, `:feature:photo-editor`, `:feature:export` | Presentation | Screens and ViewModels | `:core:domain`, `:core:ui` |
 | `:feature:media-import` (P2-12) | Presentation | The import flow every pick goes through: `MediaImportFlow`, the sheet and its state, `ProjectPickImport` (a pick for an open project, by destination), the import strings | `:core:domain`, `:core:ui` |
@@ -415,11 +415,15 @@ The photo editor renders in shared Compose code, so it needs very little extra w
 - **Make it a video meme:** converts the `PhotoScene` into a `VideoTimeline` with the photo as the main clip and each layer as a timed item.
 
 ```kotlin
-interface Segmenter {
-    suspend fun segmentImage(image: ImageRef): SegmentationResult     // full mask + one mask per subject
-    fun videoSession(source: MediaRef): VideoSegmentationSession     // person masks per frame
+interface Segmenter {   // app.memix.core.domain.segmentation; members join with the ticket that first uses them
+    suspend fun modelState(): ModelState                                       // P2-06: Ready | NotInstalled | Unavailable(failure); never downloads
+    suspend fun prepareModel(onProgress: (Float?) -> Unit): ModelPreparation   // P2-06: Play services download; Ready | Cancelled | Failed(failure)
+    suspend fun segmentImage(sourcePath: String): SegmentationOutcome          // P2-06: Found(grayscale PNG mask) | NothingFound | Failed(failure)
+    // P4-13: fun videoSession(source: MediaRef): VideoSegmentationSession     // person masks per frame
 }
 ```
+
+Features call `RemoveBackgroundUseCase` (check, download with `CutoutProgress`, segment, save the mask as a new `media/<project id>/<uuid>.png`), never the interface.
 
 | Case | Android (v1) | iOS (phase 7) |
 | --- | --- | --- |
@@ -428,7 +432,7 @@ interface Segmenter {
 
 - **Video masks** are computed at preview resolution and cached per frame while editing, then recomputed at export resolution. The GL pipeline applies them as alpha.
 - **Refine brush:** the user's erase and restore strokes are saved as a mask layer (PNG at canvas resolution) inside the project.
-- **Fallback:** if ML Kit isn't available on a device, photo removal falls back to the MediaPipe person model and says so.
+- **No fallback in v1** (owner, 5 Nov 2026, by delegation): if the ML Kit model is unavailable (no Play services, the install failed, offline first use) the user sees a calm "can't remove the background right now" with a retry. P4-13 brings MediaPipe for video and reconsiders a photo fallback there.
 
 ## Backend
 
@@ -697,3 +701,13 @@ Official docs to read before the matching tickets:
 - **Backdrop with no platform code:** `drawPhotoScene` is split into a content function that draws the background, format and the first N layers. A censor calls it again for the layers below into a small offscreen bitmap, one pixel per cell, averaged by exact 2 x 2 halving from at most 16 pixels a cell, then enlarges it clipped to its shape (nearest for Pixelate, bilinear for Blur). The Pixelate grid is anchored at the canvas's top-left in units of S. It works the same on every API and on iOS (Skia), so there is no `:core:domain` interface and no iOS stub (the spec's fallback was for a platform effect). Blur is a downscaled copy enlarged bilinearly, not an exact Gaussian: its cell is two sigma (a box average read back with a linear tent has a spread of half the cell), it loses the detail and cannot be sharpened back.
 - **Alternatives:** RenderEffect/AGSL (Android 12/13 only, needs a second path anyway); a platform `Bitmap` blur in `:engine:photo` (a second look to keep equal, async).
 - **Risk:** each frame draws the scene under a censor again at small size; unmeasured on a phone (named fix: cache the backdrop while the layers below don't change). A censor over another censor draws the lower one again inside its backdrop, so n stacked censors cost about 2^n small draws; fine for the two or three a photo needs, the cache is the fix if it is ever not.
+
+### P2-06: `Segmenter` and ML Kit subject segmentation (7 Nov 2026)
+- **What:** `Segmenter` + `RemoveBackgroundUseCase` in `:core:domain` (`segmentation/`); `MlKitSegmenter`, `SubjectModelInstaller` (Play services `ModuleInstall`: `areModulesAvailable`, `installModules` with an `InstallStatusListener` for progress) and `SubjectSegmenterClients` in `:engine:segmentation` androidMain; iOS binds a stub that reports `UNSUPPORTED` (TODO(P7-07)). Pinned: `play-services-mlkit-subject-segmentation` 16.0.0-beta1 (the only release, Nov 2023), `play-services-base` 18.11.1, `kotlinx-coroutines-play-services` 1.11.0. Read from the AAR/jar signatures at dl.google.com (the docs site is not reachable from the build sandbox).
+- **Distinct results:** `SegmentationFailure` = UNSUPPORTED, NO_PLAY_SERVICES, MODEL_UNAVAILABLE, OFFLINE, OUT_OF_MEMORY, SLOW (30 s), SOURCE_UNREADABLE, STORAGE_FULL, UNEXPECTED; plus `NothingFound` (foreground under 0.2% of the picture) and `Cancelled` (Play services cancelled the download; cancelling the coroutine throws as usual). P2-07 maps them to the cards of its spec. `CutoutProgress` = `Preparing(fraction?)`, `TakingLonger` (30 s into a download), `Working`.
+- **Input and output size:** the photo is decoded with `ImageDecoder` (EXIF applied) at a long side of 1024 px, ARGB_8888 sRGB, and fed to the model as is. Why: ML Kit asks for at least 512 x 512 and returns the confidence mask at the input's size, so a 12 MP input would mean a 48 MB float buffer and seconds of work for an edge gain that has not been measured (review, 7 Nov: no device run yet). The mask is a grayscale PNG (opaque pixels, R = G = B = confidence) at that size, the picture's proportions. **For P2-07:** draw it stretched over the picture with bilinear filtering (the confidence is already soft) and apply the edge-softness feather after the upscale, at drawn and at export size (up to 2160, about 2x); refine strokes live in the picture's own coordinates, not the mask's. The size is one constant (`SegmentationLimits.INPUT_LONG_SIDE_PX`): if the 2160 edge looks soft on a hair-edge photo in hand checks, try 1536 and compare the warm median against the 1.5 s bar. The mask file is a new `media/<project id>/<uuid>.png` per run; once a layer holds it, P2-07 must add it to `mediaCopyPaths`, or the next start's cleaner removes it. Only the confidence mask is requested (no foreground bitmap, no per-subject masks: the spec keeps all subjects together).
+- **Memory:** the ML Kit client (and its loaded model) lives between cut-outs and is closed on `onTrimMemory(UI_HIDDEN or worse)` / low memory when no call is running; one photo at a time (a Mutex). The decoded bitmap is not recycled (a timeout can abandon a model call that still reads it).
+- **Model download:** checked, then installed on first use through Play services; no install-time manifest dependency (a first-use "Preparing" is in the spec, and the install-time meta-data value could not be verified offline). Offline is detected before the install starts (`ACCESS_NETWORK_STATE`), since Play services would pause the download and wait.
+- **Data safety (P6-05):** the photo and the mask never leave the phone. The model is downloaded by Google Play services (a Google-served download). ML Kit's SDK also logs API usage and performance metrics through Google's transport (the artifact depends on `transport-runtime`); Google's ML Kit data-disclosure page was not reachable when this was written, so the P6-05 form must be filled from that page, not from this note.
+- **Alternatives:** the MediaPipe photo fallback (out by delegation); decoding at the full 12 MP and letting ML Kit resize (slow, 48 MB buffer); a mask at the full picture size (4 to 9 times the bytes for no visible gain).
+- **Debug hook:** `--es memix.segmentCheck <photo path under files/> --ei memix.segmentPasses 6` (debug and benchmark builds), logcat tag `MemixSegmentCheck`.

@@ -20,7 +20,7 @@ Full detail: `docs/TECHNICAL_DESIGN.md`. This is the working summary.
 | `:core:ui` | UI | shared composables with more than one user: time formatting, layer gestures and selection frame, Position and Canvas panel rows, editor frame pieces (`editor/`), the one photo-scene drawing function `drawPhotoScene`, the `SceneImageSource` decoder interface and the `SceneCaptions` caption-drawing interface (`scene/`), the typing bar, `TextEntryUi` and Style panel both editors use (`text/`); public `Res` with the strings both editors share (the video timeline is in `:feature:video-editor`) | designsystem, model |
 | `:engine:video` | Platform | `VideoEngine`: Media3 (androidMain), AVFoundation (iosMain); `VideoPreviewSurface`, which the composition root passes to the editor screen; `AndroidSceneCaptions`, the caption renderer bound to `SceneCaptions` so the photo scene draws text like video (P2-03) | domain, ui |
 | `:engine:photo` | Platform | the scene's `SceneImageSource` decoder (P2-01; interface lives in `:core:ui` because it returns `ImageBitmap`), later the photo renderer + PNG/JPG/GIF/WebP encoders | domain, ui |
-| `:engine:segmentation` | Platform | `Segmenter`: ML Kit + MediaPipe / Vision | domain |
+| `:engine:segmentation` | Platform | `Segmenter`: ML Kit (MediaPipe with P4-13) / Vision | domain |
 | `:platform:services` | Platform | AdMob+UMP, Firebase, share intents, gallery picker | domain |
 | `:feature:onboarding/home/templates/sounds/drafts/video-editor/photo-editor/export` | UI | screens + ViewModels | domain, ui |
 | `:feature:media-import` | UI | the import flow (`MediaImportFlow`, the sheet, `ProjectPickImport<R>` for a pick into an open project) and its strings; used by both editors and the app root | domain, ui |
@@ -62,8 +62,9 @@ interface VideoEngine {   // app.memix.core.domain.video; members join with the 
 // Captions (P1-10): CaptionClips in the plan, drawn by the engine's one caption renderer in a composition-level overlay;
 // the editor measures through CaptionMeasurer (:core:domain) and draws its stand-in with the engine's CaptionStandIn.
 // Photo text (P2-03): drawPhotoScene calls SceneCaptions (:core:ui), implemented by :engine:video and bound in Koin; no engine depends on another.
-interface Segmenter {
-    suspend fun segmentImage(image: ImageRef): SegmentationResult
-    fun videoSession(source: MediaRef): VideoSegmentationSession
+interface Segmenter {   // P2-06; features go through RemoveBackgroundUseCase
+    suspend fun modelState(): ModelState
+    suspend fun prepareModel(onProgress: (Float?) -> Unit): ModelPreparation
+    suspend fun segmentImage(sourcePath: String): SegmentationOutcome   // grayscale PNG mask; videoSession joins with P4-13
 }
 ```

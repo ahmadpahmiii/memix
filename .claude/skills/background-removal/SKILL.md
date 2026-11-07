@@ -14,9 +14,10 @@ Free in both editors, on-device only. Photos: any prominent subject. Video: **pe
 
 Rules:
 - Everything sits behind `Segmenter` in `:core:domain`; features never import ML Kit/MediaPipe/Vision.
-- ML Kit is beta: check model availability first; show "Preparing…" while Play services downloads it; fall back to the MediaPipe person model and say so if unavailable.
+- ML Kit is beta: check model availability first (`Segmenter.modelState`), show "Preparing…" while Play services downloads it (`prepareModel`, `CutoutProgress`). **No photo fallback in v1** (owner, 5 Nov 2026): if the model is unavailable the user sees "can't remove the background right now" with a retry; P4-13 reconsiders. Features use `RemoveBackgroundUseCase`, which returns a distinct `SegmentationFailure` per case.
+- Photo input is decoded at 1024 px long side and the mask comes back at that size as a grayscale PNG file in the project's media folder (never rewritten in place). Pinned: ML Kit subject segmentation 16.0.0-beta1. Debug hook: `memix.segmentCheck` / `memix.segmentPasses` (MemixSegmentCheck log).
 - Check current official docs (ML Kit subject segmentation for Android, MediaPipe image_segmenter, Apple Vision) before coding.
-- Photo target: < 1.5 s for a 12 MP photo on the reference phone (measure, put it in the PR).
+- Photo target: < 1.5 s for a 12 MP photo on the owner's phone, the median of 5 warm runs; report the first run (model download and load) apart.
 - Video: masks at preview resolution, cached per frame while editing, recomputed at export resolution; show progress; the GL pipeline applies masks as alpha.
 - Refine brush: erase/restore strokes saved as a mask-layer PNG at canvas resolution in the project; edge softness = feather radius.
 - "Save as sticker" writes a trimmed transparent PNG/WebP into the local sticker list (never uploaded).

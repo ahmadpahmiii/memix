@@ -115,7 +115,7 @@ How it works for the user:
 - Video shows a progress bar, previews at reduced resolution, and renders at full resolution on export.
 - The first use on Android may show "Preparing…" while Google Play services downloads the model.
 
-The ML Kit API is in beta and may change, so it sits behind our own interface with MediaPipe as the fallback.
+The ML Kit API is in beta and may change, so it sits behind our own interface. If its model is unavailable on a phone, the user sees a calm "can't remove the background right now" state with a retry; a MediaPipe fallback for photos is reconsidered when MediaPipe arrives for video (P4-13) (owner's delegation, 5 Nov 2026).
 
 ## Sound library
 
@@ -300,7 +300,7 @@ Each phase ends with a build in internal testing and a manual QA pass, so proble
 | Sound licensing | Muted posts, takedowns, store removal | License rule and CMS fields, takedown flow, lawyer review |
 | Two native video engines | iOS later, engine bugs | One shared engine spec, reference renders compared during QA, Android first |
 | Video background removal quality | Rough edges | People only in v1, refine brush, low-res preview |
-| ML Kit subject segmentation is beta | API changes | Behind our own interface, MediaPipe fallback |
+| ML Kit subject segmentation is beta | API changes | Behind our own interface; a calm unavailable state with a retry, MediaPipe fallback reconsidered at P4-13 |
 | Name conflict | Costly rename later | Trademark search before launch |
 | File download costs | Bill grows with users | Supabase Storage while only the team downloads, Cloudflare R2 (free egress) before launch, on-device caching |
 | Supabase Free limits | Backend restricted when over quota | Monitor usage, move to Pro at about 1,500 DAU |

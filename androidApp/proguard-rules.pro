@@ -17,6 +17,11 @@
 # - Media3 1.11.1 (exoplayer, common): keeps the renderer and media-source constructors it creates by reflection and
 #   the effect factories CompositionPlayer needs. Transformer, muxer and container add no rules and need none.
 # - Crashlytics 20.1.1: its only rule silences two Android 15/16 classes missing from older SDKs.
+# - ML Kit Subject Segmentation 16.0.0-beta1 and Play services base 18.11.1 (P2-06): the ML Kit `common` and Play
+#   services `base`/`basement` AARs carry their own consumer rules (annotations, JNI `UsedBy`, the pending-result
+#   guard); the subject-segmentation AAR has none. R8 kept SubjectSegmentationRegistrar under its own name (read from
+#   mapping.txt of a `bundleRelease` run, 7 Nov 2026), which is what ML Kit's component discovery looks up from the
+#   manifest. Nothing is added. If the benchmark build ever fails with "component registrar" errors, start there.
 # - Koin 4: definitions are lambdas and constructor references written in Kotlin, nothing is looked up by name.
 #   (Read from the code, not from Koin's rules.)
 # - Compose, Navigation, Lifecycle, Activity, coroutines, Firebase Analytics and Remote Config: nothing added until a

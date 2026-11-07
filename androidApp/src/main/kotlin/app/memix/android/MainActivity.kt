@@ -14,6 +14,7 @@ import app.memix.debug.ExportCheck
 import app.memix.debug.ImportSaveFailure
 import app.memix.debug.MemixTestCrash
 import app.memix.debug.SceneRender
+import app.memix.debug.SegmentCheck
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -57,6 +58,14 @@ class MainActivity : ComponentActivity() {
             // P2-02: --ei memix.renderShortSide 1080|2160 sizes the canvas's shorter side instead of the width (the formats' two export sizes).
             val shortSide = intent.getIntExtra("memix.renderShortSide", 0)
             lifecycleScope.launch { SceneRender().run(renderScene, width, shortSide) }
+        }
+        // Debug and benchmark builds (P2-06): --es memix.segmentCheck <photo path under files/> --ei memix.segmentPasses 6 (--ez memix.segmentKeepMasks true) runs
+        // the cut-out that many times and logs each duration. Logcat tag MemixSegmentCheck; steps in docs/qa/phase-2/engineer-hand-checks.md.
+        val segmentCheck = if (handChecks && savedInstanceState == null) intent.getStringExtra("memix.segmentCheck") else null
+        if (segmentCheck != null) {
+            val passes = intent.getIntExtra("memix.segmentPasses", 6)
+            val keepMasks = intent.getBooleanExtra("memix.segmentKeepMasks", false)
+            lifecycleScope.launch { SegmentCheck().run(segmentCheck, passes, keepMasks) }
         }
         setContent { App(isDebugBuild, debugEditorProject = editorCheck) }
     }
