@@ -2,7 +2,14 @@ package app.memix.debug
 
 import app.memix.core.domain.project.StrokeResult
 import app.memix.core.domain.project.addStroke
+import app.memix.core.model.project.ArgbColor
 import app.memix.core.model.project.CaptionCatalog
+import app.memix.core.model.project.CaptionStyle
+import app.memix.core.model.project.CensorLayer
+import app.memix.core.model.project.CensorMode
+import app.memix.core.model.project.CensorShape
+import app.memix.core.model.project.TextLayer
+import app.memix.core.model.project.Transform
 import app.memix.core.model.project.DrawCatalog
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.StrokeMode
@@ -16,6 +23,9 @@ import kotlin.math.sin
  */
 internal object DrawCheckScene {
     private const val SAMPLE_STEP = 0.002f
+
+    /** A caption's font is 8% of S at scale 1: 0.55 makes digits with a cap height of about 0.03 S. */
+    const val DIGITS_SCALE = 0.55f
     private val colors = listOf(4, 2, 8, 9, 5)
 
     /** [project] with the sizes layer (id [SIZES_ID]), the erased stroke and dot on it, and the faded layer (id [FADED_ID]). */
@@ -32,6 +42,26 @@ internal object DrawCheckScene {
         result = result.stroke(FADED_ID, StrokeMode.DRAW, 6, DrawCatalog.BRUSH_SIZES[4], line(0.25f, 0.2f, 0.55f, 0.45f))
         result = result.stroke(FADED_ID, StrokeMode.DRAW, 6, DrawCatalog.BRUSH_SIZES[4], line(0.25f, 0.45f, 0.55f, 0.2f))
         return result.fade(FADED_ID, 0.4f)
+    }
+
+    /**
+     * [project] with the censors of the P2-05 check on top: a line of ten digits under each of a Pixelate rectangle (strength 0), a
+     * Blur ellipse (strength 50%) and a Black bar, and a sharp caption over them (a censor hides only what is under it). The digits'
+     * cap height is about 0.03 S, the size of the legibility test.
+     */
+    fun withCensors(project: Project): Project {
+        val digits = CaptionStyle("anton", ArgbColor(0xFFFFFFFF), ArgbColor(0xFF000000))
+        fun line(id: String, x: Float) = TextLayer(id, "0123456789", digits, Transform(x, 0.27f, DIGITS_SCALE))
+        fun censor(id: String, mode: CensorMode, shape: CensorShape, strength: Float, x: Float) =
+            CensorLayer(id, mode, shape, strength, widthS = 0.32f, heightS = 0.16f, transform = Transform(x, 0.27f))
+        val layers = listOf(
+            line("c-digits-1", 0.2f), line("c-digits-2", 0.5f), line("c-digits-3", 0.8f),
+            censor("c-pixelate", CensorMode.PIXELATE, CensorShape.RECT, 0f, 0.2f),
+            censor("c-blur", CensorMode.BLUR, CensorShape.ELLIPSE, 0.5f, 0.5f),
+            censor("c-bar", CensorMode.BAR, CensorShape.RECT, 0f, 0.8f),
+            TextLayer("c-sharp", "SHARP ABOVE", digits, Transform(0.5f, 0.2f, 0.8f)),
+        )
+        return project.copy(photo = project.photo?.copy(layers = project.photo!!.layers + layers))
     }
 
     /** Draws a long scribble of [pointCount] raw touch points on one new layer, for the draft-size number (a 3-minute scribble). */

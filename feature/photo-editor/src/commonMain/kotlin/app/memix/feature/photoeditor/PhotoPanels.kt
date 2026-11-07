@@ -66,7 +66,10 @@ internal fun PhotoPanels(state: PhotoEditorUiState, live: PhotoLive, thumbnails:
                 shown,
                 onStep = { step, repeats -> onIntent(PhotoEditorIntent.PositionStepped(layer.id, step, repeats)) },
                 onHeld = { step, repeats -> onIntent(PhotoEditorIntent.PositionStepHeld(layer.id, step, repeats)) },
-                rowsBeforeCenter = { if (layer.bubble != null) TailRows(layer.id, onIntent) },
+                rowsBeforeCenter = {
+                    if (layer.bubble != null) TailRows(layer.id, onIntent)
+                    if (layer.censor != null) CensorSizeRows(layer, live, onIntent)
+                },
             )
         }
     }
@@ -95,6 +98,7 @@ internal fun PhotoPanels(state: PhotoEditorUiState, live: PhotoLive, thumbnails:
         rowsAfter = { if (bubble != null) BubbleFillRow(bubble.fill) { onIntent(PhotoEditorIntent.SetBubbleFill(it)) } },
     )
     EditPhotoPanel(state, live, filterThumbnails, maxHeight, onIntent, modifier, editPhotoTab)
+    CensorPanel(state, live, maxHeight, onIntent, modifier)
     FormatsPanel(state, maxHeight, onIntent, modifier)
     LayoutPanel(state, maxHeight, onIntent, modifier)
     DividerPanel(state, maxHeight, onIntent, modifier)

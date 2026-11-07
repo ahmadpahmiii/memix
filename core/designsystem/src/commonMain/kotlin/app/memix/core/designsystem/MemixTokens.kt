@@ -76,6 +76,9 @@ object MemixSize {
 
     /** The white scale-and-rotate handle on a selected caption on the preview; its target is still [touchTarget]. */
     val canvasHandleSize = 24.dp
+    /** A censor's edge handle: a white bar 20 dp long and 6 dp thick in the middle of each edge (P2-05). */
+    val edgeHandleLength = 20.dp
+    val edgeHandleThickness = 6.dp
     val filterTileSize = 72.dp
 
     /** A color swatch's circle, drawn in a [touchTarget] square. */

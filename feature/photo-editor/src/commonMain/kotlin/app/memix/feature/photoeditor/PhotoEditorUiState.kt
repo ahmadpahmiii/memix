@@ -14,6 +14,9 @@ import app.memix.core.model.project.editOrNull
 import app.memix.core.model.project.pictureZoom
 import app.memix.core.model.project.shownSize
 import app.memix.core.model.project.BubbleLayer
+import app.memix.core.model.project.CensorLayer
+import app.memix.core.model.project.CensorMode
+import app.memix.core.model.project.CensorShape
 import app.memix.core.model.project.DrawCatalog
 import app.memix.core.model.project.DrawingLayer
 import app.memix.core.model.project.Stroke
@@ -221,6 +224,8 @@ data class SceneLayerUi(
     override val scaleRange: ClosedFloatingPointRange<Float>,
     /** A bubble's own parts; null for the other kinds. */
     val bubble: BubbleUi? = null,
+    /** A censor's own parts; null for the other kinds. */
+    val censor: CensorUi? = null,
     /** A drawing's strokes, for its row's thumbnail; empty for the other kinds. */
     val strokes: List<Stroke> = emptyList(),
     override val boxOffsetXPx: Float = 0f,
@@ -231,11 +236,15 @@ data class SceneLayerUi(
     override val handleAvoidYPx: Float? get() = bubble?.let { it.tailY * it.bodyHeightPx }
 }
 
+/** A censor as the editor handles it: its mode, shape, strength and own size in S at scale 1. */
+@Immutable
+data class CensorUi(val mode: CensorMode, val shape: CensorShape, val strength: Float, val widthS: Float, val heightS: Float)
+
 /** A bubble as the editor handles it: its look, its body at scale 1 and its tail tip (body widths and heights from the center). */
 @Immutable
 data class BubbleUi(val shape: BubbleShape, val fill: ArgbColor, val tailX: Float, val tailY: Float, val bodyWidthPx: Float, val bodyHeightPx: Float)
 
-enum class LayerKind { IMAGE, TEXT, STICKER, BUBBLE, DRAWING }
+enum class LayerKind { IMAGE, TEXT, STICKER, BUBBLE, DRAWING, CENSOR }
 
 /**
  * [this] layer for the editor, on a canvas of [canvasSize]: an image's box is its picture fitted inside the frame, a
@@ -246,7 +255,7 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
     val picture = when (this) {
         is ImageLayer -> source.pixelSize
         is StickerLayer -> source.pixelSize
-        is TextLayer, is BubbleLayer, is DrawingLayer -> null
+        is TextLayer, is BubbleLayer, is DrawingLayer, is CensorLayer -> null
     }
     val drawingBounds = (this as? DrawingLayer)?.let { DrawCatalog.boundsOf(it) }
     val shortSide = minOf(canvasSize.widthPx, canvasSize.heightPx).toFloat()
@@ -257,6 +266,7 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
         is ImageLayer -> picture?.let { fittedImageSize(shownSize(it), canvasSize) }
         is StickerLayer -> stickerSizeAtScaleOne(picture, canvasSize)
         is DrawingLayer -> BoxSize((drawingBounds?.width ?: 0f) * shortSide, (drawingBounds?.height ?: 0f) * shortSide)
+        is CensorLayer -> BoxSize(widthS * shortSide, heightS * shortSide)
         is TextLayer -> measure(text, style, canvasSize.widthPx, canvasSize.heightPx, CaptionLook.Text).let { BoxSize(it.widthPx, it.heightPx) }
     }
     return SceneLayerUi(
@@ -267,6 +277,7 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
             is StickerLayer -> LayerKind.STICKER
             is BubbleLayer -> LayerKind.BUBBLE
             is DrawingLayer -> LayerKind.DRAWING
+            is CensorLayer -> LayerKind.CENSOR
         },
         transform = transform,
         locked = locked,
@@ -275,7 +286,7 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
         path = when (this) {
             is ImageLayer -> source.cachedCopyPath
             is StickerLayer -> source.cachedCopyPath
-            is TextLayer, is BubbleLayer, is DrawingLayer -> null
+            is TextLayer, is BubbleLayer, is DrawingLayer, is CensorLayer -> null
         },
         text = (this as? TextLayer)?.text ?: (this as? BubbleLayer)?.text,
         style = (this as? TextLayer)?.style ?: (this as? BubbleLayer)?.style,
@@ -288,6 +299,7 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
         boxHeightPx = box?.height ?: 0f,
         scaleRange = PhotoCatalog.scaleRangeOf(this),
         strokes = (this as? DrawingLayer)?.strokes.orEmpty(),
+        censor = (this as? CensorLayer)?.let { CensorUi(it.mode, it.shape, it.strength, it.widthS, it.heightS) },
         bubble = (this as? BubbleLayer)?.let { BubbleUi(it.shape, it.fill, it.tailX, it.tailY, bubbleBody?.width ?: 0f, bubbleBody?.height ?: 0f) },
         boxOffsetXPx = bubbleBox?.offsetX ?: 0f,
         boxOffsetYPx = bubbleBox?.offsetY ?: 0f,
@@ -295,7 +307,7 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
 }
 
 /** The tool panels over the tool bar. They never stack: opening one closes another. */
-enum class PhotoPanel { LAYERS, OPACITY, POSITION, CANVAS, STYLE, FORMATS, LAYOUT, DIVIDER, CELL_POSITION, EDIT_PHOTO }
+enum class PhotoPanel { LAYERS, OPACITY, POSITION, CANVAS, STYLE, FORMATS, LAYOUT, DIVIDER, CELL_POSITION, EDIT_PHOTO, CENSOR }
 
 /** The six tiles of the Formats panel, in the spec's order; [PLAIN] is no format (null in the model). */
 enum class FormatChoice(val edit: PhotoEdit) {
@@ -394,6 +406,12 @@ enum class PhotoEdit(val tool: EditorTool) {
     // Drawing (P2-05): each committed stroke is one step.
     DRAW_STROKE(EditorTool.DRAW_STROKE),
     ERASE_STROKE(EditorTool.ERASE_STROKE),
+
+    // Censor (P2-05b): the undo names; the events sent are the mode's ids, through loggedAs.
+    ADD_CENSOR(EditorTool.ADD_CENSOR),
+    CENSOR_MODE(EditorTool.CENSOR_MODE),
+    CENSOR_SHAPE(EditorTool.CENSOR_SHAPE),
+    CENSOR_STRENGTH(EditorTool.CENSOR_STRENGTH),
     ;
 
     companion object {
@@ -418,6 +436,8 @@ enum class PhotoExplanation {
     CANVAS_MAX,
     DRAW_NOTHING,
     DRAW_FULL,
+    CENSOR_MIN,
+    CENSOR_MAX,
 }
 
 /** A toast on the stage; a new [id] restarts its timer. [isSpokenOnly] when the save banner holds the slot. */
@@ -481,6 +501,9 @@ sealed interface PhotoToastMessage {
 
     /** Spoken only, after Done: "Drawing saved". */
     data object DrawSaved : PhotoToastMessage
+
+    /** Spoken only, after a censor landed: "Censor added". */
+    data object CensorAdded : PhotoToastMessage
 
     /** The photos in removed Panels cells left the meme (a lower count, or Panels was left); Undo brings them back. */
     data object PanelPhotosDropped : PhotoToastMessage
@@ -707,6 +730,23 @@ sealed interface PhotoEditorIntent {
         val ys: FloatArray,
         val count: Int,
     ) : PhotoEditorIntent
+
+    // Censor (P2-05b).
+    /** The Censor tool on the main bar: a censor lands in the middle and its panel opens. */
+    data object AddCensor : PhotoEditorIntent
+
+    data class SetCensorMode(val mode: CensorMode) : PhotoEditorIntent
+
+    data class SetCensorShape(val shape: CensorShape) : PhotoEditorIntent
+
+    /** The Strength slider's release, 0 to 1. */
+    data class SetCensorStrength(val layerId: String, val strength: Float) : PhotoEditorIntent
+
+    /** An edge handle released: the censor's own size in S and its new place (the opposite side stayed). */
+    data class CensorResized(val layerId: String, val widthS: Float, val heightS: Float, val transform: Transform) : PhotoEditorIntent
+
+    /** A Width or Height tap or a hold's release: [widthSteps] and [heightSteps] steps of 2% of S (negative is smaller). */
+    data class CensorSizeStepped(val layerId: String, val widthSteps: Int, val heightSteps: Int) : PhotoEditorIntent
 
     // The background picture (P2-12).
     /** The Image swatch with no picture yet, or Replace. */

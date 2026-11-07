@@ -39,4 +39,6 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     // 7 → 8 (P2-05a): the new layer kind "drawing_layer". A draft saved before has none, so its JSON decodes as it is and the step
     // only moves the version on. The censor half (P2-05b) is committed later and bumps to 9 the same way, so each version names one shape.
     ProjectMigration(fromVersion = 7) { json -> json },
+    // 8 → 9 (P2-05b): the new layer kind "censor_layer". A draft saved before has none, so its JSON decodes as it is.
+    ProjectMigration(fromVersion = 8) { json -> json },
 )

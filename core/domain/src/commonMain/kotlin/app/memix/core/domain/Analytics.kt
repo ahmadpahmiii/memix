@@ -213,6 +213,17 @@ enum class EditorTool(val eventValue: String?) {
     /** P2-05: a brush or eraser stroke, one event per committed stroke (PM, 2 Nov 2026); nothing for brush color or size. */
     DRAW_STROKE("draw_stroke"),
     ERASE_STROKE("erase_stroke"),
+
+    /** P2-05b: a censor added with its mode, or its mode changed (PM, 2 Nov 2026): the mode it now has. Shape, strength and size send nothing. */
+    CENSOR_BLUR("censor_blur"),
+    CENSOR_PIXELATE("censor_pixelate"),
+    CENSOR_BAR("censor_bar"),
+
+    /** Undo names for the censor steps that send no event of their own (the mode's id is logged through `loggedAs`). */
+    ADD_CENSOR(null),
+    CENSOR_MODE(null),
+    CENSOR_SHAPE(null),
+    CENSOR_STRENGTH(null),
 }
 
 /** `sound_add.tab` and `sound_preview.tab`: where in the sounds UI it happened. "starter" until P3-05 (PM, 8 Oct 2026). */

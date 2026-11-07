@@ -12,6 +12,7 @@ import app.memix.core.model.project.BubbleLayer
 import app.memix.core.model.project.BubblePoint
 import app.memix.core.model.project.Canvas
 import app.memix.core.model.project.CanvasBackground
+import app.memix.core.model.project.CensorLayer
 import app.memix.core.model.project.DrawingLayer
 import app.memix.core.model.project.ImageEdit
 import app.memix.core.model.project.ImageLayer
@@ -48,9 +49,15 @@ interface SceneLive {
     /** The stroke a finger is drawing now (spec P2-05), or null. It goes into the group of the drawing layer it names. */
     fun strokeOf(): LiveStroke? = null
 
+    /** What a censor's handle or Strength slider has changed now (P2-05), or null for the project's own. */
+    fun censorOf(layerId: String): CensorLive? = null
+
     /** The editor's kept stroke paths (P2-05), or null to build them as they are drawn. */
     val strokePaths: StrokePathCache? get() = null
 }
+
+/** A censor's size in S at scale 1 and strength as a finger has them now; null parts are the project's. */
+data class CensorLive(val widthS: Float? = null, val heightS: Float? = null, val strength: Float? = null)
 
 /**
  * THE one function that draws a photo scene, at any pixel size: the editor at screen size, the render hook and (P2-08)
@@ -70,28 +77,47 @@ fun DrawScope.drawPhotoScene(
 ) {
     val canvasSize = PixelSize(canvas.widthPx, canvas.heightPx)
     val pixelScale = size.width / canvas.widthPx
-    val liveStroke = live?.strokeOf()
     clipRect(0f, 0f, size.width, size.height) {
-        drawRect(backgroundOf(canvas))
         withTransform({ scale(pixelScale, pixelScale, Offset.Zero) }) {
-            (canvas.background as? CanvasBackground.Image)?.let { drawBackgroundImage(it, canvasSize, images) }
-            drawFormatParts(live?.formatOf() ?: format, canvasSize, images)
-            for (layer in layers) {
-                if (layer.hidden) continue
-                val transform = live?.transformOf(layer.id) ?: layer.transform
-                val opacity = live?.opacityOf(layer.id) ?: layer.opacity
-                when (layer) {
-                    is ImageLayer -> drawImageLayer(layer, transform, opacity, canvasSize, images)
-                    is TextLayer -> captions.draw(this, layer.text, layer.style, transform, opacity, canvasSize.widthPx, canvasSize.heightPx)
-                    is StickerLayer -> drawStickerLayer(layer, transform, opacity, canvasSize, images)
-                    is BubbleLayer -> drawBubbleLayer(layer, transform, opacity, live?.tailOf(layer.id), canvasSize, captions)
-                    is DrawingLayer -> drawDrawingLayer(layer, transform, opacity, canvasSize, liveStroke?.takeIf { it.layerId == layer.id }, live?.strokePaths)
-                }
-            }
-            // The first stroke of a new drawing: no layer yet, so it is drawn at the front.
-            if (liveStroke != null && liveStroke.count > 0 && layers.none { it.id == liveStroke.layerId }) drawNewDrawing(liveStroke, canvasSize)
+            drawSceneContent(canvas, canvasSize, layers, layers.size, images, live, captions, format, live?.strokeOf())
         }
     }
+}
+
+// The scene in canvas pixels: the background, the format's parts, then the first [count] of [layers]. A censor draws what is under it
+// again into a small bitmap (drawSceneContent with the layers below it), so layers above it are never touched.
+private fun DrawScope.drawSceneContent(
+    canvas: Canvas,
+    canvasSize: PixelSize,
+    layers: List<Layer>,
+    count: Int,
+    images: SceneImages,
+    live: SceneLive?,
+    captions: SceneCaptions,
+    format: PhotoFormat?,
+    liveStroke: LiveStroke?,
+) {
+    drawRect(backgroundOf(canvas), size = androidx.compose.ui.geometry.Size(canvasSize.widthPx.toFloat(), canvasSize.heightPx.toFloat()))
+    (canvas.background as? CanvasBackground.Image)?.let { drawBackgroundImage(it, canvasSize, images) }
+    drawFormatParts(live?.formatOf() ?: format, canvasSize, images)
+    for (index in 0 until count) {
+        val layer = layers[index]
+        if (layer.hidden) continue
+        val transform = live?.transformOf(layer.id) ?: layer.transform
+        val opacity = live?.opacityOf(layer.id) ?: layer.opacity
+        when (layer) {
+            is ImageLayer -> drawImageLayer(layer, transform, opacity, canvasSize, images)
+            is TextLayer -> captions.draw(this, layer.text, layer.style, transform, opacity, canvasSize.widthPx, canvasSize.heightPx)
+            is StickerLayer -> drawStickerLayer(layer, transform, opacity, canvasSize, images)
+            is BubbleLayer -> drawBubbleLayer(layer, transform, opacity, live?.tailOf(layer.id), canvasSize, captions)
+            is DrawingLayer -> drawDrawingLayer(layer, transform, opacity, canvasSize, liveStroke?.takeIf { it.layerId == layer.id }, live?.strokePaths)
+            is CensorLayer -> drawCensorLayer(live?.censorOf(layer.id)?.let { layer.copy(widthS = it.widthS ?: layer.widthS, heightS = it.heightS ?: layer.heightS, strength = it.strength ?: layer.strength) } ?: layer, transform, canvasSize) {
+                drawSceneContent(canvas, canvasSize, layers, index, images, live, captions, format, liveStroke)
+            }
+        }
+    }
+    // The first stroke of a new drawing: no layer yet, so it is drawn at the front.
+    if (count == layers.size && liveStroke != null && liveStroke.count > 0 && layers.none { it.id == liveStroke.layerId }) drawNewDrawing(liveStroke, canvasSize)
 }
 
 // The canvas color. Blur is video only (a copy of the playing clip): a photo draws white where one would be. A picture

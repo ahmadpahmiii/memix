@@ -54,8 +54,8 @@ internal class DebugPicture(val fileName: String, val widthPx: Int, val heightPx
  *   same as the video editor's `text-shadow-check`: compare the screen, the render hook and the export frame.
  * - `photo-image-tools` (P2-04): a 4:3 photo plus a portrait one with a turn, mirror, straighten and crop already saved.
  * - `photo-draw-censor` (P2-05): a 4:3 photo with a caption and two drawing layers: five brush sizes in five colors, a thick stroke
- *   with an eraser stroke across it and a dot on the first, two crossing strokes at 40% on the second (the censor layers join with
- *   the censor half). Render it with `--ei memix.renderShortSide 1080|2160`.
+ *   with an eraser stroke across it and a dot on the first, two crossing strokes at 40% on the second (a line of digits under each
+ *   of a Pixelate, a Blur ellipse and a Black bar, and a sharp caption above them). Render it with `--ei memix.renderShortSide 1080|2160`.
  * - `photo-format-classic`, `-caption-bar`, `-demotivational`, `-panels`, `-bubbles` (P2-02): a 4:3 photo canvas (1440 x 1080) in each format with real text
  *   (panels: a 2 x 2 grid, three cells filled; bubbles: one of each shape): render each at both sizes with `--ei memix.renderShortSide 1080|2160`.
  * - `photo-panels-6` (P2-02): a 2 x 3 grid of six 12 MP cells for the speed bar (three 3 s divider drags under 5% janky frames; peak Graphics and Native Heap).
@@ -216,7 +216,7 @@ internal object PhotoCheckProjects {
     /** The P2-05 check scene: a 4:3 photo and a caption under the drawings of [DrawCheckScene]. */
     private fun drawCensor(): Project {
         val layers = listOf(image("dc-photo", shapes[0], Transform()), text("dc-caption", "DRAW CHECK", CAPTION, Transform(0.5f, 0.1f)))
-        return DrawCheckScene.withDrawings(project(DRAW_CENSOR, photoCanvasFor(PixelSize(shapes[0].widthPx, shapes[0].heightPx)), layers))
+        return DrawCheckScene.withCensors(DrawCheckScene.withDrawings(project(DRAW_CENSOR, photoCanvasFor(PixelSize(shapes[0].widthPx, shapes[0].heightPx)), layers)))
     }
 
     /** The seven captions of the video's `text-shadow-check` on the same 9:16 photo canvas (spec P2-11 → QA compares → Measured). */

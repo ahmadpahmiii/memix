@@ -169,4 +169,29 @@
     <string name="edit_draw">Gambar</string>
     <string name="edit_erase">Hapus</string>
     <string name="draw_eraser_hint">Menghapus gambarmu, bukan fotonya.</string>
+    <!-- P2-05 censor. English source, budgets and translator notes: docs/ux/specs/P2-05-draw-and-censor.md -> Copy. -->
+    <string name="tool_censor">Sensor</string>
+    <string name="censor_title">Sensor</string>
+    <string name="censor_mode">Mode</string>
+    <string name="censor_blur">Buram</string>
+    <string name="censor_pixelate">Piksel</string>
+    <string name="censor_bar">Balok hitam</string>
+    <string name="censor_shape">Bentuk</string>
+    <string name="censor_rect">Persegi panjang</string>
+    <string name="censor_ellipse">Elips</string>
+    <string name="censor_strength">Kekuatan</string>
+    <string name="position_width">Lebar</string>
+    <string name="position_height">Tinggi</string>
+    <string name="position_width_less">Perkecil lebar</string>
+    <string name="position_width_more">Perlebar</string>
+    <string name="position_height_less">Perpendek</string>
+    <string name="position_height_more">Pertinggi</string>
+    <string name="explain_censor_min">Sensor tidak bisa lebih kecil dari ini.</string>
+    <string name="explain_censor_max">Sensor tidak bisa lebih besar dari ini.</string>
+    <string name="a11y_layer_censor_added">Sensor ditambahkan</string>
+    <string name="layer_name_censor">Sensor</string>
+    <string name="edit_censor_add">Tambah sensor</string>
+    <string name="edit_censor_mode">Mode sensor</string>
+    <string name="edit_censor_shape">Bentuk sensor</string>
+    <string name="edit_censor_strength">Kekuatan sensor</string>
 </resources>

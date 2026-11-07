@@ -4,6 +4,7 @@ import app.memix.core.model.project.AudioClip
 import app.memix.core.model.project.BubbleLayer
 import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.EffectItem
+import app.memix.core.model.project.CensorLayer
 import app.memix.core.model.project.DrawingLayer
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.MediaClip
@@ -37,7 +38,7 @@ internal fun Project.mediaCopyPaths(): Set<String> {
         val source = when (layer) {
             is ImageLayer -> layer.source
             is StickerLayer -> layer.source
-            is TextLayer, is BubbleLayer, is DrawingLayer -> null
+            is TextLayer, is BubbleLayer, is DrawingLayer, is CensorLayer -> null
         }
         source?.cachedCopyPath?.let(paths::add)
     }
@@ -76,7 +77,7 @@ internal fun Project.withMediaCopyPaths(rewrite: (String) -> String): Project {
                 when (layer) {
                     is ImageLayer -> layer.copy(source = layer.source.rewritten())
                     is StickerLayer -> layer.copy(source = layer.source.rewritten())
-                    is TextLayer, is BubbleLayer, is DrawingLayer -> layer
+                    is TextLayer, is BubbleLayer, is DrawingLayer, is CensorLayer -> layer
                 }
             },
             format = (scene.format as? PanelsFormat)?.let { panels -> panels.copy(cells = panels.cells.map { cell -> cell.copy(source = cell.source?.rewritten()) }) } ?: scene.format,

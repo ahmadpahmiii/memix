@@ -97,8 +97,10 @@ internal fun LayersPanel(
     modifier: Modifier = Modifier,
 ) {
     val selected = state.selectedLayer
+    // A censor has no opacity (spec P2-05): no Opacity row for it.
+    val opacityLayer = selected?.takeIf { it.kind != LayerKind.CENSOR }
     // Tight panels give the list the room: the Opacity row scrolls with the rows (spec → Where the Opacity row lives).
-    val opacityInList = selected != null && (maxHeight < ROOMY_PANEL_MIN_HEIGHT || LocalDensity.current.fontScale >= TIGHT_FONT_SCALE)
+    val opacityInList = opacityLayer != null && (maxHeight < ROOMY_PANEL_MIN_HEIGHT || LocalDensity.current.fontScale >= TIGHT_FONT_SCALE)
     val listState = rememberLazyListState()
     val frontFirst = remember(state.layers) { state.layers.asReversed() }
     val reorder = rememberLayerReorder(listState, frontFirst.map { it.id }) { id, indexFromFront -> onIntent(PhotoEditorIntent.ReorderLayer(id, indexFromFront)) }
@@ -121,8 +123,8 @@ internal fun LayersPanel(
         headerActions = if (selected != null) ({ MoveButtons(selected.id, onIntent) }) else null,
         scrolls = false,
     ) {
-        if (selected != null && !opacityInList) OpacityRow(selected, live, onIntent)
-        val opacityItem: (@Composable () -> Unit)? = if (selected != null && opacityInList) ({ OpacityRow(selected, live, onIntent) }) else null
+        if (opacityLayer != null && !opacityInList) OpacityRow(opacityLayer, live, onIntent)
+        val opacityItem: (@Composable () -> Unit)? = if (opacityLayer != null && opacityInList) ({ OpacityRow(opacityLayer, live, onIntent) }) else null
         LayerList(state, frontFirst, listState, reorder, thumbnails, opacityItem, onIntent)
     }
 }
@@ -237,6 +239,10 @@ private fun LayerRowFor(
                 if (picture != null) Image(BitmapPainter(picture), contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
             }
             // A drawing's strokes fitted inside the square on `text-muted`, so black and white strokes both read (spec P2-05 → Row).
+            // A censor says "this is a censor" with its icon on `surface`, like a text row (spec P2-05 → Row).
+            LayerKind.CENSOR -> Box(Modifier.fillMaxSize().background(MemixColors.surface), contentAlignment = Alignment.Center) {
+                Icon(MemixIcons.Censor, contentDescription = null, tint = MemixColors.textSecondary)
+            }
             LayerKind.DRAWING -> if (layer.strokes.any { it.mode == StrokeMode.DRAW }) {
                 Canvas(Modifier.fillMaxSize().background(MemixColors.textMuted)) { drawDrawingThumbnail(layer.strokes) }
             } else {

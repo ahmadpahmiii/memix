@@ -96,6 +96,7 @@ import app.memix.core.ui.layers.LayerTurnHandle
 import app.memix.core.ui.layers.boxIn
 import app.memix.core.ui.layers.detectLayerGestures
 import app.memix.core.ui.layers.handleCenterOf
+import app.memix.core.ui.scene.CensorLive
 import app.memix.core.ui.scene.LiveStroke
 import app.memix.core.ui.scene.SceneLive
 import app.memix.core.ui.scene.StrokePathCache
@@ -116,6 +117,7 @@ import memix.feature.photo_editor.generated.resources.a11y_layer_locked
 import memix.feature.photo_editor.generated.resources.a11y_layer_missing
 import memix.feature.photo_editor.generated.resources.a11y_layer_opacity
 import memix.feature.photo_editor.generated.resources.a11y_layer_row
+import memix.feature.photo_editor.generated.resources.layer_name_censor
 import memix.feature.photo_editor.generated.resources.layer_name_drawing
 import memix.feature.photo_editor.generated.resources.layer_name_photo
 import memix.feature.photo_editor.generated.resources.layers_move_down
@@ -125,6 +127,7 @@ import memix.feature.photo_editor.generated.resources.photo_empty_body
 import memix.feature.photo_editor.generated.resources.photo_empty_body_blank
 import memix.feature.photo_editor.generated.resources.photo_empty_title
 import memix.feature.photo_editor.generated.resources.photo_stage_a11y
+import memix.feature.photo_editor.generated.resources.tool_censor
 import memix.feature.photo_editor.generated.resources.tool_draw
 import memix.feature.photo_editor.generated.resources.tool_hide_layer
 import memix.feature.photo_editor.generated.resources.tool_layer_opacity
@@ -203,6 +206,26 @@ internal class PhotoLive(
         if (!strokes.fingerDown) strokes.stroke = null
     }
 
+    private var censorLive by mutableStateOf<Pair<String, CensorLive>?>(null)
+
+    override fun censorOf(layerId: String): CensorLive? = censorLive?.takeIf { it.first == layerId }?.second
+
+    /** A censor's size as an edge handle or a held Width or Height button has it now (P2-05). */
+    fun setCensorSize(layerId: String, widthS: Float, heightS: Float) {
+        censorLive = layerId to (censorOf(layerId) ?: CensorLive()).copy(widthS = widthS, heightS = heightS)
+    }
+
+    /** A censor's strength as the slider has it now. */
+    fun setCensorStrength(layerId: String, strength: Float) {
+        censorLive = layerId to (censorOf(layerId) ?: CensorLive()).copy(strength = strength)
+    }
+
+    /** A cancelled edge drag: the censor is as the project has it. */
+    fun cancelCensor() {
+        censorLive = null
+        settled = null
+    }
+
     /** The opacity the slider shows now, or null when the project's own value applies. */
     fun opacityOf(): Float? = opacityLayerId?.let { opacity }
 
@@ -255,6 +278,7 @@ internal class PhotoLive(
     /** The project has caught up with the gesture, the held arrow or the slider. */
     fun release() {
         clearStroke()
+        censorLive = null
         tail = null
         cellLive = null
         dividerLive = null
@@ -543,10 +567,11 @@ private fun CancelGestureOnBack(stage: LayerStageState, onIntent: (PhotoEditorIn
 // locked), the snap guides and the value bubble. With the Canvas panel open the frame and handle are hidden.
 @Composable
 private fun BoxScope.SelectionOverlay(state: PhotoEditorUiState, scene: SceneUi, stage: LayerStageState, live: PhotoLive, hidden: Boolean, onIntent: (PhotoEditorIntent) -> Unit) {
-    val selected = state.selectedLayer?.takeIf { !it.hidden && !hidden }
+    val selected = state.selectedLayer?.takeIf { !it.hidden && !hidden }?.shownWith(live, scene.canvas)
     val canvasWidth = scene.canvas.widthPx
     if (selected != null) {
         LayerSelectionFrame(stage, selected, canvasWidth)
+        if (!selected.locked) CensorHandles(selected, scene.canvas, stage, live, onIntent)
         if (selected.locked) LockBadge(stage, selected, canvasWidth) else LayerTurnHandle(stage, selected, canvasWidth)
         // A bubble's tail handle sits above the scale-and-rotate handle where they overlap (spec → Bubbles).
         if (!selected.locked && selected.bubble != null) TailHandle(selected, stage, live, canvasWidth, onIntent)
@@ -631,6 +656,7 @@ internal class LayerActionLabels(
     val editText: String,
     val style: String,
     val draw: String,
+    val censor: String,
 ) {
     companion object {
         @Composable
@@ -648,6 +674,7 @@ internal class LayerActionLabels(
             editText = stringResource(UiRes.string.tool_edit_text),
             style = stringResource(UiRes.string.tool_style),
             draw = stringResource(Res.string.tool_draw),
+            censor = stringResource(Res.string.tool_censor),
         )
     }
 }
@@ -670,6 +697,7 @@ internal fun layerActions(layer: SceneLayerUi, labels: LayerActionLabels, onInte
         open(labels.style, PhotoPanel.STYLE),
     )
     // Draw adds to this drawing layer (spec P2-05 → Accessibility).
+    val censorActions = if (layer.kind != LayerKind.CENSOR) emptyList() else listOf(open(labels.censor, PhotoPanel.CENSOR))
     val drawActions = if (layer.kind != LayerKind.DRAWING) emptyList() else listOf(
         CustomAccessibilityAction(labels.draw) {
             onIntent(PhotoEditorIntent.SelectLayer(layer.id))
@@ -677,9 +705,9 @@ internal fun layerActions(layer: SceneLayerUi, labels: LayerActionLabels, onInte
             true
         },
     )
-    return textActions + drawActions + listOf(
+    return textActions + drawActions + censorActions + listOf(
         open(labels.position, PhotoPanel.POSITION),
-        open(labels.opacity, PhotoPanel.OPACITY),
+    ) + (if (layer.kind == LayerKind.CENSOR) emptyList() else listOf(open(labels.opacity, PhotoPanel.OPACITY))) + listOf(
         action(if (layer.locked) labels.unlock else labels.lock, PhotoEditorIntent.SetLocked(layer.id, !layer.locked)),
         action(if (layer.hidden) labels.show else labels.hide, PhotoEditorIntent.SetHidden(layer.id, !layer.hidden)),
         action(labels.duplicate, PhotoEditorIntent.DuplicateLayer(layer.id)),
@@ -712,6 +740,7 @@ internal fun spokenKindName(layer: SceneLayerUi, allWords: Boolean): String = wh
     LayerKind.TEXT -> stringResource(UiRes.string.a11y_text_on_canvas, if (allWords) layer.text.orEmpty() else firstLineOf(layer.text.orEmpty()))
     LayerKind.BUBBLE -> stringResource(Res.string.a11y_bubble_on_canvas, if (allWords) layer.text.orEmpty() else firstLineOf(layer.text.orEmpty()))
     LayerKind.DRAWING -> stringResource(Res.string.layer_name_drawing)
+    LayerKind.CENSOR -> stringResource(Res.string.layer_name_censor)
 }
 
 /** A row's visible name: "Photo", "Sticker", or a text's first non-blank line as typed, in the interface font. */
@@ -721,6 +750,7 @@ internal fun rowName(layer: SceneLayerUi): String = when (layer.kind) {
     LayerKind.STICKER -> stringResource(Res.string.layer_name_sticker)
     LayerKind.TEXT, LayerKind.BUBBLE -> firstLineOf(layer.text.orEmpty())
     LayerKind.DRAWING -> stringResource(Res.string.layer_name_drawing)
+    LayerKind.CENSOR -> stringResource(Res.string.layer_name_censor)
 }
 
 private fun firstLineOf(text: String): String = text.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()

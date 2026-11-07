@@ -149,6 +149,14 @@ import memix.feature.photo_editor.generated.resources.edit_draw
 import memix.feature.photo_editor.generated.resources.edit_erase
 import memix.feature.photo_editor.generated.resources.explain_draw_full
 import memix.feature.photo_editor.generated.resources.explain_draw_nothing
+import memix.feature.photo_editor.generated.resources.a11y_layer_censor_added
+import memix.feature.photo_editor.generated.resources.edit_censor_add
+import memix.feature.photo_editor.generated.resources.edit_censor_mode
+import memix.feature.photo_editor.generated.resources.edit_censor_shape
+import memix.feature.photo_editor.generated.resources.edit_censor_strength
+import memix.feature.photo_editor.generated.resources.explain_censor_max
+import memix.feature.photo_editor.generated.resources.explain_censor_min
+import memix.feature.photo_editor.generated.resources.tool_censor
 import memix.feature.photo_editor.generated.resources.tool_draw
 import memix.feature.photo_editor.generated.resources.edit_layer_hide
 import memix.feature.photo_editor.generated.resources.edit_layer_opacity
@@ -390,7 +398,7 @@ private fun ToolBarRegion(state: PhotoEditorUiState, entryField: TextFieldState,
             } else if (layer == null) {
                 // The format's own tool sits right after Formats (spec P2-02 → Main bar).
                 val formatTool = formatSpecificTool(state.format, onIntent)
-                ToolBar(persistentListOf(*listOfNotNull(formatsTool(onIntent), formatTool, textTool(onIntent), addPhotoTool(onIntent), drawTool(onIntent), editPhotoTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), cropTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), layersTool(onIntent)).toTypedArray()))
+                ToolBar(persistentListOf(*listOfNotNull(formatsTool(onIntent), formatTool, textTool(onIntent), addPhotoTool(onIntent), drawTool(onIntent), editPhotoTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), cropTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), censorTool(onIntent), layersTool(onIntent)).toTypedArray()))
             } else {
                 val closeLabel = stringResource(Res.string.layer_tools_close)
                 ToolBar(
@@ -445,6 +453,11 @@ private fun cropTool(onIntent: (PhotoEditorIntent) -> Unit, hasImage: Boolean): 
 private fun drawTool(onIntent: (PhotoEditorIntent) -> Unit) =
     ToolBarItem(stringResource(Res.string.tool_draw), MemixIcons.Draw, { onIntent(PhotoEditorIntent.OpenDraw) })
 
+// A censor lands in the middle and its panel opens (spec P2-05 → Entry and exit).
+@Composable
+private fun censorTool(onIntent: (PhotoEditorIntent) -> Unit) =
+    ToolBarItem(stringResource(Res.string.tool_censor), MemixIcons.Censor, { onIntent(PhotoEditorIntent.AddCensor) })
+
 // Opens the picker for a new top layer (spec P2-13 → Entry and exit); in its final place just before Layers.
 @Composable
 private fun addPhotoTool(onIntent: (PhotoEditorIntent) -> Unit) =
@@ -489,6 +502,10 @@ private fun selectedLayerTools(layer: SceneLayerUi, missing: Boolean, onIntent: 
     })
     val layers = layersTool(onIntent)
     val draw = drawTool(onIntent)
+    // Censor · Position · Delete · Duplicate · Lock · Hide · Layers: no Opacity (a see-through censor shows what it hides).
+    val censor = ToolBarItem(stringResource(Res.string.tool_censor), MemixIcons.Censor, {
+        if (layer.locked) onIntent(PhotoEditorIntent.LockedLayerTouched(layer.id)) else onIntent(PhotoEditorIntent.OpenPanel(PhotoPanel.CENSOR))
+    })
     val isText = layer.kind == LayerKind.TEXT || layer.kind == LayerKind.BUBBLE
     // A text's own tools come first (spec P2-03 → Selected-text bar); while locked they only explain.
     val editText = ToolBarItem(stringResource(UiRes.string.tool_edit_text), MemixIcons.EditText, {
@@ -506,6 +523,10 @@ private fun selectedLayerTools(layer: SceneLayerUi, missing: Boolean, onIntent: 
             add(position)
             add(delete)
             add(opacity)
+        } else if (layer.kind == LayerKind.CENSOR) {
+            add(censor)
+            add(position)
+            add(delete)
         } else {
             if (missing) add(delete)
             add(position)
@@ -564,7 +585,7 @@ private fun ToastTimer(toast: PhotoToast, onTimedOut: (id: Long) -> Unit) {
             is PhotoToastMessage.Undone, is PhotoToastMessage.Redone, is PhotoToastMessage.Edited, is PhotoToastMessage.LayerOrder,
             is PhotoToastMessage.PositionTransformed, is PhotoToastMessage.PositionMoved, is PhotoToastMessage.OpacityChanged,
             is PhotoToastMessage.RatioStepped, PhotoToastMessage.BackgroundImageSet, PhotoToastMessage.BackgroundImageRemoved,
-            PhotoToastMessage.LayerAdded, PhotoToastMessage.TextAdded, PhotoToastMessage.DrawMode, PhotoToastMessage.DrawSaved, PhotoToastMessage.BubbleAdded, is PhotoToastMessage.FormatSet,
+            PhotoToastMessage.LayerAdded, PhotoToastMessage.TextAdded, PhotoToastMessage.DrawMode, PhotoToastMessage.DrawSaved, PhotoToastMessage.CensorAdded, PhotoToastMessage.BubbleAdded, is PhotoToastMessage.FormatSet,
             -> WHAT_HAPPENED_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
@@ -602,6 +623,7 @@ private fun toastText(message: PhotoToastMessage): String = when (message) {
     is PhotoToastMessage.FormatSet -> stringResource(Res.string.a11y_format_set, formatName(message.choice))
     PhotoToastMessage.BubbleAdded -> stringResource(Res.string.a11y_layer_bubble_added)
     PhotoToastMessage.DrawMode -> stringResource(Res.string.a11y_draw_mode)
+    PhotoToastMessage.CensorAdded -> stringResource(Res.string.a11y_layer_censor_added)
     PhotoToastMessage.DrawSaved -> stringResource(Res.string.a11y_draw_done)
     PhotoToastMessage.PanelPhotosDropped -> stringResource(Res.string.panels_photo_dropped)
 }
@@ -647,6 +669,10 @@ private fun editName(edit: PhotoEdit): String = stringResource(
         PhotoEdit.ADD_CELL_PHOTO, PhotoEdit.REMOVE_CELL_PHOTO, PhotoEdit.PANEL_PHOTO_TRANSFORM, PhotoEdit.PANEL_PHOTO_POSITION -> Res.string.edit_panel_photo
         PhotoEdit.DRAW_STROKE -> Res.string.edit_draw
         PhotoEdit.ERASE_STROKE -> Res.string.edit_erase
+        PhotoEdit.ADD_CENSOR -> Res.string.edit_censor_add
+        PhotoEdit.CENSOR_MODE -> Res.string.edit_censor_mode
+        PhotoEdit.CENSOR_SHAPE -> Res.string.edit_censor_shape
+        PhotoEdit.CENSOR_STRENGTH -> Res.string.edit_censor_strength
     },
 )
 
@@ -668,6 +694,8 @@ private fun explanationText(explanation: PhotoExplanation): String = stringResou
         PhotoExplanation.CANVAS_MAX -> UiRes.string.explain_canvas_max
         PhotoExplanation.DRAW_NOTHING -> Res.string.explain_draw_nothing
         PhotoExplanation.DRAW_FULL -> Res.string.explain_draw_full
+        PhotoExplanation.CENSOR_MIN -> Res.string.explain_censor_min
+        PhotoExplanation.CENSOR_MAX -> Res.string.explain_censor_max
     },
 )
 

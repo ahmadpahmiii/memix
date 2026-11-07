@@ -1,5 +1,6 @@
 package app.memix.core.domain.project
 
+import app.memix.core.model.project.CensorLayer
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.Layer
 import app.memix.core.model.project.MediaRef
@@ -64,7 +65,7 @@ fun Project.setLayerTransform(layerId: String, transform: Transform): LayerEdit 
 
 /** Layer [layerId]'s opacity, within [PhotoCatalog.OPACITY_RANGE]. Refused while it's locked. */
 fun Project.setLayerOpacity(layerId: String, opacity: Float): LayerEdit =
-    editUnlocked(layerId) { layer -> layer.withState(opacity = opacity.coerceIn(PhotoCatalog.OPACITY_RANGE)) }
+    editUnlocked(layerId) { layer -> if (layer is CensorLayer) layer else layer.withState(opacity = opacity.coerceIn(PhotoCatalog.OPACITY_RANGE)) }
 
 /** Locks or unlocks layer [layerId]; always allowed. */
 fun Project.setLayerLocked(layerId: String, locked: Boolean): Project =
@@ -156,7 +157,7 @@ private fun Project.moveLayerBy(layerId: String, places: Int): LayerEdit {
     return LayerEdit.Edited(withLayers(moved))
 }
 
-private inline fun Project.editUnlocked(layerId: String, edit: (Layer) -> Layer): LayerEdit {
+internal inline fun Project.editUnlocked(layerId: String, edit: (Layer) -> Layer): LayerEdit {
     val layer = layer(layerId) ?: return LayerEdit.Edited(this)
     if (layer.locked) return LayerEdit.Refused(LayerRefusal.LOCKED)
     return LayerEdit.Edited(replaceLayer(layerId, edit))

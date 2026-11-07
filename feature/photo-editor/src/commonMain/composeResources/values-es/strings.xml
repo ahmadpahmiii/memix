@@ -169,4 +169,29 @@
     <string name="edit_draw">Dibujar</string>
     <string name="edit_erase">Borrar</string>
     <string name="draw_eraser_hint">Borra tu dibujo, no la foto.</string>
+    <!-- P2-05 censor. English source, budgets and translator notes: docs/ux/specs/P2-05-draw-and-censor.md -> Copy. -->
+    <string name="tool_censor">Censurar</string>
+    <string name="censor_title">Censurar</string>
+    <string name="censor_mode">Modo</string>
+    <string name="censor_blur">Desenfoque</string>
+    <string name="censor_pixelate">Pixelar</string>
+    <string name="censor_bar">Barra negra</string>
+    <string name="censor_shape">Forma</string>
+    <string name="censor_rect">Rectángulo</string>
+    <string name="censor_ellipse">Elipse</string>
+    <string name="censor_strength">Intensidad</string>
+    <string name="position_width">Ancho</string>
+    <string name="position_height">Alto</string>
+    <string name="position_width_less">Hacer más estrecho</string>
+    <string name="position_width_more">Hacer más ancho</string>
+    <string name="position_height_less">Hacer más bajo</string>
+    <string name="position_height_more">Hacer más alto</string>
+    <string name="explain_censor_min">Un censurador no puede ser más pequeño.</string>
+    <string name="explain_censor_max">Un censurador no puede ser más grande.</string>
+    <string name="a11y_layer_censor_added">Censura añadida</string>
+    <string name="layer_name_censor">Censura</string>
+    <string name="edit_censor_add">Añadir censura</string>
+    <string name="edit_censor_mode">Modo de censura</string>
+    <string name="edit_censor_shape">Forma de censura</string>
+    <string name="edit_censor_strength">Intensidad de censura</string>
 </resources>

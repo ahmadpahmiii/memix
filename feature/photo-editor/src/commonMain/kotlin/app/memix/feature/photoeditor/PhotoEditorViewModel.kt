@@ -5,6 +5,14 @@ import app.memix.core.domain.AppError
 import app.memix.core.domain.EditorTool
 import app.memix.core.model.project.FilterRef
 import app.memix.core.domain.project.StrokeResult
+import app.memix.core.domain.project.addCensorLayer
+import app.memix.core.domain.project.setCensorMode
+import app.memix.core.domain.project.setCensorShape
+import app.memix.core.domain.project.setCensorSize
+import app.memix.core.domain.project.setCensorStrength
+import app.memix.core.model.project.CensorCatalog
+import app.memix.core.model.project.CensorMode
+import app.memix.core.model.project.CensorShape
 import app.memix.core.domain.project.addStroke
 import app.memix.core.domain.project.with
 import app.memix.core.model.project.DrawCatalog
@@ -293,6 +301,12 @@ class PhotoEditorViewModel(
             is PhotoEditorIntent.CanvasStepped -> stepRatio(intent.step, intent.repeats)
             is PhotoEditorIntent.CanvasStepHeld -> holdRatio(intent.step, intent.repeats)
             is PhotoEditorIntent.SetCanvasBackground -> setBackground(intent.argb)
+            PhotoEditorIntent.AddCensor -> addCensor()
+            is PhotoEditorIntent.SetCensorMode -> setCensorMode(intent.mode)
+            is PhotoEditorIntent.SetCensorShape -> setCensorShape(intent.shape)
+            is PhotoEditorIntent.SetCensorStrength -> setCensorStrength(intent.layerId, intent.strength)
+            is PhotoEditorIntent.CensorResized -> resizeCensor(intent.layerId, intent.widthS, intent.heightS, intent.transform)
+            is PhotoEditorIntent.CensorSizeStepped -> stepCensorSize(intent.layerId, intent.widthSteps, intent.heightSteps)
             PhotoEditorIntent.OpenDraw -> openDraw()
             PhotoEditorIntent.DrawDone -> drawDone()
             is PhotoEditorIntent.SetEraser -> updateState { it.copy(brush = it.brush.copy(erasing = intent.erasing)) }
@@ -465,6 +479,60 @@ class PhotoEditorViewModel(
         }
         // A stroke that was refused leaves nothing for the project to show: the stage lets go of it now.
         if (outcome !is StrokeResult.Added) updateState { it.copy(gestureEndCount = it.gestureEndCount + 1) }
+    }
+
+    // Censor (spec P2-05 → The censor layer) --------------------------------------------------------------------------
+
+    private fun censorModeTool(mode: CensorMode): EditorTool = when (mode) {
+        CensorMode.BLUR -> EditorTool.CENSOR_BLUR
+        CensorMode.PIXELATE -> EditorTool.CENSOR_PIXELATE
+        CensorMode.BAR -> EditorTool.CENSOR_BAR
+    }
+
+    private fun selectedCensorId(): String? = state.value.selectedLayer?.takeIf { it.kind == LayerKind.CENSOR }?.id
+
+    /** A new censor in the middle (Pixelate, 50%), selected, with its panel open: one step "Add censor", logged as its mode. */
+    private fun addCensor() {
+        if (state.value.draw != null || state.value.textEntry != null || state.value.cropLayerId != null) return
+        val id = Uuid.random().toString()
+        if (!commit(PhotoEdit.ADD_CENSOR, loggedAs = listOf(censorModeTool(CensorCatalog.DEFAULT_MODE))) { it.addCensorLayer(id) }) return
+        select(id)
+        updateState { it.copy(panel = PhotoPanel.CENSOR) }
+        showToast(PhotoToastMessage.CensorAdded, spokenOnly = true)
+    }
+
+    private fun setCensorMode(mode: CensorMode) {
+        val id = selectedCensorId() ?: return
+        editLayer(PhotoEdit.CENSOR_MODE, loggedAs = listOf(censorModeTool(mode))) { it.setCensorMode(id, mode) }
+    }
+
+    private fun setCensorShape(shape: CensorShape) {
+        val id = selectedCensorId() ?: return
+        editLayer(PhotoEdit.CENSOR_SHAPE) { it.setCensorShape(id, shape) }
+    }
+
+    private fun setCensorStrength(layerId: String, strength: Float) {
+        editLayer(PhotoEdit.CENSOR_STRENGTH) { it.setCensorStrength(layerId, strength) }
+        updateState { it.copy(gestureEndCount = it.gestureEndCount + 1) }
+    }
+
+    private fun resizeCensor(layerId: String, widthS: Float, heightS: Float, transform: Transform) {
+        editLayer(PhotoEdit.TRANSFORM) { it.setCensorSize(layerId, widthS, heightS, transform) }
+        updateState { it.copy(gestureEndCount = it.gestureEndCount + 1) }
+    }
+
+    /** Width and Height taps (spec → The Position panel for a censor): at a limit they explain, with no step. */
+    private fun stepCensorSize(layerId: String, widthSteps: Int, heightSteps: Int) {
+        val censor = layerOf(layerId)?.censor ?: return
+        if (layerOf(layerId)?.locked == true) return explain(PhotoExplanation.LAYER_LOCKED)
+        val width = (censor.widthS + widthSteps * CensorCatalog.SIZE_STEP_S).coerceIn(CensorCatalog.SIZE_RANGE)
+        val height = (censor.heightS + heightSteps * CensorCatalog.SIZE_STEP_S).coerceIn(CensorCatalog.SIZE_RANGE)
+        if (width == censor.widthS && height == censor.heightS) {
+            explain(if (widthSteps + heightSteps < 0) PhotoExplanation.CENSOR_MIN else PhotoExplanation.CENSOR_MAX)
+        } else {
+            editLayer(PhotoEdit.POSITION) { it.setCensorSize(layerId, width, height) }
+        }
+        updateState { it.copy(gestureEndCount = it.gestureEndCount + 1) }
     }
 
     // Layer tools -------------------------------------------------------------------------------------------------

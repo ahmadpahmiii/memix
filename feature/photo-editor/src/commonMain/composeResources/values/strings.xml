@@ -169,4 +169,29 @@
     <string name="edit_draw">Draw</string>
     <string name="edit_erase">Erase</string>
     <string name="draw_eraser_hint">Rubs out your drawing, not the picture.</string>
+    <!-- P2-05 censor. English source, budgets and translator notes: docs/ux/specs/P2-05-draw-and-censor.md -> Copy. -->
+    <string name="tool_censor">Censor</string>
+    <string name="censor_title">Censor</string>
+    <string name="censor_mode">Mode</string>
+    <string name="censor_blur">Blur</string>
+    <string name="censor_pixelate">Pixelate</string>
+    <string name="censor_bar">Black bar</string>
+    <string name="censor_shape">Shape</string>
+    <string name="censor_rect">Rectangle</string>
+    <string name="censor_ellipse">Ellipse</string>
+    <string name="censor_strength">Strength</string>
+    <string name="position_width">Width</string>
+    <string name="position_height">Height</string>
+    <string name="position_width_less">Make narrower</string>
+    <string name="position_width_more">Make wider</string>
+    <string name="position_height_less">Make shorter</string>
+    <string name="position_height_more">Make taller</string>
+    <string name="explain_censor_min">A censor can't be smaller than this.</string>
+    <string name="explain_censor_max">A censor can't be bigger than this.</string>
+    <string name="a11y_layer_censor_added">Censor added</string>
+    <string name="layer_name_censor">Censor</string>
+    <string name="edit_censor_add">Add censor</string>
+    <string name="edit_censor_mode">Censor mode</string>
+    <string name="edit_censor_shape">Censor shape</string>
+    <string name="edit_censor_strength">Censor strength</string>
 </resources>

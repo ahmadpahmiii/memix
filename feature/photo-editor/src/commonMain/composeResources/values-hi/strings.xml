@@ -169,4 +169,29 @@
     <string name="edit_draw">ड्रॉ करें</string>
     <string name="edit_erase">मिटाएँ</string>
     <string name="draw_eraser_hint">आपकी ड्रॉइंग मिटती है, फ़ोटो नहीं।</string>
+    <!-- P2-05 censor. English source, budgets and translator notes: docs/ux/specs/P2-05-draw-and-censor.md -> Copy. -->
+    <string name="tool_censor">सेंसर करें</string>
+    <string name="censor_title">सेंसर</string>
+    <string name="censor_mode">तरीका</string>
+    <string name="censor_blur">ब्लर</string>
+    <string name="censor_pixelate">पिक्सेल</string>
+    <string name="censor_bar">काली पट्टी</string>
+    <string name="censor_shape">आकार</string>
+    <string name="censor_rect">आयत</string>
+    <string name="censor_ellipse">अंडाकार</string>
+    <string name="censor_strength">ताकत</string>
+    <string name="position_width">चौड़ाई</string>
+    <string name="position_height">ऊँचाई</string>
+    <string name="position_width_less">चौड़ाई घटाएँ</string>
+    <string name="position_width_more">चौड़ाई बढ़ाएँ</string>
+    <string name="position_height_less">ऊँचाई घटाएँ</string>
+    <string name="position_height_more">ऊँचाई बढ़ाएँ</string>
+    <string name="explain_censor_min">सेंसर इससे छोटा नहीं हो सकता।</string>
+    <string name="explain_censor_max">सेंसर इससे बड़ा नहीं हो सकता।</string>
+    <string name="a11y_layer_censor_added">सेंसर जोड़ा गया</string>
+    <string name="layer_name_censor">सेंसर</string>
+    <string name="edit_censor_add">सेंसर जोड़ें</string>
+    <string name="edit_censor_mode">सेंसर का तरीका</string>
+    <string name="edit_censor_shape">सेंसर का आकार</string>
+    <string name="edit_censor_strength">सेंसर की ताकत</string>
 </resources>

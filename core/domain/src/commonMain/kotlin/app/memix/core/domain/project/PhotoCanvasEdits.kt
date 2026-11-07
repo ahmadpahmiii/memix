@@ -8,6 +8,8 @@ import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.CanvasCatalog
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.CaptionCatalog
+import app.memix.core.model.project.CensorCatalog
+import app.memix.core.model.project.CensorLayer
 import app.memix.core.model.project.DrawCatalog
 import app.memix.core.model.project.DrawingLayer
 import app.memix.core.model.project.ImageLayer
@@ -105,6 +107,13 @@ private fun Layer.keptInside(old: PixelSize, new: PixelSize, measure: CaptionBlo
     is StickerLayer -> {
         val kept = transform.keptInside(old, new, PhotoCatalog.STICKER_SCALE_RANGE.start, PhotoCatalog.ratioChangeMarginOf(this)) { canvas, scale ->
             boxOn(canvas, scale)
+        }
+        if (kept == transform) this else copy(transform = kept)
+    }
+    is CensorLayer -> {
+        val kept = transform.keptInside(old, new, CensorCatalog.SCALE_RANGE.start, PhotoCatalog.ratioChangeMarginOf(this)) { canvas, scale ->
+            val shortSide = min(canvas.widthPx, canvas.heightPx).toFloat()
+            turnedBounds(BoxSize(widthS * shortSide * scale, heightS * shortSide * scale), transform.rotationDegrees)
         }
         if (kept == transform) this else copy(transform = kept)
     }
