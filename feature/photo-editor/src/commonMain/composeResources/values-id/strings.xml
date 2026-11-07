@@ -152,4 +152,21 @@
     <string name="filter_chrome">Krom</string>
     <string name="filter_dusk">Petang</string>
     <string name="filter_bleach">Bleach</string>
+    <!-- P2-05 draw. English source, budgets and translator notes: docs/ux/specs/P2-05-draw-and-censor.md -> Copy. -->
+    <string name="tool_draw">Gambar</string>
+    <string name="draw_brush">Kuas</string>
+    <string name="draw_eraser">Penghapus</string>
+    <string name="draw_size_thin">Tipis</string>
+    <string name="draw_size_fine">Halus</string>
+    <string name="draw_size_medium">Sedang</string>
+    <string name="draw_size_thick">Tebal</string>
+    <string name="draw_size_heavy">Ekstra</string>
+    <string name="a11y_draw_mode">Menggambar. Gambar dengan satu jari.</string>
+    <string name="a11y_draw_done">Gambar disimpan</string>
+    <string name="explain_draw_nothing">Gambar sesuatu dulu, baru bisa dihapus.</string>
+    <string name="explain_draw_full">Gambar ini sudah penuh. Tutup mode gambar dan mulai yang baru.</string>
+    <string name="layer_name_drawing">Gambar</string>
+    <string name="edit_draw">Gambar</string>
+    <string name="edit_erase">Hapus</string>
+    <string name="draw_eraser_hint">Menghapus gambarmu, bukan fotonya.</string>
 </resources>

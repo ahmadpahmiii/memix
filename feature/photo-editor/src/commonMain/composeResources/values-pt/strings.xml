@@ -152,4 +152,21 @@
     <string name="filter_chrome">Cromado</string>
     <string name="filter_dusk">Crepúsculo</string>
     <string name="filter_bleach">Desbotar</string>
+    <!-- P2-05 draw. English source, budgets and translator notes: docs/ux/specs/P2-05-draw-and-censor.md -> Copy. -->
+    <string name="tool_draw">Desenhar</string>
+    <string name="draw_brush">Pincel</string>
+    <string name="draw_eraser">Borracha</string>
+    <string name="draw_size_thin">Mínimo</string>
+    <string name="draw_size_fine">Fino</string>
+    <string name="draw_size_medium">Médio</string>
+    <string name="draw_size_thick">Grosso</string>
+    <string name="draw_size_heavy">Máximo</string>
+    <string name="a11y_draw_mode">Desenhando. Desenhe com um dedo.</string>
+    <string name="a11y_draw_done">Desenho salvo</string>
+    <string name="explain_draw_nothing">Desenhe algo primeiro, depois você pode apagar.</string>
+    <string name="explain_draw_full">Este desenho está cheio. Saia do modo desenho e comece outro.</string>
+    <string name="layer_name_drawing">Desenho</string>
+    <string name="edit_draw">Desenhar</string>
+    <string name="edit_erase">Apagar</string>
+    <string name="draw_eraser_hint">Apaga seu desenho, não a foto.</string>
 </resources>

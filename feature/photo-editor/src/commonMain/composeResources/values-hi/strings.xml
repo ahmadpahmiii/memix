@@ -152,4 +152,21 @@
     <string name="filter_chrome">क्रोम</string>
     <string name="filter_dusk">डस्क</string>
     <string name="filter_bleach">ब्लीच</string>
+    <!-- P2-05 draw. English source, budgets and translator notes: docs/ux/specs/P2-05-draw-and-censor.md -> Copy. -->
+    <string name="tool_draw">ड्रॉ करें</string>
+    <string name="draw_brush">ब्रश</string>
+    <string name="draw_eraser">रबर</string>
+    <string name="draw_size_thin">अति पतला</string>
+    <string name="draw_size_fine">पतला</string>
+    <string name="draw_size_medium">मध्यम</string>
+    <string name="draw_size_thick">मोटा</string>
+    <string name="draw_size_heavy">अति मोटा</string>
+    <string name="a11y_draw_mode">ड्रॉइंग। एक उँगली से बनाएँ।</string>
+    <string name="a11y_draw_done">ड्रॉइंग सेव हो गई</string>
+    <string name="explain_draw_nothing">पहले कुछ बनाएँ, फिर उसे मिटा सकते हैं।</string>
+    <string name="explain_draw_full">यह ड्रॉइंग भर गई है। ड्रॉइंग मोड बंद करें और नई शुरू करें।</string>
+    <string name="layer_name_drawing">ड्रॉइंग</string>
+    <string name="edit_draw">ड्रॉ करें</string>
+    <string name="edit_erase">मिटाएँ</string>
+    <string name="draw_eraser_hint">आपकी ड्रॉइंग मिटती है, फ़ोटो नहीं।</string>
 </resources>

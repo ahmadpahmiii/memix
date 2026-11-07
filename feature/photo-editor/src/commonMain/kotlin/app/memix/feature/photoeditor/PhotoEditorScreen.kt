@@ -48,6 +48,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -141,7 +142,14 @@ import memix.feature.photo_editor.generated.resources.a11y_layer_added
 import memix.feature.photo_editor.generated.resources.a11y_layer_order
 import memix.feature.photo_editor.generated.resources.a11y_layer_opacity
 import memix.feature.photo_editor.generated.resources.a11y_layer_row
+import memix.feature.photo_editor.generated.resources.a11y_draw_done
+import memix.feature.photo_editor.generated.resources.a11y_draw_mode
 import memix.feature.photo_editor.generated.resources.edit_add_photo
+import memix.feature.photo_editor.generated.resources.edit_draw
+import memix.feature.photo_editor.generated.resources.edit_erase
+import memix.feature.photo_editor.generated.resources.explain_draw_full
+import memix.feature.photo_editor.generated.resources.explain_draw_nothing
+import memix.feature.photo_editor.generated.resources.tool_draw
 import memix.feature.photo_editor.generated.resources.edit_layer_hide
 import memix.feature.photo_editor.generated.resources.edit_layer_opacity
 import memix.feature.photo_editor.generated.resources.edit_layer_show
@@ -210,7 +218,7 @@ fun PhotoEditorScreen(
     // itself while something inside it comes first (a panel, the selection) or while saving fails, to ask first.
     NavigationBackHandler(
         rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled = !state.unsavedSheetOpen && (state.cropLayerId != null || state.textEntry != null || state.panel != null || state.selectedLayerId != null || state.selectedCell != null || state.selectedDivider != null || state.isSaveFailing),
+        isBackEnabled = !state.unsavedSheetOpen && (state.cropLayerId != null || state.draw != null || state.textEntry != null || state.panel != null || state.selectedLayerId != null || state.selectedCell != null || state.selectedDivider != null || state.isSaveFailing),
         onBackCompleted = { onIntent(PhotoEditorIntent.Back) },
     )
     LifecycleEventEffect(Lifecycle.Event.ON_START) { onIntent(PhotoEditorIntent.AppStarted) }
@@ -267,7 +275,7 @@ fun PhotoEditorScreen(
                 StageMessages(state, onIntent, freeUpSpaceForSave, Modifier.align(Alignment.TopCenter).semantics { traversalIndex = -1f })
             }
             Box(Modifier.coveredByModal(panelOpen).onSizeChanged { toolRegionPx = it.height }) {
-                ToolBarRegion(state, entryField, onIntent)
+                ToolBarRegion(state, entryField, panelMaxHeight, onIntent)
             }
         }
         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { if (it.height > 0) panelHeightPx = it.height }) {
@@ -318,7 +326,7 @@ private fun TopBar(state: PhotoEditorUiState, onIntent: (PhotoEditorIntent) -> U
                     stringResource(UiRes.string.canvas_pill_a11y, label),
                     expanded = state.panel == PhotoPanel.CANVAS,
                     onClick = { onIntent(PhotoEditorIntent.RatioPill) },
-                    enabled = !typing,
+                    enabled = !typing && state.draw == null,
                 )
             }
         },
@@ -346,8 +354,15 @@ private fun TopBar(state: PhotoEditorUiState, onIntent: (PhotoEditorIntent) -> U
 
 /** The main bar with nothing selected, the selected-layer bar with a layer (spec → Tool bars); they crossfade in 120 ms. */
 @Composable
-private fun ToolBarRegion(state: PhotoEditorUiState, entryField: TextFieldState, onIntent: (PhotoEditorIntent) -> Unit) {
+private fun ToolBarRegion(state: PhotoEditorUiState, entryField: TextFieldState, drawBarMaxHeight: Dp, onIntent: (PhotoEditorIntent) -> Unit) {
     val entry = state.textEntry
+    if (state.draw != null) {
+        // The Draw bar takes the place of the tool bar for the whole of Draw mode (spec P2-05 → Entry and exit).
+        Box(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)).background(MemixColors.surface)) {
+            DrawBar(state.brush, drawBarMaxHeight, onIntent)
+        }
+        return
+    }
     if (entry != null) {
         // The entry bar rides the keyboard in place of the tool bar (spec P2-03 → Typing).
         Box(Modifier.fillMaxWidth().background(MemixColors.surface).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))) {
@@ -375,7 +390,7 @@ private fun ToolBarRegion(state: PhotoEditorUiState, entryField: TextFieldState,
             } else if (layer == null) {
                 // The format's own tool sits right after Formats (spec P2-02 → Main bar).
                 val formatTool = formatSpecificTool(state.format, onIntent)
-                ToolBar(persistentListOf(*listOfNotNull(formatsTool(onIntent), formatTool, textTool(onIntent), addPhotoTool(onIntent), editPhotoTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), cropTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), layersTool(onIntent)).toTypedArray()))
+                ToolBar(persistentListOf(*listOfNotNull(formatsTool(onIntent), formatTool, textTool(onIntent), addPhotoTool(onIntent), drawTool(onIntent), editPhotoTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), cropTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), layersTool(onIntent)).toTypedArray()))
             } else {
                 val closeLabel = stringResource(Res.string.layer_tools_close)
                 ToolBar(
@@ -425,6 +440,11 @@ private fun editPhotoTool(onIntent: (PhotoEditorIntent) -> Unit, hasImage: Boole
 private fun cropTool(onIntent: (PhotoEditorIntent) -> Unit, hasImage: Boolean): ToolBarItem? =
     if (hasImage) ToolBarItem(stringResource(UiRes.string.tool_crop), MemixIcons.Crop, { onIntent(PhotoEditorIntent.OpenCrop(null)) }) else null
 
+// Draw mode (spec P2-05 → Entry and exit); a selected drawing layer gets the new strokes, else the first stroke makes one.
+@Composable
+private fun drawTool(onIntent: (PhotoEditorIntent) -> Unit) =
+    ToolBarItem(stringResource(Res.string.tool_draw), MemixIcons.Draw, { onIntent(PhotoEditorIntent.OpenDraw) })
+
 // Opens the picker for a new top layer (spec P2-13 → Entry and exit); in its final place just before Layers.
 @Composable
 private fun addPhotoTool(onIntent: (PhotoEditorIntent) -> Unit) =
@@ -468,6 +488,7 @@ private fun selectedLayerTools(layer: SceneLayerUi, missing: Boolean, onIntent: 
         if (layer.locked) onIntent(PhotoEditorIntent.LockedLayerTouched(layer.id)) else onIntent(PhotoEditorIntent.OpenCrop(layer.id))
     })
     val layers = layersTool(onIntent)
+    val draw = drawTool(onIntent)
     val isText = layer.kind == LayerKind.TEXT || layer.kind == LayerKind.BUBBLE
     // A text's own tools come first (spec P2-03 → Selected-text bar); while locked they only explain.
     val editText = ToolBarItem(stringResource(UiRes.string.tool_edit_text), MemixIcons.EditText, {
@@ -490,6 +511,8 @@ private fun selectedLayerTools(layer: SceneLayerUi, missing: Boolean, onIntent: 
             add(position)
             add(opacity)
             if (!missing) add(delete)
+            // Position · Opacity · Delete · Draw: Delete stays in view at 360 dp (spec P2-05 → The selected-drawing bar).
+            if (layer.kind == LayerKind.DRAWING) add(draw)
             if (layer.kind == LayerKind.IMAGE) {
                 add(editPhoto)
                 add(crop)
@@ -541,7 +564,7 @@ private fun ToastTimer(toast: PhotoToast, onTimedOut: (id: Long) -> Unit) {
             is PhotoToastMessage.Undone, is PhotoToastMessage.Redone, is PhotoToastMessage.Edited, is PhotoToastMessage.LayerOrder,
             is PhotoToastMessage.PositionTransformed, is PhotoToastMessage.PositionMoved, is PhotoToastMessage.OpacityChanged,
             is PhotoToastMessage.RatioStepped, PhotoToastMessage.BackgroundImageSet, PhotoToastMessage.BackgroundImageRemoved,
-            PhotoToastMessage.LayerAdded, PhotoToastMessage.TextAdded, PhotoToastMessage.BubbleAdded, is PhotoToastMessage.FormatSet,
+            PhotoToastMessage.LayerAdded, PhotoToastMessage.TextAdded, PhotoToastMessage.DrawMode, PhotoToastMessage.DrawSaved, PhotoToastMessage.BubbleAdded, is PhotoToastMessage.FormatSet,
             -> WHAT_HAPPENED_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
@@ -578,6 +601,8 @@ private fun toastText(message: PhotoToastMessage): String = when (message) {
     PhotoToastMessage.TextAdded -> stringResource(Res.string.a11y_layer_text_added)
     is PhotoToastMessage.FormatSet -> stringResource(Res.string.a11y_format_set, formatName(message.choice))
     PhotoToastMessage.BubbleAdded -> stringResource(Res.string.a11y_layer_bubble_added)
+    PhotoToastMessage.DrawMode -> stringResource(Res.string.a11y_draw_mode)
+    PhotoToastMessage.DrawSaved -> stringResource(Res.string.a11y_draw_done)
     PhotoToastMessage.PanelPhotosDropped -> stringResource(Res.string.panels_photo_dropped)
 }
 
@@ -620,6 +645,8 @@ private fun editName(edit: PhotoEdit): String = stringResource(
         PhotoEdit.PANELS_LAYOUT -> Res.string.edit_panels_layout
         PhotoEdit.PANELS_DIVIDER -> Res.string.edit_panels_divider
         PhotoEdit.ADD_CELL_PHOTO, PhotoEdit.REMOVE_CELL_PHOTO, PhotoEdit.PANEL_PHOTO_TRANSFORM, PhotoEdit.PANEL_PHOTO_POSITION -> Res.string.edit_panel_photo
+        PhotoEdit.DRAW_STROKE -> Res.string.edit_draw
+        PhotoEdit.ERASE_STROKE -> Res.string.edit_erase
     },
 )
 
@@ -639,6 +666,8 @@ private fun explanationText(explanation: PhotoExplanation): String = stringResou
         PhotoExplanation.CANVAS_TALLEST -> UiRes.string.explain_canvas_tallest
         PhotoExplanation.CANVAS_MIN -> UiRes.string.explain_canvas_min
         PhotoExplanation.CANVAS_MAX -> UiRes.string.explain_canvas_max
+        PhotoExplanation.DRAW_NOTHING -> Res.string.explain_draw_nothing
+        PhotoExplanation.DRAW_FULL -> Res.string.explain_draw_full
     },
 )
 

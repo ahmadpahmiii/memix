@@ -227,3 +227,24 @@ Spec: `docs/ux/specs/P2-04-image-tools.md`. Frames: `docs/ux/reviews/P2-04/90-*`
 11. **200% font, es and hi:** tab labels and tile names wrap and grow the tile, the Adjust panel scrolls.
 12. **Leaks (debug build, LeakCanary):** 5 cycles of open Edit photo, change a filter and an adjustment, open Crop, rotate, Done, close.
 13. **Make it a video meme (P2-10 flag):** the video overlay has no LUT in Phase 2: P2-10 bakes the edited picture.
+
+## P2-05a · Draw (the drawing half; the censor half is still to build)
+
+Spec: `docs/ux/specs/P2-05-draw-and-censor.md`. Frames: `docs/ux/reviews/P2-05/95-*` (desktop render, stand-in text). References: `docs/qa/references/P2-05-draw-censor/` (strokes at five sizes, an erased stroke, a dot, a 40% group; on a photo and on white; 1080 and 2160). Nothing here has run on a device.
+
+1. **Main bar** (360 x 800 and 360 x 640): Formats, Text, Add photo, Draw, Edit photo whole, Crop cut, Layers last; Remove BG, Stickers and Censor are not there yet.
+2. **Draw mode:** tap Draw: the Draw bar replaces the tool bar, no frame or handle shows, the ratio pill is dimmed, Undo and Redo work. Entering and leaving with no stroke leaves no layer and no Undo step.
+3. **A stroke:** red and Medium are the defaults; it follows the finger with no lag (60 fps screen recording, release-type build); a tap makes a dot; a second finger or palm never ends or moves a stroke. Back during a stroke cancels it; the next back leaves the mode.
+4. **One layer:** three strokes make one "Drawing" layer (Layers panel, mini render on the gray tile); Done leaves it selected with Position, Opacity, Delete, Draw, Duplicate, Lock, Hide, Layers. Draw there adds to the same layer (one layer, not two). Undo of the first stroke removes the layer and the mode stays open.
+5. **Eraser:** clears only the drawing's own strokes, never the photo; with nothing drawn the first eraser stroke shows "Draw something first, then you can erase it." and records nothing.
+6. **Layer actions on a drawing:** move, scale to 300%, turn, fade to 40% (no overlap darkening where strokes cross), hide, reorder under a caption, duplicate, delete, undo, lock (Draw and Position explain), kill the app and reopen from Drafts: the same drawing each time. A touch outside the strokes' box (grown to 48 dp) goes to the layer below.
+7. **Ratio change:** a drawing fully inside stays inside (2% margin, shrinks first, not below 10%) and is not stretched; one undo step and the toast.
+8. **Cap:** a scribble that passes 5,000 points stops at the cap and says "This drawing is full..."; a new drawing is started by deselecting and tapping Draw.
+9. **Draft size:** JVM harness number (this machine, not a phone): 3 minutes of scribble (about 10,800 raw touch points) stores as 2,851 points and a 27.5 KB project JSON; a full layer (5,000 points) is 48.0 KB. Check on the phone that autosave still commits within 100 ms (`adb logcat`, 500 ms debounce plus write) with a full drawing.
+10. **Editor equals render:** `photo-draw-censor` on screen against `--ei memix.renderShortSide 1080|2160` (strokes within 1% of the width, eraser gap the same); desktop check: the 2160 render against the 1080 render scaled differs by more than 64/255 in 0.64% of sampled pixels (edges only).
+11. **Speed:** drag, scale and fade a full drawing in `photo-layers-10` (release-type build, owner's phone): three 3-second drags under 5% janky frames. Desktop CPU raster of a full 5,000-point drawing is 48 ms a frame, which says nothing about a phone GPU: measure it.
+12. **200% font, es and hi:** the Draw bar scrolls inside 40% of the window, size words wrap, nothing is cut.
+13. **TalkBack:** opening the mode says "Drawing. Draw with one finger."; Done says "Drawing saved" (only after a stroke); a drawing's row has the Draw action.
+14. **Old drafts:** a draft saved before this build (schema 7) opens unchanged. **Analytics:** one `draw_stroke` or `erase_stroke` per stroke, none for color or size.
+15. **Leaks (debug build, LeakCanary):** 5 cycles of enter Draw mode, draw, erase, Done, close.
+16. **API 29:** the drawing half uses only Canvas layers and paths (no RenderEffect or AGSL): check it on an API 29 emulator with the rest of the tool.

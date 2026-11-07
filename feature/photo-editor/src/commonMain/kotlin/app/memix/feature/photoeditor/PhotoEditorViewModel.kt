@@ -4,7 +4,11 @@ import androidx.lifecycle.viewModelScope
 import app.memix.core.domain.AppError
 import app.memix.core.domain.EditorTool
 import app.memix.core.model.project.FilterRef
+import app.memix.core.domain.project.StrokeResult
+import app.memix.core.domain.project.addStroke
 import app.memix.core.domain.project.with
+import app.memix.core.model.project.DrawCatalog
+import app.memix.core.model.project.StrokeMode
 import app.memix.core.domain.project.resetTab
 import app.memix.core.domain.project.changedColorTools
 import app.memix.core.domain.project.EditPhotoTab
@@ -166,6 +170,9 @@ class PhotoEditorViewModel(
     // The background picture's file that couldn't be read, so a replaced picture isn't called missing.
     private var missingBackgroundPath: String? = null
     private var gestureActive = false
+    // A finger is down in Draw mode: Undo and Redo wait for it (spec P2-05 → Interactions).
+    private var strokeActive = false
+    private var drawSessionStrokes = 0
     // The blank route found its draft already saved: it edits that draft, it isn't a new blank any more.
     private var restoredBlank = false
     private var nextToastId = 0L
@@ -249,7 +256,7 @@ class PhotoEditorViewModel(
             is PhotoEditorIntent.MoveLayer -> moveLayer(intent.layerId, intent.towardFront)
             is PhotoEditorIntent.ReorderLayer -> reorder(intent.layerId, intent.indexFromFront)
             // Inert while typing: the canvas mustn't change under the keyboard (spec P2-03 → Typing).
-            PhotoEditorIntent.RatioPill -> if (state.value.textEntry == null) toggleCanvasPanel()
+            PhotoEditorIntent.RatioPill -> if (state.value.textEntry == null && state.value.draw == null) toggleCanvasPanel()
             PhotoEditorIntent.AddText -> startNewText()
             is PhotoEditorIntent.SetFormat -> setFormat(intent.choice)
             is PhotoEditorIntent.TapSlot -> if (intent.slot.kind == SlotKind.BUBBLE) startNewBubble(intent.slot) else startNewText(intent.slot)
@@ -286,6 +293,14 @@ class PhotoEditorViewModel(
             is PhotoEditorIntent.CanvasStepped -> stepRatio(intent.step, intent.repeats)
             is PhotoEditorIntent.CanvasStepHeld -> holdRatio(intent.step, intent.repeats)
             is PhotoEditorIntent.SetCanvasBackground -> setBackground(intent.argb)
+            PhotoEditorIntent.OpenDraw -> openDraw()
+            PhotoEditorIntent.DrawDone -> drawDone()
+            is PhotoEditorIntent.SetEraser -> updateState { it.copy(brush = it.brush.copy(erasing = intent.erasing)) }
+            is PhotoEditorIntent.SetBrushColor -> updateState { it.copy(brush = it.brush.copy(colorIndex = intent.index.coerceIn(CaptionCatalog.palette.indices))) }
+            is PhotoEditorIntent.SetBrushSize -> setBrushSize(intent.index)
+            PhotoEditorIntent.StrokeStarted -> strokeActive = true
+            PhotoEditorIntent.StrokeCancelled -> strokeActive = false
+            is PhotoEditorIntent.StrokeFinished -> finishStroke(intent)
             PhotoEditorIntent.PickBackgroundImage -> requestPick(PhotoPickRequest.Background)
             PhotoEditorIntent.AddPhoto -> requestPick(PhotoPickRequest.AddLayer)
             PhotoEditorIntent.RemoveBackgroundImage -> removeBackgroundImage()
@@ -383,6 +398,73 @@ class PhotoEditorViewModel(
         editLayer(tool) { it.setLayerTransform(layerId, transform) }
         // Even when nothing changed (locked, same place), the stage lets go of the layer it held.
         updateState { it.copy(gestureEndCount = it.gestureEndCount + 1) }
+    }
+
+    // Drawing (spec P2-05) -------------------------------------------------------------------------------------------
+
+    /**
+     * Opens Draw mode. A selected drawing layer gets the new strokes; with any other selection or none, the first stroke makes a
+     * new drawing layer. Nothing is created here, so opening and leaving with no stroke leaves no layer and no step.
+     */
+    private fun openDraw() {
+        val current = state.value
+        if (current.draw != null || current.textEntry != null || current.cropLayerId != null) return
+        val drawing = current.selectedLayer?.takeIf { it.kind == LayerKind.DRAWING }
+        if (drawing?.locked == true) return explain(PhotoExplanation.LAYER_LOCKED)
+        drawSessionStrokes = 0
+        updateState {
+            it.copy(
+                draw = DrawModeUi(Uuid.random().toString()),
+                selectedLayerId = drawing?.id,
+                selectedCell = null,
+                selectedDivider = null,
+                panel = null,
+                canvasPanel = null,
+            )
+        }
+        showToast(PhotoToastMessage.DrawMode, spokenOnly = true)
+    }
+
+    private fun drawDone() {
+        if (state.value.draw == null) return
+        strokeActive = false
+        updateState { it.copy(draw = null) }
+        if (drawSessionStrokes > 0) showToast(PhotoToastMessage.DrawSaved, spokenOnly = true)
+    }
+
+    private fun setBrushSize(index: Int) {
+        val size = index.coerceIn(DrawCatalog.BRUSH_SIZES.indices)
+        updateState { it.copy(brush = if (it.brush.erasing) it.brush.copy(eraserSizeIndex = size) else it.brush.copy(brushSizeIndex = size)) }
+    }
+
+    /** One stroke, one step (an undo of the stroke that made the layer removes the layer). Explains instead when it can't be added. */
+    private fun finishStroke(stroke: PhotoEditorIntent.StrokeFinished) {
+        strokeActive = false
+        val draw = state.value.draw ?: return
+        val result = arrayOfNulls<StrokeResult>(1)
+        val mode = if (stroke.erasing) StrokeMode.ERASE else StrokeMode.DRAW
+        val color = if (stroke.erasing) null else CaptionCatalog.palette[stroke.colorIndex.coerceIn(CaptionCatalog.palette.indices)]
+        commit(if (stroke.erasing) PhotoEdit.ERASE_STROKE else PhotoEdit.DRAW_STROKE) { project ->
+            val added = project.addStroke(stroke.layerId, draw.newLayerId, mode, color, stroke.widthS, stroke.xs, stroke.ys, stroke.count)
+            result[0] = added
+            (added as? StrokeResult.Added)?.project ?: project
+        }
+        val outcome = result[0]
+        when (outcome) {
+            is StrokeResult.Added -> {
+                drawSessionStrokes++
+                // The stroke stays on the stage until the project has it; a new layer is selected and the next new one gets a fresh id.
+                updateState { it.copy(draw = DrawModeUi(Uuid.random().toString())) }
+                select(outcome.layerId)
+                if (outcome.truncated) explain(PhotoExplanation.DRAW_FULL)
+            }
+            StrokeResult.Locked -> explain(PhotoExplanation.LAYER_LOCKED)
+            StrokeResult.NothingToErase -> explain(PhotoExplanation.DRAW_NOTHING)
+            StrokeResult.Full -> explain(PhotoExplanation.DRAW_FULL)
+            null -> Unit
+        }
+        // A stroke that was refused leaves nothing for the project to show: the stage lets go of it now.
+        if (outcome !is StrokeResult.Added) updateState { it.copy(gestureEndCount = it.gestureEndCount + 1) }
     }
 
     // Layer tools -------------------------------------------------------------------------------------------------
@@ -987,7 +1069,7 @@ class PhotoEditorViewModel(
     private fun undo() {
         val session = editSession ?: return
         // Inert during a gesture and while typing: the typed words aren't in the project yet (spec P2-03 → Typing).
-        if (gestureActive || state.value.textEntry != null) return
+        if (gestureActive || strokeActive || state.value.textEntry != null) return
         val tool = session.state.value.takeIf { it.canUndo }?.undoTool ?: return
         session.undo()
         PhotoEdit.of(tool)?.let { showToast(PhotoToastMessage.Undone(it)) }
@@ -995,7 +1077,7 @@ class PhotoEditorViewModel(
 
     private fun redo() {
         val session = editSession ?: return
-        if (gestureActive || state.value.textEntry != null) return
+        if (gestureActive || strokeActive || state.value.textEntry != null) return
         val tool = session.state.value.takeIf { it.canRedo }?.redoTool ?: return
         session.redo()
         PhotoEdit.of(tool)?.let { showToast(PhotoToastMessage.Redone(it)) }
@@ -1010,6 +1092,8 @@ class PhotoEditorViewModel(
             current.cropLayerId != null -> updateState { it.copy(cropLayerId = null) }
             // Typing commits and the keyboard closes first (spec P2-03 → Typing → back order).
             current.textEntry != null -> commitEntry()
+            // A stroke in progress was cancelled by the stage first; then back leaves Draw mode (spec P2-05 → Back order).
+            current.draw != null -> drawDone()
             current.panel != null -> updateState { it.copy(panel = null, canvasPanel = null) }
             current.selectedLayerId != null || current.selectedCell != null || current.selectedDivider != null -> select(null)
             else -> requestClose()

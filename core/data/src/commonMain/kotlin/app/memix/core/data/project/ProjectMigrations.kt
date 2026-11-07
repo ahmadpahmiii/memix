@@ -36,4 +36,7 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     // 6 → 7 (P2-04): ImageLayer gained the nullable "edit" (crop, turn, flip, straighten, adjustments, filter, deep-fry). Version-6
     // JSON has none, which decodes as null (a layer with no edit), so a picture saved before looks as saved.
     ProjectMigration(fromVersion = 6) { json -> json },
+    // 7 → 8 (P2-05a): the new layer kind "drawing_layer". A draft saved before has none, so its JSON decodes as it is and the step
+    // only moves the version on. The censor half (P2-05b) is committed later and bumps to 9 the same way, so each version names one shape.
+    ProjectMigration(fromVersion = 7) { json -> json },
 )

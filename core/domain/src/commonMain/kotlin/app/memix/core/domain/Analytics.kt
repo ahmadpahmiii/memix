@@ -209,6 +209,10 @@ enum class EditorTool(val eventValue: String?) {
     BUBBLE_SHAPE("bubble_shape"),
     BUBBLE_FILL("bubble_fill"),
     BUBBLE_TAIL("bubble_tail"),
+
+    /** P2-05: a brush or eraser stroke, one event per committed stroke (PM, 2 Nov 2026); nothing for brush color or size. */
+    DRAW_STROKE("draw_stroke"),
+    ERASE_STROKE("erase_stroke"),
 }
 
 /** `sound_add.tab` and `sound_preview.tab`: where in the sounds UI it happened. "starter" until P3-05 (PM, 8 Oct 2026). */

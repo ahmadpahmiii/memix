@@ -96,7 +96,9 @@ import app.memix.core.ui.layers.LayerTurnHandle
 import app.memix.core.ui.layers.boxIn
 import app.memix.core.ui.layers.detectLayerGestures
 import app.memix.core.ui.layers.handleCenterOf
+import app.memix.core.ui.scene.LiveStroke
 import app.memix.core.ui.scene.SceneLive
+import app.memix.core.ui.scene.StrokePathCache
 import app.memix.core.ui.scene.drawPhotoScene
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -114,6 +116,7 @@ import memix.feature.photo_editor.generated.resources.a11y_layer_locked
 import memix.feature.photo_editor.generated.resources.a11y_layer_missing
 import memix.feature.photo_editor.generated.resources.a11y_layer_opacity
 import memix.feature.photo_editor.generated.resources.a11y_layer_row
+import memix.feature.photo_editor.generated.resources.layer_name_drawing
 import memix.feature.photo_editor.generated.resources.layer_name_photo
 import memix.feature.photo_editor.generated.resources.layers_move_down
 import memix.feature.photo_editor.generated.resources.layers_move_up
@@ -122,6 +125,7 @@ import memix.feature.photo_editor.generated.resources.photo_empty_body
 import memix.feature.photo_editor.generated.resources.photo_empty_body_blank
 import memix.feature.photo_editor.generated.resources.photo_empty_title
 import memix.feature.photo_editor.generated.resources.photo_stage_a11y
+import memix.feature.photo_editor.generated.resources.tool_draw
 import memix.feature.photo_editor.generated.resources.tool_hide_layer
 import memix.feature.photo_editor.generated.resources.tool_layer_opacity
 import memix.feature.photo_editor.generated.resources.tool_lock
@@ -148,6 +152,8 @@ internal class PhotoLive(
     private var settled by mutableStateOf<Pair<String, Transform>?>(null)
     private var opacityLayerId by mutableStateOf<String?>(null)
     private var opacity by mutableFloatStateOf(1f)
+    /** The stroke being drawn in Draw mode (P2-05). */
+    val strokes = LiveStrokeHolder()
     private var editLive by mutableStateOf<Pair<String, ImageEdit>?>(null)
     private var editReleased by mutableStateOf(false)
 
@@ -171,6 +177,30 @@ internal class PhotoLive(
     fun clearEdit() {
         editLive = null
         editReleased = false
+    }
+
+    override fun strokeOf(): LiveStroke? = strokes.stroke
+
+    override val strokePaths = StrokePathCache()
+
+    fun startStroke(stroke: LiveStroke) {
+        strokes.stroke = stroke
+        strokes.fingerDown = true
+    }
+
+    /** The finger lifted: the stroke stays drawn until the project shows it ([clearStroke]). */
+    fun releaseStroke() {
+        strokes.fingerDown = false
+    }
+
+    fun cancelStroke() {
+        strokes.stroke = null
+        strokes.fingerDown = false
+    }
+
+    /** The project has the stroke (or the stage let go of it): it is drawn from the project now. */
+    fun clearStroke() {
+        if (!strokes.fingerDown) strokes.stroke = null
     }
 
     /** The opacity the slider shows now, or null when the project's own value applies. */
@@ -224,6 +254,7 @@ internal class PhotoLive(
 
     /** The project has caught up with the gesture, the held arrow or the slider. */
     fun release() {
+        clearStroke()
         tail = null
         cellLive = null
         dividerLive = null
@@ -275,11 +306,12 @@ internal fun PhotoStage(
         val geometry = scene?.let { StageGeometry(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat(), it.aspectRatio, with(density) { MemixSpacing.space4.toPx() }) }
         // While typing the keyboard shrinks the stage; the pictures keep the size they were decoded for (the stage without it).
         var normalHeight by remember { mutableFloatStateOf(0f) }
-        SideEffect { if (entry == null) normalHeight = constraints.maxHeight.toFloat() }
+        val drawing = state.draw != null
+        SideEffect { if (entry == null && !drawing) normalHeight = constraints.maxHeight.toFloat() }
         if (scene != null && geometry != null) {
             FrameRefit(stage, geometry, coverPx)
             // The pictures are decoded for the frame without a panel, and again only when a committed change needs it.
-            val normalWidth = (if (entry != null && normalHeight > 0f) geometry.copy(height = normalHeight) else geometry).frameFor(0f).width
+            val normalWidth = (if ((entry != null || drawing) && normalHeight > 0f) geometry.copy(height = normalHeight) else geometry).frameFor(0f).width
             val needed = remember(state.layers, scene.canvas, normalWidth, scene.format) { neededLongSides(state.layers, scene.canvas, normalWidth, scene.format) }
             val currentOnIntent by rememberUpdatedState(onIntent)
             LaunchedEffect(needed) {
@@ -293,10 +325,16 @@ internal fun PhotoStage(
                 }
             }
             SceneLayer(scene, bitmaps, captions, stage, live, entry, state.bubbleEntry, state.captionMeasure, entryField)
-            GestureLayer(state, scene, bitmaps, stage, live, enabled = !panelHoldsCanvas && entry == null, onIntent)
+            // The project shows a stroke that was drawn: the stage lets go of the live one (spec P2-05 → Strokes).
+            LaunchedEffect(scene.layers) { live.clearStroke() }
+            GestureLayer(state, scene, bitmaps, stage, live, enabled = !panelHoldsCanvas && entry == null && !drawing, onIntent)
             FrameEdge({ stage.frame }, visible = canvasPanelOpen || stage.gesture != null)
             if (entry != null) {
                 TypingFrame(entry, state.bubbleEntry, entryField, state.captionMeasure, scene, stage)
+            } else if (drawing) {
+                // No frame, handle or layer node while drawing: a drag always draws (spec P2-05 → Draw mode).
+                DrawGestureLayer(state, stage, live, onIntent)
+                DrawCanvasNode()
             } else {
                 SelectionOverlay(state, scene, stage, live, panelHoldsCanvas, onIntent)
                 LayerNodes(state, scene, stage, onIntent, interactive = !panelHoldsCanvas)
@@ -592,6 +630,7 @@ internal class LayerActionLabels(
     val moveDown: String,
     val editText: String,
     val style: String,
+    val draw: String,
 ) {
     companion object {
         @Composable
@@ -608,6 +647,7 @@ internal class LayerActionLabels(
             moveDown = stringResource(Res.string.layers_move_down),
             editText = stringResource(UiRes.string.tool_edit_text),
             style = stringResource(UiRes.string.tool_style),
+            draw = stringResource(Res.string.tool_draw),
         )
     }
 }
@@ -629,7 +669,15 @@ internal fun layerActions(layer: SceneLayerUi, labels: LayerActionLabels, onInte
         },
         open(labels.style, PhotoPanel.STYLE),
     )
-    return textActions + listOf(
+    // Draw adds to this drawing layer (spec P2-05 → Accessibility).
+    val drawActions = if (layer.kind != LayerKind.DRAWING) emptyList() else listOf(
+        CustomAccessibilityAction(labels.draw) {
+            onIntent(PhotoEditorIntent.SelectLayer(layer.id))
+            onIntent(PhotoEditorIntent.OpenDraw)
+            true
+        },
+    )
+    return textActions + drawActions + listOf(
         open(labels.position, PhotoPanel.POSITION),
         open(labels.opacity, PhotoPanel.OPACITY),
         action(if (layer.locked) labels.unlock else labels.lock, PhotoEditorIntent.SetLocked(layer.id, !layer.locked)),
@@ -663,6 +711,7 @@ internal fun spokenKindName(layer: SceneLayerUi, allWords: Boolean): String = wh
     LayerKind.STICKER -> stringResource(Res.string.layer_name_sticker)
     LayerKind.TEXT -> stringResource(UiRes.string.a11y_text_on_canvas, if (allWords) layer.text.orEmpty() else firstLineOf(layer.text.orEmpty()))
     LayerKind.BUBBLE -> stringResource(Res.string.a11y_bubble_on_canvas, if (allWords) layer.text.orEmpty() else firstLineOf(layer.text.orEmpty()))
+    LayerKind.DRAWING -> stringResource(Res.string.layer_name_drawing)
 }
 
 /** A row's visible name: "Photo", "Sticker", or a text's first non-blank line as typed, in the interface font. */
@@ -671,6 +720,7 @@ internal fun rowName(layer: SceneLayerUi): String = when (layer.kind) {
     LayerKind.IMAGE -> stringResource(Res.string.layer_name_photo)
     LayerKind.STICKER -> stringResource(Res.string.layer_name_sticker)
     LayerKind.TEXT, LayerKind.BUBBLE -> firstLineOf(layer.text.orEmpty())
+    LayerKind.DRAWING -> stringResource(Res.string.layer_name_drawing)
 }
 
 private fun firstLineOf(text: String): String = text.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()

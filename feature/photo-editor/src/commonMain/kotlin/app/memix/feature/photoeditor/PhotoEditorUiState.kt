@@ -14,6 +14,9 @@ import app.memix.core.model.project.editOrNull
 import app.memix.core.model.project.pictureZoom
 import app.memix.core.model.project.shownSize
 import app.memix.core.model.project.BubbleLayer
+import app.memix.core.model.project.DrawCatalog
+import app.memix.core.model.project.DrawingLayer
+import app.memix.core.model.project.Stroke
 import app.memix.core.model.project.BubbleShape
 import app.memix.core.model.project.CaptionLook
 import app.memix.core.model.project.CaptionBox
@@ -71,6 +74,10 @@ data class PhotoEditorUiState(
     val panel: PhotoPanel? = null,
     /** The image layer whose Crop screen is open (a mode over the editor), or null (spec P2-04 → The Crop screen). */
     val cropLayerId: String? = null,
+    /** Draw mode (spec P2-05): the Draw bar replaces the tool bar and a one-finger drag draws. Null when the mode is off. */
+    val draw: DrawModeUi? = null,
+    /** The brush for this visit's Draw sessions: it outlives a session, so the next one starts from the last color and size. */
+    val brush: DrawBrushUi = DrawBrushUi(),
     /** The Canvas panel's own state while it is open (the custom ratio's steppers). */
     val canvasPanel: PhotoCanvasPanelUi? = null,
     /** Layers whose file is missing or can't be decoded; reported by the scene as it tries to draw them. */
@@ -146,6 +153,21 @@ sealed interface PhotoPickRequest {
     data class Cell(val index: Int) : PhotoPickRequest
 }
 
+/** Draw mode is on. [newLayerId] is the id the first stroke gives a new drawing layer when no drawing layer is selected. */
+@Immutable
+data class DrawModeUi(val newLayerId: String)
+
+/** The chosen brush: Brush or Eraser, the color (an index into the caption palette) and one size index for each (spec P2-05 → The Draw bar). */
+@Immutable
+data class DrawBrushUi(
+    val erasing: Boolean = false,
+    val colorIndex: Int = DrawCatalog.DEFAULT_COLOR_INDEX,
+    val brushSizeIndex: Int = DrawCatalog.DEFAULT_SIZE_INDEX,
+    val eraserSizeIndex: Int = DrawCatalog.DEFAULT_SIZE_INDEX,
+) {
+    val sizeIndex: Int get() = if (erasing) eraserSizeIndex else brushSizeIndex
+}
+
 /** The look a new bubble being typed has (shape, fill); its tail is the default for where it lands. */
 @Immutable
 data class BubbleEntryUi(val shape: BubbleShape, val fill: ArgbColor)
@@ -199,6 +221,8 @@ data class SceneLayerUi(
     override val scaleRange: ClosedFloatingPointRange<Float>,
     /** A bubble's own parts; null for the other kinds. */
     val bubble: BubbleUi? = null,
+    /** A drawing's strokes, for its row's thumbnail; empty for the other kinds. */
+    val strokes: List<Stroke> = emptyList(),
     override val boxOffsetXPx: Float = 0f,
     override val boxOffsetYPx: Float = 0f,
 ) : GestureTarget {
@@ -211,7 +235,7 @@ data class SceneLayerUi(
 @Immutable
 data class BubbleUi(val shape: BubbleShape, val fill: ArgbColor, val tailX: Float, val tailY: Float, val bodyWidthPx: Float, val bodyHeightPx: Float)
 
-enum class LayerKind { IMAGE, TEXT, STICKER, BUBBLE }
+enum class LayerKind { IMAGE, TEXT, STICKER, BUBBLE, DRAWING }
 
 /**
  * [this] layer for the editor, on a canvas of [canvasSize]: an image's box is its picture fitted inside the frame, a
@@ -222,14 +246,17 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
     val picture = when (this) {
         is ImageLayer -> source.pixelSize
         is StickerLayer -> source.pixelSize
-        is TextLayer, is BubbleLayer -> null
+        is TextLayer, is BubbleLayer, is DrawingLayer -> null
     }
+    val drawingBounds = (this as? DrawingLayer)?.let { DrawCatalog.boundsOf(it) }
+    val shortSide = minOf(canvasSize.widthPx, canvasSize.heightPx).toFloat()
     val bubbleBody = (this as? BubbleLayer)?.let { bodyOn(canvasSize) { text, style, w, h, look -> measure(text, style, w, h, look) } }
     val bubbleBox = (this as? BubbleLayer)?.let { layer -> bubbleBody?.let { bubbleBox(layer.shape, it, layer.tipIn(it), canvasSize) } }
     val box = when (this) {
         is BubbleLayer -> bubbleBox?.let { BoxSize(it.width, it.height) }
         is ImageLayer -> picture?.let { fittedImageSize(shownSize(it), canvasSize) }
         is StickerLayer -> stickerSizeAtScaleOne(picture, canvasSize)
+        is DrawingLayer -> BoxSize((drawingBounds?.width ?: 0f) * shortSide, (drawingBounds?.height ?: 0f) * shortSide)
         is TextLayer -> measure(text, style, canvasSize.widthPx, canvasSize.heightPx, CaptionLook.Text).let { BoxSize(it.widthPx, it.heightPx) }
     }
     return SceneLayerUi(
@@ -239,6 +266,7 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
             is TextLayer -> LayerKind.TEXT
             is StickerLayer -> LayerKind.STICKER
             is BubbleLayer -> LayerKind.BUBBLE
+            is DrawingLayer -> LayerKind.DRAWING
         },
         transform = transform,
         locked = locked,
@@ -247,7 +275,7 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
         path = when (this) {
             is ImageLayer -> source.cachedCopyPath
             is StickerLayer -> source.cachedCopyPath
-            is TextLayer, is BubbleLayer -> null
+            is TextLayer, is BubbleLayer, is DrawingLayer -> null
         },
         text = (this as? TextLayer)?.text ?: (this as? BubbleLayer)?.text,
         style = (this as? TextLayer)?.style ?: (this as? BubbleLayer)?.style,
@@ -259,6 +287,7 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
         boxWidthPx = box?.width ?: 0f,
         boxHeightPx = box?.height ?: 0f,
         scaleRange = PhotoCatalog.scaleRangeOf(this),
+        strokes = (this as? DrawingLayer)?.strokes.orEmpty(),
         bubble = (this as? BubbleLayer)?.let { BubbleUi(it.shape, it.fill, it.tailX, it.tailY, bubbleBody?.width ?: 0f, bubbleBody?.height ?: 0f) },
         boxOffsetXPx = bubbleBox?.offsetX ?: 0f,
         boxOffsetYPx = bubbleBox?.offsetY ?: 0f,
@@ -361,6 +390,10 @@ enum class PhotoEdit(val tool: EditorTool) {
     REMOVE_CELL_PHOTO(EditorTool.REMOVE_CELL_PHOTO),
     PANEL_PHOTO_TRANSFORM(EditorTool.CELL_TRANSFORM),
     PANEL_PHOTO_POSITION(EditorTool.CELL_POSITION),
+
+    // Drawing (P2-05): each committed stroke is one step.
+    DRAW_STROKE(EditorTool.DRAW_STROKE),
+    ERASE_STROKE(EditorTool.ERASE_STROKE),
     ;
 
     companion object {
@@ -383,6 +416,8 @@ enum class PhotoExplanation {
     CANVAS_TALLEST,
     CANVAS_MIN,
     CANVAS_MAX,
+    DRAW_NOTHING,
+    DRAW_FULL,
 }
 
 /** A toast on the stage; a new [id] restarts its timer. [isSpokenOnly] when the save banner holds the slot. */
@@ -440,6 +475,12 @@ sealed interface PhotoToastMessage {
 
     /** Spoken only, after a format tile: "Format: Caption bar". */
     data class FormatSet(val choice: FormatChoice) : PhotoToastMessage
+
+    /** Spoken only, when Draw mode opens: "Drawing. Draw with one finger." */
+    data object DrawMode : PhotoToastMessage
+
+    /** Spoken only, after Done: "Drawing saved". */
+    data object DrawSaved : PhotoToastMessage
 
     /** The photos in removed Panels cells left the meme (a lower count, or Panels was left); Undo brings them back. */
     data object PanelPhotosDropped : PhotoToastMessage
@@ -633,6 +674,39 @@ sealed interface PhotoEditorIntent {
 
     /** A tap on an empty slot's hint: typing a new text (or bubble) placed in that slot. */
     data class TapSlot(val slot: FormatSlot) : PhotoEditorIntent
+
+    // Drawing (P2-05).
+    /** The Draw tool, on the main bar or the selected-drawing bar: Draw mode opens. */
+    data object OpenDraw : PhotoEditorIntent
+
+    /** Done, back or Escape in Draw mode. */
+    data object DrawDone : PhotoEditorIntent
+
+    data class SetEraser(val erasing: Boolean) : PhotoEditorIntent
+
+    data class SetBrushColor(val index: Int) : PhotoEditorIntent
+
+    data class SetBrushSize(val index: Int) : PhotoEditorIntent
+
+    /** A finger went down on the canvas in Draw mode: Undo and Redo wait until it is up. */
+    data object StrokeStarted : PhotoEditorIntent
+
+    /** The stroke was cancelled (system back, or the finger was taken by the system). */
+    data object StrokeCancelled : PhotoEditorIntent
+
+    /**
+     * The finger lifted: a stroke of [count] points ([xs], [ys] in S from the canvas center) to layer [layerId] (an existing
+     * drawing, or the id a new one gets), as the brush or eraser chosen when it started.
+     */
+    class StrokeFinished(
+        val layerId: String,
+        val erasing: Boolean,
+        val colorIndex: Int,
+        val widthS: Float,
+        val xs: FloatArray,
+        val ys: FloatArray,
+        val count: Int,
+    ) : PhotoEditorIntent
 
     // The background picture (P2-12).
     /** The Image swatch with no picture yet, or Replace. */

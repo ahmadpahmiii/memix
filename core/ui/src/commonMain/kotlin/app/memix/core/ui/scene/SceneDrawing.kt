@@ -12,6 +12,7 @@ import app.memix.core.model.project.BubbleLayer
 import app.memix.core.model.project.BubblePoint
 import app.memix.core.model.project.Canvas
 import app.memix.core.model.project.CanvasBackground
+import app.memix.core.model.project.DrawingLayer
 import app.memix.core.model.project.ImageEdit
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.Layer
@@ -43,6 +44,12 @@ interface SceneLive {
 
     /** A bubble's tail tip as the finger has it now, or null for the project's own. */
     fun tailOf(layerId: String): BubblePoint? = null
+
+    /** The stroke a finger is drawing now (spec P2-05), or null. It goes into the group of the drawing layer it names. */
+    fun strokeOf(): LiveStroke? = null
+
+    /** The editor's kept stroke paths (P2-05), or null to build them as they are drawn. */
+    val strokePaths: StrokePathCache? get() = null
 }
 
 /**
@@ -63,6 +70,7 @@ fun DrawScope.drawPhotoScene(
 ) {
     val canvasSize = PixelSize(canvas.widthPx, canvas.heightPx)
     val pixelScale = size.width / canvas.widthPx
+    val liveStroke = live?.strokeOf()
     clipRect(0f, 0f, size.width, size.height) {
         drawRect(backgroundOf(canvas))
         withTransform({ scale(pixelScale, pixelScale, Offset.Zero) }) {
@@ -77,8 +85,11 @@ fun DrawScope.drawPhotoScene(
                     is TextLayer -> captions.draw(this, layer.text, layer.style, transform, opacity, canvasSize.widthPx, canvasSize.heightPx)
                     is StickerLayer -> drawStickerLayer(layer, transform, opacity, canvasSize, images)
                     is BubbleLayer -> drawBubbleLayer(layer, transform, opacity, live?.tailOf(layer.id), canvasSize, captions)
+                    is DrawingLayer -> drawDrawingLayer(layer, transform, opacity, canvasSize, liveStroke?.takeIf { it.layerId == layer.id }, live?.strokePaths)
                 }
             }
+            // The first stroke of a new drawing: no layer yet, so it is drawn at the front.
+            if (liveStroke != null && liveStroke.count > 0 && layers.none { it.id == liveStroke.layerId }) drawNewDrawing(liveStroke, canvasSize)
         }
     }
 }

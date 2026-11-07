@@ -6,7 +6,10 @@ import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.Icon
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import app.memix.core.model.project.StrokeMode
+import app.memix.core.ui.scene.drawDrawingThumbnail
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
@@ -232,6 +235,15 @@ private fun LayerRowFor(
             LayerKind.STICKER -> Box(Modifier.fillMaxSize().background(MemixColors.surface)) {
                 val picture = layer.path?.let(thumbnails::pictureOf)
                 if (picture != null) Image(BitmapPainter(picture), contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+            }
+            // A drawing's strokes fitted inside the square on `text-muted`, so black and white strokes both read (spec P2-05 → Row).
+            LayerKind.DRAWING -> if (layer.strokes.any { it.mode == StrokeMode.DRAW }) {
+                Canvas(Modifier.fillMaxSize().background(MemixColors.textMuted)) { drawDrawingThumbnail(layer.strokes) }
+            } else {
+                // Nothing painted to show (all eraser): the tool's icon, so the tile isn't an empty gray square.
+                Box(Modifier.fillMaxSize().background(MemixColors.surface), contentAlignment = Alignment.Center) {
+                    Icon(MemixIcons.Draw, contentDescription = null, tint = MemixColors.textSecondary)
+                }
             }
             LayerKind.IMAGE -> {
                 val picture = layer.path?.let(thumbnails::pictureOf)

@@ -8,6 +8,8 @@ import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.CanvasCatalog
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.CaptionCatalog
+import app.memix.core.model.project.DrawCatalog
+import app.memix.core.model.project.DrawingLayer
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.Layer
 import app.memix.core.model.project.PhotoFormat
@@ -26,6 +28,7 @@ import app.memix.core.model.project.stickerSizeAtScaleOne
 import app.memix.core.model.project.fittedImageSize
 import app.memix.core.model.project.turnedBounds
 import kotlin.math.abs
+import kotlin.math.min
 
 /*
  * The photo canvas (spec docs/ux/specs/P2-01-photo-editor-shell.md → Start, Ratio change, Canvas panel): the shape a picked
@@ -105,6 +108,12 @@ private fun Layer.keptInside(old: PixelSize, new: PixelSize, measure: CaptionBlo
         }
         if (kept == transform) this else copy(transform = kept)
     }
+    is DrawingLayer -> {
+        val kept = transform.keptInside(old, new, DrawCatalog.SCALE_RANGE.start, PhotoCatalog.ratioChangeMarginOf(this)) { canvas, scale ->
+            boxOn(canvas, scale)
+        }
+        if (kept == transform) this else copy(transform = kept)
+    }
     is BubbleLayer -> {
         val kept = transform.keptInside(old, new, PhotoFormatCatalog.BUBBLE_SCALE_RANGE.start, PhotoCatalog.ratioChangeMarginOf(this)) { canvas, scale ->
             coveringBoxOn(canvas, scale, measure)
@@ -124,6 +133,13 @@ private fun Layer.placedIn(format: PhotoFormat?, canvas: PixelSize): Layer {
 internal fun StickerLayer.boxOn(canvas: PixelSize, scale: Float): BoxSize {
     val size = stickerSizeAtScaleOne(source.pixelSize, canvas)
     return turnedBounds(BoxSize(size.width * scale, size.height * scale), transform.rotationDegrees)
+}
+
+/** The drawing's box at [scale] on [canvas]: its painted strokes' box turned by its rotation, in canvas pixels. A drawing with nothing painted has none. */
+internal fun DrawingLayer.boxOn(canvas: PixelSize, scale: Float): BoxSize {
+    val bounds = DrawCatalog.boundsOf(this) ?: return BoxSize(0f, 0f)
+    val shortSide = min(canvas.widthPx, canvas.heightPx).toFloat()
+    return turnedBounds(BoxSize(bounds.width * shortSide * scale, bounds.height * shortSide * scale), transform.rotationDegrees)
 }
 
 /** The image's box at [scale] on [canvas]: its fitted size turned by its rotation, in canvas pixels. A picture of unknown size has none. */

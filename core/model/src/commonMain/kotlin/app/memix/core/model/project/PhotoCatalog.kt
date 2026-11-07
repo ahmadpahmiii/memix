@@ -71,11 +71,12 @@ object PhotoCatalog {
         is ImageLayer -> IMAGE_SCALE_RANGE
         is StickerLayer -> STICKER_SCALE_RANGE
         is BubbleLayer -> PhotoFormatCatalog.BUBBLE_SCALE_RANGE
+        is DrawingLayer -> DrawCatalog.SCALE_RANGE
     }
 
     /** How far inside the edge [layer] moves on a ratio change, as a fraction of the shorter side. */
     fun ratioChangeMarginOf(layer: Layer): Float = when (layer) {
         is ImageLayer -> IMAGE_MARGIN_OF_SHORT_SIDE
-        is TextLayer, is StickerLayer, is BubbleLayer -> CanvasCatalog.LAYER_MARGIN_OF_SHORT_SIDE
+        is TextLayer, is StickerLayer, is BubbleLayer, is DrawingLayer -> CanvasCatalog.LAYER_MARGIN_OF_SHORT_SIDE
     }
 }

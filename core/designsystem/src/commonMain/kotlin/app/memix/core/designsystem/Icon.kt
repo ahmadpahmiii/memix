@@ -17,7 +17,9 @@ import memix.core.designsystem.generated.resources.ic_bubble
 import memix.core.designsystem.generated.resources.ic_check
 import memix.core.designsystem.generated.resources.ic_chevron_right
 import memix.core.designsystem.generated.resources.ic_close
+import memix.core.designsystem.generated.resources.ic_censor
 import memix.core.designsystem.generated.resources.ic_crop
+import memix.core.designsystem.generated.resources.ic_draw
 import memix.core.designsystem.generated.resources.ic_create
 import memix.core.designsystem.generated.resources.ic_delete
 import memix.core.designsystem.generated.resources.ic_detach_audio
@@ -79,6 +81,8 @@ object MemixIcons {
     val ChevronRight = Res.drawable.ic_chevron_right
     val Close = Res.drawable.ic_close
     val Crop = Res.drawable.ic_crop
+    val Draw = Res.drawable.ic_draw
+    val Censor = Res.drawable.ic_censor
     val Create = Res.drawable.ic_create
     val Delete = Res.drawable.ic_delete
     val DetachAudio = Res.drawable.ic_detach_audio

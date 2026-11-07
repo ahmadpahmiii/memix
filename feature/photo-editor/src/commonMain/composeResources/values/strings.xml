@@ -152,4 +152,21 @@
     <string name="filter_chrome">Chrome</string>
     <string name="filter_dusk">Dusk</string>
     <string name="filter_bleach">Bleach</string>
+    <!-- P2-05 draw. English source, budgets and translator notes: docs/ux/specs/P2-05-draw-and-censor.md -> Copy. -->
+    <string name="tool_draw">Draw</string>
+    <string name="draw_brush">Brush</string>
+    <string name="draw_eraser">Eraser</string>
+    <string name="draw_size_thin">Thin</string>
+    <string name="draw_size_fine">Fine</string>
+    <string name="draw_size_medium">Medium</string>
+    <string name="draw_size_thick">Thick</string>
+    <string name="draw_size_heavy">Heavy</string>
+    <string name="a11y_draw_mode">Drawing. Draw with one finger.</string>
+    <string name="a11y_draw_done">Drawing saved</string>
+    <string name="explain_draw_nothing">Draw something first, then you can erase it.</string>
+    <string name="explain_draw_full">This drawing is full. Close drawing mode and start a new one.</string>
+    <string name="layer_name_drawing">Drawing</string>
+    <string name="edit_draw">Draw</string>
+    <string name="edit_erase">Erase</string>
+    <string name="draw_eraser_hint">Rubs out your drawing, not the picture.</string>
 </resources>
