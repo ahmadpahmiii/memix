@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import memix.core.designsystem.generated.resources.Res
+import memix.core.designsystem.generated.resources.ic_adjust
 import memix.core.designsystem.generated.resources.ic_arrow
 import memix.core.designsystem.generated.resources.ic_arrow_back
 import memix.core.designsystem.generated.resources.ic_blur
@@ -69,6 +70,7 @@ import org.jetbrains.compose.resources.painterResource
 
 /** The Memix-drawn icon set (docs/DESIGN_SYSTEM.md → Iconography). */
 object MemixIcons {
+    val Adjust = Res.drawable.ic_adjust
     val Arrow = Res.drawable.ic_arrow
     val ArrowBack = Res.drawable.ic_arrow_back
     val Blur = Res.drawable.ic_blur

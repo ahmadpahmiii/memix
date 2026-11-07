@@ -17,10 +17,18 @@ import app.memix.core.domain.text.PrepareCaptionsUseCase
 import app.memix.core.model.project.StickerLayer
 import app.memix.core.ui.scene.SceneBitmap
 import app.memix.core.ui.scene.SceneCaptions
+import app.memix.core.ui.scene.ImageToolRenderer
 import app.memix.core.ui.scene.SceneImageSource
 import app.memix.core.ui.scene.SceneImageUse
 import app.memix.core.ui.scene.SceneImages
 import app.memix.core.model.project.PhotoCatalog
+import app.memix.core.model.project.PixelSize
+import app.memix.core.model.project.editOrNull
+import app.memix.core.model.project.fittedImageSize
+import app.memix.core.model.project.shownSize
+import app.memix.core.ui.scene.editedLongSidePx
+import app.memix.core.ui.scene.renderEditedPicture
+import kotlin.math.max
 import app.memix.core.ui.scene.drawPhotoScene
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -36,6 +44,7 @@ import org.koin.core.component.inject
 class SceneRender : KoinComponent {
     private val getProject: GetProjectUseCase by inject()
     private val imageSource: SceneImageSource by inject()
+    private val imageTools: ImageToolRenderer by inject()
     private val captions: SceneCaptions by inject()
     private val prepareCaptions: PrepareCaptionsUseCase by inject()
     private val logger: Logger by inject()
@@ -58,7 +67,20 @@ class SceneRender : KoinComponent {
             if (path in pictures) continue
             imageSource.decode(path, PhotoCatalog.MAX_DECODE_PX, SceneImageUse.OFFSCREEN)?.let { pictures[path] = it }
         }
+        // Edited layers with color tools (P2-04): the same picture the editor draws, made at this output's size.
+        val processed = HashMap<String, SceneBitmap>()
+        for (layer in project.layers().filterIsInstance<ImageLayer>()) {
+            val edit = layer.editOrNull()?.takeIf { it.hasColorEdits } ?: continue
+            val picture = layer.source.cachedCopyPath?.let(pictures::get) ?: continue
+            val canvasSize = PixelSize(project.canvas.widthPx, project.canvas.heightPx)
+            val shown = edit.shownSize(layer.source.pixelSize ?: picture.sourceSize)
+            val fitted = fittedImageSize(shown, canvasSize)
+            val longSide = editedLongSidePx(max(fitted.width, fitted.height), layer.transform.scale, project.canvas.widthPx, widthPx, shown)
+            renderEditedPicture(picture, edit, longSide, imageTools)?.let { processed[layer.id] = SceneBitmap(it, picture.sourceSize) }
+        }
         val images = object : SceneImages {
+            override fun processedOf(layerId: String): SceneBitmap? = processed[layerId]
+
             override fun imageOf(path: String): SceneBitmap? = pictures[path]
 
             override fun appearanceOf(path: String): Float = 1f

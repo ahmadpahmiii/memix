@@ -101,8 +101,8 @@ One declarative spec per tool, one pipeline in a fixed order. These rules are sa
 | Saturation *s* in [−1, 1] | mix(luma, color, 1 + *s*), luma = 0.2126 R + 0.7152 G + 0.0722 B |
 | Warmth *w* in [−1, 1] | R × (1 + 0.12 *w*), B × (1 − 0.12 *w*) |
 | Filter | `out = mix(color, lut(color), intensity)`; the LUT is 33 × 33 × 33, **trilinear** sampling, the same data in every engine (P4-07 feeds the same data to Media3) |
-| Deep-fry *a* in [0, 1] | saturation × (1 + 1.2 *a*), contrast × (1 + 0.8 *a*), warm-red tint (R × (1 + 0.10 *a*), B × (1 − 0.10 *a*)), a hard sharpen of strength 2 *a*, and a grain of amplitude 0.12 *a* with **cells 0.002 of the canvas's shorter side wide**, its value a fixed hash of the cell's coordinates (so every output size draws the same grain) |
-| Sharpen *a* in [0, 1] | unsharp mask, radius 0.0015 of the shorter side, amount *a* × 1.5 |
+| Deep-fry *a* in [0, 1] | saturation × (1 + 1.2 *a*), contrast × (1 + 0.8 *a*), warm-red tint (R × (1 + 0.10 *a*), B × (1 − 0.10 *a*)), a hard sharpen of strength 2 *a*, and a grain of amplitude 0.12 *a*. **The grain** is a fixed hash field over **cells 0.002 of the canvas's shorter side wide**, each pixel taking **the field averaged over that pixel's square** (resolution-independent: every output size draws the same grain, scaled; review 04b with the principal). **The sharpen** runs in **one combined unsharp pass with Sharpen**: the amounts add (deep-fry 2 *a* plus Sharpen *s* × 1.5) over the same radius, so the two never stack as two passes |
+| Sharpen *s* in [0, 1] | unsharp mask, radius 0.0015 of the shorter side (a sigma in the same units, so 1080 and 2160 agree), amount *s* × 1.5; combined with deep-fry's sharpen in one pass (above) |
 | Vignette *v* in [0, 1] | multiply by 1 − *v* × smoothstep(0.35, 1.0, *r*), *r* the distance from the center as a share of the half-diagonal |
 
 **The 20 filters** (ids saved forever; recipes for the generating script, all original; contrast, saturation and tints as a share of the full range, "lift" raises the blacks, "gain" scales the whites):
@@ -110,24 +110,24 @@ One declarative spec per tool, one pipeline in a fixed order. These rules are sa
 | # | Id | Name | Look and recipe |
 | --- | --- | --- | --- |
 | 1 | `vivid` | Vivid | Punchy: saturation × 1.35, contrast +10% |
-| 2 | `warm` | Warm | Golden hour: R × 1.06, B × 0.92, saturation × 1.10 |
-| 3 | `cool` | Cool | Overcast blue: R × 0.94, B × 1.07, saturation × 1.05 |
+| 2 | `warm` | Warm | Golden hour: R × 1.10, B × 0.86, saturation × 1.12 (review 04b: stronger) |
+| 3 | `cool` | Cool | Overcast blue: R × 0.88, B × 1.12, saturation × 1.05 (review 04b: stronger) |
 | 4 | `mono` | Mono | Neutral black and white, contrast +5% |
 | 5 | `noir` | Noir | Dark high-contrast black and white: S-curve +35%, gamma 1.10 |
 | 6 | `fade` | Fade | Washed out: lift +8%, saturation × 0.80, contrast −10% |
 | 7 | `vintage` | Vintage | Old print: lift +6%, saturation × 0.75, R × 1.06, B × 0.88, gain −4% |
-| 8 | `film` | Film | 35 mm: contrast +8%, shadows teal (R −3%, G +2%), highlights warm (R +3%), saturation × 0.95 |
+| 8 | `film` | Film | 35 mm: contrast +12%, lift +3%, shadows teal (R −6%, G +3%), highlights warm (R +5%, G +2%), saturation × 0.90 (review 04b: stronger, so it differs from Cinema) |
 | 9 | `sepia` | Sepia | Brown monochrome: luma tinted (1.00, 0.84, 0.62) |
-| 10 | `cinema` | Cinema | Teal and orange: shadows R −6%, B +6%; highlights R +6%, B −6%; contrast +10% |
-| 11 | `pastel` | Pastel | Soft: saturation × 0.70, lift +10%, gain −4%, contrast −8% |
+| 10 | `cinema` | Cinema | Teal and orange: shadows R −10%, B +10%; highlights R +10%, B −10%; contrast +15% (review 04b: stronger) |
+| 11 | `pastel` | Pastel | Soft and light: brightness +10%, saturation × 0.65, lift +6%, slight pink (R +3%, B +2%) (review 04b: brighter and pinker, so it differs from Fade and Matte) |
 | 12 | `punch` | Punch | Meme boost: contrast +25%, saturation × 1.50 |
 | 13 | `drama` | Drama | Moody: saturation × 0.70, contrast +30%, gamma 1.15, shadows cool |
-| 14 | `sunset` | Sunset | Pink and orange: highlights R +8%, G −2%, B +2%; shadows B +5%; saturation × 1.15 |
-| 15 | `neon` | Neon | Cross-processed: shadows G +5%, B +8%; highlights R +8%, B +5%; saturation × 1.30 |
-| 16 | `aqua` | Aqua | Teal wash: R × 0.90, G × 1.02, B × 1.08, saturation × 1.10 |
-| 17 | `matte` | Matte | Flat: lift +10%, contrast −15%, saturation × 0.90 |
-| 18 | `chrome` | Chrome | Silver cross-process: contrast +20%, saturation × 0.85, highlights B +4% |
-| 19 | `dusk` | Dusk | Cool evening: gamma 1.10, B × 1.08, R × 0.95, saturation × 0.90 |
+| 14 | `sunset` | Sunset | Pink and orange: highlights R +12%, G −3%, B +4%; midtones R × 1.08; shadows B +8%; saturation × 1.25 (review 04b: stronger) |
+| 15 | `neon` | Neon | Cross-processed: shadows G +8%, B +12%; highlights R +12%, B +10%; saturation × 1.45 (review 04b: stronger) |
+| 16 | `aqua` | Aqua | Teal wash: R × 0.80, G × 1.04, B × 1.10, shadows teal (G +4%, B +4%), saturation × 1.15 (review 04b: stronger, greener than Cool) |
+| 17 | `matte` | Matte | Flat and dull: lift +14%, gain −10%, contrast −5%, saturation × 0.95 (review 04b: highlights dulled, so it differs from Fade) |
+| 18 | `chrome` | Chrome | Silver: contrast +30%, saturation × 0.70, highlights B +6% (review 04b: stronger) |
+| 19 | `dusk` | Dusk | Purple twilight: gamma 1.15, R × 0.95, G × 0.90, B × 1.12, lift +3%, saturation × 0.85 (review 04b: purpler, so it differs from Cool) |
 | 20 | `bleach` | Bleach | Bleach bypass: saturation × 0.55, contrast +28% |
 
 Names are one short word each (budget 12). The looks are made by a script that writes the 20 LUT images; the script and a README saying the looks are original work live in the repo (decision, 2 Nov).

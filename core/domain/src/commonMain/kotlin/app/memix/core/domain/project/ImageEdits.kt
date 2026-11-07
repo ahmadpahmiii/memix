@@ -2,6 +2,7 @@ package app.memix.core.domain.project
 
 import app.memix.core.domain.EditorTool
 import app.memix.core.model.project.CropRect
+import app.memix.core.model.project.ImageAdjust
 import app.memix.core.model.project.ImageEdit
 import app.memix.core.model.project.flippedAcross
 import app.memix.core.model.project.flippedDown
@@ -72,3 +73,51 @@ private fun CropRect.isCloseTo(other: CropRect) =
 
 private const val QUARTER_TURNS = 4
 private const val TOLERANCE = 1e-3f
+
+/** The Edit photo panel's tabs (spec P2-04 → The Edit photo panel); Reset acts on the open one. */
+enum class EditPhotoTab { FILTERS, ADJUST, DEEP_FRY }
+
+/** The six adjustments: the event each logs and the range of its fraction. Brightness, contrast, saturation and warmth run -1 to 1, sharpen and vignette 0 to 1. */
+enum class AdjustPart(val tool: EditorTool, val range: ClosedFloatingPointRange<Float>) {
+    BRIGHTNESS(EditorTool.ADJUST_BRIGHTNESS, -1f..1f),
+    CONTRAST(EditorTool.ADJUST_CONTRAST, -1f..1f),
+    SATURATION(EditorTool.ADJUST_SATURATION, -1f..1f),
+    WARMTH(EditorTool.ADJUST_WARMTH, -1f..1f),
+    SHARPEN(EditorTool.ADJUST_SHARPEN, 0f..1f),
+    VIGNETTE(EditorTool.ADJUST_VIGNETTE, 0f..1f),
+}
+
+fun ImageAdjust.valueOf(part: AdjustPart): Float = when (part) {
+    AdjustPart.BRIGHTNESS -> brightness
+    AdjustPart.CONTRAST -> contrast
+    AdjustPart.SATURATION -> saturation
+    AdjustPart.WARMTH -> warmth
+    AdjustPart.SHARPEN -> sharpen
+    AdjustPart.VIGNETTE -> vignette
+}
+
+fun ImageAdjust.with(part: AdjustPart, value: Float): ImageAdjust {
+    val v = value.coerceIn(part.range)
+    return when (part) {
+        AdjustPart.BRIGHTNESS -> copy(brightness = v)
+        AdjustPart.CONTRAST -> copy(contrast = v)
+        AdjustPart.SATURATION -> copy(saturation = v)
+        AdjustPart.WARMTH -> copy(warmth = v)
+        AdjustPart.SHARPEN -> copy(sharpen = v)
+        AdjustPart.VIGNETTE -> copy(vignette = v)
+    }
+}
+
+/** [this] edit with [tab]'s part put back to normal: no filter, all six adjustments 0, or no deep-fry. */
+fun ImageEdit.resetTab(tab: EditPhotoTab): ImageEdit = when (tab) {
+    EditPhotoTab.FILTERS -> copy(filter = null)
+    EditPhotoTab.ADJUST -> copy(adjust = ImageAdjust())
+    EditPhotoTab.DEEP_FRY -> copy(deepFry = 0f)
+}
+
+/** The events a tab's Reset logs: one for each part it changed (`filter` with the filter `none`, the `adjust_*` ids, `deep_fry`). */
+fun changedColorTools(before: ImageEdit, after: ImageEdit): List<EditorTool> = buildList {
+    if (before.filter != after.filter) add(EditorTool.FILTER)
+    for (part in AdjustPart.entries) if (before.adjust.valueOf(part) != after.adjust.valueOf(part)) add(part.tool)
+    if (before.deepFry != after.deepFry) add(EditorTool.DEEP_FRY)
+}

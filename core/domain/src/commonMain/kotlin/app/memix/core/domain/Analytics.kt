@@ -155,6 +155,9 @@ enum class EditorTool(val eventValue: String?) {
     ADJUST_VIGNETTE("adjust_vignette"),
     FILTER("filter"),
     DEEP_FRY("deep_fry"),
+
+    /** A tab's Reset in the Edit photo panel: names the undo step; the events logged are the parts it changed (no event of its own). */
+    EDIT_PHOTO_RESET(null),
     POSITION_TEXT("position_text"),
     TRANSFORM_TEXT("transform_text"),
 

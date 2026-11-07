@@ -2,6 +2,7 @@ package app.memix.feature.photoeditor
 
 import androidx.compose.animation.Crossfade
 import app.memix.core.ui.crop.CropScreen
+import app.memix.core.domain.project.EditPhotoTab
 import app.memix.core.model.project.ImageEdit
 import app.memix.core.designsystem.MemixTheme
 import androidx.compose.animation.slideOutVertically
@@ -75,6 +76,7 @@ import app.memix.core.ui.editor.UnsavedChangesSheet
 import app.memix.core.ui.editor.WHAT_HAPPENED_TOAST_MILLIS
 import app.memix.core.ui.editor.recommendedTimeoutMillis
 import app.memix.core.ui.layers.LayerStageState
+import app.memix.core.ui.scene.ImageToolRenderer
 import app.memix.core.ui.scene.SceneImageSource
 import app.memix.core.ui.text.TextEntryBar
 import app.memix.core.ui.scene.SceneCaptions
@@ -94,7 +96,12 @@ import memix.core.ui.generated.resources.edit_text_font
 import memix.core.ui.generated.resources.edit_text_outline
 import memix.core.ui.generated.resources.edit_text_shadow
 import memix.core.ui.generated.resources.edit_text_box
+import memix.core.ui.generated.resources.edit_adjust
 import memix.core.ui.generated.resources.edit_crop
+import memix.core.ui.generated.resources.edit_deep_fry
+import memix.core.ui.generated.resources.edit_filter
+import memix.core.ui.generated.resources.edit_photo_reset
+import memix.feature.photo_editor.generated.resources.tool_edit_photo
 import memix.core.ui.generated.resources.tool_crop
 import memix.core.ui.generated.resources.tool_edit_text
 import memix.core.ui.generated.resources.tool_style
@@ -192,9 +199,12 @@ fun PhotoEditorScreen(
     state: PhotoEditorUiState,
     onIntent: (PhotoEditorIntent) -> Unit,
     imageSource: SceneImageSource,
+    imageTools: ImageToolRenderer,
     captions: SceneCaptions,
     onFreeUpSpace: (requestedBytes: Long) -> Unit,
     modifier: Modifier = Modifier,
+    /** The Edit photo panel's tab when it opens: Filters, always, outside the render harness (spec P2-04: the open tab isn't kept). */
+    editPhotoTab: EditPhotoTab = EditPhotoTab.FILTERS,
 ) {
     // System back closes the editor through the app's own navigation, which saves on the way out. The editor takes back
     // itself while something inside it comes first (a panel, the selection) or while saving fails, to ask first.
@@ -212,9 +222,11 @@ fun PhotoEditorScreen(
     val entry = state.textEntry
     val entryField = remember(entry?.serial) { TextFieldState(entry?.initialText.orEmpty(), TextRange(entry?.initialText.orEmpty().length)) }
     val scope = rememberCoroutineScope()
-    val bitmaps = remember(imageSource) { SceneBitmaps(imageSource, scope) }
+    val bitmaps = remember(imageSource, imageTools) { SceneBitmaps(imageSource, imageTools, scope) }
     DisposableEffect(bitmaps) { onDispose { bitmaps.release() } }
     val thumbnails = remember(imageSource) { SceneThumbnails(imageSource, scope) }
+    val filterThumbnails = remember(imageSource, imageTools) { FilterThumbnails(imageSource, imageTools, scope) }
+    DisposableEffect(filterThumbnails) { onDispose { filterThumbnails.release() } }
     DisposableEffect(thumbnails) { onDispose { thumbnails.release() } }
     val stage = remember { LayerStageState() }
     val held = rememberUpdatedState(state.held)
@@ -259,7 +271,7 @@ fun PhotoEditorScreen(
             }
         }
         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { if (it.height > 0) panelHeightPx = it.height }) {
-            PhotoPanels(state, live, thumbnails, panelMaxHeight, onIntent)
+            PhotoPanels(state, live, thumbnails, filterThumbnails, panelMaxHeight, onIntent, editPhotoTab = editPhotoTab)
             LayersPanel(state, live, thumbnails, panelMaxHeight, onIntent)
         }
         state.photoImport?.let { importUi ->
@@ -363,7 +375,7 @@ private fun ToolBarRegion(state: PhotoEditorUiState, entryField: TextFieldState,
             } else if (layer == null) {
                 // The format's own tool sits right after Formats (spec P2-02 → Main bar).
                 val formatTool = formatSpecificTool(state.format, onIntent)
-                ToolBar(persistentListOf(*listOfNotNull(formatsTool(onIntent), formatTool, textTool(onIntent), addPhotoTool(onIntent), cropTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), layersTool(onIntent)).toTypedArray()))
+                ToolBar(persistentListOf(*listOfNotNull(formatsTool(onIntent), formatTool, textTool(onIntent), addPhotoTool(onIntent), editPhotoTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), cropTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), layersTool(onIntent)).toTypedArray()))
             } else {
                 val closeLabel = stringResource(Res.string.layer_tools_close)
                 ToolBar(
@@ -401,6 +413,11 @@ private fun formatSpecificTool(format: app.memix.core.model.project.PhotoFormat?
 @Composable
 private fun textTool(onIntent: (PhotoEditorIntent) -> Unit) =
     ToolBarItem(stringResource(UiRes.string.tool_text), MemixIcons.Text, { onIntent(PhotoEditorIntent.AddText) })
+
+// Edit photo on the main bar, like Crop: only while an image layer exists; a tap selects the main photo and opens the panel.
+@Composable
+private fun editPhotoTool(onIntent: (PhotoEditorIntent) -> Unit, hasImage: Boolean): ToolBarItem? =
+    if (hasImage) ToolBarItem(stringResource(Res.string.tool_edit_photo), MemixIcons.Adjust, { onIntent(PhotoEditorIntent.OpenEditPhoto(null)) }) else null
 
 // Crop on the main bar exists only while the canvas has an image layer; a tap selects the main photo and opens the Crop screen
 // (spec P2-04 → Entry and exit). The final order has Edit photo and Crop after Draw; both join the bar as their tickets land.
@@ -444,6 +461,9 @@ private fun selectedLayerTools(layer: SceneLayerUi, missing: Boolean, onIntent: 
         if (layer.hidden) MemixIcons.EyeOff else MemixIcons.Eye,
         { onIntent(PhotoEditorIntent.SetHidden(layer.id, !layer.hidden)) },
     )
+    val editPhoto = ToolBarItem(stringResource(Res.string.tool_edit_photo), MemixIcons.Adjust, {
+        if (layer.locked) onIntent(PhotoEditorIntent.LockedLayerTouched(layer.id)) else onIntent(PhotoEditorIntent.OpenEditPhoto(layer.id))
+    })
     val crop = ToolBarItem(stringResource(UiRes.string.tool_crop), MemixIcons.Crop, {
         if (layer.locked) onIntent(PhotoEditorIntent.LockedLayerTouched(layer.id)) else onIntent(PhotoEditorIntent.OpenCrop(layer.id))
     })
@@ -470,7 +490,10 @@ private fun selectedLayerTools(layer: SceneLayerUi, missing: Boolean, onIntent: 
             add(position)
             add(opacity)
             if (!missing) add(delete)
-            if (layer.kind == LayerKind.IMAGE) add(crop)
+            if (layer.kind == LayerKind.IMAGE) {
+                add(editPhoto)
+                add(crop)
+            }
         }
         add(duplicate)
         if (!layer.locked) add(lock)
@@ -581,6 +604,12 @@ private fun editName(edit: PhotoEdit): String = stringResource(
         PhotoEdit.TEXT_SHADOW -> UiRes.string.edit_text_shadow
         PhotoEdit.TEXT_BOX -> UiRes.string.edit_text_box
         PhotoEdit.CROP -> UiRes.string.edit_crop
+        PhotoEdit.FILTER -> UiRes.string.edit_filter
+        PhotoEdit.ADJUST_BRIGHTNESS, PhotoEdit.ADJUST_CONTRAST, PhotoEdit.ADJUST_SATURATION, PhotoEdit.ADJUST_WARMTH,
+        PhotoEdit.ADJUST_SHARPEN, PhotoEdit.ADJUST_VIGNETTE,
+        -> UiRes.string.edit_adjust
+        PhotoEdit.DEEP_FRY -> UiRes.string.edit_deep_fry
+        PhotoEdit.EDIT_RESET -> UiRes.string.edit_photo_reset
         PhotoEdit.FORMAT_PLAIN, PhotoEdit.FORMAT_CLASSIC, PhotoEdit.FORMAT_CAPTION_BAR, PhotoEdit.FORMAT_PANELS,
         PhotoEdit.FORMAT_DEMOTIVATIONAL, PhotoEdit.FORMAT_BUBBLES,
         -> Res.string.edit_format

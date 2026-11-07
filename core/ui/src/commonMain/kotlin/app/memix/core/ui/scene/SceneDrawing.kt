@@ -27,6 +27,7 @@ import app.memix.core.model.project.straightenScale
 import app.memix.core.model.project.turnedSize
 import app.memix.core.model.project.fittedImageSize
 import app.memix.core.model.project.stickerSizeAtScaleOne
+import kotlin.math.abs
 
 /**
  * Values that differ from the project while a finger or a slider is down: read while drawing, so the scene redraws without
@@ -122,12 +123,29 @@ private fun DrawScope.drawStickerLayer(layer: StickerLayer, transform: Transform
 
 // Placed in canvas pixels: the picture (turned and cropped by its edit) fitted inside the canvas at scale 1, times the layer's scale,
 // turned about its center. The whole picture is drawn under a clip at the crop's edges (spec P2-04 → How it draws).
+private fun ImageBitmap.hasShapeOf(size: PixelSize): Boolean {
+    val ratio = (width.toFloat() / height) / (size.widthPx.toFloat() / size.heightPx)
+    return abs(ratio - 1f) <= PROCESSED_SHAPE_TOLERANCE
+}
+
+private const val PROCESSED_SHAPE_TOLERANCE = 0.02f
+
 private fun DrawScope.drawImageLayer(layer: ImageLayer, transform: Transform, opacity: Float, canvasSize: PixelSize, images: SceneImages) {
     val path = layer.source.cachedCopyPath ?: return
     val picture = images.imageOf(path) ?: return
     val shown = layer.source.pixelSize ?: picture.sourceSize
     val alpha = opacity * images.appearanceOf(path)
     val edit = layer.editOrNull()
+    // A layer with a color edit draws its processed picture (geometry applied, the crop's shape) once it is ready.
+    if (edit != null && edit.hasColorEdits) {
+        val cropped = edit.shownSize(shown)
+        // A processed picture still of the shape before a crop or turn is skipped, so it is never drawn stretched while the new one is made.
+        images.processedOf(layer.id)?.takeIf { it.image.hasShapeOf(cropped) }?.let { processed ->
+            val fitted = fittedImageSize(cropped, canvasSize)
+            drawPicture(processed.image, fitted.width * transform.scale, fitted.height * transform.scale, transform, alpha, canvasSize)
+            return
+        }
+    }
     if (edit == null || !edit.changesGeometry) {
         val fitted = fittedImageSize(shown, canvasSize)
         drawPicture(picture.image, fitted.width * transform.scale, fitted.height * transform.scale, transform, alpha, canvasSize)

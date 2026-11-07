@@ -28,4 +28,11 @@ interface SceneImages {
 
     /** How far [path]'s picture has faded in, 0 to 1 (spec → Before the first draw: 120 ms). */
     fun appearanceOf(path: String): Float
+
+    /**
+     * The picture of image layer [layerId] with its geometry and color tools applied (P2-04: [renderEditedPicture]), sized as its
+     * crop, or null while it isn't ready or when the layer has no color edit: the scene then draws the file's picture with the
+     * geometry only.
+     */
+    fun processedOf(layerId: String): SceneBitmap? = null
 }

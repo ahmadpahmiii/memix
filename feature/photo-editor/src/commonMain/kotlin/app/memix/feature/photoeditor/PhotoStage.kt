@@ -44,6 +44,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import app.memix.core.model.project.ImageEdit
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -146,6 +148,30 @@ internal class PhotoLive(
     private var settled by mutableStateOf<Pair<String, Transform>?>(null)
     private var opacityLayerId by mutableStateOf<String?>(null)
     private var opacity by mutableFloatStateOf(1f)
+    private var editLive by mutableStateOf<Pair<String, ImageEdit>?>(null)
+    private var editReleased by mutableStateOf(false)
+
+    /** The edit a slider of the Edit photo panel shows now for its layer, or null when the project's own applies (P2-04). */
+    fun editOverride(): Pair<String, ImageEdit>? = editLive
+
+    /** True once the finger left the slider: the picture is then made at its drawn size, not the small size used while dragging. */
+    fun editIsReleased(): Boolean = editReleased
+
+    fun setEdit(layerId: String, edit: ImageEdit) {
+        editLive = layerId to edit
+        editReleased = false
+    }
+
+    /** The slider was let go: marks the edit released and returns it, for the step that records it. */
+    fun releaseEdit(): ImageEdit? {
+        editReleased = true
+        return editLive?.second
+    }
+
+    fun clearEdit() {
+        editLive = null
+        editReleased = false
+    }
 
     /** The opacity the slider shows now, or null when the project's own value applies. */
     fun opacityOf(): Float? = opacityLayerId?.let { opacity }
@@ -258,6 +284,13 @@ internal fun PhotoStage(
             val currentOnIntent by rememberUpdatedState(onIntent)
             LaunchedEffect(needed) {
                 bitmaps.ensure(needed) { failed -> currentOnIntent(PhotoEditorIntent.MediaMissing(failed)) }
+            }
+            // Edited layers' pictures (P2-04): made again when an edit lands or a slider moves (smaller while it moves), never on the main thread.
+            LaunchedEffect(state.layers, scene.canvas, normalWidth) {
+                live.clearEdit()
+                snapshotFlow { live.editOverride() to live.editIsReleased() }.collectLatest { (override, released) ->
+                    bitmaps.process(processRequests(state.layers, scene.canvas, normalWidth, override, live = override != null && !released)) { failed -> currentOnIntent(PhotoEditorIntent.MediaMissing(failed)) }
+                }
             }
             SceneLayer(scene, bitmaps, captions, stage, live, entry, state.bubbleEntry, state.captionMeasure, entryField)
             GestureLayer(state, scene, bitmaps, stage, live, enabled = !panelHoldsCanvas && entry == null, onIntent)

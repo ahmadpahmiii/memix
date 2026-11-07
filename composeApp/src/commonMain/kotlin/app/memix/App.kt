@@ -51,6 +51,7 @@ import app.memix.core.designsystem.component.Scrim
 import app.memix.core.designsystem.component.coveredByModal
 import app.memix.core.model.project.ProjectType
 import app.memix.core.ui.scene.SceneCaptions
+import app.memix.core.ui.scene.ImageToolRenderer
 import app.memix.core.ui.scene.SceneImageSource
 import app.memix.core.domain.Logger
 import app.memix.core.domain.RefreshAppConfigUseCase
@@ -379,6 +380,8 @@ private fun VideoEditorDestination(projectId: String, onClose: () -> Unit, onCou
 private fun PhotoEditorDestination(projectId: String, blank: Boolean, onClose: () -> Unit, onCouldntOpen: () -> Unit) {
     val viewModel = koinViewModel<PhotoEditorViewModel>(key = projectId) { parametersOf(projectId, blank) }
     val imageSource = koinInject<SceneImageSource>()
+    // The image tools' color pass (P2-04); iOS binds an unsupported one until P7-09.
+    val imageTools = koinInject<ImageToolRenderer>()
     // Draws the text layers with the video engine's caption renderer (P2-03).
     val captions = koinInject<SceneCaptions>()
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -396,6 +399,7 @@ private fun PhotoEditorDestination(projectId: String, blank: Boolean, onClose: (
         state = state,
         onIntent = viewModel::onIntent,
         imageSource = imageSource,
+        imageTools = imageTools,
         captions = captions,
         // When no storage screen opens, the editor hides the button (spec P1-04 → Saving).
         onFreeUpSpace = { requestedBytes ->

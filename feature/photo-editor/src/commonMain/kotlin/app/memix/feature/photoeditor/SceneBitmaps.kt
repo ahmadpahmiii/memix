@@ -17,7 +17,13 @@ import app.memix.core.model.project.pictureRect
 import app.memix.core.model.project.coveredImageSize
 import app.memix.core.model.project.size
 import app.memix.core.ui.scene.SceneBitmap
+import app.memix.core.model.project.ImageEdit
+import app.memix.core.model.project.pictureZoom
+import app.memix.core.model.project.shownSize
+import app.memix.core.ui.scene.editedLongSidePx
+import app.memix.core.ui.scene.ImageToolRenderer
 import app.memix.core.ui.scene.SceneImageSource
+import app.memix.core.ui.scene.renderEditedPicture
 import app.memix.core.ui.scene.SceneImageUse
 import app.memix.core.ui.scene.SceneImages
 import kotlin.math.max
@@ -38,7 +44,7 @@ import kotlinx.coroutines.launch
  * scene. Lives with the editor screen: dropping it lets go of every bitmap.
  */
 @Stable
-internal class SceneBitmaps(private val source: SceneImageSource, private val scope: CoroutineScope) : SceneImages {
+internal class SceneBitmaps(private val source: SceneImageSource, private val tools: ImageToolRenderer, private val scope: CoroutineScope) : SceneImages {
     private val decoded = mutableStateMapOf<String, SceneBitmap>()
     private val appearance = mutableStateMapOf<String, Float>()
     private val decodedLongSide = HashMap<String, Int>()
@@ -46,6 +52,47 @@ internal class SceneBitmaps(private val source: SceneImageSource, private val sc
     private val failed = HashSet<String>()
 
     override fun imageOf(path: String): SceneBitmap? = decoded[path]
+
+    // Edited layers' pictures (P2-04): geometry and color tools applied, one per layer, replaced as the edit or the size changes.
+    private val processed = mutableStateMapOf<String, SceneBitmap>()
+    private val processedFor = HashMap<String, ProcessedKey>()
+    private var rawPicture: Pair<String, SceneBitmap>? = null
+
+    override fun processedOf(layerId: String): SceneBitmap? = processed[layerId]
+
+    private data class ProcessedKey(val edit: ImageEdit, val longSidePx: Int)
+
+    /**
+     * Makes the processed picture of every layer in [requests] (a layer with a color edit, as the slider has it now) and lets go of
+     * the rest. Runs in the caller's coroutine, which the caller cancels when a newer edit arrives; a picture is decoded again only
+     * when it must be bigger than the one held. The pictures are software copies, since pixels are read back.
+     */
+    suspend fun process(requests: List<ProcessRequest>, onFailed: (Set<String>) -> Unit) {
+        val wanted = requests.map { it.layerId }.toSet()
+        (processed.keys - wanted).forEach { id ->
+            processed.remove(id)
+            processedFor.remove(id)
+        }
+        if (requests.isEmpty()) rawPicture = null
+        for (request in requests) {
+            val key = ProcessedKey(request.edit, request.longSidePx)
+            if (processedFor[request.layerId] == key) continue
+            val raw = rawFor(request) ?: return onFailed(setOf(request.path))
+            val image = renderEditedPicture(raw, request.edit, request.longSidePx, tools) ?: continue
+            processed[request.layerId] = SceneBitmap(image, raw.sourceSize)
+            processedFor[request.layerId] = key
+        }
+    }
+
+    // The whole picture at the size the crop needs (the crop shows a part of it), decoded again only when the held one is too small.
+    private suspend fun rawFor(request: ProcessRequest): SceneBitmap? {
+        val needed = (request.longSidePx * request.edit.pictureZoom(request.sourceSize)).roundToInt().coerceIn(MIN_DECODE_PX, PhotoCatalog.MAX_DECODE_PX)
+        rawPicture?.takeIf { (path, held) -> path == request.path && max(held.image.width, held.image.height) >= min(needed, max(request.sourceSize.widthPx, request.sourceSize.heightPx)) }
+            ?.let { return it.second }
+        val decoded = source.decode(request.path, needed, SceneImageUse.OFFSCREEN) ?: return null
+        rawPicture = request.path to decoded
+        return decoded
+    }
 
     // A picture that hasn't been through ensure (or is faded in already) counts as fully there.
     override fun appearanceOf(path: String): Float = appearance[path] ?: 1f
@@ -79,6 +126,9 @@ internal class SceneBitmaps(private val source: SceneImageSource, private val sc
 
     /** Lets go of every bitmap; the editor is closing. */
     fun release() {
+        processed.clear()
+        processedFor.clear()
+        rawPicture = null
         jobs.values.forEach(Job::cancel)
         jobs.clear()
         decoded.clear()
@@ -151,3 +201,23 @@ internal fun neededLongSides(layers: List<SceneLayerUi>, canvas: Canvas, frameWi
     }
     return needed
 }
+
+/** One edited layer to process: [edit] as it stands now (a slider's live value included) at [longSidePx], from its file [path] of [sourceSize] as shown. */
+internal class ProcessRequest(val layerId: String, val path: String, val sourceSize: PixelSize, val edit: ImageEdit, val longSidePx: Int)
+
+/**
+ * The requests for [layers] with a color edit on a frame [frameWidthPx] wide: [override] is the edit a slider shows now for one layer
+ * (null when none). While [live] the size is capped so a drag recomputes a small picture; the release processes at the drawn size.
+ */
+internal fun processRequests(layers: List<SceneLayerUi>, canvas: Canvas, frameWidthPx: Float, override: Pair<String, ImageEdit>?, live: Boolean): List<ProcessRequest> =
+    layers.mapNotNull { layer ->
+        val edit = (if (override?.first == layer.id) override.second else layer.edit) ?: return@mapNotNull null
+        val path = layer.path ?: return@mapNotNull null
+        val size = layer.pictureSize ?: return@mapNotNull null
+        if (!edit.hasColorEdits) return@mapNotNull null
+        val shown = edit.shownSize(size)
+        val drawn = editedLongSidePx(max(layer.boxWidthPx, layer.boxHeightPx), layer.transform.scale, canvas.widthPx, frameWidthPx.roundToInt(), shown)
+        ProcessRequest(layer.id, path, size, edit, if (live) min(drawn, LIVE_LONG_SIDE_PX) else drawn)
+    }
+
+private const val LIVE_LONG_SIDE_PX = 640

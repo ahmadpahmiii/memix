@@ -168,4 +168,7 @@
     <string name="explain_crop_min">Pangkasan tidak bisa lebih kecil dari ini.</string>
     <string name="edit_crop">Pangkas</string>
     <string name="edit_photo_reset">Atur ulang</string>
+    <string name="edit_filter">Filter</string>
+    <string name="edit_adjust">Atur</string>
+    <string name="edit_deep_fry">Deep-fry</string>
 </resources>

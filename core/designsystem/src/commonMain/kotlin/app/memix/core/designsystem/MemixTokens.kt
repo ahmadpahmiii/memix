@@ -76,6 +76,7 @@ object MemixSize {
 
     /** The white scale-and-rotate handle on a selected caption on the preview; its target is still [touchTarget]. */
     val canvasHandleSize = 24.dp
+    val filterTileSize = 72.dp
 
     /** A color swatch's circle, drawn in a [touchTarget] square. */
     val swatchSize = 32.dp

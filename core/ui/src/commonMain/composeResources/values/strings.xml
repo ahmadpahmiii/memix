@@ -172,4 +172,7 @@
     <string name="explain_crop_min">The crop can\'t get smaller than this.</string>
     <string name="edit_crop">Crop</string>
     <string name="edit_photo_reset">Reset</string>
+    <string name="edit_filter">Filter</string>
+    <string name="edit_adjust">Adjust</string>
+    <string name="edit_deep_fry">Deep-fry</string>
 </resources>

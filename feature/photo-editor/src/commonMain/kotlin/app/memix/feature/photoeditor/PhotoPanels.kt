@@ -41,6 +41,7 @@ import memix.feature.photo_editor.generated.resources.photo_background_hidden
 import memix.feature.photo_editor.generated.resources.canvas_background_format
 import app.memix.core.model.project.CaptionBox
 import app.memix.core.model.project.CaptionShadow
+import app.memix.core.domain.project.EditPhotoTab
 import app.memix.core.model.project.DemotivationalFormat
 import memix.feature.photo_editor.generated.resources.tool_unlock
 import org.jetbrains.compose.resources.stringResource
@@ -51,7 +52,7 @@ import org.jetbrains.compose.resources.stringResource
  * once as one undo step; the slider's in-between values go to [live] and are committed on release.
  */
 @Composable
-internal fun PhotoPanels(state: PhotoEditorUiState, live: PhotoLive, thumbnails: SceneThumbnails, maxHeight: Dp, onIntent: (PhotoEditorIntent) -> Unit, modifier: Modifier = Modifier) {
+internal fun PhotoPanels(state: PhotoEditorUiState, live: PhotoLive, thumbnails: SceneThumbnails, filterThumbnails: FilterThumbnails, maxHeight: Dp, onIntent: (PhotoEditorIntent) -> Unit, modifier: Modifier = Modifier, editPhotoTab: EditPhotoTab = EditPhotoTab.FILTERS) {
     val done = stringResource(UiRes.string.panel_done)
     val close = { onIntent(PhotoEditorIntent.ClosePanel) }
     val layer = state.selectedLayer
@@ -93,6 +94,7 @@ internal fun PhotoPanels(state: PhotoEditorUiState, live: PhotoLive, thumbnails:
         rowsBefore = { if (bubble != null) BubbleShapeRow(bubble.shape) { onIntent(PhotoEditorIntent.SetBubbleShape(it)) } },
         rowsAfter = { if (bubble != null) BubbleFillRow(bubble.fill) { onIntent(PhotoEditorIntent.SetBubbleFill(it)) } },
     )
+    EditPhotoPanel(state, live, filterThumbnails, maxHeight, onIntent, modifier, editPhotoTab)
     FormatsPanel(state, maxHeight, onIntent, modifier)
     LayoutPanel(state, maxHeight, onIntent, modifier)
     DividerPanel(state, maxHeight, onIntent, modifier)

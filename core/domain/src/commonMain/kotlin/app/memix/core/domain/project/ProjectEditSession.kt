@@ -120,7 +120,7 @@ class ProjectEditSession internal constructor(
     // A step without an event value is counted by its own event (a landed sound: sound_add).
     private fun logToolUse(tool: EditorTool, font: String? = null, value: String? = null, filter: String? = null) {
         if (tool.eventValue == null) return
-        analytics.log(AnalyticsEvent.ToolUse(editor = mutableState.value.project.type, tool = tool, font = font, value = value, filter = filter))
+        analytics.log(AnalyticsEvent.ToolUse(editor = mutableState.value.project.type, tool = tool, font = font, value = value, filter = filter.takeIf { tool == EditorTool.FILTER }))
     }
 
     private fun showSaveFailure(failure: AppError?) {

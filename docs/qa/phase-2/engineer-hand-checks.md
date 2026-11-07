@@ -207,5 +207,23 @@ adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor p
 8. **Old drafts:** a photo draft saved before this build opens unchanged (schema 7, "edit" absent); a draft with an edit, killed and reopened, keeps it.
 9. **Analytics:** a Done that only rotated logs `rotate_image` alone; crop + flip logs `crop` and `flip_image`; one undo step for all.
 10. **200% font, es and hi:** top bar wraps (Reset and Done on a second line), "Edges" and the aspect tiles are whole, the bottom area scrolls.
-11. **Not built yet (04b):** the Edit photo tool, Filters, Adjust, Deep-fry, "Edited" for color edits, the API 29 GL path, the LUT script.
+11. (04b is below.)
 12. **Leaks (debug build, LeakCanary):** 5 cycles of open Crop, rotate, drag, Done, close.
+
+## P2-04b · image tools, part b: Edit photo (Filters, Adjust, Deep-fry)
+
+Spec: `docs/ux/specs/P2-04-image-tools.md`. Frames: `docs/ux/reviews/P2-04/90-*` (desktop, stand-in picture). References: `docs/qa/references/P2-04-image-tools/` (contact sheets, one tile per id). Nothing here has run on a phone. **The color pass is a CPU pass on every Android version** (a decision, TECHNICAL_DESIGN → Decisions); the GL path of the spec is not built.
+
+1. **Bars:** an image layer selected: Position, Opacity, Delete, **Edit photo**, Crop (cut by the scroll at 360 dp); the main bar has Edit photo and Crop after Add photo only while an image layer exists; a tap with nothing selected selects the main photo. Locked: explains; missing file: explains; hidden layer: the panel opens with its hint line.
+2. **Filters tab:** 21 tiles (None first), each the photo with that filter; tiles fill in from the left; the selected one is ringed and scrolled into view; a tap applies at 100% (one step "Filter"), the Intensity row appears (snap to 100% with a tick); None removes it. First five tiles within 300 ms of opening (measure on the phone).
+3. **Adjust tab:** six sliders (the four bipolar ones with the origin tick), snap to 0, readouts "+20" / "-30"; the picture follows the finger; one step "Adjust" on release; Reset sets all six to 0 in one step "Reset". Deep-fry: Amount 0 to 100%, hint, one step "Deep-fry".
+4. **Look equals the reference:** open `photo-image-tools`, put each filter on the portrait photo and compare with `filters-100-*` sheets (same colors; the phone's picture is a different one); render `--es memix.renderScene photo-image-tools --ei memix.renderWidth 1080` and 2160 and compare with the screen (99% of pixels within 3/255 is the spec bar; grain and sharpen are now resolution-independent: expect about 100% on smooth areas at deep-fry 30%, misses only at hard edges and above about 60% deep-fry; report both).
+5. **Speed (benchmark build, the owner's phone; report model and Android):** a 12 MP layer (`photo-layers-10` base): three 3 s drags of an Adjust slider and of Intensity (`adb shell input swipe` along the rail; `dumpsys gfxinfo app.memix reset` first): janky frames under 5%. Time from release to the full-size picture. **PRE-AGREED MUST-FIX (principal, 7 Nov):** more than 5% janky frames, or the picture updating under the finger fewer than about 10 times a second, or over 500 ms from release to the full-size picture: build the GL pass on the same LUT data before P2-08 closes (first try: split the rows over cores). Also the time of a 2160 render with every tool on (the render hook) and peak memory.
+6. **API 29 emulator (spec Done when):** the whole tool works on an API 29 emulator and on a current phone with the same look (the CPU pass is the same code; watch memory and speed on the emulator).
+7. **Reset per tab:** Filters Reset removes the filter (event `filter` with `none`), Adjust Reset logs one event per slider that was not 0, Deep-fry Reset logs `deep_fry`; a tab already at normal records nothing.
+8. **Undo/redo:** each step restores exactly, the open panel shows the restored values; the layer's row says "Edited" for a color edit too; a crop after a filter keeps the filter; Duplicate copies the edit.
+9. **Non-destructive:** the media file's size and hash are unchanged after every tool; reopen a draft: same picture; an old draft opens unchanged.
+10. **Every id:** all 20 filters at 100% and 50% on a real photo and on the gray ramp; none looks broken (clipped, banded); `none` leaves the picture as it was.
+11. **200% font, es and hi:** tab labels and tile names wrap and grow the tile, the Adjust panel scrolls.
+12. **Leaks (debug build, LeakCanary):** 5 cycles of open Edit photo, change a filter and an adjustment, open Crop, rotate, Done, close.
+13. **Make it a video meme (P2-10 flag):** the video overlay has no LUT in Phase 2: P2-10 bakes the edited picture.

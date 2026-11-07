@@ -169,4 +169,7 @@
     <string name="explain_crop_min">O corte não pode ficar menor que isso.</string>
     <string name="edit_crop">Cortar</string>
     <string name="edit_photo_reset">Redefinir</string>
+    <string name="edit_filter">Filtro</string>
+    <string name="edit_adjust">Ajustar</string>
+    <string name="edit_deep_fry">Deep-fry</string>
 </resources>

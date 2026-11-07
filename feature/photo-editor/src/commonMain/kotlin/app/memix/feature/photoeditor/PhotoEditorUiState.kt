@@ -7,6 +7,8 @@ import app.memix.core.domain.text.CaptionBlockSize
 import app.memix.core.domain.text.MeasureCaptionUseCase
 import app.memix.core.model.project.ArgbColor
 import app.memix.core.model.project.BoxSize
+import app.memix.core.domain.project.AdjustPart
+import app.memix.core.domain.project.EditPhotoTab
 import app.memix.core.model.project.ImageEdit
 import app.memix.core.model.project.editOrNull
 import app.memix.core.model.project.pictureZoom
@@ -264,7 +266,7 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
 }
 
 /** The tool panels over the tool bar. They never stack: opening one closes another. */
-enum class PhotoPanel { LAYERS, OPACITY, POSITION, CANVAS, STYLE, FORMATS, LAYOUT, DIVIDER, CELL_POSITION }
+enum class PhotoPanel { LAYERS, OPACITY, POSITION, CANVAS, STYLE, FORMATS, LAYOUT, DIVIDER, CELL_POSITION, EDIT_PHOTO }
 
 /** The six tiles of the Formats panel, in the spec's order; [PLAIN] is no format (null in the model). */
 enum class FormatChoice(val edit: PhotoEdit) {
@@ -329,6 +331,16 @@ enum class PhotoEdit(val tool: EditorTool) {
     TEXT_BOX(EditorTool.TEXT_BOX),
     // Every part of a crop screen's Done is one step called "Crop" (the events logged are the parts).
     CROP(EditorTool.CROP),
+    // The Edit photo panel (P2-04b): each tap or release is one step; the six adjustments are all "Adjust".
+    FILTER(EditorTool.FILTER),
+    ADJUST_BRIGHTNESS(EditorTool.ADJUST_BRIGHTNESS),
+    ADJUST_CONTRAST(EditorTool.ADJUST_CONTRAST),
+    ADJUST_SATURATION(EditorTool.ADJUST_SATURATION),
+    ADJUST_WARMTH(EditorTool.ADJUST_WARMTH),
+    ADJUST_SHARPEN(EditorTool.ADJUST_SHARPEN),
+    ADJUST_VIGNETTE(EditorTool.ADJUST_VIGNETTE),
+    DEEP_FRY(EditorTool.DEEP_FRY),
+    EDIT_RESET(EditorTool.EDIT_PHOTO_RESET),
     TRANSFORM_TEXT(EditorTool.TRANSFORM_TEXT),
     POSITION_TEXT(EditorTool.POSITION_TEXT),
 
@@ -539,6 +551,24 @@ sealed interface PhotoEditorIntent {
 
     /** The Crop screen's Done: its whole edit as one step. */
     data class CropDone(val edit: ImageEdit) : PhotoEditorIntent
+
+    /** The Edit photo tool: on [layerId], or with null (the main bar) on the main photo, which it selects. */
+    data class OpenEditPhoto(val layerId: String?) : PhotoEditorIntent
+
+    /** A filter tile: the filter [id] at 100%, or null for None. */
+    data class SetFilter(val id: String?) : PhotoEditorIntent
+
+    /** The Intensity slider's release, 0 to 1. */
+    data class SetFilterIntensity(val intensity: Float) : PhotoEditorIntent
+
+    /** An Adjust slider's release. */
+    data class SetAdjust(val part: AdjustPart, val value: Float) : PhotoEditorIntent
+
+    /** The Deep-fry slider's release, 0 to 1. */
+    data class SetDeepFry(val amount: Float) : PhotoEditorIntent
+
+    /** The header's Reset on [tab]. */
+    data class ResetEditTab(val tab: EditPhotoTab) : PhotoEditorIntent
 
     /** The Crop screen's Close, back or Escape: nothing was applied. */
     data object CropClosed : PhotoEditorIntent

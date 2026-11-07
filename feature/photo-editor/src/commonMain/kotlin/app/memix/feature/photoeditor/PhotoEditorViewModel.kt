@@ -3,6 +3,12 @@ package app.memix.feature.photoeditor
 import androidx.lifecycle.viewModelScope
 import app.memix.core.domain.AppError
 import app.memix.core.domain.EditorTool
+import app.memix.core.model.project.FilterRef
+import app.memix.core.domain.project.with
+import app.memix.core.domain.project.resetTab
+import app.memix.core.domain.project.changedColorTools
+import app.memix.core.domain.project.EditPhotoTab
+import app.memix.core.domain.project.AdjustPart
 import app.memix.core.domain.project.changedGeometryTools
 import app.memix.core.domain.project.imageEditOf
 import app.memix.core.domain.project.setImageEdit
@@ -206,6 +212,12 @@ class PhotoEditorViewModel(
             PhotoEditorIntent.Back -> goBack()
             is PhotoEditorIntent.OpenCrop -> openCrop(intent.layerId)
             is PhotoEditorIntent.CropDone -> applyCrop(intent.edit)
+            is PhotoEditorIntent.OpenEditPhoto -> openEditPhoto(intent.layerId)
+            is PhotoEditorIntent.SetFilter -> restyleImage(PhotoEdit.FILTER, filter = intent.id ?: NO_FILTER) { it.copy(filter = intent.id?.let { id -> FilterRef(id) }) }
+            is PhotoEditorIntent.SetFilterIntensity -> restyleImage(PhotoEdit.FILTER, filter = null) { edit -> edit.filter?.let { edit.copy(filter = it.copy(intensity = intent.intensity.coerceIn(0f, 1f))) } ?: edit }
+            is PhotoEditorIntent.SetAdjust -> restyleImage(intent.part.photoEdit()) { it.copy(adjust = it.adjust.with(intent.part, intent.value)) }
+            is PhotoEditorIntent.SetDeepFry -> restyleImage(PhotoEdit.DEEP_FRY) { it.copy(deepFry = intent.amount.coerceIn(0f, 1f)) }
+            is PhotoEditorIntent.ResetEditTab -> resetEditTab(intent.tab)
             PhotoEditorIntent.CropClosed -> updateState { it.copy(cropLayerId = null) }
             PhotoEditorIntent.LeaveAnyway -> updateState { it.copy(unsavedSheetOpen = false, isClosing = true) }
             PhotoEditorIntent.StayInEditor -> updateState { it.copy(unsavedSheetOpen = false) }
@@ -751,6 +763,55 @@ class PhotoEditorViewModel(
         updateState { it.copy(cropLayerId = id, panel = null) }
     }
 
+    // The Edit photo tool (spec P2-04 → Entry and exit): a locked or missing layer explains; a hidden one opens (the panel says so);
+    // from the main bar it selects the main photo.
+    private fun openEditPhoto(layerId: String?) {
+        val project = currentProject() ?: return
+        val id = layerId ?: project.layers().mainPhoto()?.id ?: return
+        val layer = layerOf(id)?.takeIf { it.kind == LayerKind.IMAGE } ?: return
+        if (layer.locked) return explain(PhotoExplanation.LAYER_LOCKED)
+        if (id in state.value.missingLayerIds) return explain(PhotoExplanation.LAYER_MISSING)
+        select(id)
+        updateState { it.copy(panel = PhotoPanel.EDIT_PHOTO, canvasPanel = null) }
+    }
+
+    private fun AdjustPart.photoEdit(): PhotoEdit = when (this) {
+        AdjustPart.BRIGHTNESS -> PhotoEdit.ADJUST_BRIGHTNESS
+        AdjustPart.CONTRAST -> PhotoEdit.ADJUST_CONTRAST
+        AdjustPart.SATURATION -> PhotoEdit.ADJUST_SATURATION
+        AdjustPart.WARMTH -> PhotoEdit.ADJUST_WARMTH
+        AdjustPart.SHARPEN -> PhotoEdit.ADJUST_SHARPEN
+        AdjustPart.VIGNETTE -> PhotoEdit.ADJUST_VIGNETTE
+    }
+
+    // A filter tap, a slider release, a Deep-fry release: one step on the selected image layer, or nothing when it changed nothing.
+    private fun restyleImage(edit: PhotoEdit, filter: String? = null, change: (ImageEdit) -> ImageEdit) {
+        val layer = state.value.selectedLayer?.takeIf { it.kind == LayerKind.IMAGE } ?: return
+        if (layer.locked) return explain(PhotoExplanation.LAYER_LOCKED)
+        val before = currentProject()?.imageEditOf(layer.id) ?: ImageEdit.NONE
+        val after = change(before)
+        if (after == before) return
+        val logged = filterParam(before, after, filter)
+        editLayer(edit, filter = logged) { it.setImageEdit(layer.id, after) }
+    }
+
+    // `filter` carries the filter id (`none` when removed); an intensity release names the filter that stays.
+    private fun filterParam(before: ImageEdit, after: ImageEdit, tapped: String?): String? = when {
+        before.filter == after.filter && before.filter?.intensity == after.filter?.intensity -> null
+        else -> tapped ?: after.filter?.id ?: NO_FILTER
+    }
+
+    // A tab's Reset: one step "Reset", one event for each part it changed (spec P2-04 → Analytics).
+    private fun resetEditTab(tab: EditPhotoTab) {
+        val layer = state.value.selectedLayer?.takeIf { it.kind == LayerKind.IMAGE } ?: return
+        if (layer.locked) return explain(PhotoExplanation.LAYER_LOCKED)
+        val before = currentProject()?.imageEditOf(layer.id) ?: ImageEdit.NONE
+        val after = before.resetTab(tab)
+        val parts = changedColorTools(before, after)
+        if (parts.isEmpty()) return
+        editLayer(PhotoEdit.EDIT_RESET, filter = if (EditorTool.FILTER in parts) NO_FILTER else null, loggedAs = parts) { it.setImageEdit(layer.id, after) }
+    }
+
     // Done: everything made on the screen is one "Crop" step; one event for each part that changed (spec → Analytics).
     private fun applyCrop(edit: ImageEdit) {
         val id = state.value.cropLayerId ?: return
@@ -904,22 +965,22 @@ class PhotoEditorViewModel(
     // Editing -----------------------------------------------------------------------------------------------------
 
     /** Applies [change] as one [edit] step; false when it changed nothing (no step, no `tool_use`). */
-    private fun commit(edit: PhotoEdit, value: String? = null, font: String? = null, loggedAs: List<EditorTool> = listOf(edit.tool), change: (Project) -> Project): Boolean {
+    private fun commit(edit: PhotoEdit, value: String? = null, font: String? = null, filter: String? = null, loggedAs: List<EditorTool> = listOf(edit.tool), change: (Project) -> Project): Boolean {
         val session = editSession ?: return false
-        val recorded = session.commit(edit.tool, font = font, value = value, loggedAs = loggedAs, edit = change)
+        val recorded = session.commit(edit.tool, font = font, value = value, filter = filter, loggedAs = loggedAs, edit = change)
         if (recorded) showEditState(session.state.value)
         return recorded
     }
 
     /** Commits a layer edit, or explains why it was refused. True when a step was recorded. */
-    private fun editLayer(edit: PhotoEdit, font: String? = null, loggedAs: List<EditorTool> = listOf(edit.tool), change: (Project) -> LayerEdit): Boolean {
+    private fun editLayer(edit: PhotoEdit, font: String? = null, filter: String? = null, loggedAs: List<EditorTool> = listOf(edit.tool), change: (Project) -> LayerEdit): Boolean {
         val project = currentProject() ?: return false
         return when (val result = change(project)) {
             is LayerEdit.Refused -> {
                 explain(explanationOf(result.reason))
                 false
             }
-            is LayerEdit.Edited -> commit(edit, font = font, loggedAs = loggedAs) { result.project }
+            is LayerEdit.Edited -> commit(edit, font = font, filter = filter, loggedAs = loggedAs) { result.project }
         }
     }
 
@@ -1057,7 +1118,7 @@ class PhotoEditorViewModel(
         CanvasLimit.MAX -> PhotoExplanation.CANVAS_MAX
     }
 
-    private val PhotoPanel.needsSelection: Boolean get() = this == PhotoPanel.OPACITY || this == PhotoPanel.POSITION || this == PhotoPanel.STYLE
+    private val PhotoPanel.needsSelection: Boolean get() = this == PhotoPanel.OPACITY || this == PhotoPanel.POSITION || this == PhotoPanel.STYLE || this == PhotoPanel.EDIT_PHOTO
 
     private val PhotoPanel.isPanelsPanel: Boolean get() = this == PhotoPanel.DIVIDER || this == PhotoPanel.CELL_POSITION
 
@@ -1065,6 +1126,8 @@ class PhotoEditorViewModel(
     private fun ladderOf(layer: SceneLayerUi): SizeLadder = if (layer.kind == LayerKind.TEXT || layer.kind == LayerKind.BUBBLE) TEXT_SIZE_LADDER else IMAGE_LADDER
 
     private companion object {
+        /** The `filter` parameter when a filter is removed (spec P2-04 → Analytics). */
+        const val NO_FILTER = "none"
         const val PERCENT = 100
         /** `tool_use.value` for a custom ratio: never its numbers (spec → Analytics). */
         const val CUSTOM_VALUE = "custom"

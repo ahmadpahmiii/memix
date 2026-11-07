@@ -375,6 +375,7 @@ Fixed sizes used across screens (dp on Android).
 | `badge-size` | `MemixSize.badge` | `20px` | Side of a square icon badge over the user's picture (the type badge on a draft's thumbnail, P1-14): a `scrim` chip in `radius-sm` with an `icon-small` icon centered (2px around it), `space-1` from the picture's corner. Not for text badges. |
 | `play-disc-size` | `MemixSize.playDiscSize` | `56px` | The big play button centered on a video that isn't playing (the Exported screen, P1-12): a `radius-full` disc in `primary` with a 24px `play` icon in `on-primary` (7.9:1). It only draws; the tap belongs to the whole video, so its target is far above `touch-target`. Not for icon controls: those are IconButtons. |
 | `layer-thumb-size` | `MemixSize.layerThumbSize` | `40px` | Square thumbnail at the start of a LayerRow in the photo editor's Layers panel (P2-01), `radius-sm`, the layer's picture fitted inside. The row is at least this plus `space-2` above and below, 56px. |
+| `filter-tile-size` | `MemixSize.filterTileSize` | `72px` | Side of a filter tile's square picture in the Edit photo panel's Filters strip (P2-04): `radius-md`, the user's photo with that filter on, the name in `caption` under it; at least `touch-target` each way. |
 
 ### Motion
 
