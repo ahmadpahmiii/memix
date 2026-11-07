@@ -32,6 +32,12 @@ interface ImageToolRenderer {
      * unsupported or when it can't be done. Off the main thread; cancellable.
      */
     suspend fun process(picture: ImageBitmap, edit: ImageEdit): ImageBitmap?
+
+    /** A software bitmap of [width] x [height] from ARGB [pixels] (not premultiplied), for the cut-out's alpha; null when unsupported. */
+    suspend fun bitmapOf(pixels: IntArray, width: Int, height: Int): ImageBitmap?
+
+    /** [image] as PNG bytes, keeping its alpha (a saved sticker); null when unsupported or when it can't be encoded. */
+    suspend fun encodePng(image: ImageBitmap): ByteArray?
 }
 
 /** The iOS binding until P7-09 (and the harness's default): nothing can be processed. */
@@ -39,16 +45,22 @@ object UnsupportedImageToolRenderer : ImageToolRenderer {
     override val isSupported = false
 
     override suspend fun process(picture: ImageBitmap, edit: ImageEdit): ImageBitmap? = null
+
+    override suspend fun bitmapOf(pixels: IntArray, width: Int, height: Int): ImageBitmap? = null
+
+    override suspend fun encodePng(image: ImageBitmap): ByteArray? = null
 }
 
 /**
  * [picture] (a software bitmap of the whole picture, [SceneBitmap.sourceSize] as shown) shaped by [edit]'s geometry (turn, mirrors,
  * straighten, crop) at the size whose longer side is at most [longSidePx], then color-processed by [renderer]: the picture the
  * scene draws for an edited layer. The editor, the render hook and the export (P2-08) all make it here, so they can't disagree.
- * Null when the renderer can't process.
+ * Null when the renderer can't process. [cutOut], when the layer has one, is applied to the picture before any of that.
  */
-suspend fun renderEditedPicture(picture: SceneBitmap, edit: ImageEdit, longSidePx: Int, renderer: ImageToolRenderer): ImageBitmap? {
+suspend fun renderEditedPicture(picture: SceneBitmap, edit: ImageEdit, longSidePx: Int, renderer: ImageToolRenderer, cutOut: PreparedCutOut? = null): ImageBitmap? {
     if (!renderer.isSupported) return null
+    // The cut-out is taken from the whole upright picture first, so crop, turn and the color tools act on the cut picture and keep its alpha (spec P2-07).
+    val picture = if (cutOut == null) picture else cutOutPicture(picture, cutOut, renderer) ?: return null
     val shown = edit.shownSize(picture.sourceSize)
     val scale = min(1f, longSidePx.toFloat() / max(shown.widthPx, shown.heightPx))
     val width = max(1, (shown.widthPx * scale).roundToInt())

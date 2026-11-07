@@ -9,6 +9,7 @@ import app.memix.core.model.project.ArgbColor
 import app.memix.core.model.project.BoxSize
 import app.memix.core.domain.project.AdjustPart
 import app.memix.core.domain.project.EditPhotoTab
+import app.memix.core.model.project.CutOut
 import app.memix.core.model.project.ImageEdit
 import app.memix.core.model.project.editOrNull
 import app.memix.core.model.project.pictureZoom
@@ -77,6 +78,8 @@ data class PhotoEditorUiState(
     val panel: PhotoPanel? = null,
     /** The image layer whose Crop screen is open (a mode over the editor), or null (spec P2-04 → The Crop screen). */
     val cropLayerId: String? = null,
+    /** The cut-out screen over the editor (a mode, like Crop), or null (spec P2-07). */
+    val cutOut: CutOutSessionUi? = null,
     /** Draw mode (spec P2-05): the Draw bar replaces the tool bar and a one-finger drag draws. Null when the mode is off. */
     val draw: DrawModeUi? = null,
     /** The brush for this visit's Draw sessions: it outlives a session, so the next one starts from the last color and size. */
@@ -219,6 +222,8 @@ data class SceneLayerUi(
     /** An image's edit and size as shown, for the Crop screen; null for the other kinds. */
     val edit: ImageEdit? = null,
     val pictureSize: PixelSize? = null,
+    /** An image's removed background (P2-07); null for the whole picture and for the other kinds. */
+    val cutOut: CutOut? = null,
     override val boxWidthPx: Float,
     override val boxHeightPx: Float,
     override val scaleRange: ClosedFloatingPointRange<Float>,
@@ -294,6 +299,7 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
         pictureZoom = (this as? ImageLayer)?.let { layer -> picture?.let { layer.edit.pictureZoom(it) } } ?: 1f,
         edited = (this as? ImageLayer)?.editOrNull() != null,
         edit = (this as? ImageLayer)?.editOrNull(),
+        cutOut = (this as? ImageLayer)?.cutOut,
         pictureSize = if (this is ImageLayer) picture else null,
         boxWidthPx = box?.width ?: 0f,
         boxHeightPx = box?.height ?: 0f,
@@ -372,6 +378,9 @@ enum class PhotoEdit(val tool: EditorTool) {
     TEXT_BOX(EditorTool.TEXT_BOX),
     // Every part of a crop screen's Done is one step called "Crop" (the events logged are the parts).
     CROP(EditorTool.CROP),
+    // Apply on the cut-out screen and Remove cut-out (P2-07); strokes and softness are the screen's own and fire nothing.
+    REMOVE_BG(EditorTool.REMOVE_BG),
+    CLEAR_CUTOUT(EditorTool.CLEAR_CUTOUT),
     // The Edit photo panel (P2-04b): each tap or release is one step; the six adjustments are all "Adjust".
     FILTER(EditorTool.FILTER),
     ADJUST_BRIGHTNESS(EditorTool.ADJUST_BRIGHTNESS),
@@ -637,6 +646,27 @@ sealed interface PhotoEditorIntent {
     /** The Crop screen's Close, back or Escape: nothing was applied. */
     data object CropClosed : PhotoEditorIntent
 
+    /** The Remove BG tool: on [layerId], or with null (the main bar) on the main photo, which it selects (spec P2-07 → D2). */
+    data class OpenCutOut(val layerId: String?) : PhotoEditorIntent
+
+    /** Try again on a status card: runs the check, the download and the segmenter again. */
+    data object CutOutRetry : PhotoEditorIntent
+
+    /** The cut-out screen's Apply: the mask, the refine strokes and the softness as one step. */
+    data class CutOutApply(val strokes: List<Stroke>, val softness: Float) : PhotoEditorIntent
+
+    /** Save as sticker: [png] is the trimmed cut-out as the screen shows it (null when nothing is left, or when it couldn't be made), [key] says which cut-out it is. */
+    data class CutOutSaveSticker(val png: ByteArray?, val key: String, val couldNotEncode: Boolean = false) : PhotoEditorIntent
+
+    /** A tap on Apply or Save as sticker while they can't act: the stage says why (not ready yet, or nothing erased by hand yet). */
+    data object CutOutInertTapped : PhotoEditorIntent
+
+    /** The Quiet "Remove cut-out" button: the layer gets its whole picture back, as one step. */
+    data object CutOutRemove : PhotoEditorIntent
+
+    /** The cut-out screen's Close, back or Escape: nothing was applied. */
+    data object CutOutClosed : PhotoEditorIntent
+
     // Meme formats (P2-02).
     /** A tile of the Formats panel; the active tile does nothing. */
     data class SetFormat(val choice: FormatChoice) : PhotoEditorIntent
@@ -783,3 +813,40 @@ class PhotoCaptionMeasure internal constructor(private val measure: MeasureCapti
     fun blockOf(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook = CaptionLook.Text): CaptionBlockSize =
         measure(text, style, canvasWidthPx, canvasHeightPx, look)
 }
+
+/**
+ * The cut-out screen's data (spec docs/ux/specs/P2-07-background-removal.md): which layer, what the segmenter is doing, and the
+ * saved cut-out it opened on, if any. The strokes and softness being edited are the screen's own until Apply.
+ */
+@Immutable
+data class CutOutSessionUi(
+    val layerId: String,
+    val phase: CutOutPhase,
+    /** The mask and what was refined so far: the layer's saved cut-out, or the fresh mask once the segmenter is done; null before. */
+    val cutOut: CutOut? = null,
+    /** Whether the layer already had a cut-out when the screen opened (the Quiet "Remove cut-out" shows). */
+    val hadCutOut: Boolean = false,
+    /** A toast-like line on the stage after Save as sticker (serial so the same line twice shows again); cleared after a few seconds. */
+    val notice: CutOutNotice? = null,
+)
+
+sealed interface CutOutPhase {
+    /** The model is downloading (first use); [slow] after 30 s. */
+    data class Preparing(val fraction: Float?, val slow: Boolean = false) : CutOutPhase
+
+    /** The model is ready and the photo is being segmented. */
+    data object Working : CutOutPhase
+
+    data object Ready : CutOutPhase
+
+    /** The picture has no subject; the brush stays live. */
+    data object NothingFound : CutOutPhase
+
+    data class Failed(val problem: CutOutProblem) : CutOutPhase
+}
+
+/** What Save as sticker answers (spec P2-07 → States). */
+enum class CutOutNotice { SAVED, EMPTY, ALREADY_SAVED, FAILED, NOT_READY, NOTHING_TO_APPLY }
+
+/** The status cards that end in Try again (spec → States). */
+enum class CutOutProblem { UNAVAILABLE, OFFLINE, MEMORY, SLOW }

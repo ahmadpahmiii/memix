@@ -68,6 +68,7 @@ import memix.feature.photo_editor.generated.resources.layer_hide_a11y
 import memix.feature.photo_editor.generated.resources.layer_lock_a11y
 import memix.feature.photo_editor.generated.resources.layer_meta_hidden
 import memix.feature.photo_editor.generated.resources.layer_meta_locked
+import memix.feature.photo_editor.generated.resources.layer_meta_cutout
 import memix.feature.photo_editor.generated.resources.layer_meta_edited
 import memix.feature.photo_editor.generated.resources.layer_meta_missing
 import memix.feature.photo_editor.generated.resources.layer_meta_opacity
@@ -92,6 +93,7 @@ internal fun LayersPanel(
     state: PhotoEditorUiState,
     live: PhotoLive,
     thumbnails: SceneThumbnails,
+    bitmaps: SceneBitmaps,
     maxHeight: Dp,
     onIntent: (PhotoEditorIntent) -> Unit,
     modifier: Modifier = Modifier,
@@ -125,7 +127,7 @@ internal fun LayersPanel(
     ) {
         if (opacityLayer != null && !opacityInList) OpacityRow(opacityLayer, live, onIntent)
         val opacityItem: (@Composable () -> Unit)? = if (opacityLayer != null && opacityInList) ({ OpacityRow(opacityLayer, live, onIntent) }) else null
-        LayerList(state, frontFirst, listState, reorder, thumbnails, opacityItem, onIntent)
+        LayerList(state, frontFirst, listState, reorder, thumbnails, bitmaps, opacityItem, onIntent)
     }
 }
 
@@ -143,6 +145,7 @@ private fun LayerList(
     listState: LazyListState,
     reorder: LayerReorder,
     thumbnails: SceneThumbnails,
+    bitmaps: SceneBitmaps,
     opacityItem: (@Composable () -> Unit)?,
     onIntent: (PhotoEditorIntent) -> Unit,
 ) {
@@ -172,6 +175,7 @@ private fun LayerList(
                 position = count - index,
                 count = count,
                 thumbnails = thumbnails,
+                bitmaps = bitmaps,
                 labels = labels,
                 onIntent = onIntent,
                 modifier = Modifier
@@ -195,6 +199,7 @@ private fun LayerRowFor(
     position: Int,
     count: Int,
     thumbnails: SceneThumbnails,
+    bitmaps: SceneBitmaps,
     labels: LayerActionLabels,
     onIntent: (PhotoEditorIntent) -> Unit,
     modifier: Modifier,
@@ -252,7 +257,8 @@ private fun LayerRowFor(
                 }
             }
             LayerKind.IMAGE -> {
-                val picture = layer.path?.let(thumbnails::pictureOf)
+                // A cut-out layer shows the picture the scene draws, so the removed background shows as the surface behind (spec P2-07 → Layers row).
+                val picture = (if (layer.cutOut != null) bitmaps.processedOf(layer.id)?.image else null) ?: layer.path?.let(thumbnails::pictureOf)
                 if (picture != null) Image(BitmapPainter(picture), contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
             }
         }
@@ -267,6 +273,7 @@ private fun layerMeta(layer: SceneLayerUi, missing: Boolean): String? {
         if (layer.locked) stringResource(Res.string.layer_meta_locked) else null,
         if (layer.hidden) stringResource(Res.string.layer_meta_hidden) else null,
         if (missing) stringResource(Res.string.layer_meta_missing) else null,
+        if (layer.cutOut != null) stringResource(Res.string.layer_meta_cutout) else null,
         if (layer.edited) stringResource(Res.string.layer_meta_edited) else null,
         if (percent < PERCENT) stringResource(Res.string.layer_meta_opacity, percent) else null,
     )

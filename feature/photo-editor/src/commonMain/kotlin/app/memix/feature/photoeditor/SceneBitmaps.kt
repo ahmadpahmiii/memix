@@ -17,7 +17,15 @@ import app.memix.core.model.project.pictureRect
 import app.memix.core.model.project.coveredImageSize
 import app.memix.core.model.project.size
 import app.memix.core.ui.scene.SceneBitmap
+import app.memix.core.domain.segmentation.SegmentationLimits
+import app.memix.core.model.project.CutOut
+import app.memix.core.model.project.CutOutCatalog
+import app.memix.core.ui.scene.StickerPng
+import app.memix.core.ui.scene.stickerPng
 import app.memix.core.model.project.ImageEdit
+import androidx.compose.ui.graphics.ImageBitmap
+import app.memix.core.ui.scene.PreparedCutOut
+import app.memix.core.ui.scene.cutOutPicture
 import app.memix.core.model.project.pictureZoom
 import app.memix.core.model.project.shownSize
 import app.memix.core.ui.scene.editedLongSidePx
@@ -60,7 +68,10 @@ internal class SceneBitmaps(private val source: SceneImageSource, private val to
 
     override fun processedOf(layerId: String): SceneBitmap? = processed[layerId]
 
-    private data class ProcessedKey(val edit: ImageEdit, val longSidePx: Int)
+    private data class ProcessedKey(val edit: ImageEdit, val longSidePx: Int, val cutOut: CutOut?)
+
+    // The decoded mask pictures of the cut-outs, one per file.
+    private val masks = HashMap<String, SceneBitmap>()
 
     /**
      * Makes the processed picture of every layer in [requests] (a layer with a color edit, as the slider has it now) and lets go of
@@ -75,14 +86,36 @@ internal class SceneBitmaps(private val source: SceneImageSource, private val to
         }
         if (requests.isEmpty()) rawPicture = null
         for (request in requests) {
-            val key = ProcessedKey(request.edit, request.longSidePx)
+            val key = ProcessedKey(request.edit, request.longSidePx, request.cutOut)
             if (processedFor[request.layerId] == key) continue
             val raw = rawFor(request) ?: return onFailed(setOf(request.path))
-            val image = renderEditedPicture(raw, request.edit, request.longSidePx, tools) ?: continue
+            val prepared = request.cutOut?.let { cutOut -> preparedOf(cutOut) ?: continue }
+            val image = renderEditedPicture(raw, request.edit, request.longSidePx, tools, prepared) ?: continue
             processed[request.layerId] = SceneBitmap(image, raw.sourceSize)
             processedFor[request.layerId] = key
         }
     }
+
+    /** The cut-out screen's picture: the upright picture of [path] as a software bitmap of about [longSidePx], or null when it can't be read. */
+    suspend fun cutOutSource(path: String, longSidePx: Int): SceneBitmap? = source.decode(path, longSidePx, SceneImageUse.OFFSCREEN)
+
+    /** [cutOut] applied to [picture] (from [cutOutSource]) for the cut-out screen, the same pixels the scene makes; null when it can't be done. */
+    suspend fun cutOutPreview(picture: SceneBitmap, cutOut: CutOut): ImageBitmap? {
+        val prepared = preparedOf(cutOut) ?: return null
+        return cutOutPicture(picture, prepared, tools)?.image
+    }
+
+    /** [cut] (from [cutOutPreview]) as a trimmed sticker PNG, at most [CutOutCatalog.STICKER_LONG_SIDE_PX] on its long side. */
+    suspend fun stickerPng(cut: ImageBitmap): StickerPng = stickerPng(cut, CutOutCatalog.STICKER_LONG_SIDE_PX, tools)
+
+    // The mask decoded, or the all-kept stand-in when there is none; null when the file can't be read.
+    private suspend fun preparedOf(cutOut: CutOut): PreparedCutOut? {
+        val path = cutOut.maskPath ?: return PreparedCutOut(cutOut, null)
+        return maskFor(path)?.let { PreparedCutOut(cutOut, it.image) }
+    }
+
+    private suspend fun maskFor(path: String): SceneBitmap? =
+        masks[path] ?: source.decode(path, SegmentationLimits.INPUT_LONG_SIDE_PX, SceneImageUse.OFFSCREEN)?.also { masks[path] = it }
 
     // The whole picture at the size the crop needs (the crop shows a part of it), decoded again only when the held one is too small.
     private suspend fun rawFor(request: ProcessRequest): SceneBitmap? {
@@ -128,6 +161,7 @@ internal class SceneBitmaps(private val source: SceneImageSource, private val to
     fun release() {
         processed.clear()
         processedFor.clear()
+        masks.clear()
         rawPicture = null
         jobs.values.forEach(Job::cancel)
         jobs.clear()
@@ -203,7 +237,7 @@ internal fun neededLongSides(layers: List<SceneLayerUi>, canvas: Canvas, frameWi
 }
 
 /** One edited layer to process: [edit] as it stands now (a slider's live value included) at [longSidePx], from its file [path] of [sourceSize] as shown. */
-internal class ProcessRequest(val layerId: String, val path: String, val sourceSize: PixelSize, val edit: ImageEdit, val longSidePx: Int)
+internal class ProcessRequest(val layerId: String, val path: String, val sourceSize: PixelSize, val edit: ImageEdit, val longSidePx: Int, val cutOut: CutOut? = null)
 
 /**
  * The requests for [layers] with a color edit on a frame [frameWidthPx] wide: [override] is the edit a slider shows now for one layer
@@ -211,13 +245,13 @@ internal class ProcessRequest(val layerId: String, val path: String, val sourceS
  */
 internal fun processRequests(layers: List<SceneLayerUi>, canvas: Canvas, frameWidthPx: Float, override: Pair<String, ImageEdit>?, live: Boolean): List<ProcessRequest> =
     layers.mapNotNull { layer ->
-        val edit = (if (override?.first == layer.id) override.second else layer.edit) ?: return@mapNotNull null
+        val edit = (if (override?.first == layer.id) override.second else layer.edit) ?: ImageEdit.NONE
         val path = layer.path ?: return@mapNotNull null
         val size = layer.pictureSize ?: return@mapNotNull null
-        if (!edit.hasColorEdits) return@mapNotNull null
+        if (!edit.hasColorEdits && layer.cutOut == null) return@mapNotNull null
         val shown = edit.shownSize(size)
         val drawn = editedLongSidePx(max(layer.boxWidthPx, layer.boxHeightPx), layer.transform.scale, canvas.widthPx, frameWidthPx.roundToInt(), shown)
-        ProcessRequest(layer.id, path, size, edit, if (live) min(drawn, LIVE_LONG_SIDE_PX) else drawn)
+        ProcessRequest(layer.id, path, size, edit, if (live) min(drawn, LIVE_LONG_SIDE_PX) else drawn, layer.cutOut)
     }
 
 private const val LIVE_LONG_SIDE_PX = 640

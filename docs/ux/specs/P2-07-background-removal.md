@@ -30,6 +30,7 @@ Seventh spec for the photo editor. P2-06 (the `Segmenter` and the ML Kit model) 
    - **Mode row:** a SegmentedChoice **Erase · Restore** (default Erase). Erase hides what the brush paints over; Restore brings the photo back.
    - **Brush size:** five tiles **Thin · Fine · Medium · Thick · Heavy** (the Draw tiles, a dot at the relative size), default Medium. Sizes are shares of the picture's longer side: **0.015, 0.03, 0.06, 0.10, 0.16**.
    - **Edge softness:** a **Slider**, label "Edge softness", readout in percent, **0 to 100%, default 30%** (the board), one step on release (the feather is computed on release, not per frame); snap to 0 within ±3% with one SegmentTick.
+   - **Pinned (review P2-07): the actions row and the privacy line below are pinned at the bottom and never scroll away; the tool rows above them scroll when the bottom area is taller than 45% of the window.** Apply is always fully visible.
    - **Actions:** **Save as sticker** (Secondary) and **Apply** (Primary, the blue), side by side; a quiet line under them: **"Runs on your phone. Your photo is never uploaded."** (`caption`, `text-secondary`, the board's line).
    - When the layer already has a cut-out, a **Quiet "Remove cut-out"** button sits above the actions (it applies "Remove cut-out" at once and closes: the layer gets its whole picture back).
 
@@ -48,6 +49,8 @@ All status messages are **calm and static** (MOTION 2 bans looping bars): a card
 | State | What shows | Copy |
 | --- | --- | --- |
 | **Preparing** (the model is not installed yet; first use) | The picture dimmed; the card "Getting the cut-out tool ready", the body "This happens once and needs the internet. Your photo stays on your phone." A **determinate progress bar** (`ProgressBar`, primary) when the download reports its progress, otherwise the words only. **Close** works (a cancel; nothing is lost) | `cutout_preparing_title`, `cutout_preparing_body` |
+| **Apply or Save as sticker while there is nothing to apply** (review P2-07 fix check) | They keep their normal look (the Button component has no disabled variant, by design: blocked controls explain on tap) and **a tap explains with a toast**: while Preparing or Working "The cut-out isn't ready yet." (`explain_cutout_not_ready`); Nothing found with no stroke yet "Erase part of the photo by hand first." (`explain_cutout_nothing`). Never a silent no-op | `explain_cutout_not_ready`, `explain_cutout_nothing` |
+| *Every status card* (review P2-07) | **Dims the picture** behind it with a `scrim` over the stage; the **card scrolls inside the stage** when its text is taller than the stage (200% font, es and hi), so the title, body and **Try again** are always reachable and never clipped; the title wraps | none |
 | **Working** (the model is ready; segmenting, usually under 1.5 s) | Nothing for the first 300 ms (the screen holds the photo); after that the static line "Removing the background…" at the stage's top (no spinner). The tools below are present and inert | `cutout_working` |
 | **Ready** | The cut-out on the checkerboard, "Background removed", the tools live | `cutout_ready` |
 | **Nothing found** (no subject) | The picture stays whole (nothing is cut out yet); a card: "We couldn't find a person, pet or object", "Try another photo, or erase the background by hand." The brush tools stay live (Erase works on the whole picture); **Try again** re-runs the segmenter | `cutout_none_title`, `cutout_none_body` |
@@ -149,7 +152,7 @@ Translator notes:
 No event for strokes, softness, opening the screen or retries. Analytics stay off until consent (P5-01).
 
 ## QA compares
-Use the debug scenes `cutout-check` (a person, a pet and an object photo, a busy background, a hair-edge photo), the failure hooks `bg-remove-fail:<kind>` (`unavailable`, `offline`, `memory`, `none`, `slow`) and a gallery start.
+Use the debug scenes `cutout-check` (a person, a pet and an object photo, a busy background, a hair-edge photo), the failure hook `--es memix.bgRemoveFail <kind>` (`unavailable`, `offline`, `memory`, `none`, `slow`; accepted in the 97 review: it follows the other `memix.*` extras) and a gallery start.
 1. **The bars:** a photo layer selected (Remove BG after Crop, whole or cut by the scroll); the main bar with Remove BG; a text layer without it.
 2. **The screen** at 360 × 800 and 360 × 640 after a person photo: the checkerboard, "Background removed", Erase and Restore, the size tiles, softness at 30%, Save as sticker and Apply, the privacy line.
 3. **Refine:** an Erase stroke across the background left behind, a Restore stroke over a lost ear, softness at 0, 30% and 100% on a hair edge; zoomed to 5× and Fit.
@@ -182,7 +185,7 @@ Changes needed from the design (the engineer owns the exact code; the PM's must-
 ## Requests to the principal mobile engineer
 I don't edit code, so these are requests; the PM's must-knows (5 Nov) carry the rest.
 1. **The screen as a mode over the editor** (the Crop pattern), reusing the Slider, SegmentedChoice, size tiles and ProgressBar; the screen is built on the segmenter's `SegmentationResult` through use cases only (features never import ML Kit).
-2. **States as the table says,** driven by distinct segmenter results (not installed, no Play services, no network, out of memory, no subject, unknown) so no failure is a crash or a silent empty screen; the debug hooks `bg-remove-fail:<kind>` let QA reach each. The 300 ms rule, the 30 s slow note, no spinner.
+2. **States as the table says,** driven by distinct segmenter results (not installed, no Play services, no network, out of memory, no subject, unknown) so no failure is a crash or a silent empty screen; the debug hook `--es memix.bgRemoveFail <kind>` lets QA reach each. The 300 ms rule, the 30 s slow note, no spinner.
 3. **Mask handling:** keep the mask as a temporary file until Apply; Apply writes the media copy; Save as sticker renders from the same data and trims to the alpha bounds; refine strokes quantized and capped as P2-05; the feather on release; Android 10 to 12 software path.
 4. **Zoom and pan on the screen** without re-decoding (draw-phase transform of the decoded bitmap).
 5. **The layer bar and main bar** entries and the "Cut out" meta part; the row thumbnail applies the mask.

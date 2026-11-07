@@ -41,4 +41,7 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     ProjectMigration(fromVersion = 7) { json -> json },
     // 8 → 9 (P2-05b): the new layer kind "censor_layer". A draft saved before has none, so its JSON decodes as it is.
     ProjectMigration(fromVersion = 8) { json -> json },
+    // 9 → 10 (P2-07): ImageLayer gained the nullable "cutOut" (mask file, refine strokes, softness). Version-9 JSON has none, which
+    // decodes as null (the whole picture), so a draft saved before opens as saved and the step only moves the version on.
+    ProjectMigration(fromVersion = 9) { json -> json },
 )

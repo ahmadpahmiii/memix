@@ -43,6 +43,18 @@ sealed interface AnalyticsEvent {
         }
     }
 
+    /** The segmenter finished (a success or a failure) on a photo; [durationMillis] counts a model download too (PM, 5 Nov 2026; spec P2-07 → Analytics). */
+    data class BgRemove(val editor: ProjectType, val success: Boolean, val durationMillis: Long) : AnalyticsEvent {
+        override val name = "bg_remove"
+        override val params = mapOf("editor" to editor.eventValue, "success" to success.toString(), "duration_ms" to durationMillis.toString())
+    }
+
+    /** A cut-out was saved to My stickers (PM, 5 Nov 2026). */
+    data class SaveSticker(val editor: ProjectType) : AnalyticsEvent {
+        override val name = "save_sticker"
+        override val params = mapOf("editor" to editor.eventValue)
+    }
+
     /** A meme sound landed on the timeline from the sounds sheet; not for duplicates (spec P1-06 → Analytics). */
     data class SoundAdd(val soundId: String, val tab: SoundTab, val editor: ProjectType) : AnalyticsEvent {
         override val name = "sound_add"
@@ -216,6 +228,10 @@ enum class EditorTool(val eventValue: String?) {
 
     /** P2-05b: a censor added with its mode, or its mode changed (PM, 2 Nov 2026): the mode it now has. Shape, strength and size send nothing. */
     CENSOR_BLUR("censor_blur"),
+
+    /** P2-07 (PM, 5 Nov 2026): Apply on the cut-out screen, and Remove cut-out. Strokes and softness fire nothing. */
+    REMOVE_BG("remove_bg"),
+    CLEAR_CUTOUT("clear_cutout"),
     CENSOR_PIXELATE("censor_pixelate"),
     CENSOR_BAR("censor_bar"),
 

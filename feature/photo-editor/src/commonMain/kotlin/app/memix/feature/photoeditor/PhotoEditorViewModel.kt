@@ -64,6 +64,19 @@ import app.memix.core.domain.project.ProjectEditState
 import app.memix.core.domain.project.StartEditSessionUseCase
 import app.memix.core.domain.text.MeasureCaptionUseCase
 import app.memix.core.domain.text.PrepareCaptionsUseCase
+import app.memix.core.domain.Analytics
+import app.memix.core.domain.AnalyticsEvent
+import app.memix.core.domain.project.cutOutOf
+import app.memix.core.domain.project.setCutOut
+import app.memix.core.domain.segmentation.CutoutProgress as CutOutProgress
+import app.memix.core.domain.segmentation.CutoutResult as CutOutResult
+import app.memix.core.domain.segmentation.RemoveBackgroundUseCase
+import app.memix.core.domain.sticker.SaveStickerUseCase
+import app.memix.core.domain.sticker.StickerSave
+import app.memix.core.domain.segmentation.SegmentationFailure
+import app.memix.core.model.project.CutOut
+import app.memix.core.model.project.ProjectType
+import app.memix.core.model.project.Stroke
 import app.memix.core.domain.project.addImageLayer
 import app.memix.core.domain.project.deleteLayer
 import app.memix.core.domain.project.duplicateLayer
@@ -165,6 +178,9 @@ class PhotoEditorViewModel(
     importMedia: ImportMediaUseCase,
     private val prepareCaptions: PrepareCaptionsUseCase,
     private val measureCaption: MeasureCaptionUseCase,
+    private val removeBackground: RemoveBackgroundUseCase,
+    private val analytics: Analytics,
+    private val saveSticker: SaveStickerUseCase,
 ) : MemixViewModel<PhotoEditorUiState, PhotoEditorIntent>(PhotoEditorUiState()) {
     // A picked photo's copy, its sheet and its landing (spec P2-12); P2-13 adds Add photo to the same pick.
     private val pick = ProjectPickImport(importMedia, viewModelScope, projectId, PickLanding())
@@ -178,6 +194,11 @@ class PhotoEditorViewModel(
     // The background picture's file that couldn't be read, so a replaced picture isn't called missing.
     private var missingBackgroundPath: String? = null
     private var gestureActive = false
+    // The segmenter run behind the cut-out screen (P2-07); cancelled when the screen closes or tries again.
+    private var segmentJob: kotlinx.coroutines.Job? = null
+    private var noticeJob: kotlinx.coroutines.Job? = null
+    // The cut-out last saved as a sticker, so the same one twice answers "already saved" (spec P2-07).
+    private var lastSavedStickerKey: String? = null
     // A finger is down in Draw mode: Undo and Redo wait for it (spec P2-05 → Interactions).
     private var strokeActive = false
     private var drawSessionStrokes = 0
@@ -234,6 +255,13 @@ class PhotoEditorViewModel(
             is PhotoEditorIntent.SetDeepFry -> restyleImage(PhotoEdit.DEEP_FRY) { it.copy(deepFry = intent.amount.coerceIn(0f, 1f)) }
             is PhotoEditorIntent.ResetEditTab -> resetEditTab(intent.tab)
             PhotoEditorIntent.CropClosed -> updateState { it.copy(cropLayerId = null) }
+            is PhotoEditorIntent.OpenCutOut -> openCutOut(intent.layerId)
+            PhotoEditorIntent.CutOutRetry -> state.value.cutOut?.let { startSegmenting(it.layerId) }
+            is PhotoEditorIntent.CutOutApply -> applyCutOut(intent.strokes, intent.softness)
+            PhotoEditorIntent.CutOutRemove -> removeCutOut()
+            PhotoEditorIntent.CutOutInertTapped -> explainInertCutOut()
+            is PhotoEditorIntent.CutOutSaveSticker -> saveCutOutSticker(intent)
+            PhotoEditorIntent.CutOutClosed -> closeCutOut()
             PhotoEditorIntent.LeaveAnyway -> updateState { it.copy(unsavedSheetOpen = false, isClosing = true) }
             PhotoEditorIntent.StayInEditor -> updateState { it.copy(unsavedSheetOpen = false) }
             PhotoEditorIntent.DismissSaveBanner -> dismissSaveBanner()
@@ -422,7 +450,7 @@ class PhotoEditorViewModel(
      */
     private fun openDraw() {
         val current = state.value
-        if (current.draw != null || current.textEntry != null || current.cropLayerId != null) return
+        if (current.draw != null || current.textEntry != null || current.cropLayerId != null || current.cutOut != null) return
         val drawing = current.selectedLayer?.takeIf { it.kind == LayerKind.DRAWING }
         if (drawing?.locked == true) return explain(PhotoExplanation.LAYER_LOCKED)
         drawSessionStrokes = 0
@@ -913,6 +941,139 @@ class PhotoEditorViewModel(
         updateState { it.copy(cropLayerId = id, panel = null) }
     }
 
+    // The Remove BG tool (spec P2-07 → D2): a locked or missing layer explains; from the main bar it selects the main photo. A layer that
+    // already has a cut-out opens on it; otherwise the segmenter runs at once.
+    private fun openCutOut(layerId: String?) {
+        val project = currentProject() ?: return
+        val id = layerId ?: project.layers().mainPhoto()?.id ?: return
+        val layer = layerOf(id)?.takeIf { it.kind == LayerKind.IMAGE } ?: return
+        if (layer.locked) return explain(PhotoExplanation.LAYER_LOCKED)
+        if (id in state.value.missingLayerIds) return explain(PhotoExplanation.LAYER_MISSING)
+        select(id)
+        val saved = project.cutOutOf(id)
+        updateState { it.copy(panel = null, canvasPanel = null) }
+        if (saved != null) {
+            updateState { it.copy(cutOut = CutOutSessionUi(id, CutOutPhase.Ready, saved, hadCutOut = true)) }
+        } else {
+            startSegmenting(id)
+        }
+    }
+
+    // Runs the check, the model download and the segmenter for [layerId]'s picture; each end is one distinct card (spec → States).
+    private fun startSegmenting(layerId: String) {
+        val path = layerOf(layerId)?.path ?: return
+        segmentJob?.cancel()
+        updateState { it.copy(cutOut = CutOutSessionUi(layerId, CutOutPhase.Working)) }
+        segmentJob = viewModelScope.launch {
+            val result = removeBackground(projectId, path) { progress -> showCutOutProgress(layerId, progress) }
+            // The segmenter's own end is the event, whatever the screen does next (spec → Analytics); nothing found counts as no success.
+            val millis = when (result) {
+                is CutOutResult.Done -> result.durationMillis
+                is CutOutResult.NothingFound -> result.durationMillis
+                is CutOutResult.Failed -> result.durationMillis
+                CutOutResult.Cancelled -> 0L
+            }
+            analytics.log(AnalyticsEvent.BgRemove(ProjectType.PHOTO, result is CutOutResult.Done, millis))
+            if (state.value.cutOut?.layerId != layerId) return@launch
+            updateState { it.copy(cutOut = CutOutSessionUi(layerId, phaseOf(result), cutOutOf(result))) }
+        }
+    }
+
+    // The mask of a finished run: the saved file, or none when nothing was found (the brush then cuts by hand from everything kept).
+    private fun cutOutOf(result: CutOutResult): CutOut? = when (result) {
+        is CutOutResult.Done -> CutOut(result.maskPath, result.maskSize)
+        is CutOutResult.NothingFound -> CutOut(maskPath = null, maskSize = null)
+        is CutOutResult.Failed, CutOutResult.Cancelled -> null
+    }
+
+    private fun showCutOutProgress(layerId: String, progress: CutOutProgress) {
+        updateState { current ->
+            val session = current.cutOut?.takeIf { it.layerId == layerId } ?: return@updateState current
+            val phase = when (progress) {
+                is CutOutProgress.Preparing -> CutOutPhase.Preparing(progress.fraction, (session.phase as? CutOutPhase.Preparing)?.slow == true)
+                CutOutProgress.TakingLonger -> CutOutPhase.Preparing((session.phase as? CutOutPhase.Preparing)?.fraction, slow = true)
+                CutOutProgress.Working -> CutOutPhase.Working
+            }
+            current.copy(cutOut = session.copy(phase = phase))
+        }
+    }
+
+    private fun phaseOf(result: CutOutResult): CutOutPhase = when (result) {
+        is CutOutResult.Done -> CutOutPhase.Ready
+        is CutOutResult.NothingFound -> CutOutPhase.NothingFound
+        CutOutResult.Cancelled -> CutOutPhase.Failed(CutOutProblem.UNAVAILABLE)
+        is CutOutResult.Failed -> CutOutPhase.Failed(
+            when (result.failure) {
+                SegmentationFailure.OFFLINE -> CutOutProblem.OFFLINE
+                SegmentationFailure.OUT_OF_MEMORY -> CutOutProblem.MEMORY
+                SegmentationFailure.SLOW -> CutOutProblem.SLOW
+                SegmentationFailure.UNSUPPORTED, SegmentationFailure.NO_PLAY_SERVICES, SegmentationFailure.MODEL_UNAVAILABLE,
+                SegmentationFailure.SOURCE_UNREADABLE, SegmentationFailure.STORAGE_FULL, SegmentationFailure.UNEXPECTED,
+                -> CutOutProblem.UNAVAILABLE
+            },
+        )
+    }
+
+    // Apply: the mask, the strokes and the softness are one step "Remove background" (spec → Leaving).
+    private fun applyCutOut(strokes: List<Stroke>, softness: Float) {
+        val session = state.value.cutOut ?: return
+        val base = session.cutOut
+        closeCutOut()
+        if (base == null || (base.maskPath == null && strokes.isEmpty())) return
+        val updated = base.copy(strokes = strokes, softness = softness)
+        if (updated == currentProject()?.cutOutOf(session.layerId)) return
+        editLayer(PhotoEdit.REMOVE_BG) { it.setCutOut(session.layerId, updated) }
+    }
+
+    // Save as sticker (spec → Save as sticker): the same cut-out twice says it is saved already; it doesn't close the screen or apply anything.
+    private fun saveCutOutSticker(request: PhotoEditorIntent.CutOutSaveSticker) {
+        if (state.value.cutOut == null) return
+        if (request.couldNotEncode) return showCutOutNotice(CutOutNotice.FAILED)
+        val png = request.png ?: return showCutOutNotice(CutOutNotice.EMPTY)
+        if (request.key == lastSavedStickerKey) return showCutOutNotice(CutOutNotice.ALREADY_SAVED)
+        viewModelScope.launch {
+            when (saveSticker(png)) {
+                is StickerSave.Saved -> {
+                    lastSavedStickerKey = request.key
+                    analytics.log(AnalyticsEvent.SaveSticker(ProjectType.PHOTO))
+                    showCutOutNotice(CutOutNotice.SAVED)
+                }
+                StickerSave.Failed -> showCutOutNotice(CutOutNotice.FAILED)
+            }
+        }
+    }
+
+    // Apply and Save as sticker keep their look while they can't act, and a tap says why (a failure card has its own Try again).
+    private fun explainInertCutOut() {
+        when (state.value.cutOut?.phase) {
+            is CutOutPhase.Preparing, CutOutPhase.Working -> showCutOutNotice(CutOutNotice.NOT_READY)
+            CutOutPhase.NothingFound -> showCutOutNotice(CutOutNotice.NOTHING_TO_APPLY)
+            CutOutPhase.Ready, is CutOutPhase.Failed, null -> Unit
+        }
+    }
+
+    private fun showCutOutNotice(notice: CutOutNotice) {
+        updateState { current -> current.cutOut?.let { current.copy(cutOut = it.copy(notice = notice)) } ?: current }
+        noticeJob?.cancel()
+        noticeJob = viewModelScope.launch {
+            delay(CUTOUT_NOTICE_MILLIS)
+            updateState { current -> current.cutOut?.let { current.copy(cutOut = it.copy(notice = null)) } ?: current }
+        }
+    }
+
+    private fun removeCutOut() {
+        val session = state.value.cutOut ?: return
+        closeCutOut()
+        editLayer(PhotoEdit.CLEAR_CUTOUT) { it.setCutOut(session.layerId, null) }
+    }
+
+    // Close, back and Escape discard the screen's changes; a model download or a segmentation in flight stops.
+    private fun closeCutOut() {
+        segmentJob?.cancel()
+        segmentJob = null
+        updateState { it.copy(cutOut = null) }
+    }
+
     // The Edit photo tool (spec P2-04 → Entry and exit): a locked or missing layer explains; a hidden one opens (the panel says so);
     // from the main bar it selects the main photo.
     private fun openEditPhoto(layerId: String?) {
@@ -1158,6 +1319,8 @@ class PhotoEditorViewModel(
         when {
             // The Crop screen is a mode: back discards it (spec P2-04 → The Crop screen).
             current.cropLayerId != null -> updateState { it.copy(cropLayerId = null) }
+            // The cut-out screen is a mode too: back discards it (spec P2-07 → Leaving).
+            current.cutOut != null -> closeCutOut()
             // Typing commits and the keyboard closes first (spec P2-03 → Typing → back order).
             current.textEntry != null -> commitEntry()
             // A stroke in progress was cancelled by the stage first; then back leaves Draw mode (spec P2-05 → Back order).
@@ -1283,6 +1446,7 @@ class PhotoEditorViewModel(
         const val PERCENT = 100
         /** `tool_use.value` for a custom ratio: never its numbers (spec → Analytics). */
         const val CUSTOM_VALUE = "custom"
+        const val CUTOUT_NOTICE_MILLIS = 3000L
         val IMAGE_LADDER = SizeLadder(PhotoCatalog.IMAGE_SIZE_STEPS)
     }
 }

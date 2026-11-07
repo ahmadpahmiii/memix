@@ -11,7 +11,10 @@ import app.memix.core.domain.Outcome
 import app.memix.core.domain.project.GetProjectUseCase
 import app.memix.core.domain.project.layers
 import app.memix.core.model.project.CanvasBackground
+import app.memix.core.domain.segmentation.SegmentationLimits
+import app.memix.core.model.project.ImageEdit
 import app.memix.core.model.project.ImageLayer
+import app.memix.core.ui.scene.PreparedCutOut
 import app.memix.core.model.project.PanelsFormat
 import app.memix.core.domain.text.PrepareCaptionsUseCase
 import app.memix.core.model.project.StickerLayer
@@ -70,13 +73,18 @@ class SceneRender : KoinComponent {
         // Edited layers with color tools (P2-04): the same picture the editor draws, made at this output's size.
         val processed = HashMap<String, SceneBitmap>()
         for (layer in project.layers().filterIsInstance<ImageLayer>()) {
-            val edit = layer.editOrNull()?.takeIf { it.hasColorEdits } ?: continue
+            val edit = layer.editOrNull()?.takeIf { it.hasColorEdits } ?: ImageEdit.NONE.takeIf { layer.cutOut != null } ?: continue
             val picture = layer.source.cachedCopyPath?.let(pictures::get) ?: continue
             val canvasSize = PixelSize(project.canvas.widthPx, project.canvas.heightPx)
             val shown = edit.shownSize(layer.source.pixelSize ?: picture.sourceSize)
             val fitted = fittedImageSize(shown, canvasSize)
             val longSide = editedLongSidePx(max(fitted.width, fitted.height), layer.transform.scale, project.canvas.widthPx, widthPx, shown)
-            renderEditedPicture(picture, edit, longSide, imageTools)?.let { processed[layer.id] = SceneBitmap(it, picture.sourceSize) }
+            val prepared = layer.cutOut?.let { cutOut ->
+                val maskPath = cutOut.maskPath
+                if (maskPath == null) PreparedCutOut(cutOut, null) else imageSource.decode(maskPath, SegmentationLimits.INPUT_LONG_SIDE_PX, SceneImageUse.OFFSCREEN)?.let { PreparedCutOut(cutOut, it.image) }
+            }
+            if (layer.cutOut != null && prepared == null) continue
+            renderEditedPicture(picture, edit, longSide, imageTools, prepared)?.let { processed[layer.id] = SceneBitmap(it, picture.sourceSize) }
         }
         val images = object : SceneImages {
             override fun processedOf(layerId: String): SceneBitmap? = processed[layerId]

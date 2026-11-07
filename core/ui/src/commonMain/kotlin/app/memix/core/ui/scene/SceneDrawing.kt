@@ -173,8 +173,8 @@ private fun DrawScope.drawImageLayer(layer: ImageLayer, transform: Transform, op
     val shown = layer.source.pixelSize ?: picture.sourceSize
     val alpha = opacity * images.appearanceOf(path)
     val edit = layer.editOrNull()
-    // A layer with a color edit draws its processed picture (geometry applied, the crop's shape) once it is ready.
-    if (edit != null && edit.hasColorEdits) {
+    // A layer with a color edit or a cut-out draws its processed picture (geometry applied, the crop's shape) once it is ready.
+    if ((edit != null && edit.hasColorEdits) || layer.cutOut != null) {
         val cropped = edit.shownSize(shown)
         // A processed picture still of the shape before a crop or turn is skipped, so it is never drawn stretched while the new one is made.
         images.processedOf(layer.id)?.takeIf { it.image.hasShapeOf(cropped) }?.let { processed ->

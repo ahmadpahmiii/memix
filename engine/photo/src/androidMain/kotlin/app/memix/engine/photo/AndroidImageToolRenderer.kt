@@ -55,6 +55,24 @@ internal class AndroidImageToolRenderer(
         }
     }
 
+    override suspend fun bitmapOf(pixels: IntArray, width: Int, height: Int): ImageBitmap? = withContext(cpuDispatcher) {
+        try {
+            Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888).asImageBitmap()
+        } catch (e: OutOfMemoryError) {
+            logger.error(TAG, "Out of memory making a cut-out picture", e)
+            null
+        }
+    }
+
+    override suspend fun encodePng(image: ImageBitmap): ByteArray? = withContext(cpuDispatcher) {
+        try {
+            java.io.ByteArrayOutputStream().also { image.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, PNG_QUALITY, it) }.toByteArray()
+        } catch (e: OutOfMemoryError) {
+            logger.error(TAG, "Out of memory encoding a sticker", e)
+            null
+        }
+    }
+
     private suspend fun lutOf(filterId: String): Lut? {
         luts[filterId]?.let { return it }
         return try {
@@ -70,5 +88,6 @@ internal class AndroidImageToolRenderer(
 
     private companion object {
         const val TAG = "MemixPhotoEngine"
+        const val PNG_QUALITY = 100
     }
 }

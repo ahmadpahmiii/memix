@@ -54,6 +54,8 @@ data class ImageLayer(
     override val opacity: Float = 1f,
     /** What the image tools did to the picture (P2-04); null is none. */
     val edit: ImageEdit? = null,
+    /** The background removed from the picture (P2-07); null is the whole picture. */
+    val cutOut: CutOut? = null,
 ) : Layer {
     override fun withId(id: String): ImageLayer = copy(id = id)
 

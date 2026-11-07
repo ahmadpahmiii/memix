@@ -41,6 +41,8 @@ internal fun Project.mediaCopyPaths(): Set<String> {
             is TextLayer, is BubbleLayer, is DrawingLayer, is CensorLayer -> null
         }
         source?.cachedCopyPath?.let(paths::add)
+        // The mask of a cut-out (P2-07): without it the cleaner would delete it at the next start.
+        (layer as? ImageLayer)?.cutOut?.maskPath?.let(paths::add)
     }
     // A Panels cell's photo (P2-02): without it the cleaner would delete the picture at the next start.
     (photo?.format as? PanelsFormat)?.cells?.forEach { cell -> cell.source?.cachedCopyPath?.let(paths::add) }
@@ -75,7 +77,7 @@ internal fun Project.withMediaCopyPaths(rewrite: (String) -> String): Project {
         scene.copy(
             layers = scene.layers.map { layer ->
                 when (layer) {
-                    is ImageLayer -> layer.copy(source = layer.source.rewritten())
+                    is ImageLayer -> layer.copy(source = layer.source.rewritten(), cutOut = layer.cutOut?.let { it.copy(maskPath = it.maskPath?.let(rewrite)) })
                     is StickerLayer -> layer.copy(source = layer.source.rewritten())
                     is TextLayer, is BubbleLayer, is DrawingLayer, is CensorLayer -> layer
                 }

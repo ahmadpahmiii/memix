@@ -154,7 +154,7 @@ private fun SizeRow(selectedIndex: Int, onIntent: (PhotoEditorIntent) -> Unit) {
 
 // A filled dot in the 24 dp picture box (drawn from data, not an icon file): the designer's diameters, 4 to 22 dp, so the five differ by a clear step.
 @Composable
-private fun SizeDot(index: Int, tint: Color) {
+internal fun SizeDot(index: Int, tint: Color) {
     Canvas(Modifier.fillMaxSize()) { drawCircle(tint, DOT_DIAMETERS_DP[index].dp.toPx() / 2f) }
 }
 

@@ -1,3 +1,4 @@
+- P2-07 review: pointerInput keyed on a bitmap restarts mid-gesture when a recompute lands (key on size); readPixels-based passes: reuse one IntArray; Bitmap.createBitmap after withContext runs on the caller (main) so wrap it; OutOfMemoryError is not in commonMain.
 # principal-mobile-engineer memory
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: API gotchas (with versions), performance baselines per device, recurring review findings, patterns that worked.

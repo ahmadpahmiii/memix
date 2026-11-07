@@ -24,6 +24,7 @@ import app.memix.core.domain.project.OpenVideoDraftUseCase
 import app.memix.core.domain.project.SaveProjectUseCase
 import app.memix.core.domain.project.StartEditSessionUseCase
 import app.memix.core.domain.segmentation.RemoveBackgroundUseCase
+import app.memix.core.domain.sticker.SaveStickerUseCase
 import app.memix.core.domain.share.ShareVideoUseCase
 import app.memix.core.domain.sound.LoadStarterSoundsUseCase
 import app.memix.core.domain.sound.LogSoundEventsUseCase
@@ -40,6 +41,7 @@ import app.memix.core.domain.video.OpenResultPlayerUseCase
 import app.memix.core.domain.video.RecoverUnfinishedExportUseCase
 import app.memix.core.domain.video.StartPreviewUseCase
 import app.memix.core.domain.video.StartThumbnailsUseCase
+import app.memix.debug.BgRemoveFailure
 import app.memix.debug.DebugEdits
 import app.memix.debug.EditorSaveDiffLog
 import app.memix.debug.ImportSaveFailure
@@ -94,6 +96,7 @@ private val appModule = module {
     single(createdAtStart = true) { LeftoverMediaCleaner(get(), get(), get(), get(), get(appScope)) }
     factoryOf(::ImportMediaUseCase)
     factoryOf(::RemoveBackgroundUseCase)
+    factoryOf(::SaveStickerUseCase)
     factoryOf(::SaveGalleryProjectUseCase)
     factoryOf(::SaveGalleryPhotoProjectUseCase)
     // Drafts list (P1-14). The thumbnail writer and the delete with undo outlive every screen: singles in the app's scope.
@@ -139,6 +142,9 @@ private val appModule = module {
             importMedia = get(),
             prepareCaptions = get(),
             measureCaption = get(),
+            removeBackground = get(),
+            analytics = get(),
+            saveSticker = get(),
         )
     }
     viewModel { params ->
@@ -166,6 +172,7 @@ private val appModule = module {
 // the plain ones.
 private val handCheckModule = module {
     single<EditorDebugEdit> { DebugEdits.shortenLastClip }
+    factory { RemoveBackgroundUseCase(BgRemoveFailure.around(get()), get()) }
     factory { SaveGalleryProjectUseCase(SaveProjectUseCase(ImportSaveFailure.around(get()), get()), get(), get()) }
     factory { StartEditSessionUseCase(SaveProjectUseCase(EditorSaveDiffLog.around(get(), get()), get()), get(), get(), get(appScope)) }
 }

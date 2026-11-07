@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import app.memix.App
+import app.memix.debug.BgRemoveFailure
 import app.memix.debug.DraftsCheck
 import app.memix.debug.ExportCheck
 import app.memix.debug.ImportSaveFailure
@@ -59,6 +60,9 @@ class MainActivity : ComponentActivity() {
             val shortSide = intent.getIntExtra("memix.renderShortSide", 0)
             lifecycleScope.launch { SceneRender().run(renderScene, width, shortSide) }
         }
+        // Debug and benchmark builds (P2-07): --es memix.bgRemoveFail unavailable|offline|memory|none|slow|off makes the cut-out end that way
+        // (the spec's bg-remove-fail:<kind> hooks), so each status card can be reached. Steps in docs/qa/phase-2/engineer-hand-checks.md.
+        if (handChecks && savedInstanceState == null) intent.getStringExtra("memix.bgRemoveFail")?.let(BgRemoveFailure::arm)
         // Debug and benchmark builds (P2-06): --es memix.segmentCheck <photo path under files/> --ei memix.segmentPasses 6 (--ez memix.segmentKeepMasks true) runs
         // the cut-out that many times and logs each duration. Logcat tag MemixSegmentCheck; steps in docs/qa/phase-2/engineer-hand-checks.md.
         val segmentCheck = if (handChecks && savedInstanceState == null) intent.getStringExtra("memix.segmentCheck") else null

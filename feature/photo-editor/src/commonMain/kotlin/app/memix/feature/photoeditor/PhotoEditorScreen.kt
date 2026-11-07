@@ -99,6 +99,10 @@ import memix.core.ui.generated.resources.edit_text_shadow
 import memix.core.ui.generated.resources.edit_text_box
 import memix.core.ui.generated.resources.edit_adjust
 import memix.core.ui.generated.resources.edit_crop
+import memix.feature.photo_editor.generated.resources.edit_remove_bg
+import memix.feature.photo_editor.generated.resources.edit_remove_cutout
+import memix.feature.photo_editor.generated.resources.tool_remove_bg
+import memix.feature.photo_editor.generated.resources.layer_meta_cutout
 import memix.core.ui.generated.resources.edit_deep_fry
 import memix.core.ui.generated.resources.edit_filter
 import memix.core.ui.generated.resources.edit_photo_reset
@@ -226,7 +230,7 @@ fun PhotoEditorScreen(
     // itself while something inside it comes first (a panel, the selection) or while saving fails, to ask first.
     NavigationBackHandler(
         rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled = !state.unsavedSheetOpen && (state.cropLayerId != null || state.draw != null || state.textEntry != null || state.panel != null || state.selectedLayerId != null || state.selectedCell != null || state.selectedDivider != null || state.isSaveFailing),
+        isBackEnabled = !state.unsavedSheetOpen && (state.cropLayerId != null || state.cutOut != null || state.draw != null || state.textEntry != null || state.panel != null || state.selectedLayerId != null || state.selectedCell != null || state.selectedDivider != null || state.isSaveFailing),
         onBackCompleted = { onIntent(PhotoEditorIntent.Back) },
     )
     LifecycleEventEffect(Lifecycle.Event.ON_START) { onIntent(PhotoEditorIntent.AppStarted) }
@@ -266,7 +270,7 @@ fun PhotoEditorScreen(
             .onPreviewKeyEvent { event ->
                 val goesBack = event.key == Key.Escape && !state.unsavedSheetOpen
                 // The Crop screen is a mode: Escape discards it (spec P2-04 → Interactions).
-                if (goesBack && event.type == KeyEventType.KeyUp) onIntent(if (state.cropLayerId != null) PhotoEditorIntent.CropClosed else PhotoEditorIntent.Back)
+                if (goesBack && event.type == KeyEventType.KeyUp) onIntent(if (state.cropLayerId != null) PhotoEditorIntent.CropClosed else if (state.cutOut != null) PhotoEditorIntent.CutOutClosed else PhotoEditorIntent.Back)
                 goesBack
             },
     ) {
@@ -288,7 +292,7 @@ fun PhotoEditorScreen(
         }
         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { if (it.height > 0) panelHeightPx = it.height }) {
             PhotoPanels(state, live, thumbnails, filterThumbnails, panelMaxHeight, onIntent, editPhotoTab = editPhotoTab)
-            LayersPanel(state, live, thumbnails, panelMaxHeight, onIntent)
+            LayersPanel(state, live, thumbnails, bitmaps, panelMaxHeight, onIntent)
         }
         state.photoImport?.let { importUi ->
             ProjectImportSheet(
@@ -300,6 +304,7 @@ fun PhotoEditorScreen(
             )
         }
         CropOverlay(state, bitmaps, onIntent)
+        CutOutOverlay(state, bitmaps, onIntent)
         UnsavedChangesSheet(
             state.unsavedSheetOpen,
             onStay = { onIntent(PhotoEditorIntent.StayInEditor) },
@@ -398,7 +403,7 @@ private fun ToolBarRegion(state: PhotoEditorUiState, entryField: TextFieldState,
             } else if (layer == null) {
                 // The format's own tool sits right after Formats (spec P2-02 → Main bar).
                 val formatTool = formatSpecificTool(state.format, onIntent)
-                ToolBar(persistentListOf(*listOfNotNull(formatsTool(onIntent), formatTool, textTool(onIntent), addPhotoTool(onIntent), drawTool(onIntent), editPhotoTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), cropTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), censorTool(onIntent), layersTool(onIntent)).toTypedArray()))
+                ToolBar(persistentListOf(*listOfNotNull(formatsTool(onIntent), formatTool, textTool(onIntent), addPhotoTool(onIntent), drawTool(onIntent), editPhotoTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), cropTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), removeBgTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), censorTool(onIntent), layersTool(onIntent)).toTypedArray()))
             } else {
                 val closeLabel = stringResource(Res.string.layer_tools_close)
                 ToolBar(
@@ -447,6 +452,11 @@ private fun editPhotoTool(onIntent: (PhotoEditorIntent) -> Unit, hasImage: Boole
 @Composable
 private fun cropTool(onIntent: (PhotoEditorIntent) -> Unit, hasImage: Boolean): ToolBarItem? =
     if (hasImage) ToolBarItem(stringResource(UiRes.string.tool_crop), MemixIcons.Crop, { onIntent(PhotoEditorIntent.OpenCrop(null)) }) else null
+
+// Remove BG on the main bar, like Crop: only while an image layer exists; a tap selects the main photo and opens the cut-out screen (spec P2-07 → D2).
+@Composable
+private fun removeBgTool(onIntent: (PhotoEditorIntent) -> Unit, hasImage: Boolean): ToolBarItem? =
+    if (hasImage) ToolBarItem(stringResource(Res.string.tool_remove_bg), MemixIcons.Cutout, { onIntent(PhotoEditorIntent.OpenCutOut(null)) }) else null
 
 // Draw mode (spec P2-05 → Entry and exit); a selected drawing layer gets the new strokes, else the first stroke makes one.
 @Composable
@@ -500,6 +510,9 @@ private fun selectedLayerTools(layer: SceneLayerUi, missing: Boolean, onIntent: 
     val crop = ToolBarItem(stringResource(UiRes.string.tool_crop), MemixIcons.Crop, {
         if (layer.locked) onIntent(PhotoEditorIntent.LockedLayerTouched(layer.id)) else onIntent(PhotoEditorIntent.OpenCrop(layer.id))
     })
+    val removeBg = ToolBarItem(stringResource(Res.string.tool_remove_bg), MemixIcons.Cutout, {
+        if (layer.locked) onIntent(PhotoEditorIntent.LockedLayerTouched(layer.id)) else onIntent(PhotoEditorIntent.OpenCutOut(layer.id))
+    })
     val layers = layersTool(onIntent)
     val draw = drawTool(onIntent)
     // Censor · Position · Delete · Duplicate · Lock · Hide · Layers: no Opacity (a see-through censor shows what it hides).
@@ -537,6 +550,7 @@ private fun selectedLayerTools(layer: SceneLayerUi, missing: Boolean, onIntent: 
             if (layer.kind == LayerKind.IMAGE) {
                 add(editPhoto)
                 add(crop)
+                add(removeBg)
             }
         }
         add(duplicate)
@@ -651,6 +665,8 @@ private fun editName(edit: PhotoEdit): String = stringResource(
         PhotoEdit.TEXT_SHADOW -> UiRes.string.edit_text_shadow
         PhotoEdit.TEXT_BOX -> UiRes.string.edit_text_box
         PhotoEdit.CROP -> UiRes.string.edit_crop
+        PhotoEdit.REMOVE_BG -> Res.string.edit_remove_bg
+        PhotoEdit.CLEAR_CUTOUT -> Res.string.edit_remove_cutout
         PhotoEdit.FILTER -> UiRes.string.edit_filter
         PhotoEdit.ADJUST_BRIGHTNESS, PhotoEdit.ADJUST_CONTRAST, PhotoEdit.ADJUST_SATURATION, PhotoEdit.ADJUST_WARMTH,
         PhotoEdit.ADJUST_SHARPEN, PhotoEdit.ADJUST_VIGNETTE,
