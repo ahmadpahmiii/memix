@@ -144,6 +144,19 @@ import memix.feature.photo_editor.generated.resources.tool_add_photo
 import memix.feature.photo_editor.generated.resources.tool_formats
 import memix.feature.photo_editor.generated.resources.tool_hide_layer
 import memix.feature.photo_editor.generated.resources.a11y_format_set
+import memix.feature.photo_editor.generated.resources.a11y_layer_bubble_added
+import memix.feature.photo_editor.generated.resources.edit_add_bubble
+import memix.feature.photo_editor.generated.resources.edit_bubble_fill
+import memix.feature.photo_editor.generated.resources.edit_bubble_shape
+import memix.feature.photo_editor.generated.resources.edit_bubble_tail
+import memix.feature.photo_editor.generated.resources.tool_add_bubble
+import memix.feature.photo_editor.generated.resources.panels_close_cell
+import memix.feature.photo_editor.generated.resources.tool_panel_remove
+import memix.feature.photo_editor.generated.resources.tool_panels_layout
+import memix.core.ui.generated.resources.tool_replace
+import memix.feature.photo_editor.generated.resources.edit_panel_photo
+import memix.feature.photo_editor.generated.resources.edit_panels_divider
+import memix.feature.photo_editor.generated.resources.edit_panels_layout
 import memix.feature.photo_editor.generated.resources.edit_format
 import memix.feature.photo_editor.generated.resources.panels_photo_dropped
 import memix.feature.photo_editor.generated.resources.tool_layer_opacity
@@ -175,7 +188,7 @@ fun PhotoEditorScreen(
     // itself while something inside it comes first (a panel, the selection) or while saving fails, to ask first.
     NavigationBackHandler(
         rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled = !state.unsavedSheetOpen && (state.textEntry != null || state.panel != null || state.selectedLayerId != null || state.isSaveFailing),
+        isBackEnabled = !state.unsavedSheetOpen && (state.textEntry != null || state.panel != null || state.selectedLayerId != null || state.selectedCell != null || state.selectedDivider != null || state.isSaveFailing),
         onBackCompleted = { onIntent(PhotoEditorIntent.Back) },
     )
     LifecycleEventEffect(Lifecycle.Event.ON_START) { onIntent(PhotoEditorIntent.AppStarted) }
@@ -193,7 +206,10 @@ fun PhotoEditorScreen(
     DisposableEffect(thumbnails) { onDispose { thumbnails.release() } }
     val stage = remember { LayerStageState() }
     val held = rememberUpdatedState(state.held)
-    val live = remember(stage) { PhotoLive(stage, held) }
+    val heldTail = rememberUpdatedState(state.heldTail)
+    val liveFormat = rememberUpdatedState(state.format)
+    val heldFormat = rememberUpdatedState(state.heldFormat)
+    val live = remember(stage) { PhotoLive(stage, held, heldTail, liveFormat, heldFormat) }
     // The stage lets go of a layer it held at its released place once the project has it.
     LaunchedEffect(state.gestureEndCount) { live.release() }
 
@@ -322,10 +338,18 @@ private fun ToolBarRegion(state: PhotoEditorUiState, entryField: TextFieldState,
         // The bar that fades out keeps the layer it was showing, after the selection is gone.
         val lastLayer = remember { arrayOfNulls<SceneLayerUi>(1) }
         state.selectedLayer?.let { lastLayer[0] = it }
-        Crossfade(state.selectedLayerId != null, animationSpec = tween(MemixMotion.durationPress), label = "tool bar") { hasSelection ->
+        Crossfade(state.selectedLayerId != null || state.selectedCell != null, animationSpec = tween(MemixMotion.durationPress), label = "tool bar") { hasSelection ->
             val layer = if (hasSelection) state.selectedLayer ?: lastLayer[0] else null
-            if (layer == null) {
-                ToolBar(persistentListOf(formatsTool(onIntent), textTool(onIntent), addPhotoTool(onIntent), layersTool(onIntent)))
+            if (state.selectedCell != null) {
+                // The selected cell's bar: Replace · Position · Remove (spec P2-02 → Selected-cell bar).
+                ToolBar(
+                    cellTools(onIntent),
+                    close = ToolBarClose(stringResource(Res.string.panels_close_cell)) { onIntent(PhotoEditorIntent.ClearSelection) },
+                )
+            } else if (layer == null) {
+                // The format's own tool sits right after Formats (spec P2-02 → Main bar).
+                val formatTool = formatSpecificTool(state.format, onIntent)
+                ToolBar(persistentListOf(*listOfNotNull(formatsTool(onIntent), formatTool, textTool(onIntent), addPhotoTool(onIntent), layersTool(onIntent)).toTypedArray()))
             } else {
                 val closeLabel = stringResource(Res.string.layer_tools_close)
                 ToolBar(
@@ -338,10 +362,26 @@ private fun ToolBarRegion(state: PhotoEditorUiState, entryField: TextFieldState,
     }
 }
 
+// Replace (the picker for this cell), Position (the cell's panel) and Remove (the photo leaves the cell), in that order.
+@Composable
+private fun cellTools(onIntent: (PhotoEditorIntent) -> Unit): ImmutableList<ToolBarItem> = persistentListOf(
+    ToolBarItem(stringResource(UiRes.string.tool_replace), MemixIcons.Replace, { onIntent(PhotoEditorIntent.ReplaceCell) }),
+    ToolBarItem(stringResource(UiRes.string.tool_position), MemixIcons.Position, { onIntent(PhotoEditorIntent.OpenPanel(PhotoPanel.CELL_POSITION)) }),
+    ToolBarItem(stringResource(Res.string.tool_panel_remove), MemixIcons.Delete, { onIntent(PhotoEditorIntent.RemoveCell) }, ToolTone.Danger),
+)
+
 // Opens the Formats panel; first on the main bar so it is found without scrolling (spec P2-02 → Main bar).
 @Composable
 private fun formatsTool(onIntent: (PhotoEditorIntent) -> Unit) =
     ToolBarItem(stringResource(Res.string.tool_formats), MemixIcons.Formats, { onIntent(PhotoEditorIntent.OpenPanel(PhotoPanel.FORMATS)) })
+
+// Bubbles: Add bubble (icon `bubble`), lands a bubble and opens typing at once. Panels' Layout tool joins with the Panels UI.
+@Composable
+private fun formatSpecificTool(format: app.memix.core.model.project.PhotoFormat?, onIntent: (PhotoEditorIntent) -> Unit): ToolBarItem? = when (format) {
+    is app.memix.core.model.project.PanelsFormat -> ToolBarItem(stringResource(Res.string.tool_panels_layout), MemixIcons.Panels, { onIntent(PhotoEditorIntent.OpenPanel(PhotoPanel.LAYOUT)) })
+    app.memix.core.model.project.BubblesFormat -> ToolBarItem(stringResource(Res.string.tool_add_bubble), MemixIcons.Bubble, { onIntent(PhotoEditorIntent.AddBubble) })
+    else -> null
+}
 
 // Typing a new text, no menu (spec P2-03 → The Text tool); first on the main bar, before Add photo and Layers.
 @Composable
@@ -385,7 +425,7 @@ private fun selectedLayerTools(layer: SceneLayerUi, missing: Boolean, onIntent: 
         { onIntent(PhotoEditorIntent.SetHidden(layer.id, !layer.hidden)) },
     )
     val layers = layersTool(onIntent)
-    val isText = layer.kind == LayerKind.TEXT
+    val isText = layer.kind == LayerKind.TEXT || layer.kind == LayerKind.BUBBLE
     // A text's own tools come first (spec P2-03 → Selected-text bar); while locked they only explain.
     val editText = ToolBarItem(stringResource(UiRes.string.tool_edit_text), MemixIcons.EditText, {
         if (layer.locked) onIntent(PhotoEditorIntent.LockedLayerTouched(layer.id)) else onIntent(PhotoEditorIntent.EditText)
@@ -454,7 +494,7 @@ private fun ToastTimer(toast: PhotoToast, onTimedOut: (id: Long) -> Unit) {
             is PhotoToastMessage.Undone, is PhotoToastMessage.Redone, is PhotoToastMessage.Edited, is PhotoToastMessage.LayerOrder,
             is PhotoToastMessage.PositionTransformed, is PhotoToastMessage.PositionMoved, is PhotoToastMessage.OpacityChanged,
             is PhotoToastMessage.RatioStepped, PhotoToastMessage.BackgroundImageSet, PhotoToastMessage.BackgroundImageRemoved,
-            PhotoToastMessage.LayerAdded, PhotoToastMessage.TextAdded, is PhotoToastMessage.FormatSet,
+            PhotoToastMessage.LayerAdded, PhotoToastMessage.TextAdded, PhotoToastMessage.BubbleAdded, is PhotoToastMessage.FormatSet,
             -> WHAT_HAPPENED_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
@@ -490,6 +530,7 @@ private fun toastText(message: PhotoToastMessage): String = when (message) {
     PhotoToastMessage.LayerAdded -> stringResource(Res.string.a11y_layer_added)
     PhotoToastMessage.TextAdded -> stringResource(Res.string.a11y_layer_text_added)
     is PhotoToastMessage.FormatSet -> stringResource(Res.string.a11y_format_set, formatName(message.choice))
+    PhotoToastMessage.BubbleAdded -> stringResource(Res.string.a11y_layer_bubble_added)
     PhotoToastMessage.PanelPhotosDropped -> stringResource(Res.string.panels_photo_dropped)
 }
 
@@ -516,6 +557,13 @@ private fun editName(edit: PhotoEdit): String = stringResource(
         PhotoEdit.FORMAT_PLAIN, PhotoEdit.FORMAT_CLASSIC, PhotoEdit.FORMAT_CAPTION_BAR, PhotoEdit.FORMAT_PANELS,
         PhotoEdit.FORMAT_DEMOTIVATIONAL, PhotoEdit.FORMAT_BUBBLES,
         -> Res.string.edit_format
+        PhotoEdit.ADD_BUBBLE -> Res.string.edit_add_bubble
+        PhotoEdit.BUBBLE_SHAPE -> Res.string.edit_bubble_shape
+        PhotoEdit.BUBBLE_FILL -> Res.string.edit_bubble_fill
+        PhotoEdit.BUBBLE_TAIL -> Res.string.edit_bubble_tail
+        PhotoEdit.PANELS_LAYOUT -> Res.string.edit_panels_layout
+        PhotoEdit.PANELS_DIVIDER -> Res.string.edit_panels_divider
+        PhotoEdit.ADD_CELL_PHOTO, PhotoEdit.REMOVE_CELL_PHOTO, PhotoEdit.PANEL_PHOTO_TRANSFORM, PhotoEdit.PANEL_PHOTO_POSITION -> Res.string.edit_panel_photo
     },
 )
 

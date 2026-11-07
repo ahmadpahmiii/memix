@@ -257,7 +257,7 @@ Translator notes:
 - **The handles** (scale-and-rotate, tail, divider pill) are hidden from accessibility services: drag-only, with the panels as the full alternative.
 - **Touch targets:** every tool, tile, button, hint, pick tile and divider handle is 48 dp or more; a cell's hit area is the cell; a bubble's hit area is its body and tail box, grown to 48 dp.
 - **Contrast:** the pick tile label `text` on `surface-raised` 12.4:1, its icon 5.7:1; the slot hint `text` on `scrim` 7.5:1 or more over any color; the selected cell ring white on `surface` 17.2:1 and 4.3:1 or more over any picture (two-tone); the divider pill white with a near-black edge, 4.3:1 or more over any color; tile labels as OptionTile; the hint lines `text-secondary` on `surface` 7.1:1.
-- **200% font:** tile labels widen the tile (the row scrolls); hint lines wrap; panels scroll inside their cap; the slot hint wraps to two lines at most inside 90% of S; the cell bar is a ToolBar (labels wrap, the bar grows). Hindi at 200% is a screenshot (QA compares 7).
+- **200% font:** tile labels widen the tile (the row scrolls); hint lines wrap; panels scroll inside their cap; the slot hint wraps inside 90% of S and is never cut with an ellipsis (up to three lines; review P2-02b M2), and the empty-cell pick tile wraps its label to two lines, or in a cell too small for that shows the plus icon alone with the full label as its spoken name; the cell bar is a ToolBar (labels wrap, the bar grows). Hindi at 200% is a screenshot (QA compares 7).
 - **Reduce motion:** see Motion.
 
 ## Analytics

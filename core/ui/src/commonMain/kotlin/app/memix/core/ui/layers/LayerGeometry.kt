@@ -37,7 +37,7 @@ data class CanvasFrameRect(val left: Float, val top: Float, val width: Float, va
  * clockwise by [rotationDegrees] around that center. A caption's box is its laid-out block, an image's its picture.
  */
 @Immutable
-data class LayerBox(val center: Offset, val halfWidth: Float, val halfHeight: Float, val rotationDegrees: Float) {
+data class LayerBox(val center: Offset, val halfWidth: Float, val halfHeight: Float, val rotationDegrees: Float, val avoid: Offset? = null) {
     /**
      * Whether [point] is on the box grown by [margin] on every side, and to at least [minHalfSize] from the center
      * each way (a 48 dp target, spec P1-10 → On the preview).
@@ -76,6 +76,8 @@ data class LayerBox(val center: Offset, val halfWidth: Float, val halfHeight: Fl
             canvasWidthPx: Int,
             offsetXPx: Float = 0f,
             offsetYPx: Float = 0f,
+            avoidXPx: Float? = null,
+            avoidYPx: Float? = null,
         ): LayerBox {
             val pixelScale = if (canvasWidthPx > 0) frame.width / canvasWidthPx else 0f
             // The box's center is off the layer's own center by the offset, scaled and turned with the layer.
@@ -87,6 +89,16 @@ data class LayerBox(val center: Offset, val halfWidth: Float, val halfHeight: Fl
                     frame.left + transform.centerX * frame.width + scaledX * cos(radians) - scaledY * sin(radians),
                     frame.top + transform.centerY * frame.height + scaledX * sin(radians) + scaledY * cos(radians),
                 ),
+                avoid = if (avoidXPx != null && avoidYPx != null) {
+                    val x = avoidXPx * transform.scale * pixelScale
+                    val y = avoidYPx * transform.scale * pixelScale
+                    Offset(
+                        frame.left + transform.centerX * frame.width + x * cos(radians) - y * sin(radians),
+                        frame.top + transform.centerY * frame.height + x * sin(radians) + y * cos(radians),
+                    )
+                } else {
+                    null
+                },
                 halfWidth = widthPx * transform.scale * pixelScale / 2,
                 halfHeight = heightPx * transform.scale * pixelScale / 2,
                 rotationDegrees = transform.rotationDegrees,

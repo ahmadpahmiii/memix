@@ -92,10 +92,15 @@ private fun Transform.movedBy(dx: Float, dy: Float): Transform? {
 /**
  * Size, Rotation, Move and Center for a layer at [transform] (the panel's content, inside a ToolPanel). A tap on
  * Size, Rotation or Center is [onStep] with one repeat; a Move arrow held repeats and reports the steps so far to
- * [onHeld], and its release reports them all to [onStep] (one commit).
+ * [onHeld], and its release reports them all to [onStep] (one commit). [rowsBeforeCenter] adds a row (a bubble's Tail, P2-02).
  */
 @Composable
-fun PositionRows(transform: Transform, onStep: (PositionStep, repeats: Int) -> Unit, onHeld: (PositionStep, repeats: Int) -> Unit) {
+fun PositionRows(
+    transform: Transform,
+    onStep: (PositionStep, repeats: Int) -> Unit,
+    onHeld: (PositionStep, repeats: Int) -> Unit,
+    rowsBeforeCenter: @Composable () -> Unit = {},
+) {
     val percent = (transform.scale * PERCENT).roundToInt()
     val degrees = transform.rotationDegrees.roundToInt()
     StepperRow(stringResource(Res.string.position_size), spokenState = stringResource(Res.string.position_size_value, percent)) {
@@ -115,6 +120,7 @@ fun PositionRows(transform: Transform, onStep: (PositionStep, repeats: Int) -> U
         MoveButton(PositionStep.MOVE_DOWN, Res.string.position_move_down, ARROW_DOWN, onStep, onHeld)
         MoveButton(PositionStep.MOVE_RIGHT, Res.string.position_move_right, ARROW_RIGHT, onStep, onHeld)
     }
+    rowsBeforeCenter()
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
         Button(stringResource(Res.string.position_center), { onStep(PositionStep.CENTER, 1) })
     }

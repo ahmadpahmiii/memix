@@ -16,6 +16,7 @@ import app.memix.core.model.project.bubbleBodySize
 import app.memix.core.model.project.bubbleBox
 import app.memix.core.model.project.clampedTail
 import app.memix.core.model.project.defaultTail
+import app.memix.core.model.project.defaultThoughtTip
 import app.memix.core.model.project.emptySlots
 import app.memix.core.model.project.SlotKind
 import app.memix.core.model.project.tipIn
@@ -49,10 +50,11 @@ fun Project.bubbleLandingCenterY(): Float {
  * Adds a bubble [text] with [look] as layer [id] at the front of the stack, centered at 100% and 0° on the first free landing
  * slot, with the default tail (toward the canvas center). Blank text adds nothing.
  */
-fun Project.addBubbleLayer(text: String, look: BubbleLook, id: String): Project {
+fun Project.addBubbleLayer(text: String, look: BubbleLook, id: String, body: BoxSize? = null): Project {
     if (text.isBlank()) return this
     val centerY = bubbleLandingCenterY()
-    val tip = defaultTail(centerY)
+    // A thought bubble's default tail is longer (its dot chain needs the reach): [body] is its measured body.
+    val tip = if (look.shape == BubbleShape.THOUGHT && body != null) defaultThoughtTip(body, 0.5f, centerY, PixelSize(canvas.widthPx, canvas.heightPx)) else defaultTail(centerY)
     val layer = BubbleLayer(id, text, look.style, look.shape, look.fill, tip.x, tip.y, Transform(centerX = 0.5f, centerY = centerY))
     return withLayers(layers() + layer)
 }
@@ -84,10 +86,11 @@ fun Project.setBubbleTail(layerId: String, tailX: Float, tailY: Float): LayerEdi
     return editBubble(layerId) { if (it.tailX == tip.x && it.tailY == tip.y) it else it.copy(tailX = tip.x, tailY = tip.y) }
 }
 
-/** The bubble's tail back to its default for where it sits. Refused while it's locked. */
-fun Project.resetBubbleTail(layerId: String): LayerEdit {
+/** The bubble's tail back to its default for where it sits (a thought bubble's longer one, from its [body]). Refused while it's locked. */
+fun Project.resetBubbleTail(layerId: String, body: BoxSize? = null): LayerEdit {
     val layer = layer(layerId) as? BubbleLayer ?: return LayerEdit.Edited(this)
-    val tip = defaultTail(layer.transform.centerY)
+    val size = PixelSize(canvas.widthPx, canvas.heightPx)
+    val tip = if (layer.shape == BubbleShape.THOUGHT && body != null) defaultThoughtTip(body, layer.transform.centerX, layer.transform.centerY, size) else defaultTail(layer.transform.centerY)
     return setBubbleTail(layerId, tip.x, tip.y)
 }
 

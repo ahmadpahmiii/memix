@@ -79,7 +79,7 @@
     <string name="a11y_format_set">Formato: %1$s</string>
     <string name="tool_panels_layout">Diseño</string>
     <string name="panels_count">Número de paneles</string>
-    <string name="panels_layout_label">Diseño</string>
+    <string name="panels_layout_label">Disposición</string>
     <string name="panels_grid">Cuadrícula</string>
     <string name="panels_columns">Lado a lado</string>
     <string name="panels_rows">Apilados</string>
@@ -92,7 +92,7 @@
     <string name="a11y_panel_cell">Panel %1$d de %2$d</string>
     <string name="a11y_panel_empty">Vacío. Toca dos veces para añadir una foto.</string>
     <string name="panels_photo_dropped">Las fotos de los paneles quitados ya no están en el meme. Deshacer las recupera.</string>
-    <string name="tool_add_bubble">Añadir bocadillo</string>
+    <string name="tool_add_bubble">Bocadillo</string>
     <string name="bubble_shape">Forma</string>
     <string name="bubble_speech">Diálogo</string>
     <string name="bubble_round">Redondo</string>
@@ -114,4 +114,5 @@
     <string name="edit_bubble_shape">Forma</string>
     <string name="edit_bubble_fill">Relleno</string>
     <string name="edit_bubble_tail">Cola</string>
+    <string name="a11y_format_slot_bubble">%1$s, vacío. Toca para añadir un bocadillo.</string>
 </resources>

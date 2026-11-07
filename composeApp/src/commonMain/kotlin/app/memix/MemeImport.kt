@@ -201,12 +201,14 @@ private val PhotoPickRequestSaver = Saver<PhotoPickRequest?, List<Any>>(
             null -> emptyList()
             PhotoPickRequest.Background -> listOf(KIND_BACKGROUND)
             PhotoPickRequest.AddLayer -> listOf(KIND_ADD_LAYER)
+            is PhotoPickRequest.Cell -> listOf(KIND_CELL, request.index)
         }
     },
     restore = { saved ->
         when (saved.firstOrNull()) {
             KIND_BACKGROUND -> PhotoPickRequest.Background
             KIND_ADD_LAYER -> PhotoPickRequest.AddLayer
+            KIND_CELL -> (saved.getOrNull(1) as? Int)?.let { PhotoPickRequest.Cell(it) }
             else -> null
         }
     },
@@ -214,3 +216,4 @@ private val PhotoPickRequestSaver = Saver<PhotoPickRequest?, List<Any>>(
 
 private const val KIND_BACKGROUND = "background"
 private const val KIND_ADD_LAYER = "add_layer"
+private const val KIND_CELL = "cell"

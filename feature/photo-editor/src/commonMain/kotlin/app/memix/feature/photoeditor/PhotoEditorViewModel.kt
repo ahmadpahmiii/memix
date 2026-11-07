@@ -10,7 +10,23 @@ import app.memix.core.domain.project.CanvasRatioChange
 import app.memix.core.domain.project.CaptionBlockMeasure
 import app.memix.core.domain.project.TEXT_SIZE_LADDER
 import app.memix.core.domain.project.addTextLayer
+import app.memix.core.domain.project.BubbleLook
+import app.memix.core.domain.project.addBubbleLayer
+import app.memix.core.domain.project.bubbleLandingCenterY
+import app.memix.core.domain.project.editBubbleText
+import app.memix.core.domain.project.resetBubbleTail
+import app.memix.core.domain.project.setBubbleFill
+import app.memix.core.domain.project.setBubbleShape
+import app.memix.core.domain.project.setBubbleStyle
+import app.memix.core.domain.project.setBubbleTail
 import app.memix.core.domain.project.editTextLayer
+import app.memix.core.domain.project.family
+import app.memix.core.domain.project.makePanelsEven
+import app.memix.core.domain.project.removeCellPhoto
+import app.memix.core.domain.project.setCellPhoto
+import app.memix.core.domain.project.setCellView
+import app.memix.core.domain.project.setPanelsDivider
+import app.memix.core.domain.project.setPanelsLayout
 import app.memix.core.domain.project.nextTextSlot
 import app.memix.core.domain.project.setPhotoFormat
 import app.memix.core.domain.project.photoTextLandingCenterY
@@ -49,7 +65,24 @@ import app.memix.core.model.project.CanvasCatalog
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.CaptionCatalog
 import app.memix.core.model.project.CaptionStyle
+import app.memix.core.model.project.BoxSize
+import app.memix.core.model.project.BubbleLayer
+import app.memix.core.model.project.BubblePoint
+import app.memix.core.model.project.CaptionLook
 import app.memix.core.model.project.FormatSlot
+import app.memix.core.model.project.PanelFamily
+import app.memix.core.model.project.PanelLayouts
+import app.memix.core.model.project.PanelsFormat
+import app.memix.core.model.project.clampedToCover
+import app.memix.core.model.project.dividerPositions
+import app.memix.core.model.project.geometry
+import app.memix.core.model.project.pictureRect
+import app.memix.core.model.project.spec
+import app.memix.core.model.project.withDivider
+import app.memix.core.model.project.PhotoFormatCatalog
+import app.memix.core.model.project.SlotKind
+import app.memix.core.model.project.bubbleBodySize
+import app.memix.core.model.project.clampedTail
 import app.memix.core.model.project.emptySlots
 import app.memix.core.model.project.mainPhoto
 import app.memix.core.model.project.pictureArea
@@ -183,7 +216,8 @@ class PhotoEditorViewModel(
             PhotoEditorIntent.LayerGestureCancelled -> gestureActive = false
             is PhotoEditorIntent.LockedLayerTouched -> explain(PhotoExplanation.LAYER_LOCKED)
             is PhotoEditorIntent.OpenPanel -> openPanel(intent.panel)
-            PhotoEditorIntent.ClosePanel -> updateState { it.copy(panel = null, canvasPanel = null) }
+            // Done on the Divider panel also lets go of the divider (its panel is its only tool).
+            PhotoEditorIntent.ClosePanel -> updateState { it.copy(panel = null, canvasPanel = null, selectedDivider = if (it.panel == PhotoPanel.DIVIDER) null else it.selectedDivider) }
             is PhotoEditorIntent.OpacityCommitted -> setOpacity(intent.layerId, intent.opacity)
             is PhotoEditorIntent.PositionStepped -> stepPosition(intent.layerId, intent.step, intent.repeats)
             is PhotoEditorIntent.PositionStepHeld -> holdPosition(intent.layerId, intent.step, intent.repeats)
@@ -197,7 +231,28 @@ class PhotoEditorViewModel(
             PhotoEditorIntent.RatioPill -> if (state.value.textEntry == null) toggleCanvasPanel()
             PhotoEditorIntent.AddText -> startNewText()
             is PhotoEditorIntent.SetFormat -> setFormat(intent.choice)
-            is PhotoEditorIntent.TapSlot -> startNewText(intent.slot)
+            is PhotoEditorIntent.TapSlot -> if (intent.slot.kind == SlotKind.BUBBLE) startNewBubble(intent.slot) else startNewText(intent.slot)
+            PhotoEditorIntent.AddBubble -> startNewBubble()
+            is PhotoEditorIntent.TapCell -> tapCell(intent.index)
+            PhotoEditorIntent.ReplaceCell -> state.value.selectedCell?.let { requestPick(PhotoPickRequest.Cell(it)) }
+            PhotoEditorIntent.RemoveCell -> removeCell()
+            is PhotoEditorIntent.CellViewReleased -> commitCellView(intent.index, intent.zoom, intent.centerX, intent.centerY, PhotoEdit.PANEL_PHOTO_TRANSFORM)
+            is PhotoEditorIntent.CellStepped -> stepCell(intent.index, intent.step, intent.repeats, hold = false)
+            is PhotoEditorIntent.CellStepHeld -> stepCell(intent.index, intent.step, intent.repeats, hold = true)
+            is PhotoEditorIntent.SelectDivider -> selectDivider(intent.index)
+            is PhotoEditorIntent.DividerMoved -> commit(PhotoEdit.PANELS_DIVIDER) { it.setPanelsDivider(intent.index, intent.position) }.also { updateState { s -> s.copy(heldFormat = null, gestureEndCount = s.gestureEndCount + 1) } }
+            is PhotoEditorIntent.DividerStepped -> stepDivider(intent.index, intent.direction, intent.repeats, hold = false)
+            is PhotoEditorIntent.DividerStepHeld -> stepDivider(intent.index, intent.direction, intent.repeats, hold = true)
+            is PhotoEditorIntent.DividerEven -> evenDivider(intent.index)
+            is PhotoEditorIntent.SetPanelCount -> setPanelsLayoutTo(intent.count, null)
+            is PhotoEditorIntent.SetPanelFamily -> setPanelsLayoutTo(null, intent.family)
+            PhotoEditorIntent.MakePanelsEven -> commit(PhotoEdit.PANELS_LAYOUT) { it.makePanelsEven() }
+            is PhotoEditorIntent.SetBubbleShape -> restyleBubble(PhotoEdit.BUBBLE_SHAPE) { project, id -> project.setBubbleShape(id, intent.shape) }
+            is PhotoEditorIntent.SetBubbleFill -> restyleBubble(PhotoEdit.BUBBLE_FILL) { project, id -> project.setBubbleFill(id, ArgbColor(intent.argb)) }
+            is PhotoEditorIntent.TailMoved -> moveTail(intent.layerId, intent.tailX, intent.tailY)
+            is PhotoEditorIntent.TailStepped -> stepTail(intent.layerId, intent.step, intent.repeats)
+            is PhotoEditorIntent.TailStepHeld -> holdTail(intent.layerId, intent.step, intent.repeats)
+            is PhotoEditorIntent.ResetTail -> resetTail(intent.layerId)
             PhotoEditorIntent.EditText -> editSelectedText()
             is PhotoEditorIntent.TextEntryChanged -> entryText = intent.text
             PhotoEditorIntent.TextEntryDone -> commitEntry()
@@ -259,6 +314,9 @@ class PhotoEditorViewModel(
                 panel = panel,
                 canvasPanel = if (panel == PhotoPanel.CANVAS) state.canvasPanel else null,
                 missingLayerIds = state.missingLayerIds.filter { it in ids }.toImmutableSet(),
+                selectedCell = state.selectedCell?.takeIf { cell -> (project.photo?.format as? PanelsFormat)?.cells?.getOrNull(cell)?.source != null },
+                selectedDivider = state.selectedDivider?.takeIf { divider -> (project.photo?.format as? PanelsFormat)?.dividerPositions()?.let { divider < it.size } == true },
+                missingCells = state.missingCells.filter { cell -> (project.photo?.format as? PanelsFormat)?.cells?.getOrNull(cell)?.source != null }.toImmutableSet(),
             )
         }
         updateState { state ->
@@ -275,7 +333,7 @@ class PhotoEditorViewModel(
     private fun tapLayer(layerId: String) {
         val current = state.value
         val layer = layerOf(layerId)
-        if (layer?.kind == LayerKind.TEXT && current.selectedLayerId == layerId && current.panel == null && current.textEntry == null) {
+        if ((layer?.kind == LayerKind.TEXT || layer?.kind == LayerKind.BUBBLE) && current.selectedLayerId == layerId && current.panel == null && current.textEntry == null) {
             return editSelectedText()
         }
         select(layerId)
@@ -283,7 +341,12 @@ class PhotoEditorViewModel(
 
     private fun select(layerId: String?) = updateState { state ->
         val selected = layerId?.takeIf { id -> state.layers.any { it.id == id } }
-        state.copy(selectedLayerId = selected, panel = state.panel?.takeUnless { it.needsSelection && selected == null })
+        state.copy(
+            selectedLayerId = selected,
+            selectedCell = null,
+            selectedDivider = null,
+            panel = state.panel?.takeUnless { (it.needsSelection && selected == null) || (selected != null && it.isPanelsPanel) },
+        )
     }
 
     private fun startGesture(layerId: String) {
@@ -394,11 +457,11 @@ class PhotoEditorViewModel(
 
     /** Edit text on the bar, or a tap on the selected text: typing its words. A locked text explains instead. */
     private fun editSelectedText() {
-        val layer = state.value.selectedLayer?.takeIf { it.kind == LayerKind.TEXT } ?: return
+        val layer = state.value.selectedLayer?.takeIf { it.kind == LayerKind.TEXT || it.kind == LayerKind.BUBBLE } ?: return
         if (state.value.textEntry != null) return
         if (layer.locked) return explain(PhotoExplanation.LAYER_LOCKED)
         val text = layer.text.orEmpty()
-        val style = currentProject()?.layer(layer.id).let { (it as? TextLayer)?.style } ?: return
+        val style = layer.style ?: return
         entryText = text
         updateState { it.copy(textEntry = TextEntryUi(nextEntrySerial++, layer.id, text, style, layer.transform), panel = null, canvasPanel = null) }
     }
@@ -406,10 +469,15 @@ class PhotoEditorViewModel(
     /** Every way out of typing keeps the words (spec → Typing → commit). A blank new text adds nothing and records nothing. */
     private fun commitEntry() {
         val entry = state.value.textEntry ?: return
-        updateState { it.copy(textEntry = null) }
+        val bubble = state.value.bubbleEntry
+        updateState { it.copy(textEntry = null, bubbleEntry = null) }
         val text = entryText
         val layerId = entry.itemId
-        if (layerId == null) addNewText(text, entry.style, entry.transform) else commitTextEdit(layerId, text)
+        when {
+            layerId != null -> commitTextEdit(layerId, text)
+            bubble != null -> addNewBubble(text, entry, bubble)
+            else -> addNewText(text, entry.style, entry.transform)
+        }
     }
 
     private fun addNewText(text: String, style: CaptionStyle, transform: Transform) {
@@ -424,7 +492,8 @@ class PhotoEditorViewModel(
     private fun commitTextEdit(layerId: String, text: String) {
         val position = positionOf(layerId)
         val edit = if (text.isBlank()) PhotoEdit.DELETE else PhotoEdit.EDIT_TEXT
-        if (!editLayer(edit) { it.editTextLayer(layerId, text) }) return
+        val isBubble = layerOf(layerId)?.kind == LayerKind.BUBBLE
+        if (!editLayer(edit) { if (isBubble) it.editBubbleText(layerId, text) else it.editTextLayer(layerId, text) }) return
         if (edit == PhotoEdit.DELETE) {
             select(null)
             announce(PhotoEdit.DELETE, position.first, position.second)
@@ -433,13 +502,108 @@ class PhotoEditorViewModel(
 
     // A font, color or outline tap: one undo step, or nothing when it is the current one (spec → Style panel).
     private fun restyle(edit: PhotoEdit, font: String? = null, change: (CaptionStyle) -> CaptionStyle) {
-        val layer = state.value.selectedLayer?.takeIf { it.kind == LayerKind.TEXT } ?: return
-        val current = (currentProject()?.layer(layer.id) as? TextLayer)?.style ?: return
+        val layer = state.value.selectedLayer?.takeIf { it.kind == LayerKind.TEXT || it.kind == LayerKind.BUBBLE } ?: return
+        val current = layer.style ?: return
         val style = change(current)
         if (layer.locked) return explain(PhotoExplanation.LAYER_LOCKED)
+        if (layer.kind == LayerKind.BUBBLE) {
+            lastBubbleLook = lastBubbleLook.copy(style = style)
+            if (style != current) editLayer(edit, font = font) { it.setBubbleStyle(layer.id, style) }
+            return
+        }
         lastStyle = style
         if (style == current) return
         editLayer(edit, font = font) { it.setTextLayerStyle(layer.id, style) }
+    }
+
+    // Bubbles (spec P2-02 → Bubbles) --------------------------------------------------------------------------------
+
+    private var lastBubbleLook = BubbleLook.Default
+
+    /** The Add bubble tool, or a tap on the bubble slot's hint: typing a new bubble at the first free landing slot (or in [slot]), in the last bubble look. */
+    private fun startNewBubble(slot: FormatSlot? = null) {
+        val project = currentProject() ?: return
+        if (state.value.textEntry != null) return
+        val transform = Transform(centerX = 0.5f, centerY = slot?.centerY ?: project.bubbleLandingCenterY())
+        entryText = ""
+        updateState {
+            it.copy(
+                textEntry = TextEntryUi(nextEntrySerial++, itemId = null, initialText = "", lastBubbleLook.style, transform),
+                bubbleEntry = BubbleEntryUi(lastBubbleLook.shape, lastBubbleLook.fill),
+                panel = null, canvasPanel = null,
+            )
+        }
+    }
+
+    // A blank new bubble adds nothing; its body is measured for a thought bubble's longer default tail.
+    private fun addNewBubble(text: String, entry: TextEntryUi, look: BubbleEntryUi) {
+        if (text.isBlank()) return
+        val canvas = currentProject()?.canvas ?: return
+        val size = canvas.size()
+        val block = measureCaption(text, entry.style, size.widthPx, size.heightPx, CaptionLook.Bubble)
+        val body = bubbleBodySize(block.widthPx, block.heightPx, size)
+        val bubbleLook = BubbleLook(look.shape, look.fill, entry.style)
+        val newId = Uuid.random().toString()
+        if (!commit(PhotoEdit.ADD_BUBBLE) { it.addBubbleLayer(text, bubbleLook, newId, body) }) return
+        lastBubbleLook = bubbleLook
+        select(newId)
+        showToast(PhotoToastMessage.BubbleAdded, spokenOnly = true)
+    }
+
+    private fun restyleBubble(edit: PhotoEdit, change: (Project, String) -> LayerEdit) {
+        val layer = state.value.selectedLayer?.takeIf { it.kind == LayerKind.BUBBLE } ?: return
+        if (layer.locked) return explain(PhotoExplanation.LAYER_LOCKED)
+        if (editLayer(edit) { change(it, layer.id) }) {
+            val bubble = currentProject()?.layer(layer.id) as? BubbleLayer ?: return
+            lastBubbleLook = lastBubbleLook.copy(shape = bubble.shape, fill = bubble.fill)
+        }
+    }
+
+    // The tail handle's release: one "Tail" step.
+    private fun moveTail(layerId: String, tailX: Float, tailY: Float) {
+        editLayer(PhotoEdit.BUBBLE_TAIL) { it.setBubbleTail(layerId, tailX, tailY) }
+        updateState { it.copy(gestureEndCount = it.gestureEndCount + 1, heldTail = null) }
+    }
+
+    /** One Tail arrow tap, or a held arrow's release: the tip moves 1% of the canvas per step, on screen; one step, or an explanation at the limit. */
+    private fun stepTail(layerId: String, step: PositionStep, repeats: Int) {
+        val layer = layerOf(layerId)?.takeIf { it.bubble != null } ?: return
+        if (layer.locked) return explain(PhotoExplanation.LAYER_LOCKED)
+        val tip = tailAfter(layer, step, repeats)
+        updateState { it.copy(heldTail = null) }
+        val bubble = layer.bubble ?: return
+        if (tip == null || (tip.x == bubble.tailX && tip.y == bubble.tailY)) return explain(PhotoExplanation.LAYER_EDGE)
+        editLayer(PhotoEdit.BUBBLE_TAIL) { it.setBubbleTail(layerId, tip.x, tip.y) }
+    }
+
+    private fun holdTail(layerId: String, step: PositionStep, repeats: Int) {
+        val layer = layerOf(layerId)?.takeUnless { it.locked } ?: return
+        val tip = tailAfter(layer, step, repeats) ?: return
+        updateState { it.copy(heldTail = HeldTail(layerId, tip.x, tip.y)) }
+    }
+
+    private fun resetTail(layerId: String) {
+        val layer = layerOf(layerId)?.takeIf { it.bubble != null } ?: return
+        if (layer.locked) return explain(PhotoExplanation.LAYER_LOCKED)
+        val body = layer.bubble?.let { BoxSize(it.bodyWidthPx, it.bodyHeightPx) }
+        editLayer(PhotoEdit.BUBBLE_TAIL) { it.resetBubbleTail(layerId, body) }
+    }
+
+    // The tip after [repeats] steps of [step] in screen directions: the canvas-space move is turned back into the bubble's own axes.
+    private fun tailAfter(layer: SceneLayerUi, step: PositionStep, repeats: Int): BubblePoint? {
+        val bubble = layer.bubble ?: return null
+        val canvas = currentProject()?.canvas ?: return null
+        val unitX = when (step) { PositionStep.MOVE_LEFT -> -1f; PositionStep.MOVE_RIGHT -> 1f; else -> 0f }
+        val unitY = when (step) { PositionStep.MOVE_UP -> -1f; PositionStep.MOVE_DOWN -> 1f; else -> 0f }
+        if (unitX == 0f && unitY == 0f) return null
+        val dx = unitX * repeats * PhotoFormatCatalog.TAIL_STEP_OF_CANVAS * canvas.widthPx
+        val dy = unitY * repeats * PhotoFormatCatalog.TAIL_STEP_OF_CANVAS * canvas.heightPx
+        val radians = -layer.transform.rotationDegrees * (kotlin.math.PI.toFloat() / 180f)
+        val scale = layer.transform.scale
+        val localX = (dx * kotlin.math.cos(radians) - dy * kotlin.math.sin(radians)) / scale
+        val localY = (dx * kotlin.math.sin(radians) + dy * kotlin.math.cos(radians)) / scale
+        if (bubble.bodyWidthPx <= 0f || bubble.bodyHeightPx <= 0f) return null
+        return clampedTail(bubble.tailX + localX / bubble.bodyWidthPx, bubble.tailY + localY / bubble.bodyHeightPx)
     }
 
     // Meme formats (spec P2-02) ------------------------------------------------------------------------------------
@@ -463,6 +627,102 @@ class PhotoEditorViewModel(
         if (photo.widthPx <= 0 || photo.heightPx <= 0) return false
         val placedWidth = photo.widthPx * minOf(area.width / photo.widthPx, area.height / photo.heightPx)
         return placedWidth < area.width * (1f - PhotoCatalog.PRESET_TOLERANCE)
+    }
+
+    // Panels (spec P2-02 → Panels) ----------------------------------------------------------------------------------
+
+    private fun panelsOf(project: Project?): PanelsFormat? = project?.photo?.format as? PanelsFormat
+
+    // An empty (or missing) cell opens the picker; a filled one is selected, and a layer or divider selection goes.
+    private fun tapCell(index: Int) {
+        val panels = panelsOf(currentProject()) ?: return
+        val cell = panels.cells.getOrNull(index) ?: return
+        if (cell.source == null || index in state.value.missingCells) return requestPick(PhotoPickRequest.Cell(index))
+        updateState { it.copy(selectedCell = index, selectedDivider = null, selectedLayerId = null, panel = null) }
+    }
+
+    private fun selectDivider(index: Int) = updateState { it.copy(selectedDivider = index, selectedCell = null, selectedLayerId = null, panel = PhotoPanel.DIVIDER) }
+
+    private fun removeCell() {
+        val index = state.value.selectedCell ?: return
+        if (commit(PhotoEdit.REMOVE_CELL_PHOTO) { it.removeCellPhoto(index) }) updateState { it.copy(selectedCell = null, panel = null) }
+    }
+
+    // A count or family tap: one "Layout" step; photos keep their numbers, a lower count drops the last ones (toast, Undo brings them back).
+    private fun setPanelsLayoutTo(count: Int?, family: PanelFamily?) {
+        val project = currentProject() ?: return
+        val panels = panelsOf(project) ?: return
+        val change = project.setPanelsLayout(count ?: panels.spec()?.cellCount ?: PanelLayouts.default.cellCount, family ?: panels.family())
+        if (!commit(PhotoEdit.PANELS_LAYOUT) { change.project }) return
+        if (change.droppedPhotos) showToast(PhotoToastMessage.PanelPhotosDropped)
+    }
+
+    private fun cellRectOf(project: Project, index: Int) = panelsOf(project)?.geometry(project.canvas.size())?.cells?.getOrNull(index)
+
+    // A pan or pinch release, or a Position step: one "Panel photo" step with the view kept covering the cell.
+    private fun commitCellView(index: Int, zoom: Float, centerX: Float, centerY: Float, edit: PhotoEdit): Boolean {
+        val project = currentProject() ?: return false
+        val cell = panelsOf(project)?.cells?.getOrNull(index) ?: return false
+        val rect = cellRectOf(project, index)
+        val photo = cell.source?.pixelSize
+        var view = cell.copy(zoom = zoom, centerX = centerX, centerY = centerY)
+        if (rect != null && photo != null) view = view.clampedToCover(rect, photo)
+        updateState { it.copy(heldFormat = null, gestureEndCount = it.gestureEndCount + 1) }
+        return commit(edit) { it.setCellView(index, view.zoom, view.centerX, view.centerY) }
+    }
+
+    // The cell's Position panel: Size on the zoom ladder, Move in 1% of the cell, Center. Held arrows show the result until the release.
+    private fun stepCell(index: Int, step: PositionStep, repeats: Int, hold: Boolean) {
+        val project = currentProject() ?: return
+        val panels = panelsOf(project) ?: return
+        val cell = panels.cells.getOrNull(index)?.takeIf { it.source != null } ?: return
+        val rect = cellRectOf(project, index) ?: return
+        val photo = cell.source?.pixelSize
+        val ladder = SizeLadder(PhotoFormatCatalog.CELL_ZOOM_STEPS)
+        var view = cell
+        when (step) {
+            PositionStep.SMALLER -> view = cell.copy(zoom = ladder.below(cell.zoom) ?: return explain(PhotoExplanation.SIZE_SMALLEST))
+            PositionStep.BIGGER -> view = cell.copy(zoom = ladder.above(cell.zoom) ?: return explain(PhotoExplanation.SIZE_BIGGEST))
+            PositionStep.CENTER -> view = cell.copy(centerX = 0.5f, centerY = 0.5f)
+            PositionStep.MOVE_LEFT, PositionStep.MOVE_RIGHT, PositionStep.MOVE_UP, PositionStep.MOVE_DOWN -> {
+                if (photo == null) return
+                val picture = cell.pictureRect(rect, photo)
+                val unit = PhotoFormatCatalog.CELL_MOVE_STEP_OF_CELL * repeats
+                // The picture moves the way the arrow points, so its center point moves the other way.
+                view = when (step) {
+                    PositionStep.MOVE_LEFT -> cell.copy(centerX = cell.centerX + unit * rect.width / picture.width)
+                    PositionStep.MOVE_RIGHT -> cell.copy(centerX = cell.centerX - unit * rect.width / picture.width)
+                    PositionStep.MOVE_UP -> cell.copy(centerY = cell.centerY + unit * rect.height / picture.height)
+                    else -> cell.copy(centerY = cell.centerY - unit * rect.height / picture.height)
+                }
+            }
+            PositionStep.ROTATE_LEFT, PositionStep.ROTATE_RIGHT -> return
+        }
+        if (photo != null) view = view.clampedToCover(rect, photo)
+        if (hold) {
+            val shown = panels.copy(cells = panels.cells.mapIndexed { i, c -> if (i == index) view else c })
+            return updateState { it.copy(heldFormat = shown) }
+        }
+        updateState { it.copy(heldFormat = null) }
+        if (view == cell) return explain(PhotoExplanation.LAYER_EDGE)
+        commit(PhotoEdit.PANEL_PHOTO_POSITION) { it.setCellView(index, view.zoom, view.centerX, view.centerY) }
+    }
+
+    private fun stepDivider(index: Int, direction: Int, repeats: Int, hold: Boolean) {
+        val project = currentProject() ?: return
+        val panels = panelsOf(project) ?: return
+        val divider = panels.geometry(project.canvas.size())?.dividers?.firstOrNull { it.index == index } ?: return
+        val moved = panels.withDivider(project.canvas.size(), index, divider.position + direction * repeats * PhotoFormatCatalog.DIVIDER_STEP_OF_EXTENT)
+        if (hold) return updateState { it.copy(heldFormat = moved) }
+        updateState { it.copy(heldFormat = null) }
+        if (moved == panels) return explain(PhotoExplanation.LAYER_EDGE)
+        commit(PhotoEdit.PANELS_DIVIDER) { it.setPanelsDivider(index, divider.position + direction * repeats * PhotoFormatCatalog.DIVIDER_STEP_OF_EXTENT) }
+    }
+
+    private fun evenDivider(index: Int) {
+        val project = currentProject() ?: return
+        val divider = panelsOf(project)?.geometry(project.canvas.size())?.dividers?.firstOrNull { it.index == index } ?: return
+        commit(PhotoEdit.PANELS_DIVIDER) { it.setPanelsDivider(index, divider.even) }
     }
 
     // Panels and the canvas ---------------------------------------------------------------------------------------
@@ -565,6 +825,7 @@ class PhotoEditorViewModel(
             return when (request) {
                 PhotoPickRequest.Background -> landBackground(added.firstOrNull { it.kind == MediaKind.IMAGE })
                 PhotoPickRequest.AddLayer -> landLayer(added.firstOrNull { it.kind == MediaKind.IMAGE })
+                is PhotoPickRequest.Cell -> landCell(request.index, added.firstOrNull { it.kind == MediaKind.IMAGE })
             }
         }
 
@@ -574,6 +835,14 @@ class PhotoEditorViewModel(
             val newId = Uuid.random().toString()
             if (!commit(PhotoEdit.ADD_PHOTO) { it.addImageLayer(photo, newId) }) return LandingResult.Declined
             select(newId)
+            return LandingResult.Landed
+        }
+
+        // The photo goes into the cell (a pick or Replace), centered at zoom 100%, and the cell is selected.
+        private fun landCell(index: Int, photo: MediaRef?): LandingResult {
+            if (photo == null) return LandingResult.Declined
+            if (!commit(PhotoEdit.ADD_CELL_PHOTO) { it.setCellPhoto(index, photo) }) return LandingResult.Declined
+            updateState { it.copy(selectedCell = index, selectedDivider = null, selectedLayerId = null, missingCells = (it.missingCells - index).toImmutableSet()) }
             return LandingResult.Landed
         }
 
@@ -589,8 +858,9 @@ class PhotoEditorViewModel(
                 val spoken = when (request) {
                     PhotoPickRequest.Background -> PhotoToastMessage.BackgroundImageSet
                     PhotoPickRequest.AddLayer -> PhotoToastMessage.LayerAdded
+                    is PhotoPickRequest.Cell -> null
                 }
-                showToast(spoken, spokenOnly = true)
+                if (spoken != null) showToast(spoken, spokenOnly = true)
             }
         }
 
@@ -644,7 +914,7 @@ class PhotoEditorViewModel(
             // Typing commits and the keyboard closes first (spec P2-03 → Typing → back order).
             current.textEntry != null -> commitEntry()
             current.panel != null -> updateState { it.copy(panel = null, canvasPanel = null) }
-            current.selectedLayerId != null -> select(null)
+            current.selectedLayerId != null || current.selectedCell != null || current.selectedDivider != null -> select(null)
             else -> requestClose()
         }
     }
@@ -666,9 +936,11 @@ class PhotoEditorViewModel(
 
     private fun showMissing(paths: Set<String>) {
         showMissingBackground(paths)
+        val cells = panelsOf(currentProject())?.cells?.withIndex()?.filter { it.value.source?.cachedCopyPath in paths }?.map { it.index }.orEmpty()
+        if (cells.isNotEmpty()) updateState { it.copy(missingCells = (it.missingCells + cells).toImmutableSet()) }
         val layerIds = state.value.layers.filter { it.path in paths }.map { it.id }
-        if (layerIds.isEmpty()) return
-        updateState { it.copy(missingLayerIds = (it.missingLayerIds + layerIds).toImmutableSet()) }
+        if (layerIds.isEmpty() && cells.isEmpty()) return
+        if (layerIds.isNotEmpty()) updateState { it.copy(missingLayerIds = (it.missingLayerIds + layerIds).toImmutableSet()) }
         if (!missingMediaShown) {
             missingMediaShown = true
             showToast(PhotoToastMessage.MissingMedia)
@@ -751,8 +1023,10 @@ class PhotoEditorViewModel(
 
     private val PhotoPanel.needsSelection: Boolean get() = this == PhotoPanel.OPACITY || this == PhotoPanel.POSITION || this == PhotoPanel.STYLE
 
+    private val PhotoPanel.isPanelsPanel: Boolean get() = this == PhotoPanel.DIVIDER || this == PhotoPanel.CELL_POSITION
+
     // Text keeps P1-10's size ladder (25 to 500%); images and stickers the wider one (10 to 500%).
-    private fun ladderOf(layer: SceneLayerUi): SizeLadder = if (layer.kind == LayerKind.TEXT) TEXT_SIZE_LADDER else IMAGE_LADDER
+    private fun ladderOf(layer: SceneLayerUi): SizeLadder = if (layer.kind == LayerKind.TEXT || layer.kind == LayerKind.BUBBLE) TEXT_SIZE_LADDER else IMAGE_LADDER
 
     private companion object {
         const val PERCENT = 100

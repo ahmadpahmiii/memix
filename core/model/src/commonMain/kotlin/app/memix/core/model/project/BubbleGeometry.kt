@@ -78,20 +78,53 @@ fun bubbleTail(shape: BubbleShape, body: BoxSize, tip: BubblePoint): BubbleTail?
 }
 
 /**
- * A thought bubble's trail: three circles (radii [PhotoFormatCatalog.THOUGHT_DOT_RADII_OF_SHORT_SIDE] of S) spaced evenly from
- * the body's boundary to the tip, the smallest on the tip. Empty when the tip is inside the body.
+ * A thought bubble's trail: circles (radii [PhotoFormatCatalog.THOUGHT_DOT_RADII_OF_SHORT_SIDE] of S) spaced evenly from the
+ * body's boundary to the tip, the smallest on the tip. The chain scales down with the tail's reach (the boundary to the tip, over
+ * [PhotoFormatCatalog.THOUGHT_FULL_REACH_OF_SHORT_SIDE] of S, never below [PhotoFormatCatalog.THOUGHT_MIN_SCALE] of the radii);
+ * a reach too short for three dots at that floor draws two, then one (spec review P2-02, 5 Nov). Empty when the tip is inside the body.
  */
 fun thoughtDots(body: BoxSize, tip: BubblePoint, canvas: PixelSize): List<BubbleDot> {
     val tail = bubbleTail(BubbleShape.THOUGHT, body, tip) ?: return emptyList()
     val s = shortSideOf(canvas)
-    val radii = PhotoFormatCatalog.THOUGHT_DOT_RADII_OF_SHORT_SIDE
+    val reach = hypot(tip.x - tail.boundary.x, tip.y - tail.boundary.y)
+    val share = reach / (PhotoFormatCatalog.THOUGHT_FULL_REACH_OF_SHORT_SIDE * s)
+    val count = when {
+        share >= PhotoFormatCatalog.THOUGHT_MIN_SCALE -> PhotoFormatCatalog.THOUGHT_DOT_RADII_OF_SHORT_SIDE.size
+        share >= PhotoFormatCatalog.THOUGHT_TWO_DOTS_FROM -> 2
+        else -> 1
+    }
+    val scale = share.coerceIn(PhotoFormatCatalog.THOUGHT_MIN_SCALE, 1f)
+    val radii = PhotoFormatCatalog.THOUGHT_DOT_RADII_OF_SHORT_SIDE.take(count)
     return radii.mapIndexed { index, radius ->
         val along = (index + 1).toFloat() / radii.size
         BubbleDot(
             BubblePoint(tail.boundary.x + (tip.x - tail.boundary.x) * along, tail.boundary.y + (tip.y - tail.boundary.y) * along),
-            radius * s,
+            radius * s * scale,
         )
     }
+}
+
+/**
+ * The default tip of a thought bubble (spec review P2-02: a reach of [PhotoFormatCatalog.THOUGHT_DEFAULT_REACH_OF_SHORT_SIDE] of S
+ * from the body's edge), toward the canvas center like the other shapes' default, clamped so the tip stays on the canvas
+ * (the bubble is centered at ([centerX], [centerY]) in canvas fractions) and within the tail limit. In body widths and heights.
+ */
+fun defaultThoughtTip(body: BoxSize, centerX: Float, centerY: Float, canvas: PixelSize): BubblePoint {
+    val toward = defaultTail(centerY)
+    val dirX = toward.x * body.width
+    val dirY = toward.y * body.height
+    val length = hypot(dirX, dirY)
+    val halfWidth = body.width / 2f
+    val halfHeight = body.height / 2f
+    val edge = 1f / sqrt((dirX / length / halfWidth) * (dirX / length / halfWidth) + (dirY / length / halfHeight) * (dirY / length / halfHeight))
+    var distance = edge + PhotoFormatCatalog.THOUGHT_DEFAULT_REACH_OF_SHORT_SIDE * shortSideOf(canvas)
+    // Keep the tip on the canvas: shorten the reach until it is.
+    val originX = centerX * canvas.widthPx
+    val originY = centerY * canvas.heightPx
+    val ux = dirX / length
+    val uy = dirY / length
+    while (distance > edge && (originX + ux * distance !in 0f..canvas.widthPx.toFloat() || originY + uy * distance !in 0f..canvas.heightPx.toFloat())) distance -= canvas.widthPx / 100f
+    return clampedTail(ux * distance / body.width, uy * distance / body.height)
 }
 
 /** The whole drawn box of a bubble: the body, its tail or trail, and half the stroke. */

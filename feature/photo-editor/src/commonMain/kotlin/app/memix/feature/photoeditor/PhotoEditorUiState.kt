@@ -23,6 +23,7 @@ import app.memix.core.model.project.ClassicFormat
 import app.memix.core.model.project.DemotivationalFormat
 import app.memix.core.model.project.FormatSlot
 import app.memix.core.model.project.BubblesFormat
+import app.memix.core.model.project.PanelFamily
 import app.memix.core.model.project.PanelLayouts
 import app.memix.core.model.project.PanelsFormat
 import app.memix.core.model.project.PhotoFormat
@@ -88,6 +89,18 @@ data class PhotoEditorUiState(
     val captionMeasure: PhotoCaptionMeasure? = null,
     /** Typing a text (spec P2-03 → Typing); while set, Undo, Redo and the ratio pill are inert and the tool bar is the entry bar. */
     val textEntry: TextEntryUi? = null,
+    /** Typing a new bubble: its look (the entry itself is [textEntry]); null while typing a text or editing. */
+    val bubbleEntry: BubbleEntryUi? = null,
+    /** The selected Panels cell (0 is cell 1); a cell and a layer are never selected together. */
+    val selectedCell: Int? = null,
+    /** The selected Panels divider: its gutter shows in the selection line and the Divider panel is open. */
+    val selectedDivider: Int? = null,
+    /** Panels cells whose photo file is missing or can't be decoded. */
+    val missingCells: ImmutableSet<Int> = persistentSetOf(),
+    /** The format a held Panels arrow (a cell's view, a divider) shows until the release commits; null for the project's own. */
+    val heldFormat: PhotoFormat? = null,
+    /** A bubble's tail a held Tail arrow has moved but not committed yet; the stage draws it there until the release. */
+    val heldTail: HeldTail? = null,
     /** The picker the app should open now; the app opens it and sends [PhotoEditorIntent.PickerOpened] (P2-12). */
     val pickRequest: PhotoPickRequest? = null,
     /** The import sheet's state while a picked photo copies; read only by the sheet. Null until the editor starts. */
@@ -118,7 +131,18 @@ sealed interface PhotoPickRequest {
 
     /** One photo as a new top layer (P2-13). */
     data object AddLayer : PhotoPickRequest
+
+    /** One photo for cell [index] of a Panels format (P2-02): an empty cell's pick tile, or Replace. */
+    data class Cell(val index: Int) : PhotoPickRequest
 }
+
+/** The look a new bubble being typed has (shape, fill); its tail is the default for where it lands. */
+@Immutable
+data class BubbleEntryUi(val shape: BubbleShape, val fill: ArgbColor)
+
+/** [layerId]'s tail tip (body widths and heights from its center) while a Tail arrow is held. */
+@Immutable
+data class HeldTail(val layerId: String, val tailX: Float, val tailY: Float)
 
 /** [layerId] shown at [transform] while a Position arrow is held. */
 @Immutable
@@ -160,7 +184,11 @@ data class SceneLayerUi(
     val bubble: BubbleUi? = null,
     override val boxOffsetXPx: Float = 0f,
     override val boxOffsetYPx: Float = 0f,
-) : GestureTarget
+) : GestureTarget {
+    // A bubble's scale-and-rotate handle keeps clear of its tail tip (the tail handle's place).
+    override val handleAvoidXPx: Float? get() = bubble?.let { it.tailX * it.bodyWidthPx }
+    override val handleAvoidYPx: Float? get() = bubble?.let { it.tailY * it.bodyHeightPx }
+}
 
 /** A bubble as the editor handles it: its look, its body at scale 1 and its tail tip (body widths and heights from the center). */
 @Immutable
@@ -217,7 +245,7 @@ internal fun Layer.toUi(canvasSize: PixelSize, measure: (text: String, style: Ca
 }
 
 /** The tool panels over the tool bar. They never stack: opening one closes another. */
-enum class PhotoPanel { LAYERS, OPACITY, POSITION, CANVAS, STYLE, FORMATS }
+enum class PhotoPanel { LAYERS, OPACITY, POSITION, CANVAS, STYLE, FORMATS, LAYOUT, DIVIDER, CELL_POSITION }
 
 /** The six tiles of the Formats panel, in the spec's order; [PLAIN] is no format (null in the model). */
 enum class FormatChoice(val edit: PhotoEdit) {
@@ -288,6 +316,16 @@ enum class PhotoEdit(val tool: EditorTool) {
     FORMAT_PANELS(EditorTool.FORMAT_PANELS),
     FORMAT_DEMOTIVATIONAL(EditorTool.FORMAT_DEMOTIVATIONAL),
     FORMAT_BUBBLES(EditorTool.FORMAT_BUBBLES),
+    ADD_BUBBLE(EditorTool.ADD_BUBBLE),
+    BUBBLE_SHAPE(EditorTool.BUBBLE_SHAPE),
+    BUBBLE_FILL(EditorTool.BUBBLE_FILL),
+    BUBBLE_TAIL(EditorTool.BUBBLE_TAIL),
+    PANELS_LAYOUT(EditorTool.PANELS_LAYOUT),
+    PANELS_DIVIDER(EditorTool.PANELS_DIVIDER),
+    ADD_CELL_PHOTO(EditorTool.ADD_CELL_PHOTO),
+    REMOVE_CELL_PHOTO(EditorTool.REMOVE_CELL_PHOTO),
+    PANEL_PHOTO_TRANSFORM(EditorTool.CELL_TRANSFORM),
+    PANEL_PHOTO_POSITION(EditorTool.CELL_POSITION),
     ;
 
     companion object {
@@ -361,6 +399,9 @@ sealed interface PhotoToastMessage {
 
     /** Spoken only, after a new text landed: "Text added". */
     data object TextAdded : PhotoToastMessage
+
+    /** Spoken only, after a new bubble landed: "Bubble added". */
+    data object BubbleAdded : PhotoToastMessage
 
     /** Spoken only, after a format tile: "Format: Caption bar". */
     data class FormatSet(val choice: FormatChoice) : PhotoToastMessage
@@ -470,7 +511,61 @@ sealed interface PhotoEditorIntent {
     /** A tile of the Formats panel; the active tile does nothing. */
     data class SetFormat(val choice: FormatChoice) : PhotoEditorIntent
 
-    /** A tap on an empty slot's hint: typing a new text placed in that slot. */
+    /** The Add bubble tool: typing a new bubble at the first free landing slot. */
+    data object AddBubble : PhotoEditorIntent
+
+    data class SetBubbleShape(val shape: BubbleShape) : PhotoEditorIntent
+
+    data class SetBubbleFill(val argb: Long) : PhotoEditorIntent
+
+    /** The tail handle was released at ([tailX], [tailY]) body widths and heights from the center. */
+    data class TailMoved(val layerId: String, val tailX: Float, val tailY: Float) : PhotoEditorIntent
+
+    /** A Tail arrow tapped or released after [repeats] steps; [step] is one of the four Move steps. */
+    data class TailStepped(val layerId: String, val step: PositionStep, val repeats: Int) : PhotoEditorIntent
+
+    data class TailStepHeld(val layerId: String, val step: PositionStep, val repeats: Int) : PhotoEditorIntent
+
+    data class ResetTail(val layerId: String) : PhotoEditorIntent
+
+    // Panels (P2-02).
+    /** A tap on a cell: an empty (or missing) one opens the picker, a filled one is selected. */
+    data class TapCell(val index: Int) : PhotoEditorIntent
+
+    /** Replace on the selected-cell bar. */
+    data object ReplaceCell : PhotoEditorIntent
+
+    /** Remove on the selected-cell bar: the photo leaves the cell, one step. */
+    data object RemoveCell : PhotoEditorIntent
+
+    /** A cell's pan or pinch released at ([zoom], [centerX], [centerY]). */
+    data class CellViewReleased(val index: Int, val zoom: Float, val centerX: Float, val centerY: Float) : PhotoEditorIntent
+
+    data class CellStepped(val index: Int, val step: PositionStep, val repeats: Int) : PhotoEditorIntent
+
+    data class CellStepHeld(val index: Int, val step: PositionStep, val repeats: Int) : PhotoEditorIntent
+
+    /** A tap on a divider's handle: it is selected and the Divider panel opens. */
+    data class SelectDivider(val index: Int) : PhotoEditorIntent
+
+    /** A divider's drag released at [position], a share of its split's extent. */
+    data class DividerMoved(val index: Int, val position: Float) : PhotoEditorIntent
+
+    /** A Divider-panel arrow: [direction] is -1 (left or up) or 1 (right or down), [repeats] steps of 2% of the extent. */
+    data class DividerStepped(val index: Int, val direction: Int, val repeats: Int) : PhotoEditorIntent
+
+    data class DividerStepHeld(val index: Int, val direction: Int, val repeats: Int) : PhotoEditorIntent
+
+    /** The Divider panel's Even button. */
+    data class DividerEven(val index: Int) : PhotoEditorIntent
+
+    data class SetPanelCount(val count: Int) : PhotoEditorIntent
+
+    data class SetPanelFamily(val family: PanelFamily) : PhotoEditorIntent
+
+    data object MakePanelsEven : PhotoEditorIntent
+
+    /** A tap on an empty slot's hint: typing a new text (or bubble) placed in that slot. */
     data class TapSlot(val slot: FormatSlot) : PhotoEditorIntent
 
     // The background picture (P2-12).
@@ -505,6 +600,6 @@ sealed interface PhotoEditorIntent {
 @Stable
 class PhotoCaptionMeasure internal constructor(private val measure: MeasureCaptionUseCase) {
     /** [text] in [style] at scale 1, in canvas pixels on a canvas [canvasWidthPx] x [canvasHeightPx]. */
-    fun blockOf(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int): CaptionBlockSize =
-        measure(text, style, canvasWidthPx, canvasHeightPx)
+    fun blockOf(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook = CaptionLook.Text): CaptionBlockSize =
+        measure(text, style, canvasWidthPx, canvasHeightPx, look)
 }

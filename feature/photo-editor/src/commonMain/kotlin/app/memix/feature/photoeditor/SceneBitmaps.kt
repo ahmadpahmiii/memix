@@ -8,7 +8,12 @@ import app.memix.core.designsystem.MemixMotion
 import app.memix.core.model.project.BoxSize
 import app.memix.core.model.project.Canvas
 import app.memix.core.model.project.CanvasBackground
+import app.memix.core.model.project.PanelsFormat
 import app.memix.core.model.project.PhotoCatalog
+import app.memix.core.model.project.PhotoFormat
+import app.memix.core.model.project.PixelSize
+import app.memix.core.model.project.geometry
+import app.memix.core.model.project.pictureRect
 import app.memix.core.model.project.coveredImageSize
 import app.memix.core.model.project.size
 import app.memix.core.ui.scene.SceneBitmap
@@ -115,7 +120,7 @@ internal class SceneBitmaps(private val source: SceneImageSource, private val sc
  * size. Layers whose box isn't known (no measured picture) are left out. A background picture counts at the size that
  * covers the canvas (P2-12).
  */
-internal fun neededLongSides(layers: List<SceneLayerUi>, canvas: Canvas, frameWidthPx: Float): Map<String, Int> {
+internal fun neededLongSides(layers: List<SceneLayerUi>, canvas: Canvas, frameWidthPx: Float, format: PhotoFormat? = null): Map<String, Int> {
     if (canvas.widthPx <= 0 || frameWidthPx <= 0f) return emptyMap()
     val pixelScale = frameWidthPx / canvas.widthPx
     val needed = HashMap<String, Int>()
@@ -125,6 +130,18 @@ internal fun neededLongSides(layers: List<SceneLayerUi>, canvas: Canvas, frameWi
         val covered = picture?.let { coveredImageSize(it, canvas.size()) } ?: BoxSize(canvas.widthPx.toFloat(), canvas.heightPx.toFloat())
         val drawn = max(covered.width, covered.height) * pixelScale
         needed[path] = min(drawn.roundToInt(), picture?.let { max(it.widthPx, it.heightPx) } ?: Int.MAX_VALUE)
+    }
+    // A Panels cell's photo is drawn to cover its cell times its zoom (spec P2-02): decoded at that size, never above the picture's own.
+    (format as? PanelsFormat)?.let { panels ->
+        val geometry = panels.geometry(PixelSize(canvas.widthPx, canvas.heightPx))
+        panels.cells.forEachIndexed { index, cell ->
+            val path = cell.source?.cachedCopyPath ?: return@forEachIndexed
+            val rect = geometry?.cells?.getOrNull(index) ?: return@forEachIndexed
+            val picture = cell.source?.pixelSize
+            val drawn = if (picture != null) cell.pictureRect(rect, picture).let { max(it.width, it.height) } else max(rect.width, rect.height) * cell.zoom
+            val capped = min((drawn * pixelScale).roundToInt(), picture?.let { max(it.widthPx, it.heightPx) } ?: Int.MAX_VALUE)
+            needed[path] = max(needed[path] ?: 0, capped)
+        }
     }
     for (layer in layers) {
         val path = layer.path ?: continue

@@ -45,6 +45,13 @@ interface GestureTarget {
     val boxOffsetXPx: Float get() = 0f
     val boxOffsetYPx: Float get() = 0f
 
+    /**
+     * A point in the layer's own axes at scale 1 (canvas pixels from its center) the scale-and-rotate handle keeps clear of: a
+     * bubble's tail tip, so the two handles never sit on each other. Null for every other layer.
+     */
+    val handleAvoidXPx: Float? get() = null
+    val handleAvoidYPx: Float? get() = null
+
     /** The scales a pinch or the handle can reach. */
     val scaleRange: ClosedFloatingPointRange<Float>
 
@@ -54,7 +61,7 @@ interface GestureTarget {
 
 /** [this] layer's box on the stage frame [frame], for a canvas [canvasWidthPx] wide. */
 fun GestureTarget.boxIn(frame: CanvasFrameRect, canvasWidthPx: Int, transform: Transform = this.transform): LayerBox =
-    LayerBox.of(boxWidthPx, boxHeightPx, transform, frame, canvasWidthPx, boxOffsetXPx, boxOffsetYPx)
+    LayerBox.of(boxWidthPx, boxHeightPx, transform, frame, canvasWidthPx, boxOffsetXPx, boxOffsetYPx, handleAvoidXPx, handleAvoidYPx)
 
 /** What a gesture on a layer is doing (spec P1-10 → On the preview). */
 enum class LayerGestureKind {
@@ -299,11 +306,18 @@ fun handleCenterOf(box: LayerBox, stageWidth: Float, stageHeight: Float, outset:
     val corners = listOf(box.corner(1, 1, outset), box.corner(1, -1, outset), box.corner(-1, 1, outset), box.corner(-1, -1, outset))
     val preferred = corners.first()
     fun onStage(point: Offset) = point.x in 0f..stageWidth && point.y in 0f..stageHeight
-    if (onStage(preferred)) return preferred
-    return corners.filter(::onStage).minByOrNull { (it - preferred).getDistance() } ?: preferred
+    // A point to keep clear of (a bubble's tail handle): the first corner, in the usual order, at least a handle's reach from it.
+    val avoid = box.avoid
+    fun clear(point: Offset) = avoid == null || (point - avoid).getDistance() >= HANDLE_CLEARANCE_PX
+    if (onStage(preferred) && clear(preferred)) return preferred
+    return corners.filter { onStage(it) && clear(it) }.minByOrNull { (it - preferred).getDistance() }
+        ?: corners.filter(::onStage).minByOrNull { (it - preferred).getDistance() } ?: preferred
 }
 
 private const val MIDDLE = 0.5f
 private const val QUARTER_TURN = 90f
 private const val ROTATION_SNAP_DEGREES = 4f
 private const val SCALE_SNAP = 0.03f
+
+// Two 48 dp handles: their centers stay at least this far apart (about 40 dp at 3x), so neither covers the other.
+private const val HANDLE_CLEARANCE_PX = 120f

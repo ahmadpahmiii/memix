@@ -79,7 +79,7 @@
     <string name="a11y_format_set">Format: %1$s</string>
     <string name="tool_panels_layout">Tata letak</string>
     <string name="panels_count">Jumlah panel</string>
-    <string name="panels_layout_label">Tata letak</string>
+    <string name="panels_layout_label">Susunan</string>
     <string name="panels_grid">Kisi</string>
     <string name="panels_columns">Berdampingan</string>
     <string name="panels_rows">Bertumpuk</string>
@@ -92,7 +92,7 @@
     <string name="a11y_panel_cell">Panel %1$d dari %2$d</string>
     <string name="a11y_panel_empty">Kosong. Ketuk dua kali untuk menambah foto.</string>
     <string name="panels_photo_dropped">Foto di panel yang dihapus hilang dari meme. Urungkan mengembalikannya.</string>
-    <string name="tool_add_bubble">Tambah balon</string>
+    <string name="tool_add_bubble">Balon</string>
     <string name="bubble_shape">Bentuk</string>
     <string name="bubble_speech">Ucapan</string>
     <string name="bubble_round">Bulat</string>
@@ -114,4 +114,5 @@
     <string name="edit_bubble_shape">Bentuk</string>
     <string name="edit_bubble_fill">Isian</string>
     <string name="edit_bubble_tail">Ekor</string>
+    <string name="a11y_format_slot_bubble">%1$s, kosong. Ketuk untuk menambah balon.</string>
 </resources>

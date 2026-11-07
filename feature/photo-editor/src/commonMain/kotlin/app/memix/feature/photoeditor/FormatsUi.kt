@@ -55,6 +55,7 @@ import memix.core.ui.generated.resources.Res as UiRes
 import memix.core.ui.generated.resources.panel_done
 import memix.feature.photo_editor.generated.resources.Res
 import memix.feature.photo_editor.generated.resources.a11y_format_slot
+import memix.feature.photo_editor.generated.resources.a11y_format_slot_bubble
 import memix.feature.photo_editor.generated.resources.format_caption_bar
 import memix.feature.photo_editor.generated.resources.format_classic
 import memix.feature.photo_editor.generated.resources.format_demotivational
@@ -80,7 +81,7 @@ import org.jetbrains.compose.resources.stringResource
  */
 
 /** The formats this build can make, in the spec's tile order. A tile never shows before its format works (no dead controls). */
-internal val BuiltFormats: List<FormatChoice> = listOf(FormatChoice.PLAIN, FormatChoice.CLASSIC, FormatChoice.CAPTION_BAR, FormatChoice.DEMOTIVATIONAL)
+internal val BuiltFormats: List<FormatChoice> = listOf(FormatChoice.PLAIN, FormatChoice.CLASSIC, FormatChoice.CAPTION_BAR, FormatChoice.PANELS, FormatChoice.DEMOTIVATIONAL, FormatChoice.BUBBLES)
 
 private fun FormatChoice.label(): StringResource = when (this) {
     FormatChoice.PLAIN -> Res.string.format_plain
@@ -232,7 +233,7 @@ internal fun BoxScope.SlotHints(state: PhotoEditorUiState, scene: SceneUi, stage
 private fun SlotHint(slot: FormatSlot, onPoster: Boolean, onIntent: (PhotoEditorIntent) -> Unit) {
     val position = stringResource(slotName(slot.id))
     val label = stringResource(if (slot.id == SlotId.BUBBLE) Res.string.format_slot_bubble_hint else Res.string.format_slot_hint)
-    val spoken = stringResource(Res.string.a11y_format_slot, position)
+    val spoken = stringResource(if (slot.id == SlotId.BUBBLE) Res.string.a11y_format_slot_bubble else Res.string.a11y_format_slot, position)
     Column(
         Modifier
             .clip(MemixShapes.radiusMd)
@@ -244,7 +245,7 @@ private fun SlotHint(slot: FormatSlot, onPoster: Boolean, onIntent: (PhotoEditor
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(label, MemixTheme.type.label, Modifier.padding(vertical = MemixSpacing.space3), color = MemixColors.text, textAlign = TextAlign.Center, maxLines = 2)
+        Text(label, MemixTheme.type.label, Modifier.padding(vertical = MemixSpacing.space3), color = MemixColors.text, textAlign = TextAlign.Center, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Visible)
     }
 }
 
@@ -254,7 +255,7 @@ private fun slotName(id: SlotId): StringResource = when (id) {
     SlotId.BAR -> Res.string.format_slot_bar
     SlotId.TITLE -> Res.string.format_slot_title
     SlotId.SUBTITLE -> Res.string.format_slot_subtitle
-    SlotId.BUBBLE -> Res.string.format_slot_bubble_hint
+    SlotId.BUBBLE -> Res.string.format_slot_top
 }
 
 private const val SLOT_HINT_MAX_OF_SHORT_SIDE = 0.9f

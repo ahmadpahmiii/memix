@@ -63,6 +63,7 @@ internal fun PhotoPanels(state: PhotoEditorUiState, live: PhotoLive, thumbnails:
                 shown,
                 onStep = { step, repeats -> onIntent(PhotoEditorIntent.PositionStepped(layer.id, step, repeats)) },
                 onHeld = { step, repeats -> onIntent(PhotoEditorIntent.PositionStepHeld(layer.id, step, repeats)) },
+                rowsBeforeCenter = { if (layer.bubble != null) TailRows(layer.id, onIntent) },
             )
         }
     }
@@ -75,8 +76,22 @@ internal fun PhotoPanels(state: PhotoEditorUiState, live: PhotoLive, thumbnails:
         }
     }
     // The shared Style panel (P1-10), as tall as its content up to 40% of the window (spec P2-03 → Style panel).
-    StylePanel(state.panel == PhotoPanel.STYLE && layer != null, layer?.style, styleActions, modifier, contentMaxHeight = maxHeight)
+    val bubble = layer?.bubble
+    StylePanel(
+        state.panel == PhotoPanel.STYLE && layer != null,
+        layer?.style,
+        styleActions,
+        modifier,
+        contentMaxHeight = maxHeight,
+        // A bubble's panel: Shape first, no Outline, Fill last (spec P2-02 → Bubbles).
+        showOutline = bubble == null,
+        rowsBefore = { if (bubble != null) BubbleShapeRow(bubble.shape) { onIntent(PhotoEditorIntent.SetBubbleShape(it)) } },
+        rowsAfter = { if (bubble != null) BubbleFillRow(bubble.fill) { onIntent(PhotoEditorIntent.SetBubbleFill(it)) } },
+    )
     FormatsPanel(state, maxHeight, onIntent, modifier)
+    LayoutPanel(state, maxHeight, onIntent, modifier)
+    DividerPanel(state, maxHeight, onIntent, modifier)
+    CellPositionPanel(state, maxHeight, onIntent, modifier)
     val canvas = state.canvas
     val canvasPanel = state.canvasPanel
     ToolPanel(state.panel == PhotoPanel.CANVAS && canvas != null && canvasPanel != null, stringResource(UiRes.string.canvas_title), done, close, modifier, contentMaxHeight = maxHeight) {

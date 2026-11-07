@@ -50,6 +50,7 @@ internal class DebugPicture(val fileName: String, val widthPx: Int, val heightPx
  *   stack): compare the screen, the render hook and the video export frame (spec P2-03 → Measured).
  * - `photo-format-classic`, `-caption-bar`, `-demotivational`, `-panels`, `-bubbles` (P2-02): a 4:3 photo canvas (1440 x 1080) in each format with real text
  *   (panels: a 2 x 2 grid, three cells filled; bubbles: one of each shape): render each at both sizes with `--ei memix.renderShortSide 1080|2160`.
+ * - `photo-panels-6` (P2-02): a 2 x 3 grid of six 12 MP cells for the speed bar (three 3 s divider drags under 5% janky frames; peak Graphics and Native Heap).
  * - `photo-stickers` (P2-03): a photo, one text and five stickers with transparent backgrounds: a 512 px square, a 3:1 (locked),
  *   a 1:3 (hidden), a 96 px tiny one and one whose file is gone.
  * - `photo-layers-10` also carries three text layers on top (Classic at the top, Bubbly at 250% and 30°, a Hindi line).
@@ -68,9 +69,10 @@ internal object PhotoCheckProjects {
     const val FORMAT_DEMOTIVATIONAL = "photo-format-demotivational"
     const val FORMAT_PANELS = "photo-format-panels"
     const val FORMAT_BUBBLES = "photo-format-bubbles"
+    const val PANELS_6 = "photo-panels-6"
     val NAMES = listOf(
         LAYERS_10, EMPTY, MISSING_MEDIA, BACKGROUND_IMAGE, BACKGROUND_MISSING, TEXT_CHECK, STICKERS,
-        FORMAT_CLASSIC, FORMAT_CAPTION_BAR, FORMAT_DEMOTIVATIONAL, FORMAT_PANELS, FORMAT_BUBBLES,
+        FORMAT_CLASSIC, FORMAT_CAPTION_BAR, FORMAT_DEMOTIVATIONAL, FORMAT_PANELS, FORMAT_BUBBLES, PANELS_6,
     )
 
     const val PICTURES_DIR = "${ExportCheckProject.MEDIA_DIR}/photo-scenes"
@@ -140,6 +142,7 @@ internal object PhotoCheckProjects {
             text("d-sub", "It compiled. Nobody asked how.", CaptionStyle("poppins", WHITE, null), Transform(0.5f, 0.84f, 0.45f)),
         )
         FORMAT_PANELS -> panelsScene()
+        PANELS_6 -> panels6()
         FORMAT_BUBBLES -> bubblesScene()
         BACKGROUND_IMAGE -> backgroundImage(BACKGROUND_IMAGE, missing = false)
         BACKGROUND_MISSING -> backgroundImage(BACKGROUND_MISSING, missing = true)
@@ -214,6 +217,14 @@ internal object PhotoCheckProjects {
         fun cell(picture: DebugPicture) = PanelCell(mediaOf(picture.fileName, PixelSize(picture.widthPx, picture.heightPx)))
         val panels = panelsFormatOf(PanelLayouts.of("grid-4")!!, listOf(cell(shapes[0]), cell(mid[0]), cell(mid[1])))
         return project(FORMAT_PANELS, canvas, emptyList()).let { it.copy(photo = PhotoScene(emptyList(), panels)) }
+    }
+
+    /** Six cells of 12 MP pictures in a 2 x 3 grid (the P2-02 speed bar: each cell decodes at the size it is drawn at, never six full decodes). */
+    private fun panels6(): Project {
+        val canvas = photoCanvasFor(PixelSize(shapes[0].widthPx, shapes[0].heightPx))
+        val twelveMegapixel = listOf(base) + big
+        val cells = twelveMegapixel.map { PanelCell(mediaOf(it.fileName, PixelSize(it.widthPx, it.heightPx))) }
+        return project(PANELS_6, canvas, emptyList()).let { it.copy(photo = PhotoScene(emptyList(), panelsFormatOf(PanelLayouts.of("grid-6")!!, cells))) }
     }
 
     /** One bubble of each shape over a photo. */

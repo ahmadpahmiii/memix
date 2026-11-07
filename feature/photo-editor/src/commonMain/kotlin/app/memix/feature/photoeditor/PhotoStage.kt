@@ -14,6 +14,15 @@ import app.memix.core.ui.text.TextEntryUi
 import app.memix.core.ui.scene.SceneCaptions
 import app.memix.core.ui.layers.LayerBox
 import app.memix.core.ui.layers.drawTwoToneFrame
+import app.memix.core.model.project.BubbleLayer
+import app.memix.core.model.project.BubbleShape
+import app.memix.core.model.project.Canvas
+import app.memix.core.model.project.CaptionLook
+import app.memix.core.model.project.PixelSize
+import app.memix.core.model.project.bubbleBodySize
+import app.memix.core.model.project.bubbleBox
+import app.memix.core.model.project.defaultTail
+import app.memix.core.model.project.defaultThoughtTip
 import app.memix.core.model.project.Layer
 import app.memix.core.model.project.TextLayer
 import app.memix.core.designsystem.MemixStroke
@@ -66,6 +75,11 @@ import app.memix.core.designsystem.MemixSize
 import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.MemixTheme
 import app.memix.core.designsystem.Text
+import app.memix.core.model.project.BubblePoint
+import app.memix.core.model.project.PanelCell
+import app.memix.core.model.project.PanelsFormat
+import app.memix.core.model.project.PhotoFormat
+import app.memix.core.model.project.dividerPositions
 import app.memix.core.model.project.Transform
 import app.memix.core.ui.editor.FrameEdge
 import app.memix.core.ui.layers.CanvasFrameRect
@@ -119,7 +133,16 @@ import org.jetbrains.compose.resources.stringResource
  * (spec P2-01 → Gestures).
  */
 @Stable
-internal class PhotoLive(private val stage: LayerStageState, private val held: State<HeldTransform?>) : SceneLive {
+internal class PhotoLive(
+    private val stage: LayerStageState,
+    private val held: State<HeldTransform?>,
+    private val heldTail: State<HeldTail?>,
+    private val format: State<PhotoFormat?>,
+    private val heldFormat: State<PhotoFormat?>,
+) : SceneLive {
+    private var cellLive by mutableStateOf<Pair<Int, PanelCell>?>(null)
+    private var dividerLive by mutableStateOf<Pair<Int, Float>?>(null)
+    private var tail by mutableStateOf<Pair<String, BubblePoint>?>(null)
     private var settled by mutableStateOf<Pair<String, Transform>?>(null)
     private var opacityLayerId by mutableStateOf<String?>(null)
     private var opacity by mutableFloatStateOf(1f)
@@ -137,8 +160,47 @@ internal class PhotoLive(private val stage: LayerStageState, private val held: S
         settled = layerId to transform
     }
 
+    /** A bubble's tail tip as the handle has it now (and after its release, until the project has it). */
+    fun setTail(layerId: String, point: BubblePoint) {
+        tail = layerId to point
+    }
+
+    fun settleTail(layerId: String, point: BubblePoint) = setTail(layerId, point)
+
+    /** A Panels cell's view as a finger has it now (a pan or pinch, and after its release until the project has it). */
+    fun setCell(index: Int, view: PanelCell) {
+        cellLive = index to view
+    }
+
+    /** A Panels divider as the handle has it now (and after its release until the project has it). */
+    fun setDivider(index: Int, position: Float) {
+        dividerLive = index to position
+    }
+
+    /** A cancelled divider drag. */
+    fun releasePanels() {
+        cellLive = null
+        dividerLive = null
+    }
+
+    override fun formatOf(): PhotoFormat? {
+        val base = format.value as? PanelsFormat ?: return null
+        var result: PanelsFormat = heldFormat.value as? PanelsFormat ?: base
+        cellLive?.let { (index, view) -> result = result.copy(cells = result.cells.mapIndexed { i, cell -> if (i == index) view else cell }) }
+        dividerLive?.let { (index, position) -> result = result.copy(dividers = result.dividerPositions().toMutableList().also { if (index in it.indices) it[index] = position }) }
+        return if (result == base) null else result
+    }
+
+    /** A cancelled tail drag. */
+    fun releaseTail() {
+        tail = null
+    }
+
     /** The project has caught up with the gesture, the held arrow or the slider. */
     fun release() {
+        tail = null
+        cellLive = null
+        dividerLive = null
         settled = null
         opacityLayerId = null
     }
@@ -149,6 +211,9 @@ internal class PhotoLive(private val stage: LayerStageState, private val held: S
             ?: held.value?.takeIf { it.layerId == layerId }?.transform
 
     override fun opacityOf(layerId: String): Float? = if (layerId == opacityLayerId) opacity else null
+
+    override fun tailOf(layerId: String): BubblePoint? =
+        tail?.takeIf { it.first == layerId }?.second ?: heldTail.value?.takeIf { it.layerId == layerId }?.let { BubblePoint(it.tailX, it.tailY) }
 }
 
 /** The stage's geometry: where the canvas frame sits with [coverPx] of the stage's bottom hidden under a panel. */
@@ -189,20 +254,22 @@ internal fun PhotoStage(
             FrameRefit(stage, geometry, coverPx)
             // The pictures are decoded for the frame without a panel, and again only when a committed change needs it.
             val normalWidth = (if (entry != null && normalHeight > 0f) geometry.copy(height = normalHeight) else geometry).frameFor(0f).width
-            val needed = remember(state.layers, scene.canvas, normalWidth) { neededLongSides(state.layers, scene.canvas, normalWidth) }
+            val needed = remember(state.layers, scene.canvas, normalWidth, scene.format) { neededLongSides(state.layers, scene.canvas, normalWidth, scene.format) }
             val currentOnIntent by rememberUpdatedState(onIntent)
             LaunchedEffect(needed) {
                 bitmaps.ensure(needed) { failed -> currentOnIntent(PhotoEditorIntent.MediaMissing(failed)) }
             }
-            SceneLayer(scene, bitmaps, captions, stage, live, entry, entryField)
-            GestureLayer(state, stage, live, enabled = !panelHoldsCanvas && entry == null, onIntent)
+            SceneLayer(scene, bitmaps, captions, stage, live, entry, state.bubbleEntry, state.captionMeasure, entryField)
+            GestureLayer(state, scene, bitmaps, stage, live, enabled = !panelHoldsCanvas && entry == null, onIntent)
             FrameEdge({ stage.frame }, visible = canvasPanelOpen || stage.gesture != null)
             if (entry != null) {
-                TypingFrame(entry, entryField, state.captionMeasure, scene, stage)
+                TypingFrame(entry, state.bubbleEntry, entryField, state.captionMeasure, scene, stage)
             } else {
-                SelectionOverlay(state, scene, stage, panelHoldsCanvas)
+                SelectionOverlay(state, scene, stage, live, panelHoldsCanvas, onIntent)
                 LayerNodes(state, scene, stage, onIntent, interactive = !panelHoldsCanvas)
                 SlotHints(state, scene, stage, onIntent)
+                PanelsOverlay(state, scene, stage, live, onIntent)
+                CellNodes(state, scene, stage, onIntent)
             }
             if (state.showsEmptyCard && !canvasPanelOpen && entry == null) EmptyCanvasCard(hasHistory = state.emptiedByUser, Modifier.align(Alignment.Center))
         }
@@ -231,13 +298,23 @@ private fun FrameRefit(stage: LayerStageState, geometry: StageGeometry, coverPx:
 
 // The scene, drawn in the frame in the draw phase: a gesture, a held arrow or a slider moves a layer without recomposing.
 @Composable
-private fun BoxScope.SceneLayer(scene: SceneUi, bitmaps: SceneBitmaps, captions: SceneCaptions, stage: LayerStageState, live: PhotoLive, entry: TextEntryUi?, entryField: TextFieldState) {
+private fun BoxScope.SceneLayer(
+    scene: SceneUi,
+    bitmaps: SceneBitmaps,
+    captions: SceneCaptions,
+    stage: LayerStageState,
+    live: PhotoLive,
+    entry: TextEntryUi?,
+    bubbleEntry: BubbleEntryUi?,
+    measure: PhotoCaptionMeasure?,
+    entryField: TextFieldState,
+) {
     Box(
         Modifier.matchParentSize().drawBehind {
             val frame = stage.frame
             if (frame.isEmpty) return@drawBehind
             // A text being typed draws live from the field, over the stack or in the place of the layer it edits.
-            val layers = if (entry == null) scene.layers else typingLayers(scene.layers, entry, entryField.text.toString())
+            val layers = if (entry == null) scene.layers else typingLayers(scene.layers, entry, bubbleEntry, entryField.text.toString(), scene.canvas, measure)
             inset(frame.left, frame.top, size.width - frame.left - frame.width, size.height - frame.top - frame.height) {
                 drawPhotoScene(scene.canvas, layers, bitmaps, live, captions, scene.format)
             }
@@ -247,12 +324,32 @@ private fun BoxScope.SceneLayer(scene: SceneUi, bitmaps: SceneBitmaps, captions:
 
 // The scene while [text] is typed: a new text is one more layer at the front; an edited text is its layer with the new words
 // (the committed copy is never drawn twice).
-private fun typingLayers(layers: List<Layer>, entry: TextEntryUi, text: String): List<Layer> =
+private fun typingLayers(layers: List<Layer>, entry: TextEntryUi, bubbleEntry: BubbleEntryUi?, text: String, canvas: Canvas, measure: PhotoCaptionMeasure?): List<Layer> =
     if (entry.itemId == null) {
-        layers + TextLayer(TYPING_LAYER_ID, text, entry.style, entry.transform)
+        layers + (typingBubble(entry, bubbleEntry, text, canvas, measure) ?: TextLayer(TYPING_LAYER_ID, text, entry.style, entry.transform))
     } else {
-        layers.map { if (it.id == entry.itemId && it is TextLayer) it.copy(text = text) else it }
+        layers.map {
+            when {
+                it.id != entry.itemId -> it
+                it is TextLayer -> it.copy(text = text)
+                it is BubbleLayer -> it.copy(text = text)
+                else -> it
+            }
+        }
     }
+
+// The new bubble being typed, as a layer: its look from the entry and the default tail for where it lands (a thought bubble's longer one).
+private fun typingBubble(entry: TextEntryUi, look: BubbleEntryUi?, text: String, canvas: Canvas, measure: PhotoCaptionMeasure?): BubbleLayer? {
+    if (look == null) return null
+    val size = PixelSize(canvas.widthPx, canvas.heightPx)
+    val tip = if (look.shape == BubbleShape.THOUGHT && measure != null && text.isNotEmpty()) {
+        val block = measure.blockOf(text, entry.style, size.widthPx, size.heightPx, CaptionLook.Bubble)
+        defaultThoughtTip(bubbleBodySize(block.widthPx, block.heightPx, size), entry.transform.centerX, entry.transform.centerY, size)
+    } else {
+        defaultTail(entry.transform.centerY)
+    }
+    return BubbleLayer(TYPING_LAYER_ID, text, entry.style, look.shape, look.fill, tip.x, tip.y, entry.transform)
+}
 
 private const val TYPING_LAYER_ID = "typing"
 
@@ -262,22 +359,40 @@ private const val TYPING_LAYER_ID = "typing"
  * nothing can be dragged while the keyboard is up.
  */
 @Composable
-private fun BoxScope.TypingFrame(entry: TextEntryUi, field: TextFieldState, measure: PhotoCaptionMeasure?, scene: SceneUi, stage: LayerStageState) {
+private fun BoxScope.TypingFrame(entry: TextEntryUi, bubbleEntry: BubbleEntryUi?, field: TextFieldState, measure: PhotoCaptionMeasure?, scene: SceneUi, stage: LayerStageState) {
     val density = LocalDensity.current
     val targetPx = with(density) { MemixSize.touchTarget.toPx() }
     val outsetPx = with(density) { MemixSpacing.space1.toPx() }
     val selectionPx = with(density) { MemixStroke.strokeSelection.toPx() }
     val hairlinePx = with(density) { MemixStroke.strokeHairline.toPx() }
     val text = field.text.toString()
-    val block = remember(text, entry.style, scene.canvas, measure) {
-        if (text.isEmpty() || measure == null) null else measure.blockOf(text, entry.style, scene.canvas.widthPx, scene.canvas.heightPx)
+    // A bubble's frame is its whole drawn box (body and tail); a text's is its laid-out block.
+    val editedBubble = remember(entry.itemId, scene.layers) { scene.layers.firstOrNull { it.id == entry.itemId } as? BubbleLayer }
+    val bubble = remember(text, entry, bubbleEntry, scene.canvas, measure, editedBubble) {
+        if (text.isEmpty()) null else typingBubble(entry, bubbleEntry, text, scene.canvas, measure)?.let { editedBubble?.copy(text = text) ?: it }
+            ?: editedBubble?.copy(text = text)
+    }
+    val bubbleBox = remember(bubble, scene.canvas, measure) {
+        if (bubble == null || measure == null) null else {
+            val size = PixelSize(scene.canvas.widthPx, scene.canvas.heightPx)
+            val block = measure.blockOf(bubble.text, bubble.style, size.widthPx, size.heightPx, CaptionLook.Bubble)
+            val body = bubbleBodySize(block.widthPx, block.heightPx, size)
+            bubbleBox(bubble.shape, body, BubblePoint(bubble.tailX * body.width, bubble.tailY * body.height), size)
+        }
+    }
+    val block = remember(text, entry.style, scene.canvas, measure, bubble) {
+        if (text.isEmpty() || measure == null || bubble != null) null else measure.blockOf(text, entry.style, scene.canvas.widthPx, scene.canvas.heightPx)
     }
     Spacer(
         Modifier.matchParentSize().drawBehind {
             val frame = stage.frame
             if (frame.isEmpty) return@drawBehind
-            val box = LayerBox.of(block?.widthPx ?: 0f, block?.heightPx ?: 0f, entry.transform, frame, scene.canvas.widthPx)
-            val shown = if (block == null) box.copy(halfWidth = targetPx / 2 - outsetPx, halfHeight = targetPx / 2 - outsetPx) else box
+            val box = if (bubbleBox != null) {
+                LayerBox.of(bubbleBox.width, bubbleBox.height, bubble?.transform ?: entry.transform, frame, scene.canvas.widthPx, bubbleBox.offsetX, bubbleBox.offsetY)
+            } else {
+                LayerBox.of(block?.widthPx ?: 0f, block?.heightPx ?: 0f, entry.transform, frame, scene.canvas.widthPx)
+            }
+            val shown = if (block == null && bubbleBox == null) box.copy(halfWidth = targetPx / 2 - outsetPx, halfHeight = targetPx / 2 - outsetPx) else box
             drawTwoToneFrame(shown, outsetPx, selectionPx, hairlinePx)
         },
     )
@@ -286,7 +401,7 @@ private fun BoxScope.TypingFrame(entry: TextEntryUi, field: TextFieldState, meas
 // A tap on nothing clears the selection (there is no play or pause to compete with); touches that hit a layer are the
 // layer gestures', which sit after it and take them first.
 @Composable
-private fun BoxScope.GestureLayer(state: PhotoEditorUiState, stage: LayerStageState, live: PhotoLive, enabled: Boolean, onIntent: (PhotoEditorIntent) -> Unit) {
+private fun BoxScope.GestureLayer(state: PhotoEditorUiState, scene: SceneUi, bitmaps: SceneBitmaps, stage: LayerStageState, live: PhotoLive, enabled: Boolean, onIntent: (PhotoEditorIntent) -> Unit) {
     if (!enabled) return
     val density = LocalDensity.current
     val haptics = LocalHapticFeedback.current
@@ -301,10 +416,24 @@ private fun BoxScope.GestureLayer(state: PhotoEditorUiState, stage: LayerStageSt
     val currentHaptics by rememberUpdatedState(haptics)
     val events = remember(stage, live) { PhotoGestureEvents(live) { currentOnIntent(it) } }
     CancelGestureOnBack(stage, onIntent)
+    val currentScene by rememberUpdatedState(scene)
+    val currentState by rememberUpdatedState(state)
+    val cellHost = remember(stage, live, bitmaps) {
+        CellGestureHost(
+            scene = { currentScene },
+            selectedCell = { currentState.selectedCell },
+            missingCells = { currentState.missingCells },
+            photoSizeOf = { index -> (currentScene.format as? PanelsFormat)?.cells?.getOrNull(index)?.source?.let { it.pixelSize ?: it.cachedCopyPath?.let(bitmaps::imageOf)?.sourceSize } },
+            live = live,
+            onIntent = { currentOnIntent(it) },
+        )
+    }
     Box(
         Modifier
             .matchParentSize()
             .pointerInput(Unit) { detectTapGestures(onTap = { currentOnIntent(PhotoEditorIntent.ClearSelection) }) }
+            // Cells get the touches the layers didn't take (the layers' detector runs first, being the innermost).
+            .pointerInput(stage, cellHost) { detectCellGestures(stage, cellHost) { currentHaptics } }
             .pointerInput(stage, sizes) {
                 detectLayerGestures(stage, { currentTargets }, { selected }, { canvasWidth }, sizes, { currentHaptics }, events)
             },
@@ -342,12 +471,14 @@ private fun CancelGestureOnBack(stage: LayerStageState, onIntent: (PhotoEditorIn
 // The two-tone frame and the scale-and-rotate handle of the selected layer (a lock badge in the handle's place when it is
 // locked), the snap guides and the value bubble. With the Canvas panel open the frame and handle are hidden.
 @Composable
-private fun BoxScope.SelectionOverlay(state: PhotoEditorUiState, scene: SceneUi, stage: LayerStageState, hidden: Boolean) {
+private fun BoxScope.SelectionOverlay(state: PhotoEditorUiState, scene: SceneUi, stage: LayerStageState, live: PhotoLive, hidden: Boolean, onIntent: (PhotoEditorIntent) -> Unit) {
     val selected = state.selectedLayer?.takeIf { !it.hidden && !hidden }
     val canvasWidth = scene.canvas.widthPx
     if (selected != null) {
         LayerSelectionFrame(stage, selected, canvasWidth)
         if (selected.locked) LockBadge(stage, selected, canvasWidth) else LayerTurnHandle(stage, selected, canvasWidth)
+        // A bubble's tail handle sits above the scale-and-rotate handle where they overlap (spec → Bubbles).
+        if (!selected.locked && selected.bubble != null) TailHandle(selected, stage, live, canvasWidth, onIntent)
     }
     LayerSnapGuides(stage)
     LayerTransformBubble(stage)
@@ -456,7 +587,7 @@ internal fun layerActions(layer: SceneLayerUi, labels: LayerActionLabels, onInte
         onIntent(PhotoEditorIntent.OpenPanel(panel))
         true
     }
-    val textActions = if (layer.kind != LayerKind.TEXT) emptyList() else listOf(
+    val textActions = if (layer.kind != LayerKind.TEXT && layer.kind != LayerKind.BUBBLE) emptyList() else listOf(
         CustomAccessibilityAction(labels.editText) {
             onIntent(PhotoEditorIntent.SelectLayer(layer.id))
             // A tap on the selected text opens typing, so a second select would; EditText is the direct route.

@@ -79,7 +79,7 @@
     <string name="a11y_format_set">Format: %1$s</string>
     <string name="tool_panels_layout">Layout</string>
     <string name="panels_count">Number of panels</string>
-    <string name="panels_layout_label">Layout</string>
+    <string name="panels_layout_label">Arrangement</string>
     <string name="panels_grid">Grid</string>
     <string name="panels_columns">Side by side</string>
     <string name="panels_rows">Stacked</string>
@@ -92,7 +92,7 @@
     <string name="a11y_panel_cell">Panel %1$d of %2$d</string>
     <string name="a11y_panel_empty">Empty. Double-tap to add a photo.</string>
     <string name="panels_photo_dropped">Photos in removed panels are gone from the meme. Undo brings them back.</string>
-    <string name="tool_add_bubble">Add bubble</string>
+    <string name="tool_add_bubble">Bubble</string>
     <string name="bubble_shape">Shape</string>
     <string name="bubble_speech">Speech</string>
     <string name="bubble_round">Round</string>
@@ -114,4 +114,5 @@
     <string name="edit_bubble_shape">Shape</string>
     <string name="edit_bubble_fill">Fill</string>
     <string name="edit_bubble_tail">Tail</string>
+    <string name="a11y_format_slot_bubble">%1$s, empty. Tap to add a bubble.</string>
 </resources>

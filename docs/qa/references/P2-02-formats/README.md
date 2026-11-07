@@ -1,6 +1,6 @@
 # P2-02 format references
 
-Ten frames: Classic, Caption bar, Demotivational, Panels (a 2 x 2 grid, three cells filled, one empty: it draws the background) and Bubbles (one of each shape), each at **1080 and 2160 px on the canvas's shorter side** (`-s1080`: 1440 x 1080, `-s2160`: 2880 x 2160), drawn by the shared `drawPhotoScene` with the format's parts. The 2160 frame must equal the 1080 frame scaled by 2 (every part is a share of S).
+Twelve frames: Classic, Caption bar, Demotivational, Panels (a 2 x 2 grid, three cells filled, one empty: it draws the background), Panels in 3 columns at even dividers (`photo-format-panels-cols3-even`: three equal cells) and Bubbles (one of each shape, the thought bubble with its dot chain), each at **1080 and 2160 px on the canvas's shorter side** (`-s1080`: 1440 x 1080, `-s2160`: 2880 x 2160), drawn by the shared `drawPhotoScene` with the format's parts. The 2160 frame must equal the 1080 frame scaled by 2 (every part is a share of S).
 
 **Desktop renders with a text stand-in** (Skia with the repo's caption fonts, not Android's renderer: line breaks and glyphs on a phone can differ; Devanagari and emoji aren't drawn) and generated pictures. They show the format geometry. On a device, render the same scenes with the debug hook and compare:
 

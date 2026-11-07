@@ -79,7 +79,7 @@
     <string name="a11y_format_set">Formato: %1$s</string>
     <string name="tool_panels_layout">Layout</string>
     <string name="panels_count">Número de painéis</string>
-    <string name="panels_layout_label">Layout</string>
+    <string name="panels_layout_label">Disposição</string>
     <string name="panels_grid">Grade</string>
     <string name="panels_columns">Lado a lado</string>
     <string name="panels_rows">Empilhados</string>
@@ -92,7 +92,7 @@
     <string name="a11y_panel_cell">Painel %1$d de %2$d</string>
     <string name="a11y_panel_empty">Vazio. Toque duas vezes para adicionar uma foto.</string>
     <string name="panels_photo_dropped">As fotos dos painéis removidos saíram do meme. Desfazer as traz de volta.</string>
-    <string name="tool_add_bubble">Adicionar balão</string>
+    <string name="tool_add_bubble">Balão</string>
     <string name="bubble_shape">Forma</string>
     <string name="bubble_speech">Fala</string>
     <string name="bubble_round">Redondo</string>
@@ -114,4 +114,5 @@
     <string name="edit_bubble_shape">Forma</string>
     <string name="edit_bubble_fill">Preenchimento</string>
     <string name="edit_bubble_tail">Cauda</string>
+    <string name="a11y_format_slot_bubble">%1$s, vazio. Toque para adicionar um balão.</string>
 </resources>

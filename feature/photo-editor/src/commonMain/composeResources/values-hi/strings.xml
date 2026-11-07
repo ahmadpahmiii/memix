@@ -79,7 +79,7 @@
     <string name="a11y_format_set">फ़ॉर्मैट: %1$s</string>
     <string name="tool_panels_layout">लेआउट</string>
     <string name="panels_count">पैनल की संख्या</string>
-    <string name="panels_layout_label">लेआउट</string>
+    <string name="panels_layout_label">व्यवस्था</string>
     <string name="panels_grid">ग्रिड</string>
     <string name="panels_columns">अगल-बगल</string>
     <string name="panels_rows">ऊपर-नीचे</string>
@@ -92,7 +92,7 @@
     <string name="a11y_panel_cell">पैनल %2$d में से %1$d</string>
     <string name="a11y_panel_empty">खाली। फ़ोटो जोड़ने के लिए दो बार दबाएँ।</string>
     <string name="panels_photo_dropped">हटाए गए पैनलों की फ़ोटो मीम से चली गईं। पूर्ववत करें से वापस आ जाएँगी।</string>
-    <string name="tool_add_bubble">बबल जोड़ें</string>
+    <string name="tool_add_bubble">बबल</string>
     <string name="bubble_shape">आकार</string>
     <string name="bubble_speech">बोल</string>
     <string name="bubble_round">गोल</string>
@@ -114,4 +114,5 @@
     <string name="edit_bubble_shape">आकार</string>
     <string name="edit_bubble_fill">भराव</string>
     <string name="edit_bubble_tail">पूँछ</string>
+    <string name="a11y_format_slot_bubble">%1$s, खाली। बबल जोड़ने के लिए दबाएँ।</string>
 </resources>

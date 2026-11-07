@@ -39,7 +39,8 @@ interface StyleActions {
 /**
  * The selected caption's Style panel (spec P1-10 → Style panel, P2-03): Font (five tiles), Color and Outline (ten swatches
  * each, Outline also "No outline"). [style] is the caption's now; the panel shows while [visible] and [style] is known.
- * [contentMaxHeight] caps the panel where the editor wants it shorter (the photo editor's 40%); the rest scrolls.
+ * [contentMaxHeight] caps the panel where the editor wants it shorter (the photo editor's 40%); the rest scrolls. A speech bubble's
+ * panel (P2-02) hides the Outline row ([showOutline]) and adds its own rows before and after ([rowsBefore], [rowsAfter]: Shape, Fill).
  */
 @Composable
 fun StylePanel(
@@ -48,6 +49,9 @@ fun StylePanel(
     actions: StyleActions,
     modifier: Modifier = Modifier,
     contentMaxHeight: Dp? = null,
+    showOutline: Boolean = true,
+    rowsBefore: @Composable () -> Unit = {},
+    rowsAfter: @Composable () -> Unit = {},
 ) {
     ToolPanel(
         visible && style != null,
@@ -57,12 +61,16 @@ fun StylePanel(
         modifier,
         contentMaxHeight = contentMaxHeight,
     ) {
-        if (style != null) StyleRows(style, actions)
+        if (style != null) {
+            rowsBefore()
+            StyleRows(style, actions, showOutline)
+            rowsAfter()
+        }
     }
 }
 
 @Composable
-private fun StyleRows(style: CaptionStyle, actions: StyleActions) {
+private fun StyleRows(style: CaptionStyle, actions: StyleActions, showOutline: Boolean) {
     // An unknown font id (a newer build's draft) selects no tile until the user picks one (spec → States).
     ChoiceRow(stringResource(Res.string.style_font)) {
         CaptionCatalog.fonts.forEachIndexed { index, font ->
@@ -74,6 +82,7 @@ private fun StyleRows(style: CaptionStyle, actions: StyleActions) {
             Swatch(Color(color.argb.toInt()), stringResource(PaletteColorNames[index]), selected = style.color == color, onClick = { actions.onColor(color.argb) })
         }
     }
+    if (!showOutline) return
     ChoiceRow(stringResource(Res.string.style_outline)) {
         Swatch(null, stringResource(Res.string.outline_none), selected = style.outlineColor == null, onClick = { actions.onOutline(null) })
         CaptionCatalog.palette.forEachIndexed { index, color ->

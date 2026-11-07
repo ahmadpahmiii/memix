@@ -92,6 +92,14 @@ object PhotoFormatCatalog {
     /** A Position-panel Tail step moves the tip this share of the canvas (of its width or height). */
     const val TAIL_STEP_OF_CANVAS = 0.01f
 
+    /** A thought bubble's dot chain is at full size at this reach (boundary to tip) as a share of S, and scales down below it (floor [THOUGHT_MIN_SCALE]). */
+    const val THOUGHT_FULL_REACH_OF_SHORT_SIDE = 0.40f
+    const val THOUGHT_MIN_SCALE = 0.40f
+
+    /** Under [THOUGHT_MIN_SCALE] of the full reach, down to this share, two dots are drawn; under it, one. */
+    const val THOUGHT_TWO_DOTS_FROM = 0.25f
+    const val THOUGHT_DEFAULT_REACH_OF_SHORT_SIDE = 0.45f
+
     /** The three circles of a thought bubble's trail, as shares of S, big to small. */
     val THOUGHT_DOT_RADII_OF_SHORT_SIDE: List<Float> = listOf(0.08f, 0.052f, 0.032f)
 
