@@ -48,6 +48,8 @@ internal class DebugPicture(val fileName: String, val widthPx: Int, val heightPx
  *   editor's `text-check` (Classic Hindi and emoji over the top, Modern accented Latin at 50% and -15°, Bubbly two lines at 250%
  *   and 30° partly off the right edge, Handwritten with Devanagari, Serif "THE END", and Classic red "OVERLAP" above it in the
  *   stack): compare the screen, the render hook and the video export frame (spec P2-03 → Measured).
+ * - `photo-text-shadow-box` (P2-11): the same canvas with seven captions in shadow, box and both (`ShadowBoxCheckCaptions`), the
+ *   same as the video editor's `text-shadow-check`: compare the screen, the render hook and the export frame.
  * - `photo-format-classic`, `-caption-bar`, `-demotivational`, `-panels`, `-bubbles` (P2-02): a 4:3 photo canvas (1440 x 1080) in each format with real text
  *   (panels: a 2 x 2 grid, three cells filled; bubbles: one of each shape): render each at both sizes with `--ei memix.renderShortSide 1080|2160`.
  * - `photo-panels-6` (P2-02): a 2 x 3 grid of six 12 MP cells for the speed bar (three 3 s divider drags under 5% janky frames; peak Graphics and Native Heap).
@@ -64,6 +66,7 @@ internal object PhotoCheckProjects {
     const val BACKGROUND_MISSING = "photo-background-missing"
     const val TEXT_CHECK = "photo-text-check"
     const val STICKERS = "photo-stickers"
+    const val TEXT_SHADOW_BOX = "photo-text-shadow-box"
     const val FORMAT_CLASSIC = "photo-format-classic"
     const val FORMAT_CAPTION_BAR = "photo-format-caption-bar"
     const val FORMAT_DEMOTIVATIONAL = "photo-format-demotivational"
@@ -71,7 +74,7 @@ internal object PhotoCheckProjects {
     const val FORMAT_BUBBLES = "photo-format-bubbles"
     const val PANELS_6 = "photo-panels-6"
     val NAMES = listOf(
-        LAYERS_10, EMPTY, MISSING_MEDIA, BACKGROUND_IMAGE, BACKGROUND_MISSING, TEXT_CHECK, STICKERS,
+        LAYERS_10, EMPTY, MISSING_MEDIA, BACKGROUND_IMAGE, BACKGROUND_MISSING, TEXT_CHECK, TEXT_SHADOW_BOX, STICKERS,
         FORMAT_CLASSIC, FORMAT_CAPTION_BAR, FORMAT_DEMOTIVATIONAL, FORMAT_PANELS, FORMAT_BUBBLES, PANELS_6,
     )
 
@@ -133,6 +136,7 @@ internal object PhotoCheckProjects {
         LAYERS_10 -> layers10()
         MISSING_MEDIA -> missingMedia()
         TEXT_CHECK -> textCheck()
+        TEXT_SHADOW_BOX -> textShadowBox()
         STICKERS -> stickers()
         FORMAT_CLASSIC -> formatScene(FORMAT_CLASSIC, ClassicFormat, text("c-top", "WHEN THE BUILD PASSES", CAPTION, Transform(0.5f, 0.14f)), text("c-bottom", "FIRST TRY", CAPTION, Transform(0.5f, 0.86f)))
         FORMAT_CAPTION_BAR -> formatScene(FORMAT_CAPTION_BAR, CaptionBarFormat, text("b-text", "ME EXPLAINING THE BUG\nTO THE DUCK", CaptionStyle("poppins", BLACK, null), Transform(0.5f, 0.125f)))
@@ -186,6 +190,13 @@ internal object PhotoCheckProjects {
             text("text-bubbly", "BUBBLY\nTWO LINES", CaptionStyle("baloo2", WHITE, ArgbColor(0xFFAF52DE)), Transform(0.85f, 0.7f, scale = 2.5f, rotationDegrees = 30f)),
         )
         return project(TEXT_CHECK, canvas, layers)
+    }
+
+    /** The seven captions of the video's `text-shadow-check` on the same 9:16 photo canvas (spec P2-11 → QA compares → Measured). */
+    private fun textShadowBox(): Project {
+        val canvas = photoCanvasFor(PixelSize(2160, 3840))
+        val captions = ShadowBoxCheckCaptions.all.map { text(it.id, it.text, it.style, it.transform) }
+        return project(TEXT_SHADOW_BOX, canvas, listOf(image("t-photo", shapes[3], Transform())) + captions)
     }
 
     /** A photo, one text and five stickers (spec P2-03 request 1): the landing size, a locked, a hidden and a missing one. */

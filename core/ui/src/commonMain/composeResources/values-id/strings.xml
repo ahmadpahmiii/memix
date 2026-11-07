@@ -127,6 +127,18 @@
     <string name="font_handwritten">Tulisan tangan</string>
     <string name="font_serif">Serif</string>
     <string name="outline_none">Tanpa garis tepi</string>
+    <string name="style_shadow">Bayangan</string>
+    <string name="shadow_none">Tanpa bayangan</string>
+    <string name="style_shadow_softness">Kelembutan</string>
+    <string name="shadow_sharp">Tajam</string>
+    <string name="shadow_soft">Lembut</string>
+    <string name="shadow_blurry">Buram</string>
+    <string name="style_box">Kotak</string>
+    <string name="box_none">Tanpa kotak</string>
+    <string name="style_box_corners">Sudut</string>
+    <string name="box_square">Siku</string>
+    <string name="box_rounded">Membulat</string>
+    <string name="box_pill">Pil</string>
     <string name="a11y_text_on_canvas">Teks: %1$s</string>
     <string name="tool_text">Teks</string>
     <string name="tool_edit_text">Edit teks</string>
@@ -136,4 +148,6 @@
     <string name="edit_text_font">Font</string>
     <string name="edit_text_color">Warna</string>
     <string name="edit_text_outline">Garis tepi</string>
+    <string name="edit_text_shadow">Bayangan</string>
+    <string name="edit_text_box">Kotak</string>
 </resources>

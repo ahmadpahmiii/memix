@@ -29,4 +29,8 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     // 4 → 5 (P2-02): PhotoScene gained the nullable "format" (null is plain) and Layer the "bubble_layer" subtype. Version-4 JSON
     // has no "format", which decodes as null, and no bubble, so it decodes as it is and opens plain, looking as saved.
     ProjectMigration(fromVersion = 4) { json -> json },
+    // 5 → 6 (P2-11): CaptionStyle gained the nullable "shadow" and "box" (null is off). CaptionStyle is shared, so video and
+    // photo drafts both pass here; version-5 JSON has neither field, which decodes as null, so a caption saved before looks
+    // as saved and the step only moves the version on.
+    ProjectMigration(fromVersion = 5) { json -> json },
 )

@@ -79,6 +79,7 @@ internal class EditorCheckProjects : KoinComponent {
         HOUR_LONG -> hourLong()
         SOUND_SYNC -> soundSync()
         TEXT_CHECK -> textCheck()
+        TEXT_SHADOW_CHECK -> textShadowCheck()
         CANVAS_CHECK -> canvasCheck()
         CANVAS_IMAGE_CHECK -> canvasImageCheck()
         else -> null
@@ -255,6 +256,23 @@ internal class EditorCheckProjects : KoinComponent {
     }
 
     /**
+     * The P2-11 Done when (spec P2-11 → QA compares → Measured): `text-check`'s three clips with the seven captions of
+     * `photo-text-shadow-box` on their own lanes for all 9 s, in shadow, box and both. Pause at 1.0 s, compare with the
+     * exported frame (and the photo editor's render of the same captions).
+     */
+    private fun textShadowCheck(): Project {
+        val clips = listOf(
+            MediaClip("sb-clip-a", 0, clipA, trimInUs = 0, trimOutUs = 3_000_000),
+            MediaClip("sb-clip-b", 3_000_000, clipB, trimInUs = 0, trimOutUs = 3_000_000),
+            MediaClip("sb-photo", 6_000_000, photo, trimInUs = 0, trimOutUs = 3_000_000),
+        )
+        val lanes = ShadowBoxCheckCaptions.all.mapIndexed { index, caption ->
+            Track("sb-lane-${index + 1}", TrackKind.TEXT, listOf(TextItem(caption.id, 0, 9_000_000, caption.text, caption.style, caption.transform)))
+        }
+        return project(TEXT_SHADOW_CHECK, clips, extraTracks = lanes)
+    }
+
+    /**
      * The P1-11 checks (spec P1-11 → QA compares, request 10): a 16:9 video, a 9:16 video and a 4:3 photo, Fit on black,
      * with four captions on their own lanes for all 9 s: a large two-line one near the top at 200% (pulled in by 16:9),
      * one turned 30° near the right edge, one half off the left edge on purpose (never moved) and one in the middle.
@@ -312,11 +330,12 @@ internal class EditorCheckProjects : KoinComponent {
         const val HOUR_LONG = "hour-long"
         const val SOUND_SYNC = "sound-sync"
         const val TEXT_CHECK = "text-check"
+        const val TEXT_SHADOW_CHECK = "text-shadow-check"
         const val CANVAS_CHECK = "canvas-check"
         const val CANVAS_IMAGE_CHECK = "canvas-image-check"
         private val NAMES = listOf(
             EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK,
-            CANVAS_CHECK, CANVAS_IMAGE_CHECK,
+            TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK,
         ) + PhotoCheckProjects.NAMES
         private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20

@@ -12,6 +12,8 @@ import app.memix.core.domain.project.textLandingSpan
 import app.memix.core.domain.project.videoLengthUs
 import app.memix.core.model.project.ArgbColor
 import app.memix.core.model.project.CaptionCatalog
+import app.memix.core.model.project.CaptionBox
+import app.memix.core.model.project.CaptionShadow
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.Transform
@@ -98,6 +100,10 @@ internal class CaptionControl(private val host: EditorHost) {
     fun setColor(argb: Long) = restyle(VideoEdit.TEXT_COLOR) { it.copy(color = ArgbColor(argb)) }
 
     fun setOutline(argb: Long?) = restyle(VideoEdit.TEXT_OUTLINE) { it.copy(outlineColor = argb?.let(::ArgbColor)) }
+
+    fun setShadow(shadow: CaptionShadow?) = restyle(VideoEdit.TEXT_SHADOW) { it.copy(shadow = shadow) }
+
+    fun setBox(box: CaptionBox?) = restyle(VideoEdit.TEXT_BOX) { it.copy(box = box) }
 
     /** A Position panel tap, or a held arrow's release ([repeats] steps): one step, or an explanation at a limit. */
     fun step(step: PositionStep, repeats: Int) {

@@ -26,6 +26,8 @@ enum class VideoEdit(val tool: EditorTool) {
     TEXT_FONT(EditorTool.TEXT_FONT),
     TEXT_COLOR(EditorTool.TEXT_COLOR),
     TEXT_OUTLINE(EditorTool.TEXT_OUTLINE),
+    TEXT_SHADOW(EditorTool.TEXT_SHADOW),
+    TEXT_BOX(EditorTool.TEXT_BOX),
     POSITION_TEXT(EditorTool.POSITION_TEXT),
     TRANSFORM_TEXT(EditorTool.TRANSFORM_TEXT),
     CANVAS_RATIO(EditorTool.CANVAS_RATIO),

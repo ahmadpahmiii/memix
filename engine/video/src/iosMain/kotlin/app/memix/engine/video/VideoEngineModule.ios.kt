@@ -49,7 +49,11 @@ private object EstimatedCaptionMeasurer : CaptionMeasurer {
         val lines = text.lines()
         val widestPx = lines.maxOf { it.length } * fontSizePx * AVERAGE_GLYPH_WIDTH
         val wrappedLines = lines.sumOf { maxOf(1, ceil(it.length * fontSizePx * AVERAGE_GLYPH_WIDTH / wrapPx).toInt()) }
-        return CaptionBlockSize(minOf(widestPx, wrapPx), wrappedLines * fontSizePx * LINE_HEIGHT)
+        // A box adds its padding to the block (spec P2-11); a bubble's words have none.
+        val hasBox = style.box != null && look.drawsBox
+        val paddingX = if (hasBox) 2f * CaptionCatalog.BOX_PADDING_X_EM * fontSizePx else 0f
+        val paddingY = if (hasBox) 2f * CaptionCatalog.BOX_PADDING_Y_EM * fontSizePx else 0f
+        return CaptionBlockSize(minOf(widestPx, wrapPx) + paddingX, wrappedLines * fontSizePx * LINE_HEIGHT + paddingY)
     }
 
     private const val AVERAGE_GLYPH_WIDTH = 0.5f

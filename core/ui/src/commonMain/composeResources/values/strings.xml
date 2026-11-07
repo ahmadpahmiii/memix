@@ -131,6 +131,18 @@
     <string name="font_handwritten">Handwritten</string>
     <string name="font_serif">Serif</string>
     <string name="outline_none">No outline</string>
+    <string name="style_shadow">Shadow</string>
+    <string name="shadow_none">No shadow</string>
+    <string name="style_shadow_softness">Softness</string>
+    <string name="shadow_sharp">Sharp</string>
+    <string name="shadow_soft">Soft</string>
+    <string name="shadow_blurry">Blurry</string>
+    <string name="style_box">Box</string>
+    <string name="box_none">No box</string>
+    <string name="style_box_corners">Corners</string>
+    <string name="box_square">Square</string>
+    <string name="box_rounded">Rounded</string>
+    <string name="box_pill">Pill</string>
     <string name="a11y_text_on_canvas">Text: %1$s</string>
     <string name="tool_text">Text</string>
     <string name="tool_edit_text">Edit text</string>
@@ -140,4 +152,6 @@
     <string name="edit_text_font">Font</string>
     <string name="edit_text_color">Color</string>
     <string name="edit_text_outline">Outline</string>
+    <string name="edit_text_shadow">Shadow</string>
+    <string name="edit_text_box">Box</string>
 </resources>

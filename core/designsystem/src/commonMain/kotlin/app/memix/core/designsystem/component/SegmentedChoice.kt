@@ -57,8 +57,16 @@ fun SegmentedChoice(segments: List<Segment>, selectedIndex: Int, onSelect: (Int)
         val gapPx = gap.roundToPx()
         val width = constraints.maxWidth
         val widest = measurables.maxOf { it.maxIntrinsicWidth(Constraints.Infinity) }
-        // One row while every label fits its equal share; else two rows, the first one longer.
-        val perRow = if (widest <= (width - gapPx * (measurables.size - 1)) / measurables.size) measurables.size else (measurables.size + 1) / 2
+        // One row while every label fits its equal share; else two rows, the first one longer; and when even a two-row
+        // segment is narrower than a label's longest word (a word is never broken), one segment per row.
+        val twoRowPerRow = (measurables.size + 1) / 2
+        val twoRowSegmentWidth = (width - gapPx * (twoRowPerRow - 1)) / twoRowPerRow
+        val longestWord = measurables.maxOf { it.minIntrinsicWidth(Constraints.Infinity) }
+        val perRow = when {
+            widest <= (width - gapPx * (measurables.size - 1)) / measurables.size -> measurables.size
+            longestWord <= twoRowSegmentWidth -> twoRowPerRow
+            else -> 1
+        }
         val rows = measurables.chunked(perRow)
         val placedRows = rows.map { row ->
             val segmentWidth = ((width - gapPx * (row.size - 1)) / row.size).coerceAtLeast(0)

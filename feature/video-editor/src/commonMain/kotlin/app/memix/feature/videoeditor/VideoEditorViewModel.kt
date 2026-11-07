@@ -236,6 +236,8 @@ class VideoEditorViewModel(
             is VideoEditorIntent.SetCaptionFont -> captions.setFont(intent.fontId)
             is VideoEditorIntent.SetCaptionColor -> captions.setColor(intent.argb)
             is VideoEditorIntent.SetCaptionOutline -> captions.setOutline(intent.argb)
+            is VideoEditorIntent.SetCaptionShadow -> captions.setShadow(intent.shadow)
+            is VideoEditorIntent.SetCaptionBox -> captions.setBox(intent.box)
             is VideoEditorIntent.PositionStepped -> captions.step(intent.step, intent.repeats)
             is VideoEditorIntent.PositionStepHeld -> captions.stepHeld(intent.step, intent.repeats)
             is VideoEditorIntent.CaptionTapped -> captions.tap(intent.itemId)

@@ -259,6 +259,8 @@ class PhotoEditorViewModel(
             is PhotoEditorIntent.SetTextFont -> restyle(PhotoEdit.TEXT_FONT, font = intent.fontId) { it.copy(fontId = intent.fontId) }
             is PhotoEditorIntent.SetTextColor -> restyle(PhotoEdit.TEXT_COLOR) { it.copy(color = ArgbColor(intent.argb)) }
             is PhotoEditorIntent.SetTextOutline -> restyle(PhotoEdit.TEXT_OUTLINE) { it.copy(outlineColor = intent.argb?.let(::ArgbColor)) }
+            is PhotoEditorIntent.SetTextShadow -> restyle(PhotoEdit.TEXT_SHADOW) { it.copy(shadow = intent.shadow) }
+            is PhotoEditorIntent.SetTextBox -> restyle(PhotoEdit.TEXT_BOX) { it.copy(box = intent.box) }
             is PhotoEditorIntent.SetCanvasRatio -> setRatio(intent.ratio)
             is PhotoEditorIntent.CanvasStepped -> stepRatio(intent.step, intent.repeats)
             is PhotoEditorIntent.CanvasStepHeld -> holdRatio(intent.step, intent.repeats)

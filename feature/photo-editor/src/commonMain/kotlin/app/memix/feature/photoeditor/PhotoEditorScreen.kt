@@ -84,6 +84,8 @@ import memix.core.ui.generated.resources.edit_edit_text
 import memix.core.ui.generated.resources.edit_text_color
 import memix.core.ui.generated.resources.edit_text_font
 import memix.core.ui.generated.resources.edit_text_outline
+import memix.core.ui.generated.resources.edit_text_shadow
+import memix.core.ui.generated.resources.edit_text_box
 import memix.core.ui.generated.resources.tool_edit_text
 import memix.core.ui.generated.resources.tool_style
 import memix.core.ui.generated.resources.tool_text
@@ -554,6 +556,8 @@ private fun editName(edit: PhotoEdit): String = stringResource(
         PhotoEdit.TEXT_FONT -> UiRes.string.edit_text_font
         PhotoEdit.TEXT_COLOR -> UiRes.string.edit_text_color
         PhotoEdit.TEXT_OUTLINE -> UiRes.string.edit_text_outline
+        PhotoEdit.TEXT_SHADOW -> UiRes.string.edit_text_shadow
+        PhotoEdit.TEXT_BOX -> UiRes.string.edit_text_box
         PhotoEdit.FORMAT_PLAIN, PhotoEdit.FORMAT_CLASSIC, PhotoEdit.FORMAT_CAPTION_BAR, PhotoEdit.FORMAT_PANELS,
         PhotoEdit.FORMAT_DEMOTIVATIONAL, PhotoEdit.FORMAT_BUBBLES,
         -> Res.string.edit_format

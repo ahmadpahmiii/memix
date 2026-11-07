@@ -5,6 +5,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import app.memix.core.designsystem.component.ToolPanel
 import app.memix.core.model.project.CaptionStyle
+import app.memix.core.model.project.CaptionBox
+import app.memix.core.model.project.CaptionShadow
 import app.memix.core.model.project.Transform
 import app.memix.core.ui.panels.PositionRows
 import app.memix.core.ui.text.StyleActions
@@ -30,6 +32,8 @@ internal fun TextPanels(panel: TextPanel?, style: CaptionStyle?, transform: Tran
             override fun onFont(fontId: String) = onIntent(VideoEditorIntent.SetCaptionFont(fontId))
             override fun onColor(argb: Long) = onIntent(VideoEditorIntent.SetCaptionColor(argb))
             override fun onOutline(argb: Long?) = onIntent(VideoEditorIntent.SetCaptionOutline(argb))
+            override fun onShadow(shadow: CaptionShadow?) = onIntent(VideoEditorIntent.SetCaptionShadow(shadow))
+            override fun onBox(box: CaptionBox?) = onIntent(VideoEditorIntent.SetCaptionBox(box))
             override fun onClose() = onIntent(VideoEditorIntent.CloseTextPanel)
         }
     }

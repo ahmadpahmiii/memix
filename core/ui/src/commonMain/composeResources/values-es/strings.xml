@@ -128,6 +128,18 @@
     <string name="font_handwritten">A mano</string>
     <string name="font_serif">Serif</string>
     <string name="outline_none">Sin contorno</string>
+    <string name="style_shadow">Sombra</string>
+    <string name="shadow_none">Sin sombra</string>
+    <string name="style_shadow_softness">Suavidad</string>
+    <string name="shadow_sharp">Nítida</string>
+    <string name="shadow_soft">Suave</string>
+    <string name="shadow_blurry">Difusa</string>
+    <string name="style_box">Caja</string>
+    <string name="box_none">Sin caja</string>
+    <string name="style_box_corners">Esquinas</string>
+    <string name="box_square">Cuadradas</string>
+    <string name="box_rounded">Redondeadas</string>
+    <string name="box_pill">Píldora</string>
     <string name="a11y_text_on_canvas">Texto: %1$s</string>
     <string name="tool_text">Texto</string>
     <string name="tool_edit_text">Editar texto</string>
@@ -137,4 +149,6 @@
     <string name="edit_text_font">Fuente</string>
     <string name="edit_text_color">Color</string>
     <string name="edit_text_outline">Contorno</string>
+    <string name="edit_text_shadow">Sombra</string>
+    <string name="edit_text_box">Caja</string>
 </resources>

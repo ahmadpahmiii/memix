@@ -169,6 +169,8 @@ import memix.feature.video_editor.generated.resources.edit_split
 import memix.core.ui.generated.resources.edit_text_color
 import memix.core.ui.generated.resources.edit_text_font
 import memix.core.ui.generated.resources.edit_text_outline
+import memix.core.ui.generated.resources.edit_text_shadow
+import memix.core.ui.generated.resources.edit_text_box
 import memix.feature.video_editor.generated.resources.edit_transform_text
 import memix.feature.video_editor.generated.resources.edit_trim
 import memix.feature.video_editor.generated.resources.edit_unmute_original
@@ -850,6 +852,8 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.TEXT_FONT -> UiRes.string.edit_text_font
         VideoEdit.TEXT_COLOR -> UiRes.string.edit_text_color
         VideoEdit.TEXT_OUTLINE -> UiRes.string.edit_text_outline
+        VideoEdit.TEXT_SHADOW -> UiRes.string.edit_text_shadow
+        VideoEdit.TEXT_BOX -> UiRes.string.edit_text_box
         VideoEdit.POSITION_TEXT -> Res.string.edit_move_text
         VideoEdit.TRANSFORM_TEXT -> Res.string.edit_transform_text
         VideoEdit.CANVAS_RATIO -> UiRes.string.edit_canvas_ratio

@@ -11,6 +11,8 @@ import app.memix.core.domain.video.PreviewSession
 import app.memix.core.domain.video.VideoCodec
 import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.project.CanvasRatio
+import app.memix.core.model.project.CaptionBox
+import app.memix.core.model.project.CaptionShadow
 import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.RatioTerms
@@ -658,6 +660,10 @@ sealed interface VideoEditorIntent {
 
     /** An outline swatch: the selected caption's outline in [argb], or none when it's null. */
     data class SetCaptionOutline(val argb: Long?) : VideoEditorIntent
+
+    /** Shadow and box (P2-11): the new setting, or null for "No shadow" / "No box". */
+    data class SetCaptionShadow(val shadow: CaptionShadow?) : VideoEditorIntent
+    data class SetCaptionBox(val box: CaptionBox?) : VideoEditorIntent
 
     /** A Position panel tap, or the end of a held Move arrow ([repeats] steps in all). */
     data class PositionStepped(val step: PositionStep, val repeats: Int = 1) : VideoEditorIntent

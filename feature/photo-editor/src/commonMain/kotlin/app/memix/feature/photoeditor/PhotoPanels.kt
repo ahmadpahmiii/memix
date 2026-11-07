@@ -39,6 +39,8 @@ import memix.feature.photo_editor.generated.resources.layers_locked_opacity
 import memix.feature.photo_editor.generated.resources.layers_opacity
 import memix.feature.photo_editor.generated.resources.photo_background_hidden
 import memix.feature.photo_editor.generated.resources.canvas_background_format
+import app.memix.core.model.project.CaptionBox
+import app.memix.core.model.project.CaptionShadow
 import app.memix.core.model.project.DemotivationalFormat
 import memix.feature.photo_editor.generated.resources.tool_unlock
 import org.jetbrains.compose.resources.stringResource
@@ -72,6 +74,8 @@ internal fun PhotoPanels(state: PhotoEditorUiState, live: PhotoLive, thumbnails:
             override fun onFont(fontId: String) = onIntent(PhotoEditorIntent.SetTextFont(fontId))
             override fun onColor(argb: Long) = onIntent(PhotoEditorIntent.SetTextColor(argb))
             override fun onOutline(argb: Long?) = onIntent(PhotoEditorIntent.SetTextOutline(argb))
+            override fun onShadow(shadow: CaptionShadow?) = onIntent(PhotoEditorIntent.SetTextShadow(shadow))
+            override fun onBox(box: CaptionBox?) = onIntent(PhotoEditorIntent.SetTextBox(box))
             override fun onClose() = onIntent(PhotoEditorIntent.ClosePanel)
         }
     }
@@ -83,8 +87,9 @@ internal fun PhotoPanels(state: PhotoEditorUiState, live: PhotoLive, thumbnails:
         styleActions,
         modifier,
         contentMaxHeight = maxHeight,
-        // A bubble's panel: Shape first, no Outline, Fill last (spec P2-02 → Bubbles).
+        // A bubble's panel: Shape first, no Outline and no Box, Shadow, Fill last (spec P2-02 → Bubbles, P2-11).
         showOutline = bubble == null,
+        showBox = bubble == null,
         rowsBefore = { if (bubble != null) BubbleShapeRow(bubble.shape) { onIntent(PhotoEditorIntent.SetBubbleShape(it)) } },
         rowsAfter = { if (bubble != null) BubbleFillRow(bubble.fill) { onIntent(PhotoEditorIntent.SetBubbleFill(it)) } },
     )

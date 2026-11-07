@@ -133,6 +133,10 @@ enum class EditorTool(val eventValue: String?) {
     TEXT_FONT("text_font"),
     TEXT_COLOR("text_color"),
     TEXT_OUTLINE("text_outline"),
+
+    /** P2-11: one id per Style panel row, with no parameter (PM, 2 Nov 2026); a softness or corners step counts as its row. */
+    TEXT_SHADOW("text_shadow"),
+    TEXT_BOX("text_box"),
     POSITION_TEXT("position_text"),
     TRANSFORM_TEXT("transform_text"),
 

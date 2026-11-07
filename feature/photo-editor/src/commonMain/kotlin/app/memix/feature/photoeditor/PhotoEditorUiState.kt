@@ -10,6 +10,8 @@ import app.memix.core.model.project.BoxSize
 import app.memix.core.model.project.BubbleLayer
 import app.memix.core.model.project.BubbleShape
 import app.memix.core.model.project.CaptionLook
+import app.memix.core.model.project.CaptionBox
+import app.memix.core.model.project.CaptionShadow
 import app.memix.core.model.project.bubbleBox
 import app.memix.core.model.project.tipIn
 import app.memix.core.domain.project.bodyOn
@@ -306,6 +308,8 @@ enum class PhotoEdit(val tool: EditorTool) {
     TEXT_FONT(EditorTool.TEXT_FONT),
     TEXT_COLOR(EditorTool.TEXT_COLOR),
     TEXT_OUTLINE(EditorTool.TEXT_OUTLINE),
+    TEXT_SHADOW(EditorTool.TEXT_SHADOW),
+    TEXT_BOX(EditorTool.TEXT_BOX),
     TRANSFORM_TEXT(EditorTool.TRANSFORM_TEXT),
     POSITION_TEXT(EditorTool.POSITION_TEXT),
 
@@ -506,6 +510,10 @@ sealed interface PhotoEditorIntent {
 
     /** The outline color, or null for "No outline". */
     data class SetTextOutline(val argb: Long?) : PhotoEditorIntent
+
+    /** Shadow and box (P2-11): the new setting, or null for "No shadow" / "No box". */
+    data class SetTextShadow(val shadow: CaptionShadow?) : PhotoEditorIntent
+    data class SetTextBox(val box: CaptionBox?) : PhotoEditorIntent
 
     // Meme formats (P2-02).
     /** A tile of the Formats panel; the active tile does nothing. */
