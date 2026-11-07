@@ -71,7 +71,13 @@ import app.memix.core.domain.project.setCutOut
 import app.memix.core.domain.segmentation.CutoutProgress as CutOutProgress
 import app.memix.core.domain.segmentation.CutoutResult as CutOutResult
 import app.memix.core.domain.segmentation.RemoveBackgroundUseCase
+import app.memix.core.domain.project.addStickerLayer
+import app.memix.core.domain.sticker.DeleteStickerUseCase
+import app.memix.core.domain.sticker.ListStickersUseCase
+import app.memix.core.domain.sticker.PlaceStickerUseCase
 import app.memix.core.domain.sticker.SaveStickerUseCase
+import app.memix.core.domain.sticker.StickerPlacement
+import app.memix.core.domain.sticker.StickerStore
 import app.memix.core.domain.sticker.StickerSave
 import app.memix.core.domain.segmentation.SegmentationFailure
 import app.memix.core.model.project.CutOut
@@ -181,6 +187,9 @@ class PhotoEditorViewModel(
     private val removeBackground: RemoveBackgroundUseCase,
     private val analytics: Analytics,
     private val saveSticker: SaveStickerUseCase,
+    private val listStickers: ListStickersUseCase,
+    private val placeSticker: PlaceStickerUseCase,
+    private val deleteSticker: DeleteStickerUseCase,
 ) : MemixViewModel<PhotoEditorUiState, PhotoEditorIntent>(PhotoEditorUiState()) {
     // A picked photo's copy, its sheet and its landing (spec P2-12); P2-13 adds Add photo to the same pick.
     private val pick = ProjectPickImport(importMedia, viewModelScope, projectId, PickLanding())
@@ -197,6 +206,9 @@ class PhotoEditorViewModel(
     // The segmenter run behind the cut-out screen (P2-07); cancelled when the screen closes or tries again.
     private var segmentJob: kotlinx.coroutines.Job? = null
     private var noticeJob: kotlinx.coroutines.Job? = null
+    // The sticker waiting out its Undo window (P2-14).
+    private var pendingStickerDelete: String? = null
+    private var stickerDeleteJob: kotlinx.coroutines.Job? = null
     // The cut-out last saved as a sticker, so the same one twice answers "already saved" (spec P2-07).
     private var lastSavedStickerKey: String? = null
     // A finger is down in Draw mode: Undo and Redo wait for it (spec P2-05 → Interactions).
@@ -259,6 +271,12 @@ class PhotoEditorViewModel(
             PhotoEditorIntent.CutOutRetry -> state.value.cutOut?.let { startSegmenting(it.layerId) }
             is PhotoEditorIntent.CutOutApply -> applyCutOut(intent.strokes, intent.softness)
             PhotoEditorIntent.CutOutRemove -> removeCutOut()
+            PhotoEditorIntent.OpenStickers -> openStickers()
+            PhotoEditorIntent.CloseStickers -> closeStickers()
+            is PhotoEditorIntent.PickSticker -> pickSticker(intent.path)
+            is PhotoEditorIntent.DeleteSticker -> deleteStickerWithUndo(intent.path)
+            PhotoEditorIntent.UndoDeleteSticker -> undoStickerDelete()
+            PhotoEditorIntent.StickersEmptyAction -> stickersEmptyAction()
             PhotoEditorIntent.CutOutInertTapped -> explainInertCutOut()
             is PhotoEditorIntent.CutOutSaveSticker -> saveCutOutSticker(intent)
             PhotoEditorIntent.CutOutClosed -> closeCutOut()
@@ -1025,6 +1043,94 @@ class PhotoEditorViewModel(
         editLayer(PhotoEdit.REMOVE_BG) { it.setCutOut(session.layerId, updated) }
     }
 
+    // The Stickers sheet (spec docs/ux/specs/P2-14-sticker-picker.md) ----------------------------------------------------------------
+
+    private fun openStickers() {
+        if (state.value.stickers != null) return
+        updateState { it.copy(stickers = StickersUi(), panel = null, canvasPanel = null) }
+        viewModelScope.launch {
+            val items = listStickers().toImmutableList()
+            updateState { current -> current.stickers?.let { current.copy(stickers = it.copy(items = items, loaded = true)) } ?: current }
+        }
+    }
+
+    // Closing finishes a delete still waiting for its Undo (the file goes when the sheet and its toast go).
+    private fun closeStickers() {
+        finishPendingStickerDelete()
+        updateState { it.copy(stickers = null) }
+    }
+
+    // A tap lands the sticker: its file is copied into the project, then one step "Add sticker" puts it at the front, selected.
+    private fun pickSticker(path: String) {
+        val sheet = state.value.stickers ?: return
+        if (sheet.placing != null) return
+        updateState { it.copy(stickers = sheet.copy(placing = path)) }
+        viewModelScope.launch {
+            draftOpened.await()
+            when (val placed = placeSticker(projectId, path)) {
+                is StickerPlacement.Placed -> landSticker(placed.media)
+                StickerPlacement.Missing -> showStickersToast(StickersToast.FileMissing)
+                StickerPlacement.NoSpace -> showStickersToast(StickersToast.AddFailed)
+            }
+        }
+    }
+
+    private fun landSticker(media: MediaRef) {
+        val newId = Uuid.random().toString()
+        if (!commit(PhotoEdit.ADD_STICKER) { it.addStickerLayer(media, newId) }) return showStickersToast(StickersToast.AddFailed)
+        select(newId)
+        closeStickers()
+        showToast(PhotoToastMessage.StickerAdded, spokenOnly = true)
+    }
+
+    private fun showStickersToast(toast: StickersToast) {
+        updateState { current -> current.stickers?.let { current.copy(stickers = it.copy(toast = toast, placing = null)) } ?: current }
+    }
+
+    // The tile leaves at once and a toast offers Undo for 8 s; the file goes when the time ends (spec → Delete).
+    private fun deleteStickerWithUndo(path: String) {
+        val sheet = state.value.stickers ?: return
+        if (path !in sheet.items) return
+        finishPendingStickerDelete()
+        pendingStickerDelete = path
+        val serial = nextToastId++
+        updateState { it.copy(stickers = sheet.copy(items = sheet.items.filter { item -> item != path }.toImmutableList(), toast = StickersToast.Deleted(path, serial))) }
+        stickerDeleteJob = viewModelScope.launch {
+            delay(STICKER_UNDO_MILLIS)
+            finishPendingStickerDelete()
+            updateState { current -> current.stickers?.let { current.copy(stickers = it.copy(toast = null)) } ?: current }
+        }
+    }
+
+    private fun undoStickerDelete() {
+        val path = pendingStickerDelete ?: return
+        stickerDeleteJob?.cancel()
+        pendingStickerDelete = null
+        updateState { current ->
+            val sheet = current.stickers ?: return@updateState current
+            val restored = (sheet.items + path).sortedWith(compareByDescending<String> { StickerStore.savedAt(it) }.thenByDescending { it })
+            current.copy(stickers = sheet.copy(items = restored.toImmutableList(), toast = null))
+        }
+    }
+
+    // Deletes the sticker waiting out its Undo now; the `delete_sticker` event is for a deletion that became final.
+    private fun finishPendingStickerDelete() {
+        val path = pendingStickerDelete ?: return
+        stickerDeleteJob?.cancel()
+        pendingStickerDelete = null
+        viewModelScope.launch {
+            deleteSticker(path)
+            analytics.log(AnalyticsEvent.ToolUse(ProjectType.PHOTO, EditorTool.DELETE_STICKER))
+        }
+    }
+
+    // The empty state's one button: Remove background when there is a photo to cut, otherwise Add photo (spec → Empty state).
+    private fun stickersEmptyAction() {
+        val hasImage = state.value.layers.any { it.kind == LayerKind.IMAGE }
+        closeStickers()
+        if (hasImage) openCutOut(null) else requestPick(PhotoPickRequest.AddLayer)
+    }
+
     // Save as sticker (spec → Save as sticker): the same cut-out twice says it is saved already; it doesn't close the screen or apply anything.
     private fun saveCutOutSticker(request: PhotoEditorIntent.CutOutSaveSticker) {
         if (state.value.cutOut == null) return
@@ -1319,6 +1425,8 @@ class PhotoEditorViewModel(
         when {
             // The Crop screen is a mode: back discards it (spec P2-04 → The Crop screen).
             current.cropLayerId != null -> updateState { it.copy(cropLayerId = null) }
+            // The Stickers sheet closes first (it is the topmost thing).
+            current.stickers != null -> closeStickers()
             // The cut-out screen is a mode too: back discards it (spec P2-07 → Leaving).
             current.cutOut != null -> closeCutOut()
             // Typing commits and the keyboard closes first (spec P2-03 → Typing → back order).
@@ -1339,6 +1447,11 @@ class PhotoEditorViewModel(
     private fun goToBackground() {
         // The keyboard goes with the app: typed words are kept, as on Done (spec P2-03 → Typing → commit).
         commitEntry()
+        // A delete still inside its Undo window becomes final: the process may be gone before the 8 s end.
+        if (pendingStickerDelete != null) {
+            finishPendingStickerDelete()
+            updateState { current -> current.stickers?.let { current.copy(stickers = it.copy(toast = null)) } ?: current }
+        }
         // Android may end a background app without warning, so the newest change is written now.
         editSession?.saveNow()
         currentProject()?.takeUnless { it.isEmptyDraft() }?.let { updateDraftThumbnail(it) }
@@ -1447,6 +1560,7 @@ class PhotoEditorViewModel(
         /** `tool_use.value` for a custom ratio: never its numbers (spec → Analytics). */
         const val CUSTOM_VALUE = "custom"
         const val CUTOUT_NOTICE_MILLIS = 3000L
+        const val STICKER_UNDO_MILLIS = 8000L
         val IMAGE_LADDER = SizeLadder(PhotoCatalog.IMAGE_SIZE_STEPS)
     }
 }

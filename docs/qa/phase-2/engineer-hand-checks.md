@@ -299,3 +299,18 @@ Spec: `docs/ux/specs/P2-07-background-removal.md`. Needs a Google Play emulator 
 8. **Save as sticker:** the button saves `files/stickers/<uuid>.png` (`adb shell run-as app.memix ls files/stickers`): transparent, trimmed to the cut-out, long side 1024 at most, without the crop or color edits; a second tap with nothing changed says "already in My stickers"; with everything erased "Nothing is left to save"; the screen stays open. Nothing is uploaded.
 9. **Speed and leaks:** release-type build: stroke drawing follows the finger without lag on a 12 MP photo; LeakCanary (debug), 5 cycles of open, paint, Apply, reopen; the drag bars in `photo-layers-10` with a cut-out layer.
 10. **Known gaps to judge:** Nothing found has no live brush (Try again only); the Layers panel thumbnail does not show the cut-out yet; the cut-out screen has not been design-reviewed; machine-translated strings (id, es, pt, hi).
+
+## P2-14 · Stickers tool and My stickers
+
+Spec: `docs/ux/specs/P2-14-sticker-picker.md`. Renders: `docs/ux/reviews/P2-14/`. Not run on a device. The store is `files/stickers/s<ms>_<id>.png` (a name without the time is the oldest).
+
+1. **Done when:** in the photo editor save two cut-outs with Save as sticker (P2-07), open Stickers (main bar, after Text): both are there, newest first. Tap one: the sheet closes and the sticker is on the canvas at the centre, scale 1 (35% of the shorter side), at the front, selected; one Undo ("Undo: Add sticker") removes it. Force-stop, reopen the draft: it is there.
+2. **Own copy:** `adb shell run-as app.memix ls files/media/<project id>` shows the sticker's PNG; the layer is not tied to `files/stickers`. Delete the sticker from My stickers, reopen the draft: still there. Duplicate the draft, delete from My stickers: both drafts still show it.
+3. **Shape:** a 3:1 sticker lands 3:1 (the layer carries its measured size); a square one lands square.
+4. **Delete:** long-press a tile (LongPress haptic): Menu with Delete; "Sticker deleted" with Undo for 8 s; Undo puts it back in place. Let it run out (or close the sheet): the file is gone from `files/stickers`; `delete_sticker` is logged then, not on Undo. Delete the last one: the empty state.
+5. **Empty state:** with a photo layer the button is "Remove background" (blue) and starts the cut-out on the main photo; with only text layers it is "Add photo" (no blue) and starts the pick. A fresh install shows the empty state.
+6. **Missing file:** `adb shell run-as app.memix rm files/stickers/<name>`: the tile shows the photo icon; a tap says "This sticker's file is missing..." and nothing lands; Delete works.
+7. **No space:** fill the phone, tap a sticker: "Couldn't add the sticker...", the sheet stays open.
+8. **Analytics:** `tool_use` `add_sticker` per landing (one undo step), `delete_sticker` when a deletion is final; opening the sheet, a failed copy and a missing tap log nothing.
+9. **Speed, memory:** a store of 200 stickers (copy a file 200 times into `files/stickers` with names `s<n>_x.png`) scrolls with no visible lag; thumbnails are 128 px decodes (never the originals); LeakCanary, 5 cycles of open, scroll, land, delete, close.
+10. **200% font, es and hi:** the empty state and the sheet (renders show the empty state wrapping inside the sheet). TalkBack: tiles read "Sticker 3 of 12", Delete is a custom action, "Sticker added in front" is announced after landing (focus to the selected-layer bar is a device check).

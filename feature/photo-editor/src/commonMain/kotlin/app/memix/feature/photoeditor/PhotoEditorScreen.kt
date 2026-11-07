@@ -102,6 +102,9 @@ import memix.core.ui.generated.resources.edit_crop
 import memix.feature.photo_editor.generated.resources.edit_remove_bg
 import memix.feature.photo_editor.generated.resources.edit_remove_cutout
 import memix.feature.photo_editor.generated.resources.tool_remove_bg
+import memix.feature.photo_editor.generated.resources.tool_stickers
+import memix.feature.photo_editor.generated.resources.edit_add_sticker
+import memix.feature.photo_editor.generated.resources.a11y_sticker_added
 import memix.feature.photo_editor.generated.resources.layer_meta_cutout
 import memix.core.ui.generated.resources.edit_deep_fry
 import memix.core.ui.generated.resources.edit_filter
@@ -305,6 +308,7 @@ fun PhotoEditorScreen(
         }
         CropOverlay(state, bitmaps, onIntent)
         CutOutOverlay(state, bitmaps, onIntent)
+        StickersSheet(state, bitmaps, onIntent)
         UnsavedChangesSheet(
             state.unsavedSheetOpen,
             onStay = { onIntent(PhotoEditorIntent.StayInEditor) },
@@ -403,7 +407,7 @@ private fun ToolBarRegion(state: PhotoEditorUiState, entryField: TextFieldState,
             } else if (layer == null) {
                 // The format's own tool sits right after Formats (spec P2-02 → Main bar).
                 val formatTool = formatSpecificTool(state.format, onIntent)
-                ToolBar(persistentListOf(*listOfNotNull(formatsTool(onIntent), formatTool, textTool(onIntent), addPhotoTool(onIntent), drawTool(onIntent), editPhotoTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), cropTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), removeBgTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), censorTool(onIntent), layersTool(onIntent)).toTypedArray()))
+                ToolBar(persistentListOf(*listOfNotNull(formatsTool(onIntent), formatTool, textTool(onIntent), stickersTool(onIntent), addPhotoTool(onIntent), drawTool(onIntent), editPhotoTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), cropTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), removeBgTool(onIntent, state.layers.any { it.kind == LayerKind.IMAGE }), censorTool(onIntent), layersTool(onIntent)).toTypedArray()))
             } else {
                 val closeLabel = stringResource(Res.string.layer_tools_close)
                 ToolBar(
@@ -441,6 +445,11 @@ private fun formatSpecificTool(format: app.memix.core.model.project.PhotoFormat?
 @Composable
 private fun textTool(onIntent: (PhotoEditorIntent) -> Unit) =
     ToolBarItem(stringResource(UiRes.string.tool_text), MemixIcons.Text, { onIntent(PhotoEditorIntent.AddText) })
+
+// Stickers: always on the main bar, right after Text (spec P2-14 → Entry and exit); the empty sheet is the way to the first sticker.
+@Composable
+private fun stickersTool(onIntent: (PhotoEditorIntent) -> Unit) =
+    ToolBarItem(stringResource(Res.string.tool_stickers), MemixIcons.Sticker, { onIntent(PhotoEditorIntent.OpenStickers) })
 
 // Edit photo on the main bar, like Crop: only while an image layer exists; a tap selects the main photo and opens the panel.
 @Composable
@@ -599,7 +608,7 @@ private fun ToastTimer(toast: PhotoToast, onTimedOut: (id: Long) -> Unit) {
             is PhotoToastMessage.Undone, is PhotoToastMessage.Redone, is PhotoToastMessage.Edited, is PhotoToastMessage.LayerOrder,
             is PhotoToastMessage.PositionTransformed, is PhotoToastMessage.PositionMoved, is PhotoToastMessage.OpacityChanged,
             is PhotoToastMessage.RatioStepped, PhotoToastMessage.BackgroundImageSet, PhotoToastMessage.BackgroundImageRemoved,
-            PhotoToastMessage.LayerAdded, PhotoToastMessage.TextAdded, PhotoToastMessage.DrawMode, PhotoToastMessage.DrawSaved, PhotoToastMessage.CensorAdded, PhotoToastMessage.BubbleAdded, is PhotoToastMessage.FormatSet,
+            PhotoToastMessage.LayerAdded, PhotoToastMessage.StickerAdded, PhotoToastMessage.TextAdded, PhotoToastMessage.DrawMode, PhotoToastMessage.DrawSaved, PhotoToastMessage.CensorAdded, PhotoToastMessage.BubbleAdded, is PhotoToastMessage.FormatSet,
             -> WHAT_HAPPENED_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
@@ -633,6 +642,7 @@ private fun toastText(message: PhotoToastMessage): String = when (message) {
     PhotoToastMessage.BackgroundImageSet -> stringResource(UiRes.string.a11y_canvas_image_set)
     PhotoToastMessage.BackgroundImageRemoved -> stringResource(UiRes.string.a11y_canvas_image_removed)
     PhotoToastMessage.LayerAdded -> stringResource(Res.string.a11y_layer_added)
+    PhotoToastMessage.StickerAdded -> stringResource(Res.string.a11y_sticker_added)
     PhotoToastMessage.TextAdded -> stringResource(Res.string.a11y_layer_text_added)
     is PhotoToastMessage.FormatSet -> stringResource(Res.string.a11y_format_set, formatName(message.choice))
     PhotoToastMessage.BubbleAdded -> stringResource(Res.string.a11y_layer_bubble_added)
@@ -666,6 +676,7 @@ private fun editName(edit: PhotoEdit): String = stringResource(
         PhotoEdit.TEXT_BOX -> UiRes.string.edit_text_box
         PhotoEdit.CROP -> UiRes.string.edit_crop
         PhotoEdit.REMOVE_BG -> Res.string.edit_remove_bg
+        PhotoEdit.ADD_STICKER -> Res.string.edit_add_sticker
         PhotoEdit.CLEAR_CUTOUT -> Res.string.edit_remove_cutout
         PhotoEdit.FILTER -> UiRes.string.edit_filter
         PhotoEdit.ADJUST_BRIGHTNESS, PhotoEdit.ADJUST_CONTRAST, PhotoEdit.ADJUST_SATURATION, PhotoEdit.ADJUST_WARMTH,

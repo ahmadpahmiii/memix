@@ -230,4 +230,18 @@
     <string name="cutout_save_failed">Não foi possível salvar a figurinha. Libere espaço e tente de novo.</string>
     <string name="explain_cutout_not_ready">O recorte ainda não está pronto.</string>
     <string name="explain_cutout_nothing">Primeiro apague uma parte da foto à mão.</string>
+    <string name="tool_stickers">Figurinhas</string>
+    <string name="stickers_title">Figurinhas</string>
+    <string name="stickers_tab_mine">Minhas figurinhas</string>
+    <string name="stickers_empty_title">Ainda sem figurinhas</string>
+    <string name="stickers_empty_body">Recorte uma pessoa, bicho ou objeto de uma foto e salve como figurinha. Ela aparecerá aqui.</string>
+    <string name="stickers_empty_action">Remover o fundo</string>
+    <string name="stickers_deleted">Figurinha excluída</string>
+    <string name="stickers_undo">Desfazer</string>
+    <string name="stickers_deleted_a11y">Figurinha excluída. Memes que a usam não são afetados.</string>
+    <string name="stickers_file_missing">O arquivo desta figurinha sumiu. Toque e segure para excluí-la.</string>
+    <string name="stickers_add_failed">Não foi possível adicionar a figurinha. Libere espaço e tente de novo.</string>
+    <string name="a11y_sticker_tile">Figurinha %1$d de %2$d</string>
+    <string name="a11y_sticker_added">Figurinha adicionada na frente</string>
+    <string name="edit_add_sticker">Adicionar figurinha</string>
 </resources>

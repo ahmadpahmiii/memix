@@ -4,6 +4,7 @@ import app.memix.core.model.project.CensorLayer
 import app.memix.core.model.project.ImageLayer
 import app.memix.core.model.project.Layer
 import app.memix.core.model.project.MediaRef
+import app.memix.core.model.project.StickerLayer
 import app.memix.core.model.project.PanelsFormat
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.pictureArea
@@ -114,6 +115,12 @@ fun Project.addImageLayer(media: MediaRef, id: String): Project {
     val transform = if (area != null && size != null) placeMainPhoto(photo?.format, PixelSize(canvas.widthPx, canvas.heightPx), size) else Transform()
     return withLayers(layers() + ImageLayer(id, media, transform))
 }
+
+/**
+ * A new sticker layer [id] of [media] (its copy, with its measured size) at the front of the stack (spec P2-14 → Landing): centered,
+ * scale 1 (35% of the shorter side, P2-03's rule), no turn, unlocked, shown, fully opaque.
+ */
+fun Project.addStickerLayer(media: MediaRef, id: String): Project = withLayers(layers() + StickerLayer(id, media, Transform()))
 
 /** One place toward the front. Refused at the front, with a single layer, or while it's locked. */
 fun Project.moveLayerUp(layerId: String): LayerEdit = moveLayerBy(layerId, 1)

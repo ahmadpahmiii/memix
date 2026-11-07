@@ -105,6 +105,20 @@ internal class SceneBitmaps(private val source: SceneImageSource, private val to
         return cutOutPicture(picture, prepared, tools)?.image
     }
 
+    // The Stickers sheet's thumbnails, one per file at about 128 px, kept while the sheet is open (spec P2-14 → Layout).
+    private val stickerThumbs = HashMap<String, SceneBitmap?>()
+
+    /** The thumbnail of store sticker [path], or null when it can't be read (a missing tile). */
+    suspend fun stickerThumbnail(path: String): ImageBitmap? {
+        if (path in stickerThumbs) return stickerThumbs[path]?.image
+        val decoded = source.decode(path, STICKER_THUMB_PX, SceneImageUse.SCREEN)
+        stickerThumbs[path] = decoded
+        return decoded?.image
+    }
+
+    /** Lets go of the sheet's thumbnails; it closed. */
+    fun releaseStickerThumbnails() = stickerThumbs.clear()
+
     /** [cut] (from [cutOutPreview]) as a trimmed sticker PNG, at most [CutOutCatalog.STICKER_LONG_SIDE_PX] on its long side. */
     suspend fun stickerPng(cut: ImageBitmap): StickerPng = stickerPng(cut, CutOutCatalog.STICKER_LONG_SIDE_PX, tools)
 
@@ -162,6 +176,7 @@ internal class SceneBitmaps(private val source: SceneImageSource, private val to
         processed.clear()
         processedFor.clear()
         masks.clear()
+        stickerThumbs.clear()
         rawPicture = null
         jobs.values.forEach(Job::cancel)
         jobs.clear()
@@ -255,3 +270,4 @@ internal fun processRequests(layers: List<SceneLayerUi>, canvas: Canvas, frameWi
     }
 
 private const val LIVE_LONG_SIDE_PX = 640
+private const val STICKER_THUMB_PX = 128

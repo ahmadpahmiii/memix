@@ -231,6 +231,10 @@ enum class EditorTool(val eventValue: String?) {
 
     /** P2-07 (PM, 5 Nov 2026): Apply on the cut-out screen, and Remove cut-out. Strokes and softness fire nothing. */
     REMOVE_BG("remove_bg"),
+
+    /** P2-14 (PM, 5 Nov 2026): a sticker lands from My stickers; `delete_sticker` when a deletion becomes final (an Undo fires nothing). */
+    ADD_STICKER("add_sticker"),
+    DELETE_STICKER("delete_sticker"),
     CLEAR_CUTOUT("clear_cutout"),
     CENSOR_PIXELATE("censor_pixelate"),
     CENSOR_BAR("censor_bar"),

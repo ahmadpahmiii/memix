@@ -80,6 +80,8 @@ data class PhotoEditorUiState(
     val cropLayerId: String? = null,
     /** The cut-out screen over the editor (a mode, like Crop), or null (spec P2-07). */
     val cutOut: CutOutSessionUi? = null,
+    /** The Stickers sheet (spec docs/ux/specs/P2-14-sticker-picker.md), or null while it is closed. */
+    val stickers: StickersUi? = null,
     /** Draw mode (spec P2-05): the Draw bar replaces the tool bar and a one-finger drag draws. Null when the mode is off. */
     val draw: DrawModeUi? = null,
     /** The brush for this visit's Draw sessions: it outlives a session, so the next one starts from the last color and size. */
@@ -381,6 +383,7 @@ enum class PhotoEdit(val tool: EditorTool) {
     // Apply on the cut-out screen and Remove cut-out (P2-07); strokes and softness are the screen's own and fire nothing.
     REMOVE_BG(EditorTool.REMOVE_BG),
     CLEAR_CUTOUT(EditorTool.CLEAR_CUTOUT),
+    ADD_STICKER(EditorTool.ADD_STICKER),
     // The Edit photo panel (P2-04b): each tap or release is one step; the six adjustments are all "Adjust".
     FILTER(EditorTool.FILTER),
     ADJUST_BRIGHTNESS(EditorTool.ADJUST_BRIGHTNESS),
@@ -495,6 +498,9 @@ sealed interface PhotoToastMessage {
 
     /** Spoken only, after a photo landed as a new top layer: "Photo added in front". */
     data object LayerAdded : PhotoToastMessage
+
+    /** Spoken only, after a sticker lands from My stickers. */
+    data object StickerAdded : PhotoToastMessage
 
     /** Spoken only, after a new text landed: "Text added". */
     data object TextAdded : PhotoToastMessage
@@ -657,6 +663,21 @@ sealed interface PhotoEditorIntent {
 
     /** Save as sticker: [png] is the trimmed cut-out as the screen shows it (null when nothing is left, or when it couldn't be made), [key] says which cut-out it is. */
     data class CutOutSaveSticker(val png: ByteArray?, val key: String, val couldNotEncode: Boolean = false) : PhotoEditorIntent
+
+    /** The Stickers tool: opens the sheet. */
+    data object OpenStickers : PhotoEditorIntent
+
+    data object CloseStickers : PhotoEditorIntent
+
+    /** A tile tap: the sticker lands on the canvas as one step. */
+    data class PickSticker(val path: String) : PhotoEditorIntent
+
+    data class DeleteSticker(val path: String) : PhotoEditorIntent
+
+    data object UndoDeleteSticker : PhotoEditorIntent
+
+    /** The empty state's button: Remove background on the main photo when there is an image layer, else Add photo. */
+    data object StickersEmptyAction : PhotoEditorIntent
 
     /** A tap on Apply or Save as sticker while they can't act: the stage says why (not ready yet, or nothing erased by hand yet). */
     data object CutOutInertTapped : PhotoEditorIntent
@@ -850,3 +871,25 @@ enum class CutOutNotice { SAVED, EMPTY, ALREADY_SAVED, FAILED, NOT_READY, NOTHIN
 
 /** The status cards that end in Try again (spec → States). */
 enum class CutOutProblem { UNAVAILABLE, OFFLINE, MEMORY, SLOW }
+
+/**
+ * The Stickers sheet's data (spec P2-14): the stickers of My stickers, newest first, as paths in the sticker store; [loaded] is false
+ * until the list is read (the sheet shows nothing, not the empty state). Thumbnails are the sheet's own.
+ */
+@Immutable
+data class StickersUi(
+    val items: ImmutableList<String> = persistentListOf(),
+    val loaded: Boolean = false,
+    val toast: StickersToast? = null,
+    /** The sticker being copied into the project (taps wait; its tile keeps the pressed look), or null. */
+    val placing: String? = null,
+)
+
+sealed interface StickersToast {
+    /** [path] is waiting out its Undo window, [serial] tells two deletes of one tile apart. */
+    data class Deleted(val path: String, val serial: Long) : StickersToast
+
+    data object FileMissing : StickersToast
+
+    data object AddFailed : StickersToast
+}

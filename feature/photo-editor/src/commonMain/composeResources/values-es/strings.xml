@@ -230,4 +230,18 @@
     <string name="cutout_save_failed">No se pudo guardar el sticker. Libera espacio e inténtalo de nuevo.</string>
     <string name="explain_cutout_not_ready">El recorte aún no está listo.</string>
     <string name="explain_cutout_nothing">Primero borra a mano una parte de la foto.</string>
+    <string name="tool_stickers">Stickers</string>
+    <string name="stickers_title">Stickers</string>
+    <string name="stickers_tab_mine">Mis stickers</string>
+    <string name="stickers_empty_title">Aún no hay stickers</string>
+    <string name="stickers_empty_body">Recorta una persona, mascota u objeto de una foto y guárdalo como sticker. Aparecerá aquí.</string>
+    <string name="stickers_empty_action">Quitar el fondo</string>
+    <string name="stickers_deleted">Sticker eliminado</string>
+    <string name="stickers_undo">Deshacer</string>
+    <string name="stickers_deleted_a11y">Sticker eliminado. Los memes que lo usan no se ven afectados.</string>
+    <string name="stickers_file_missing">Falta el archivo de este sticker. Mantén pulsado para eliminarlo.</string>
+    <string name="stickers_add_failed">No se pudo añadir el sticker. Libera espacio e inténtalo de nuevo.</string>
+    <string name="a11y_sticker_tile">Sticker %1$d de %2$d</string>
+    <string name="a11y_sticker_added">Sticker añadido al frente</string>
+    <string name="edit_add_sticker">Añadir sticker</string>
 </resources>

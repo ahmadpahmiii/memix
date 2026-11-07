@@ -24,6 +24,9 @@ import app.memix.core.domain.project.OpenVideoDraftUseCase
 import app.memix.core.domain.project.SaveProjectUseCase
 import app.memix.core.domain.project.StartEditSessionUseCase
 import app.memix.core.domain.segmentation.RemoveBackgroundUseCase
+import app.memix.core.domain.sticker.DeleteStickerUseCase
+import app.memix.core.domain.sticker.ListStickersUseCase
+import app.memix.core.domain.sticker.PlaceStickerUseCase
 import app.memix.core.domain.sticker.SaveStickerUseCase
 import app.memix.core.domain.share.ShareVideoUseCase
 import app.memix.core.domain.sound.LoadStarterSoundsUseCase
@@ -97,6 +100,9 @@ private val appModule = module {
     factoryOf(::ImportMediaUseCase)
     factoryOf(::RemoveBackgroundUseCase)
     factoryOf(::SaveStickerUseCase)
+    factoryOf(::ListStickersUseCase)
+    factoryOf(::PlaceStickerUseCase)
+    factoryOf(::DeleteStickerUseCase)
     factoryOf(::SaveGalleryProjectUseCase)
     factoryOf(::SaveGalleryPhotoProjectUseCase)
     // Drafts list (P1-14). The thumbnail writer and the delete with undo outlive every screen: singles in the app's scope.
@@ -145,6 +151,9 @@ private val appModule = module {
             removeBackground = get(),
             analytics = get(),
             saveSticker = get(),
+            listStickers = get(),
+            placeSticker = get(),
+            deleteSticker = get(),
         )
     }
     viewModel { params ->

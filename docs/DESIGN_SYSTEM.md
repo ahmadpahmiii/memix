@@ -107,6 +107,7 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
 - Navigation and chrome: `home`, `templates`, `create` (plus; also Add media and every "add"), `sounds`, `drafts`, `arrow_back`, `chevron_right`, `close`, `globe`.
 - Media and playback: `video`, `photo`, `play`, `pause`, `undo`, `redo`, `heart`, `heart_filled`.
 - Editor tools (P1-06): `edit` (scissor blades, finger loops as the core), `split` (two outlined clips around a solid bar), `delete` (lid and handle strokes over a solid can), `duplicate` (open back outline behind a solid front clip), `reorder` (an arc with two solid arrowheads over two outlined clips).
+- Photo editor (P2-07, P2-14): `cutout` (a solid head over outlined shoulders), `sticker` (an outlined square with its corner peeled, the fold solid).
 - Sound tools (P1-08, approved in the P1-08 review):
   - `volume`: two stroked bars rising left to right (5 and 10px tall) and a solid block with 1px corners as the tallest (16px), with even 3.5px gaps. Distinct from `sounds` (the speaker cone with waves): `sounds` means "meme sounds", `volume` means "how loud".
   - `move_here`: a horizontal shaft with a solid arrowhead pointing right into a full-height vertical bar (the playhead), 2.5px apart. The bar is the destination, the same white line the user sees on the timeline.

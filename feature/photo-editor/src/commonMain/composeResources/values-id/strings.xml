@@ -230,4 +230,18 @@
     <string name="cutout_save_failed">Tidak bisa menyimpan stiker. Kosongkan ruang lalu coba lagi.</string>
     <string name="explain_cutout_not_ready">Potongan belum siap.</string>
     <string name="explain_cutout_nothing">Hapus sebagian foto dengan tangan dulu.</string>
+    <string name="tool_stickers">Stiker</string>
+    <string name="stickers_title">Stiker</string>
+    <string name="stickers_tab_mine">Stikerku</string>
+    <string name="stickers_empty_title">Belum ada stiker</string>
+    <string name="stickers_empty_body">Potong orang, hewan, atau benda dari foto dan simpan sebagai stiker. Stiker akan muncul di sini.</string>
+    <string name="stickers_empty_action">Hapus latar belakang</string>
+    <string name="stickers_deleted">Stiker dihapus</string>
+    <string name="stickers_undo">Urungkan</string>
+    <string name="stickers_deleted_a11y">Stiker dihapus. Meme yang memakainya tidak terpengaruh.</string>
+    <string name="stickers_file_missing">File stiker ini hilang. Sentuh dan tahan untuk menghapusnya.</string>
+    <string name="stickers_add_failed">Tidak bisa menambahkan stiker. Kosongkan ruang lalu coba lagi.</string>
+    <string name="a11y_sticker_tile">Stiker %1$d dari %2$d</string>
+    <string name="a11y_sticker_added">Stiker ditambahkan di depan</string>
+    <string name="edit_add_sticker">Tambah stiker</string>
 </resources>

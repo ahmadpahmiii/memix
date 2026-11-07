@@ -230,4 +230,18 @@
     <string name="cutout_save_failed">स्टिकर नहीं सहेजा जा सका। जगह खाली करें और फिर कोशिश करें।</string>
     <string name="explain_cutout_not_ready">कटआउट अभी तैयार नहीं है।</string>
     <string name="explain_cutout_nothing">पहले फ़ोटो का कुछ हिस्सा हाथ से मिटाएं।</string>
+    <string name="tool_stickers">स्टिकर</string>
+    <string name="stickers_title">स्टिकर</string>
+    <string name="stickers_tab_mine">मेरे स्टिकर</string>
+    <string name="stickers_empty_title">अभी कोई स्टिकर नहीं</string>
+    <string name="stickers_empty_body">किसी फ़ोटो से व्यक्ति, पालतू या चीज़ काटें और उसे स्टिकर के रूप में सहेजें। वह यहां दिखेगा।</string>
+    <string name="stickers_empty_action">बैकग्राउंड हटाएं</string>
+    <string name="stickers_deleted">स्टिकर हटाया गया</string>
+    <string name="stickers_undo">पूर्ववत करें</string>
+    <string name="stickers_deleted_a11y">स्टिकर हटाया गया। जिन मीम में यह है वे प्रभावित नहीं होते।</string>
+    <string name="stickers_file_missing">इस स्टिकर की फ़ाइल नहीं मिली। इसे हटाने के लिए छूकर रखें।</string>
+    <string name="stickers_add_failed">स्टिकर नहीं जोड़ा जा सका। जगह खाली करें और फिर कोशिश करें।</string>
+    <string name="a11y_sticker_tile">स्टिकर %1$d / %2$d</string>
+    <string name="a11y_sticker_added">स्टिकर सामने जोड़ा गया</string>
+    <string name="edit_add_sticker">स्टिकर जोड़ें</string>
 </resources>
