@@ -14,6 +14,7 @@ import app.memix.debug.DraftsCheck
 import app.memix.debug.ExportCheck
 import app.memix.debug.ImportSaveFailure
 import app.memix.debug.MemixTestCrash
+import app.memix.debug.PhotoExportCheck
 import app.memix.debug.SceneRender
 import app.memix.debug.SegmentCheck
 import kotlinx.coroutines.launch
@@ -59,6 +60,17 @@ class MainActivity : ComponentActivity() {
             // P2-02: --ei memix.renderShortSide 1080|2160 sizes the canvas's shorter side instead of the width (the formats' two export sizes).
             val shortSide = intent.getIntExtra("memix.renderShortSide", 0)
             lifecycleScope.launch { SceneRender().run(renderScene, width, shortSide) }
+        }
+        // Debug and benchmark builds (P2-08): --es memix.exportPhoto <photo project id> exports it through the sheet's own renderer; options
+        // --es memix.exportPhotoFormat jpg|png, --ei memix.exportPhotoQuality 90, --ei memix.exportShortSide 1080|2160,
+        // --es memix.exportPhotoTo cache|gallery|clipboard, --ez memix.exportWatermarkFree true. Logcat tag MemixPhotoExport.
+        val exportPhoto = if (handChecks && savedInstanceState == null) intent.getStringExtra("memix.exportPhoto") else null
+        if (exportPhoto != null) {
+            val format = intent.getStringExtra("memix.exportPhotoFormat")
+            val quality = intent.getIntExtra("memix.exportPhotoQuality", 0)
+            val shortSide = intent.getIntExtra("memix.exportShortSide", 0)
+            val destination = intent.getStringExtra("memix.exportPhotoTo")
+            lifecycleScope.launch { PhotoExportCheck().run(exportPhoto, format, quality, shortSide, destination, watermark) }
         }
         // Debug and benchmark builds (P2-07): --es memix.bgRemoveFail unavailable|offline|memory|none|slow|off makes the cut-out end that way
         // (the spec's bg-remove-fail:<kind> hooks), so each status card can be reached. Steps in docs/qa/phase-2/engineer-hand-checks.md.

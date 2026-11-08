@@ -67,6 +67,10 @@ import app.memix.engine.video.VideoResultSurface
 import app.memix.feature.export.ExportExit
 import app.memix.feature.export.ExportScreen
 import app.memix.feature.export.ExportViewModel
+import app.memix.feature.export.PhotoExportedScreen
+import app.memix.feature.export.PhotoExportedViewModel
+import app.memix.core.domain.photo.ExportPhotoUseCase
+import app.memix.core.ui.scene.SavedPictureSource
 import app.memix.feature.export.LastExportStoppedToast
 import app.memix.feature.drafts.DraftsIntent
 import app.memix.feature.drafts.DraftsScreen
@@ -110,6 +114,9 @@ private val tabRoutes = listOf(HomeRoute, TemplatesRoute, SoundsRoute, DraftsRou
 fun App(isDebugBuild: Boolean, debugEditorProject: String? = null) {
     val refreshAppConfig = koinInject<RefreshAppConfigUseCase>()
     LaunchedEffect(Unit) { refreshAppConfig() }
+    // The clipboard copies of earlier runs go at the start (spec P2-08 → Copy).
+    val exportPhoto = koinInject<ExportPhotoUseCase>()
+    LaunchedEffect(Unit) { exportPhoto.deleteOldCopies() }
     MemixTheme {
         val navController = rememberNavController()
         val logger = koinInject<Logger>()
@@ -191,6 +198,19 @@ fun App(isDebugBuild: Boolean, debugEditorProject: String? = null) {
                         route.blank,
                         onClose = { navController.popBackStack() },
                         onCouldntOpen = { editorCouldntOpenCount++ },
+                        // A restored back stack may already show the Exported screen; never a second one on top.
+                        onOpenExported = {
+                            if (navController.currentDestination?.hasRoute(PhotoExportedRoute::class) != true) navController.navigate(PhotoExportedRoute)
+                        },
+                    )
+                }
+                fullScreen<PhotoExportedRoute>(reduceMotion) {
+                    PhotoExportedDestination(
+                        onExit = { exit ->
+                            navController.leaveExport(exit)
+                            // Make another: Home with the Create sheet open (spec P1-12 → Exported screen).
+                            if (exit == ExportExit.MAKE_ANOTHER) createSheetOpen = true
+                        },
                     )
                 }
                 if (isDebugBuild) {
@@ -377,7 +397,7 @@ private fun VideoEditorDestination(projectId: String, onClose: () -> Unit, onCou
  * blank canvas made in memory.
  */
 @Composable
-private fun PhotoEditorDestination(projectId: String, blank: Boolean, onClose: () -> Unit, onCouldntOpen: () -> Unit) {
+private fun PhotoEditorDestination(projectId: String, blank: Boolean, onClose: () -> Unit, onCouldntOpen: () -> Unit, onOpenExported: () -> Unit) {
     val viewModel = koinViewModel<PhotoEditorViewModel>(key = projectId) { parametersOf(projectId, blank) }
     val imageSource = koinInject<SceneImageSource>()
     // The image tools' color pass (P2-04); iOS binds an unsupported one until P7-09.
@@ -394,6 +414,13 @@ private fun PhotoEditorDestination(projectId: String, blank: Boolean, onClose: (
         if (!state.isClosing) return@LaunchedEffect
         if (state.couldntOpen) currentOnCouldntOpen()
         currentOnClose()
+    }
+    // Save to gallery finished: the Exported screen covers the editor (spec P2-08 → Entry and exit).
+    val currentOnOpenExported by rememberUpdatedState(onOpenExported)
+    LaunchedEffect(state.openExportedScreen) {
+        if (!state.openExportedScreen) return@LaunchedEffect
+        currentOnOpenExported()
+        viewModel.onIntent(PhotoEditorIntent.ExportedScreenOpened)
     }
     PhotoEditorScreen(
         state = state,
@@ -428,6 +455,14 @@ private fun ExportDestination(onExit: (ExportExit) -> Unit) {
         onFreeUpSpace = if (canFreeUpSpace) ({ neededBytes -> if (!freeUpSpace.launch(neededBytes)) canFreeUpSpace = false }) else null,
         onExit = onExit,
     )
+}
+
+/** The photo Exported screen (P2-08) with the engine's decoder for the saved picture plugged in. [onExit] leaves the screen. */
+@Composable
+private fun PhotoExportedDestination(onExit: (ExportExit) -> Unit) {
+    val viewModel = koinViewModel<PhotoExportedViewModel>()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    PhotoExportedScreen(state = state, onIntent = viewModel::onIntent, pictures = koinInject<SavedPictureSource>(), onExit = onExit)
 }
 
 /**

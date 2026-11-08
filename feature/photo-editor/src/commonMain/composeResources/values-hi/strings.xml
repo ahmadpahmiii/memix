@@ -244,4 +244,28 @@
     <string name="a11y_sticker_tile">स्टिकर %1$d / %2$d</string>
     <string name="a11y_sticker_added">स्टिकर सामने जोड़ा गया</string>
     <string name="edit_add_sticker">स्टिकर जोड़ें</string>
+    <!-- Photo export (P2-08). Budgets and translator notes: docs/ux/specs/P2-08-photo-export.md -> Copy. JPG, PNG, px and Memix never translate. -->
+    <string name="photo_export_format">फ़ॉर्मैट</string>
+    <string name="photo_export_quality">क्वालिटी</string>
+    <string name="photo_export_png_hint">सबसे साफ़ टेक्स्ट और किनारे। फ़ाइल बड़ी होगी।</string>
+    <string name="photo_export_size">साइज़</string>
+    <string name="photo_export_size_a11y">छोटी तरफ़ %1$d पिक्सल</string>
+    <string name="photo_export_watermark_body">आपकी तस्वीर के ऊपरी बाएँ कोने में छोटा टेक्स्ट</string>
+    <string name="photo_export_facts">%1$s · %2$s</string>
+    <string name="photo_export_estimate">लगभग %1$s</string>
+    <string name="photo_export_facts_a11y">%1$s, %2$d गुणा %3$d पिक्सल। लगभग %4$s।</string>
+    <string name="photo_export_save">गैलरी में सेव करें</string>
+    <string name="photo_export_copy">कॉपी करें</string>
+    <string name="photo_export_saving">सेव हो रहा है…</string>
+    <string name="photo_export_copying">कॉपी हो रहा है…</string>
+    <string name="photo_export_copied">कॉपी हो गया। इसे चैट में पेस्ट करें।</string>
+    <string name="photo_export_no_space">जगह कम है। इस तस्वीर को सेव करने के लिए लगभग %1$s खाली करें।</string>
+    <string name="explain_photo_export_no_space">पहले जगह खाली करें, या छोटा साइज़ चुनें।</string>
+    <string name="photo_export_missing_media">एक तस्वीर की फ़ाइल नहीं मिली, इसलिए उसे छोड़ दिया गया है।</string>
+    <string name="photo_export_fail_size">यह फ़ोन इस साइज़ में तस्वीर नहीं बना सका। छोटा साइज़ चुनें।</string>
+    <string name="photo_export_fail_media">आपकी एक तस्वीर पढ़ी नहीं जा सकी। उसे एडिटर में बदलें, फिर कोशिश करें।</string>
+    <string name="photo_export_fail_space">आपके फ़ोन में जगह खत्म हो गई। जगह खाली करके फिर कोशिश करें।</string>
+    <string name="photo_export_fail_other">कुछ गलत हो गया। आपका ड्राफ़्ट सुरक्षित है। फिर कोशिश करें।</string>
+    <string name="explain_photo_export_empty">पहले कोई फ़ोटो, टेक्स्ट या स्टिकर जोड़ें।</string>
+    <string name="explain_photo_export_busy">थोड़ा रुकें। आपका कट-आउट अभी बन रहा है।</string>
 </resources>

@@ -27,6 +27,13 @@ interface SceneCaptions {
      * height): a speech bubble's body grows around it (spec P2-02 → Bubbles). Cached with the layout [draw] uses.
      */
     fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook): BoxSize
+
+    /**
+     * Draws the "Memix" mark ([app.memix.core.model.project.WatermarkCatalog]) on a picture [widthPx] × [heightPx] with the
+     * same renderer and rules as the video export's, in this scope's pixels with nothing drawn after it (spec P2-08 → What the
+     * file is). Only exports call it; the editor never does. Draws nothing where the renderer doesn't exist (iOS until P7-04).
+     */
+    fun drawWatermark(scope: DrawScope, widthPx: Int, heightPx: Int) = Unit
 }
 
 /** Draws nothing: previews, harnesses and iOS until its renderer exists. */

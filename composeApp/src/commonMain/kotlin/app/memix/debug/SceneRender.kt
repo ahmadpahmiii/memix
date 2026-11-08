@@ -1,38 +1,13 @@
 package app.memix.debug
 
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.LayoutDirection
 import app.memix.core.domain.Logger
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.project.GetProjectUseCase
-import app.memix.core.domain.project.layers
-import app.memix.core.model.project.CanvasBackground
-import app.memix.core.domain.segmentation.SegmentationLimits
-import app.memix.core.model.project.ImageEdit
-import app.memix.core.model.project.ImageLayer
-import app.memix.core.ui.scene.PreparedCutOut
-import app.memix.core.model.project.PanelsFormat
-import app.memix.core.domain.text.PrepareCaptionsUseCase
-import app.memix.core.model.project.StickerLayer
-import app.memix.core.ui.scene.SceneBitmap
-import app.memix.core.ui.scene.SceneCaptions
-import app.memix.core.ui.scene.ImageToolRenderer
-import app.memix.core.ui.scene.SceneImageSource
-import app.memix.core.ui.scene.SceneImageUse
-import app.memix.core.ui.scene.SceneImages
-import app.memix.core.model.project.PhotoCatalog
+import app.memix.core.model.project.PhotoExportCatalog
 import app.memix.core.model.project.PixelSize
-import app.memix.core.model.project.editOrNull
-import app.memix.core.model.project.fittedImageSize
-import app.memix.core.model.project.shownSize
-import app.memix.core.ui.scene.editedLongSidePx
-import app.memix.core.ui.scene.renderEditedPicture
-import kotlin.math.max
-import app.memix.core.ui.scene.drawPhotoScene
+import app.memix.engine.photo.PhotoSceneRenderer
+import app.memix.engine.photo.UnreadablePictureException
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -41,66 +16,33 @@ import org.koin.core.component.inject
  * `--es memix.renderScene <project id> --ei memix.renderWidth 1080` draws the saved photo project through the one
  * scene-drawing function, at that pixel width, into a PNG at `cache/scene-renders/<id>-<width>.png`, and logs where
  * (`--ei memix.renderShortSide 1080|2160` sizes the canvas's shorter side instead, for the meme formats' two export sizes: `<id>-s<size>.png`)
- * (logcat tag [TAG]). The editor draws the same function at screen size, so the two can be compared; export (P2-08)
- * will call it at export size. Pictures are decoded at their own size (up to the decode cap) as software bitmaps.
+ * (logcat tag [TAG]). The editor draws the same function at screen size, so the two can be compared; the export (P2-08) calls
+ * the same [PhotoSceneRenderer] at export size, with the mark. Pictures are decoded at their own size (up to the decode cap) as software bitmaps.
  */
 class SceneRender : KoinComponent {
     private val getProject: GetProjectUseCase by inject()
-    private val imageSource: SceneImageSource by inject()
-    private val imageTools: ImageToolRenderer by inject()
-    private val captions: SceneCaptions by inject()
-    private val prepareCaptions: PrepareCaptionsUseCase by inject()
+    private val renderer: PhotoSceneRenderer by inject()
     private val logger: Logger by inject()
 
     /** Draws [projectId] [widthPx] wide, or, when [shortSidePx] is above 0, with the canvas's shorter side that many pixels (1080 or 2160 for a format check). */
     suspend fun run(projectId: String, widthPx: Int, shortSidePx: Int = 0) {
         val project = (getProject(projectId) as? Outcome.Success)?.value
         if (project?.photo == null) return logger.error(TAG, "renderScene: '$projectId' isn't a saved photo project")
-        val shortSide = minOf(project.canvas.widthPx, project.canvas.heightPx)
-        val widthPx = if (shortSidePx > 0) (shortSidePx.toLong() * project.canvas.widthPx / shortSide).toInt() else widthPx
-        val heightPx = (widthPx.toLong() * project.canvas.heightPx / project.canvas.widthPx).toInt()
-        val fileName = if (shortSidePx > 0) "$projectId-s$shortSidePx.png" else "$projectId-$widthPx.png"
-        val pictures = HashMap<String, SceneBitmap>()
-        // The layers' pictures and the background picture (P2-12), each decoded once.
-        val cellPhotos = (project.photo?.format as? PanelsFormat)?.cells?.mapNotNull { it.source }.orEmpty()
-        val sources = project.layers().mapNotNull { (it as? ImageLayer)?.source ?: (it as? StickerLayer)?.source } + cellPhotos +
-            listOfNotNull(project.canvas.background.let { (it as? CanvasBackground.Image)?.source })
-        for (source in sources) {
-            val path = source.cachedCopyPath ?: continue
-            if (path in pictures) continue
-            imageSource.decode(path, PhotoCatalog.MAX_DECODE_PX, SceneImageUse.OFFSCREEN)?.let { pictures[path] = it }
+        // The export's own size rule, so a hook render and an export of the same size have the same pixels.
+        val output = if (shortSidePx > 0) {
+            PhotoExportCatalog.outputSize(project.canvas, shortSidePx)
+        } else {
+            PixelSize(widthPx, (widthPx.toLong() * project.canvas.heightPx / project.canvas.widthPx).toInt())
         }
-        // Edited layers with color tools (P2-04): the same picture the editor draws, made at this output's size.
-        val processed = HashMap<String, SceneBitmap>()
-        for (layer in project.layers().filterIsInstance<ImageLayer>()) {
-            val edit = layer.editOrNull()?.takeIf { it.hasColorEdits } ?: ImageEdit.NONE.takeIf { layer.cutOut != null } ?: continue
-            val picture = layer.source.cachedCopyPath?.let(pictures::get) ?: continue
-            val canvasSize = PixelSize(project.canvas.widthPx, project.canvas.heightPx)
-            val shown = edit.shownSize(layer.source.pixelSize ?: picture.sourceSize)
-            val fitted = fittedImageSize(shown, canvasSize)
-            val longSide = editedLongSidePx(max(fitted.width, fitted.height), layer.transform.scale, project.canvas.widthPx, widthPx, shown)
-            val prepared = layer.cutOut?.let { cutOut ->
-                val maskPath = cutOut.maskPath
-                if (maskPath == null) PreparedCutOut(cutOut, null) else imageSource.decode(maskPath, SegmentationLimits.INPUT_LONG_SIDE_PX, SceneImageUse.OFFSCREEN)?.let { PreparedCutOut(cutOut, it.image) }
-            }
-            if (layer.cutOut != null && prepared == null) continue
-            renderEditedPicture(picture, edit, longSide, imageTools, prepared)?.let { processed[layer.id] = SceneBitmap(it, picture.sourceSize) }
-        }
-        val images = object : SceneImages {
-            override fun processedOf(layerId: String): SceneBitmap? = processed[layerId]
-
-            override fun imageOf(path: String): SceneBitmap? = pictures[path]
-
-            override fun appearanceOf(path: String): Float = 1f
-        }
-        // The caption fonts load before text layers draw (P2-03).
-        prepareCaptions()
-        val bitmap = ImageBitmap(widthPx, heightPx)
-        CanvasDrawScope().draw(Density(1f), LayoutDirection.Ltr, Canvas(bitmap), Size(widthPx.toFloat(), heightPx.toFloat())) {
-            drawPhotoScene(project.canvas, project.layers(), images, captions = captions, format = project.photo?.format)
+        val fileName = if (shortSidePx > 0) "$projectId-s$shortSidePx.png" else "$projectId-${output.widthPx}.png"
+        // The hook compares with the editor, which never draws the mark.
+        val bitmap = try {
+            renderer.render(project, output, watermark = false)
+        } catch (e: UnreadablePictureException) {
+            return logger.error(TAG, "renderScene: a picture can't be read", e)
         }
         val written = writeDebugPng(bitmap, fileName)
-        logger.debug(TAG, "renderScene: ${written ?: "writing failed"} (${pictures.size} pictures, ${widthPx} x $heightPx)")
+        logger.debug(TAG, "renderScene: ${written ?: "writing failed"} (${output.widthPx} x ${output.heightPx})")
     }
 
     companion object {

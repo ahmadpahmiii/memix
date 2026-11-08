@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Only the clipboard copies of exported pictures (P2-08): cache/photo-copies/. -->
+<paths>
+    <cache-path name="photo_copies" path="photo-copies/" />
+</paths>

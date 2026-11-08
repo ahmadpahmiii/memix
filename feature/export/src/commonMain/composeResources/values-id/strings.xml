@@ -31,4 +31,7 @@
     <string name="export_last_stopped">Ekspor terakhir kamu tidak selesai. Tidak ada yang disimpan.</string>
     <string name="export_open_draft">Buka draf</string>
     <string name="export_dismiss">Tutup</string>
+    <!-- Photo Exported screen (P2-08). -->
+    <string name="photo_export_saved">Tersimpan di galerimu · %1$s · %2$s</string>
+    <string name="photo_export_result_a11y">Gambar yang kamu ekspor</string>
 </resources>

@@ -130,6 +130,10 @@ data class PhotoEditorUiState(
     val pickRequest: PhotoPickRequest? = null,
     /** The import sheet's state while a picked photo copies; read only by the sheet. Null until the editor starts. */
     val photoImport: ProjectImportUi? = null,
+    /** The Export sheet (spec docs/ux/specs/P2-08-photo-export.md), or null while it is closed. */
+    val exportSheet: PhotoExportSheetUi? = null,
+    /** The picture is saved: the app opens the Exported screen and sends [PhotoEditorIntent.ExportedScreenOpened]. */
+    val openExportedScreen: Boolean = false,
     val toast: PhotoToast? = null,
     val unsavedSheetOpen: Boolean = false,
     /** The editor is done; the app closes the screen. */
@@ -147,6 +151,9 @@ data class PhotoEditorUiState(
 
     /** Whether a panel hides the tool bar (and then the selected-layer bar too). */
     val panelOpen: Boolean get() = panel != null
+
+    /** A picture's file is missing or can't be read, in a layer, a Panels cell or the background: an export leaves it out. */
+    val hasMissingPicture: Boolean get() = missingLayerIds.isNotEmpty() || missingCells.isNotEmpty() || backgroundMissing
 }
 
 /** Why the photo picker is opened (spec P2-12 → Entry and exit); P2-13 adds Add photo. The app saves it across a restart behind the picker. */
@@ -450,6 +457,9 @@ enum class PhotoExplanation {
     DRAW_FULL,
     CENSOR_MIN,
     CENSOR_MAX,
+    EXPORT_EMPTY,
+    EXPORT_BUSY,
+    EXPORT_NO_SPACE,
 }
 
 /** A toast on the stage; a new [id] restarts its timer. [isSpokenOnly] when the save banner holds the slot. */
@@ -522,9 +532,24 @@ sealed interface PhotoToastMessage {
 
     /** The photos in removed Panels cells left the meme (a lower count, or Panels was left); Undo brings them back. */
     data object PanelPhotosDropped : PhotoToastMessage
+
+    /** The picture is on the clipboard: a toast on Android 12 and lower, spoken only on 13 and up, where Android shows its own preview. */
+    data object PictureCopied : PhotoToastMessage
+
+    /** Close, the scrim or back stopped an export: "Export stopped." */
+    data object ExportStopped : PhotoToastMessage
 }
 
 sealed interface PhotoEditorIntent {
+    /** The top bar's Export button. */
+    data object ExportTool : PhotoEditorIntent
+
+    /** Something in the Export sheet. */
+    data class Export(val intent: PhotoExportIntent) : PhotoEditorIntent
+
+    /** The app opened the Exported screen. */
+    data object ExportedScreenOpened : PhotoEditorIntent
+
     data object Undo : PhotoEditorIntent
 
     data object Redo : PhotoEditorIntent

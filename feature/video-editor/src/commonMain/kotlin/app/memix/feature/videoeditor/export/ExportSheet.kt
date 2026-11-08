@@ -1,16 +1,9 @@
 package app.memix.feature.videoeditor.export
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -19,14 +12,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import app.memix.core.designsystem.MemixColors
-import app.memix.core.designsystem.MemixMotion
-import app.memix.core.designsystem.MemixShapes
 import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.MemixTheme
 import app.memix.core.designsystem.Text
@@ -38,6 +26,10 @@ import app.memix.core.designsystem.component.Sheet
 import app.memix.core.domain.video.EXPORT_FRAME_RATES
 import app.memix.core.domain.video.ExportResolution
 import app.memix.core.ui.SizeRounding
+import app.memix.core.ui.export.ExportNotice
+import app.memix.core.ui.export.ExportNoticeText
+import app.memix.core.ui.export.ExportSheetHeading
+import app.memix.core.ui.export.ExportWatermarkRow
 import app.memix.core.ui.fileSizeText
 import app.memix.core.ui.shortDurationText
 import app.memix.feature.videoeditor.ExportSheetUi
@@ -56,8 +48,7 @@ import memix.feature.video_editor.generated.resources.export_no_space
 import memix.feature.video_editor.generated.resources.export_resolution
 import memix.feature.video_editor.generated.resources.export_start
 import memix.feature.video_editor.generated.resources.export_watermark_body
-import memix.feature.video_editor.generated.resources.export_watermark_title
-import memix.feature.video_editor.generated.resources.export_title
+import memix.core.ui.generated.resources.export_title
 import memix.core.ui.generated.resources.import_free_up_space
 import org.jetbrains.compose.resources.stringResource
 
@@ -79,7 +70,7 @@ internal fun ExportSheet(
     Sheet(
         visible = sheet != null,
         onDismiss = { onIntent(VideoEditorIntent.CloseExportSheet) },
-        title = stringResource(Res.string.export_title),
+        title = stringResource(UiRes.string.export_title),
         heroTitle = true,
     ) {
         val shown = lastSheet ?: return@Sheet
@@ -89,7 +80,7 @@ internal fun ExportSheet(
             verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4),
         ) {
             Settings(shown, onIntent)
-            WatermarkRow()
+            ExportWatermarkRow(stringResource(Res.string.export_watermark_body))
             // One Column without spacing: a hidden notice takes no room, a shown one brings its own gap (spec → Spacing).
             Column {
                 FactsLine(shown)
@@ -108,7 +99,7 @@ internal fun ExportSheet(
 @Composable
 private fun Settings(sheet: ExportSheetUi, onIntent: (VideoEditorIntent) -> Unit) {
     val resolutionHeading = stringResource(Res.string.export_resolution)
-    Heading(resolutionHeading)
+    ExportSheetHeading(resolutionHeading)
     SegmentedChoice(
         ExportResolution.entries.map { Segment(it.label) },
         ExportResolution.entries.indexOf(sheet.choice.resolution),
@@ -117,7 +108,7 @@ private fun Settings(sheet: ExportSheetUi, onIntent: (VideoEditorIntent) -> Unit
         Modifier.fillMaxWidth(),
     )
     val frameRateHeading = stringResource(Res.string.export_frame_rate)
-    Heading(frameRateHeading)
+    ExportSheetHeading(frameRateHeading)
     SegmentedChoice(
         EXPORT_FRAME_RATES.map { Segment(stringResource(Res.string.export_fps, it), stringResource(Res.string.export_fps_a11y, it)) },
         EXPORT_FRAME_RATES.indexOf(sheet.choice.frameRate),
@@ -125,32 +116,6 @@ private fun Settings(sheet: ExportSheetUi, onIntent: (VideoEditorIntent) -> Unit
         frameRateHeading,
         Modifier.fillMaxWidth(),
     )
-}
-
-// "Memix watermark" with where it goes, in one raised container. Information, not a control: no press state, one
-// merged, non-clickable node that TalkBack reads title then line with each language's own pauses. P5-02 adds its
-// rewarded-ad Remove here (spec P1-13 → Export sheet row).
-@Composable
-private fun WatermarkRow() {
-    val title = stringResource(Res.string.export_watermark_title)
-    val body = stringResource(Res.string.export_watermark_body)
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(MemixShapes.radiusMd)
-            .background(MemixColors.surfaceRaised)
-            .padding(MemixSpacing.space3)
-            .semantics(mergeDescendants = true) {},
-        verticalArrangement = Arrangement.spacedBy(MemixSpacing.space1),
-    ) {
-        Text(title, MemixTheme.type.bodyStrong)
-        Text(body, MemixTheme.type.label, color = MemixColors.textSecondary)
-    }
-}
-
-@Composable
-private fun Heading(text: String) {
-    Text(text, MemixTheme.type.label, Modifier.semantics { heading() }, color = MemixColors.textSecondary)
 }
 
 // "MP4 · H.264 · AAC" and "Up to 18 MB · about 20 s", side by side, wrapping to two lines when they don't fit. One node.
@@ -178,31 +143,19 @@ private fun FactsLine(sheet: ExportSheetUi) {
 // In the spec's order, above Export video; each fades in and out in 120 ms (spec → Motion).
 @Composable
 private fun Notices(sheet: ExportSheetUi, missingMedia: Boolean, onFreeUpSpace: ((Long) -> Unit)?) {
-    Notice(sheet.loweredTo != null) {
+    ExportNotice(sheet.loweredTo != null) {
         val lowered = sheet.loweredTo ?: sheet.choice
-        NoticeText(stringResource(Res.string.export_lowered_notice, lowered.resolution.label, stringResource(Res.string.export_fps, lowered.frameRate)))
+        ExportNoticeText(stringResource(Res.string.export_lowered_notice, lowered.resolution.label, stringResource(Res.string.export_fps, lowered.frameRate)))
     }
-    Notice(sheet.spaceShortBytes != null) {
+    ExportNotice(sheet.spaceShortBytes != null) {
         val shortBytes = sheet.spaceShortBytes ?: 0L
         Column(verticalArrangement = Arrangement.spacedBy(MemixSpacing.space1)) {
-            NoticeText(stringResource(Res.string.export_no_space, fileSizeText(shortBytes, SizeRounding.UP), sheet.choice.resolution.label))
+            ExportNoticeText(stringResource(Res.string.export_no_space, fileSizeText(shortBytes, SizeRounding.UP), sheet.choice.resolution.label))
             if (onFreeUpSpace != null) {
                 // The storage screen is asked for the total the export needs, not the amount missing (spec → Free space).
                 Button(stringResource(UiRes.string.import_free_up_space), { onFreeUpSpace(sheet.spaceNeededBytes) }, variant = ButtonVariant.Quiet)
             }
         }
     }
-    Notice(missingMedia) { NoticeText(stringResource(Res.string.export_missing_media)) }
-}
-
-@Composable
-private fun Notice(visible: Boolean, content: @Composable () -> Unit) {
-    AnimatedVisibility(visible, enter = fadeIn(tween(MemixMotion.durationPress)), exit = fadeOut(tween(MemixMotion.durationPress))) {
-        Box(Modifier.padding(top = MemixSpacing.space4)) { content() }
-    }
-}
-
-@Composable
-private fun NoticeText(text: String) {
-    Text(text, MemixTheme.type.body, color = MemixColors.textSecondary)
+    ExportNotice(missingMedia) { ExportNoticeText(stringResource(Res.string.export_missing_media)) }
 }

@@ -142,7 +142,8 @@ private fun ToolButton(tool: ToolBarItem) {
                 role = Role.Button
                 onClick(label = tool.clickLabel) { tool.onClick(); true }
             }
-            .padding(horizontal = MemixSpacing.space1, vertical = MemixSpacing.space2),
+            // `space-2` each side of the widest word, so neighbours never run together at large fonts (P2-08 review, P2).
+            .padding(horizontal = MemixSpacing.space2, vertical = MemixSpacing.space2),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(MemixSpacing.space1),
     ) {

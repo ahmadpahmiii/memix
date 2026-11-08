@@ -65,6 +65,8 @@ import app.memix.core.domain.project.StartEditSessionUseCase
 import app.memix.core.domain.text.MeasureCaptionUseCase
 import app.memix.core.domain.text.PrepareCaptionsUseCase
 import app.memix.core.domain.Analytics
+import app.memix.core.domain.photo.ExportPhotoUseCase
+import app.memix.core.domain.photo.PhotoExportSheetFactsUseCase
 import app.memix.core.domain.AnalyticsEvent
 import app.memix.core.domain.project.cutOutOf
 import app.memix.core.domain.project.setCutOut
@@ -190,6 +192,8 @@ class PhotoEditorViewModel(
     private val listStickers: ListStickersUseCase,
     private val placeSticker: PlaceStickerUseCase,
     private val deleteSticker: DeleteStickerUseCase,
+    exportPhoto: ExportPhotoUseCase,
+    exportFacts: PhotoExportSheetFactsUseCase,
 ) : MemixViewModel<PhotoEditorUiState, PhotoEditorIntent>(PhotoEditorUiState()) {
     // A picked photo's copy, its sheet and its landing (spec P2-12); P2-13 adds Add photo to the same pick.
     private val pick = ProjectPickImport(importMedia, viewModelScope, projectId, PickLanding())
@@ -226,7 +230,22 @@ class PhotoEditorViewModel(
     private var entryText = ""
     private var lastStyle: CaptionStyle = CaptionCatalog.defaultStyle
 
+    // The Export sheet (spec P2-08); it follows the app-scope export from the start, so a save finished while the screen was away still opens the Exported screen.
+    private val exportHost = object : PhotoExportHost {
+        override fun currentProject(): Project? = this@PhotoEditorViewModel.currentProject()
+
+        override fun updateUiState(transform: (PhotoEditorUiState) -> PhotoEditorUiState) = updateState(transform)
+
+        override val uiState: PhotoEditorUiState get() = state.value
+
+        override fun showToast(message: PhotoToastMessage, spokenOnly: Boolean) = this@PhotoEditorViewModel.showToast(message, spokenOnly)
+
+        override fun commitTyping() = commitEntry()
+    }
+    private val export = PhotoExportControl(viewModelScope, exportPhoto, exportFacts, exportHost)
+
     init {
+        export.follow()
         updateState { it.copy(photoImport = ProjectImportUi(pick.state), captionMeasure = PhotoCaptionMeasure(measureCaption)) }
         viewModelScope.launch {
             // The caption fonts load first, so every text's box is measured with the real fonts.
@@ -253,6 +272,14 @@ class PhotoEditorViewModel(
 
     override fun onIntent(intent: PhotoEditorIntent) {
         when (intent) {
+            // Export ends Draw mode as Done does and closes an open panel as Done does, then opens the sheet (spec P2-08 → Entry).
+            PhotoEditorIntent.ExportTool -> {
+                drawDone()
+                closePanel()
+                export.open()
+            }
+            is PhotoEditorIntent.Export -> export.onIntent(intent.intent)
+            PhotoEditorIntent.ExportedScreenOpened -> updateState { it.copy(openExportedScreen = false) }
             PhotoEditorIntent.Undo -> undo()
             PhotoEditorIntent.Redo -> redo()
             // Close commits and closes while typing (spec P2-03 → Typing).
@@ -287,7 +314,11 @@ class PhotoEditorViewModel(
                 updateState { it.copy(canFreeUpSpace = false) }
                 pick.onIntent(ImportIntent.FreeUpSpaceUnavailable)
             }
-            PhotoEditorIntent.AppStarted -> if (saveFailure != null) editSession?.saveNow()
+            PhotoEditorIntent.AppStarted -> {
+                if (saveFailure != null) editSession?.saveNow()
+                // Back from the storage screen or another app: the Export sheet's free-space check runs again.
+                export.onIntent(PhotoExportIntent.RecheckSpace)
+            }
             PhotoEditorIntent.AppStopped -> goToBackground()
             is PhotoEditorIntent.ToastTimedOut -> updateState { if (it.toast?.id == intent.id) it.copy(toast = null) else it }
             is PhotoEditorIntent.MediaMissing -> showMissing(intent.paths)
@@ -299,7 +330,7 @@ class PhotoEditorViewModel(
             is PhotoEditorIntent.LockedLayerTouched -> explain(PhotoExplanation.LAYER_LOCKED)
             is PhotoEditorIntent.OpenPanel -> openPanel(intent.panel)
             // Done on the Divider panel also lets go of the divider (its panel is its only tool).
-            PhotoEditorIntent.ClosePanel -> updateState { it.copy(panel = null, canvasPanel = null, selectedDivider = if (it.panel == PhotoPanel.DIVIDER) null else it.selectedDivider) }
+            PhotoEditorIntent.ClosePanel -> closePanel()
             is PhotoEditorIntent.OpacityCommitted -> setOpacity(intent.layerId, intent.opacity)
             is PhotoEditorIntent.PositionStepped -> stepPosition(intent.layerId, intent.step, intent.repeats)
             is PhotoEditorIntent.PositionStepHeld -> holdPosition(intent.layerId, intent.step, intent.repeats)
@@ -483,6 +514,12 @@ class PhotoEditorViewModel(
             )
         }
         showToast(PhotoToastMessage.DrawMode, spokenOnly = true)
+    }
+
+    // Done on the Divider panel also lets go of the divider (its panel is its only tool).
+    private fun closePanel() {
+        if (state.value.panel == null) return
+        updateState { it.copy(panel = null, canvasPanel = null, selectedDivider = if (it.panel == PhotoPanel.DIVIDER) null else it.selectedDivider) }
     }
 
     private fun drawDone() {

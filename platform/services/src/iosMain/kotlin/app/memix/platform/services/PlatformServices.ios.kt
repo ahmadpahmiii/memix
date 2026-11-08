@@ -9,6 +9,7 @@ import app.memix.core.domain.Outcome
 import app.memix.core.domain.drafts.LocalCalendar
 import app.memix.core.domain.media.MediaFiles
 import app.memix.core.domain.media.MediaInspector
+import app.memix.core.domain.photo.PictureClipboard
 import app.memix.core.domain.share.Sharer
 import app.memix.core.domain.sound.SoundLibrary
 import app.memix.core.domain.video.AppExitReasons
@@ -31,6 +32,7 @@ actual val platformServicesModule = module {
     single<SoundLibrary> { BundledSoundLibrary(get(), get(), Dispatchers.Default) }
     single<ExportForeground> { NoExportForeground() }
     single<Sharer> { NoSharer() }
+    single<PictureClipboard> { NoPictureClipboard() }
     single<AppExitReasons> { NoAppExitReasons() }
     single<LocalCalendar> { IosLocalCalendar() }
 }
@@ -77,6 +79,15 @@ private class NoExportForeground : ExportForeground {
 // TODO(P7-09): UIActivityViewController.
 private class NoSharer : Sharer {
     override fun shareVideo(location: String, chooserTitle: String): Boolean = false
+
+    override fun sharePicture(location: String, mimeType: String, chooserTitle: String): Boolean = false
+}
+
+// TODO(P7-09): UIPasteboard with the picture as an image.
+private class NoPictureClipboard : PictureClipboard {
+    override val confirmsCopyItself: Boolean = false
+
+    override fun copyPicture(path: String, mimeType: String): Boolean = false
 }
 
 private class NoAppExitReasons : AppExitReasons {

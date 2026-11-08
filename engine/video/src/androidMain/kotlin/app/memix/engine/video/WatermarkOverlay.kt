@@ -4,6 +4,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.Rect
+import android.graphics.Typeface
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.CanvasOverlay
@@ -28,20 +29,28 @@ internal class WatermarkOverlay(private val renderer: AndroidCaptionRenderer) : 
         drawnWidth = canvas.width
         drawnHeight = canvas.height
         canvas.drawColor(0, PorterDuff.Mode.CLEAR)
-        val shortSidePx = min(canvas.width, canvas.height)
-        val fontSizePx = WatermarkCatalog.fontSizePx(shortSidePx)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            typeface = renderer.typefaceOf(WatermarkCatalog.FONT_ID)
-            textSize = fontSizePx
-            color = WatermarkCatalog.FILL_ARGB.toInt()
-            // No offset: a soft glow that lifts the mark off bright footage without an edge.
-            setShadowLayer(fontSizePx * WatermarkCatalog.SHADOW_BLUR_OF_FONT_SIZE, 0f, 0f, WatermarkCatalog.SHADOW_ARGB.toInt())
-        }
-        val ink = Rect()
-        paint.getTextBounds(WatermarkCatalog.TEXT, 0, WatermarkCatalog.TEXT.length, ink)
-        // Text bounds are relative to the baseline and the draw origin, so the origin is the margin minus the ink's offset.
-        val x = WatermarkCatalog.marginLeftPx(shortSidePx) - ink.left
-        val baseline = WatermarkCatalog.marginTopPx(shortSidePx) - ink.top
-        canvas.drawText(WatermarkCatalog.TEXT, x, baseline, paint)
+        drawMemixWatermark(canvas, canvas.width, canvas.height, renderer.typefaceOf(WatermarkCatalog.FONT_ID))
     }
+}
+
+/**
+ * Draws the mark on [canvas], a picture [widthPx] × [heightPx]: sized and placed from the shorter side, so the video overlay
+ * and the photo export (P2-08) draw the same mark. Margins are measured to the glyphs' ink box.
+ */
+internal fun drawMemixWatermark(canvas: Canvas, widthPx: Int, heightPx: Int, wordmark: Typeface) {
+    val shortSidePx = min(widthPx, heightPx)
+    val fontSizePx = WatermarkCatalog.fontSizePx(shortSidePx)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = wordmark
+        textSize = fontSizePx
+        color = WatermarkCatalog.FILL_ARGB.toInt()
+        // No offset: a soft glow that lifts the mark off bright footage without an edge.
+        setShadowLayer(fontSizePx * WatermarkCatalog.SHADOW_BLUR_OF_FONT_SIZE, 0f, 0f, WatermarkCatalog.SHADOW_ARGB.toInt())
+    }
+    val ink = Rect()
+    paint.getTextBounds(WatermarkCatalog.TEXT, 0, WatermarkCatalog.TEXT.length, ink)
+    // Text bounds are relative to the baseline and the draw origin, so the origin is the margin minus the ink's offset.
+    val x = WatermarkCatalog.marginLeftPx(shortSidePx) - ink.left
+    val baseline = WatermarkCatalog.marginTopPx(shortSidePx) - ink.top
+    canvas.drawText(WatermarkCatalog.TEXT, x, baseline, paint)
 }

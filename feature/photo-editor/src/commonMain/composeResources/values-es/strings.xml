@@ -244,4 +244,28 @@
     <string name="a11y_sticker_tile">Sticker %1$d de %2$d</string>
     <string name="a11y_sticker_added">Sticker añadido al frente</string>
     <string name="edit_add_sticker">Añadir sticker</string>
+    <!-- Photo export (P2-08). Budgets and translator notes: docs/ux/specs/P2-08-photo-export.md -> Copy. JPG, PNG, px and Memix never translate. -->
+    <string name="photo_export_format">Formato</string>
+    <string name="photo_export_quality">Calidad</string>
+    <string name="photo_export_png_hint">Texto y bordes más nítidos. Archivo más grande.</string>
+    <string name="photo_export_size">Tamaño</string>
+    <string name="photo_export_size_a11y">%1$d píxeles en el lado corto</string>
+    <string name="photo_export_watermark_body">Texto pequeño en la esquina superior izquierda de tu imagen</string>
+    <string name="photo_export_facts">%1$s · %2$s</string>
+    <string name="photo_export_estimate">Aprox. %1$s</string>
+    <string name="photo_export_facts_a11y">%1$s, %2$d por %3$d píxeles. Aprox. %4$s.</string>
+    <string name="photo_export_save">Guardar en la galería</string>
+    <string name="photo_export_copy">Copiar</string>
+    <string name="photo_export_saving">Guardando…</string>
+    <string name="photo_export_copying">Copiando…</string>
+    <string name="photo_export_copied">Copiado. Pégalo en un chat.</string>
+    <string name="photo_export_no_space">No hay espacio. Libera unos %1$s para guardar esta imagen.</string>
+    <string name="explain_photo_export_no_space">Libera espacio primero o elige un tamaño menor.</string>
+    <string name="photo_export_missing_media">Falta el archivo de una imagen, así que se deja fuera.</string>
+    <string name="photo_export_fail_size">Este teléfono no pudo crear la imagen con este tamaño. Prueba un tamaño menor.</string>
+    <string name="photo_export_fail_media">No se pudo leer una de tus imágenes. Reemplázala en el editor y vuelve a intentarlo.</string>
+    <string name="photo_export_fail_space">Tu teléfono se quedó sin espacio. Libera espacio y vuelve a intentarlo.</string>
+    <string name="photo_export_fail_other">Algo salió mal. Tu borrador está a salvo. Vuelve a intentarlo.</string>
+    <string name="explain_photo_export_empty">Añade primero una foto, un texto o un sticker.</string>
+    <string name="explain_photo_export_busy">Espera un momento. Tu recorte aún se está creando.</string>
 </resources>

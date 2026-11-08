@@ -171,4 +171,9 @@
     <string name="edit_filter">Filter</string>
     <string name="edit_adjust">Atur</string>
     <string name="edit_deep_fry">Deep-fry</string>
+    <!-- Export, shared by both editors (P1-12, P2-08): moved here from the video editor. -->
+    <string name="editor_export">Ekspor</string>
+    <string name="export_title">Ekspor</string>
+    <string name="export_stopped_toast">Ekspor dihentikan.</string>
+    <string name="export_watermark_title">Watermark Memix</string>
 </resources>

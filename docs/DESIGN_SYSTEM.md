@@ -71,6 +71,7 @@ Memix is a meme maker for photos and videos, built around sound. The look is **n
 **States.**
 - Pressed: `primary` fills switch to `primary-pressed`; neutral controls go one value step lighter (`surface-raised` → `hairline`); `primary-subtle` fills (a sound's play disc, the "Add a meme sound" pill) turn `surface-raised`, with their `primary` icon and label staying (5.9:1). Nothing moves.
 - Selected clip or layer: `stroke-selection` outline in `selection` plus white trim handles.
+- **Busy button** (P2-08 review): while its action runs, a Button (and the neighbour that can't act meanwhile) takes `surface-raised` with a `text-secondary` label (5.7:1) and says what it is doing ("Saving…"). A progress state only; any other blocked control keeps its look and explains on tap. See `design/system/components/Button/README.md`.
 - Selected chip, segment (SegmentedChoice) and font tile (FontTile): `selection` fill with `on-primary` text. Selected swatch: a `stroke-selection` white ring 2px outside it. Selected tab: `text` label with a 2px `selection` underline. `surface-raised` never marks a selection (only 1.4:1 against `canvas`, under SC 1.4.11's 3:1); it's the pressed fill of unselected segments (P1-11 spec, P1-10 review).
 - Active tool: `primary` icon and label on `primary-subtle`.
 - Disabled: `text-muted` label. Prefer keeping controls enabled and explaining on tap.

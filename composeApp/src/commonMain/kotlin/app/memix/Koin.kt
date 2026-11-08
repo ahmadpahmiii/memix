@@ -38,7 +38,11 @@ import app.memix.core.domain.text.MeasureCaptionUseCase
 import app.memix.core.domain.text.PrepareCaptionsUseCase
 import app.memix.core.domain.video.ExportNotificationPermissionUseCase
 import app.memix.core.domain.video.ExportSheetFactsUseCase
+import app.memix.core.domain.photo.ExportPhotoUseCase
+import app.memix.core.domain.photo.PhotoExportSheetFactsUseCase
+import app.memix.core.domain.share.SharePictureUseCase
 import app.memix.core.domain.video.ExportVideoUseCase
+import app.memix.feature.export.PhotoExportedViewModel
 import app.memix.core.domain.video.GetExportCapabilitiesUseCase
 import app.memix.core.domain.video.OpenResultPlayerUseCase
 import app.memix.core.domain.video.RecoverUnfinishedExportUseCase
@@ -132,8 +136,13 @@ private val appModule = module {
     factoryOf(::OpenResultPlayerUseCase)
     factoryOf(::ShareVideoUseCase)
     factoryOf(::EditorExport)
+    // The photo export (P2-08) outlives the sheet too: a single in the app's scope, like the video's.
+    single { ExportPhotoUseCase(get(), get(), get(), get(), get(), get(), get(appScope), Dispatchers.Main) }
+    factoryOf(::PhotoExportSheetFactsUseCase)
+    factoryOf(::SharePictureUseCase)
     viewModelOf(::HomeViewModel)
     viewModelOf(::ExportViewModel)
+    viewModelOf(::PhotoExportedViewModel)
     viewModelOf(::MediaImportViewModel)
     viewModelOf(::PhotoMemeImportViewModel)
     viewModel { DraftsViewModel(get(), get(), get(), get(), get(), get(), decodeDispatcher = Dispatchers.Default) }
@@ -154,6 +163,8 @@ private val appModule = module {
             listStickers = get(),
             placeSticker = get(),
             deleteSticker = get(),
+            exportPhoto = get(),
+            exportFacts = get(),
         )
     }
     viewModel { params ->

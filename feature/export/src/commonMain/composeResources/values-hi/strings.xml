@@ -31,4 +31,7 @@
     <string name="export_last_stopped">आपका पिछला एक्सपोर्ट पूरा नहीं हुआ। कुछ सेव नहीं हुआ।</string>
     <string name="export_open_draft">ड्राफ़्ट खोलें</string>
     <string name="export_dismiss">बंद करें</string>
+    <!-- Photo Exported screen (P2-08). -->
+    <string name="photo_export_saved">आपकी गैलरी में सेव हो गया · %1$s · %2$s</string>
+    <string name="photo_export_result_a11y">आपकी एक्सपोर्ट की हुई तस्वीर</string>
 </resources>

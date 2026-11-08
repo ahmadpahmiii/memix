@@ -172,4 +172,9 @@
     <string name="edit_filter">फ़िल्टर</string>
     <string name="edit_adjust">एडजस्ट</string>
     <string name="edit_deep_fry">डीप-फ्राई</string>
+    <!-- Export, shared by both editors (P1-12, P2-08): moved here from the video editor. -->
+    <string name="editor_export">एक्सपोर्ट</string>
+    <string name="export_title">एक्सपोर्ट</string>
+    <string name="export_stopped_toast">एक्सपोर्ट रोका गया।</string>
+    <string name="export_watermark_title">Memix वॉटरमार्क</string>
 </resources>

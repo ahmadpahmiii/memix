@@ -178,7 +178,7 @@ import memix.feature.video_editor.generated.resources.edit_volume
 import memix.core.ui.generated.resources.editor_close
 import memix.feature.video_editor.generated.resources.editor_empty_body_add
 import memix.feature.video_editor.generated.resources.editor_empty_title
-import memix.feature.video_editor.generated.resources.editor_export
+import memix.core.ui.generated.resources.editor_export
 import memix.feature.video_editor.generated.resources.editor_missing_media
 import memix.feature.video_editor.generated.resources.editor_pause
 import memix.feature.video_editor.generated.resources.editor_play
@@ -215,7 +215,7 @@ import memix.core.ui.generated.resources.explain_text_biggest
 import memix.feature.video_editor.generated.resources.explain_text_edge
 import memix.core.ui.generated.resources.explain_text_smallest
 import memix.feature.video_editor.generated.resources.export_fps
-import memix.feature.video_editor.generated.resources.export_stopped_toast
+import memix.core.ui.generated.resources.export_stopped_toast
 import memix.core.ui.generated.resources.position_size_value
 import memix.feature.video_editor.generated.resources.toast_export_fps_lowered
 import memix.feature.video_editor.generated.resources.toast_export_res_lowered
@@ -419,7 +419,7 @@ private fun TopBar(canvas: CanvasUi?, canvasPanel: CanvasPanelUi?, typing: Boole
     Layout(
         content = {
             IconButton(MemixIcons.Close, stringResource(UiRes.string.editor_close), { onIntent(VideoEditorIntent.Close) })
-            Button(stringResource(Res.string.editor_export), { onIntent(VideoEditorIntent.ExportTool) }, variant = ButtonVariant.Primary)
+            Button(stringResource(UiRes.string.editor_export), { onIntent(VideoEditorIntent.ExportTool) }, variant = ButtonVariant.Primary)
             if (canvas != null) {
                 val label = canvasPanel?.shownTerms?.lowest()?.toString() ?: canvas.ratioLabel
                 SettingPill(
@@ -828,7 +828,7 @@ private fun toastText(message: ToastMessage): String = when (message) {
     is ToastMessage.ExportCantDo ->
         stringResource(Res.string.explain_export_no_res, message.resolutionLabel ?: stringResource(Res.string.export_fps, message.frameRate ?: 0))
     is ToastMessage.ExportShapeCantDo -> stringResource(Res.string.explain_export_shape, message.resolutionLabel, message.highestLabel)
-    ToastMessage.ExportStopped -> stringResource(Res.string.export_stopped_toast)
+    ToastMessage.ExportStopped -> stringResource(UiRes.string.export_stopped_toast)
 }
 
 @Composable

@@ -23,7 +23,7 @@ Get the finished picture out in under 10 seconds from the tap: into the gallery,
 - The button explains instead of opening a sheet in two cases, as every blocked control does (toast on tap, `explain_*`):
   - No visible layer yet → `explain_photo_export_empty`.
   - A cut-out is still being made (P2-07's busy state) → `explain_photo_export_busy`, so the file never silently lacks it.
-- Tapping Export while a text box is being edited commits the text first, then opens the sheet.
+- Tapping Export while a text box is being edited commits the text first, then opens the sheet. **In Draw mode (review):** Export ends Draw mode (as Done does, nothing is lost: every stroke is already committed) and opens the sheet; it is never silently ignored. Any other open panel closes first the same way. The Crop and cut-out screens have no Export (their own top bar).
 
 ### Export sheet
 Standard Sheet (grabber, close), `surface`. From the top:
@@ -43,12 +43,12 @@ Standard Sheet (grabber, close), `surface`. From the top:
 
 - **Defaults:** JPG, quality 90, 1080 px the first time; afterwards the last choice, kept app-wide and separate from video's (never in a draft). JPG is the default because chats recompress anyway and its files are a fraction of PNG's (Assumption; the facts line lets the user see the difference). PNG is one tap away.
 - **No settings the picture can't do:** both sizes are always offered. A size that fails on a weak phone fails with a calm message (States), not a hidden option.
-- The sheet doesn't scroll at 100% font on 360 × 640 with the watermark row and one notice; at 200% its middle scrolls (Sheet rule).
+- **Height (review, corrected):** at 100% font on 360 × 640 the sheet fits without scrolling **with no notice** (the renders show it using about 88% of the window already; my earlier estimate counted the watermark row and one notice and was about 75 dp short). **With a notice, or at 200% font, the middle scrolls and the title and the Copy and Save buttons stay pinned**; when a notice appears the middle scrolls to it. Don't shrink the controls to fit.
 - While it closes, the sheet keeps its last content (P1-12 review).
 
 ### Saving (inside the sheet)
 No Exporting screen: a photo takes a second or two (target 2 s at 1080, 5 s at 2160; Assumption, measured at QA).
-- The tapped button's label becomes "Saving…" (or "Copying…") and both buttons and the controls go inert (disabled look). Nothing moves: MOTION 2 allows no looping bar, and a determinate bar has no true progress to show.
+- The tapped button's label becomes "Saving…" (or "Copying…") and both buttons and the controls go inert. **Look (review): the two buttons use the Button's new `busy` look** (`surface-raised` fill, label `text-secondary`, 5.7:1; the working button reads "Saving…"); Format, Size and Quality are not dimmed (no token; the wait is a few seconds), but they are marked disabled for TalkBack and ignore taps. Nothing moves: MOTION 2 allows no looping bar, and a determinate bar has no true progress to show.
 - **Close, scrim and back cancel**, with no confirmation (nothing is lost; the draft is untouched). The partial file is deleted and a toast says "Export stopped." If the user leaves Memix, the work continues in the app's process and the result is waiting on return; if Android kills Memix first, nothing is saved and nothing is left behind.
 
 ### Exported screen (photo)

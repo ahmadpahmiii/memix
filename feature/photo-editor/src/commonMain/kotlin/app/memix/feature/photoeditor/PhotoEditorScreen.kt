@@ -58,6 +58,7 @@ import androidx.navigationevent.compose.rememberNavigationEventState
 import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixIcons
 import app.memix.core.designsystem.MemixMotion
+import app.memix.core.designsystem.MemixSize
 import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.component.FadingToast
 import app.memix.core.designsystem.component.IconButton
@@ -100,6 +101,14 @@ import memix.core.ui.generated.resources.edit_text_box
 import memix.core.ui.generated.resources.edit_adjust
 import memix.core.ui.generated.resources.edit_crop
 import memix.feature.photo_editor.generated.resources.edit_remove_bg
+import memix.feature.photo_editor.generated.resources.explain_photo_export_busy
+import memix.feature.photo_editor.generated.resources.explain_photo_export_empty
+import memix.feature.photo_editor.generated.resources.explain_photo_export_no_space
+import memix.feature.photo_editor.generated.resources.photo_export_copied
+import memix.core.ui.generated.resources.editor_export
+import memix.core.ui.generated.resources.export_stopped_toast
+import app.memix.core.designsystem.component.Button
+import app.memix.core.designsystem.component.ButtonVariant
 import memix.feature.photo_editor.generated.resources.edit_remove_cutout
 import memix.feature.photo_editor.generated.resources.tool_remove_bg
 import memix.feature.photo_editor.generated.resources.tool_stickers
@@ -281,7 +290,7 @@ fun PhotoEditorScreen(
         Column(
             Modifier
                 .fillMaxSize()
-                .coveredByModal(state.unsavedSheetOpen || importSheetShown)
+                .coveredByModal(state.unsavedSheetOpen || importSheetShown || state.exportSheet != null)
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
         ) {
             TopBar(state, onIntent)
@@ -309,6 +318,11 @@ fun PhotoEditorScreen(
         CropOverlay(state, bitmaps, onIntent)
         CutOutOverlay(state, bitmaps, onIntent)
         StickersSheet(state, bitmaps, onIntent)
+        PhotoExportSheet(
+            state.exportSheet,
+            onIntent = { onIntent(PhotoEditorIntent.Export(it)) },
+            onFreeUpSpace = onFreeUpSpace.takeIf { state.canFreeUpSpace },
+        )
         UnsavedChangesSheet(
             state.unsavedSheetOpen,
             onStay = { onIntent(PhotoEditorIntent.StayInEditor) },
@@ -319,13 +333,15 @@ fun PhotoEditorScreen(
 }
 
 /**
- * Close at the start, the ratio pill in the center of the screen (spec → Top bar) and Undo and Redo at the end. A custom
- * [Layout], not overlapping aligns: Close and the end group are measured first and never shrink; the pill is centered on the
- * screen but clamped between them with `space-2` to spare, so at 200% font only the pill grows.
+ * Close at the start and Export at the end of the first row (spec P2-08 → Export button). The ratio pill, Undo and Redo sit between
+ * them when they fit, with the pill centered on the screen but clamped left of Undo; when they don't (200% font, long labels) all
+ * three move together to a second 48 dp row under the bar, the pill at the start and Undo and Redo at the end, so the bar never
+ * reshuffles piece by piece. A custom [Layout], not overlapping aligns: Close and Export are measured first and never shrink.
  */
 @Composable
 private fun TopBar(state: PhotoEditorUiState, onIntent: (PhotoEditorIntent) -> Unit) {
     val gap = MemixSpacing.space2
+    val secondRowHeight = MemixSize.touchTarget
     val scene = state.scene
     val typing = state.textEntry != null
     Layout(
@@ -336,6 +352,7 @@ private fun TopBar(state: PhotoEditorUiState, onIntent: (PhotoEditorIntent) -> U
                 IconButton(MemixIcons.Undo, stringResource(UiRes.string.editor_undo), { onIntent(PhotoEditorIntent.Undo) }, enabled = state.canUndo && !typing)
                 IconButton(MemixIcons.Redo, stringResource(UiRes.string.editor_redo), { onIntent(PhotoEditorIntent.Redo) }, enabled = state.canRedo && !typing)
             }
+            Button(stringResource(UiRes.string.editor_export), { onIntent(PhotoEditorIntent.ExportTool) }, variant = ButtonVariant.Primary)
             if (scene != null) {
                 val label = state.canvasPanel?.shownTerms?.lowest()?.toString() ?: scene.ratioLabel
                 SettingPill(
@@ -353,17 +370,31 @@ private fun TopBar(state: PhotoEditorUiState, onIntent: (PhotoEditorIntent) -> U
         val loose = constraints.copy(minWidth = 0, minHeight = 0)
         val close = measurables[0].measure(loose)
         val endGroup = measurables[1].measure(loose)
-        val pill = measurables.getOrNull(2)?.measure(loose)
+        val export = measurables[2].measure(loose)
+        val pill = measurables.getOrNull(3)?.measure(loose)
         val width = constraints.maxWidth
-        val height = maxOf(close.height, endGroup.height, pill?.height ?: 0)
-        layout(width, height) {
-            close.place(0, (height - close.height) / 2)
-            endGroup.place(width - endGroup.width, (height - endGroup.height) / 2)
-            if (pill != null) {
-                val centered = (width - pill.width) / 2
-                val rightmost = width - endGroup.width - gapPx - pill.width
-                val leftmost = close.width + gapPx
-                pill.place(centered.coerceAtMost(rightmost).coerceAtLeast(leftmost), (height - pill.height) / 2)
+        val firstRowHeight = maxOf(close.height, export.height)
+        // The room between Close and Export, with `space-2` to each neighbour, against what the middle three need.
+        val between = width - close.width - export.width - gapPx * 2
+        val needed = endGroup.width + if (pill != null) pill.width + gapPx else 0
+        val secondRow = needed > between
+        val secondRowPx = secondRowHeight.roundToPx()
+        val secondHeight = if (secondRow) maxOf(secondRowPx, endGroup.height, pill?.height ?: 0) else 0
+        layout(width, firstRowHeight + secondHeight) {
+            close.place(0, (firstRowHeight - close.height) / 2)
+            export.place(width - export.width, (firstRowHeight - export.height) / 2)
+            if (secondRow) {
+                pill?.place(0, firstRowHeight + (secondHeight - pill.height) / 2)
+                endGroup.place(width - endGroup.width, firstRowHeight + (secondHeight - endGroup.height) / 2)
+            } else {
+                val endGroupX = width - export.width - gapPx - endGroup.width
+                endGroup.place(endGroupX, (firstRowHeight - endGroup.height) / 2)
+                if (pill != null) {
+                    val centered = (width - pill.width) / 2
+                    val rightmost = endGroupX - gapPx - pill.width
+                    val leftmost = close.width + gapPx
+                    pill.place(centered.coerceAtMost(rightmost).coerceAtLeast(leftmost), (firstRowHeight - pill.height) / 2)
+                }
             }
         }
     }
@@ -609,6 +640,7 @@ private fun ToastTimer(toast: PhotoToast, onTimedOut: (id: Long) -> Unit) {
             is PhotoToastMessage.PositionTransformed, is PhotoToastMessage.PositionMoved, is PhotoToastMessage.OpacityChanged,
             is PhotoToastMessage.RatioStepped, PhotoToastMessage.BackgroundImageSet, PhotoToastMessage.BackgroundImageRemoved,
             PhotoToastMessage.LayerAdded, PhotoToastMessage.StickerAdded, PhotoToastMessage.TextAdded, PhotoToastMessage.DrawMode, PhotoToastMessage.DrawSaved, PhotoToastMessage.CensorAdded, PhotoToastMessage.BubbleAdded, is PhotoToastMessage.FormatSet,
+            PhotoToastMessage.PictureCopied, PhotoToastMessage.ExportStopped,
             -> WHAT_HAPPENED_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
@@ -650,6 +682,8 @@ private fun toastText(message: PhotoToastMessage): String = when (message) {
     PhotoToastMessage.CensorAdded -> stringResource(Res.string.a11y_layer_censor_added)
     PhotoToastMessage.DrawSaved -> stringResource(Res.string.a11y_draw_done)
     PhotoToastMessage.PanelPhotosDropped -> stringResource(Res.string.panels_photo_dropped)
+    PhotoToastMessage.PictureCopied -> stringResource(Res.string.photo_export_copied)
+    PhotoToastMessage.ExportStopped -> stringResource(UiRes.string.export_stopped_toast)
 }
 
 @Composable
@@ -723,6 +757,9 @@ private fun explanationText(explanation: PhotoExplanation): String = stringResou
         PhotoExplanation.DRAW_FULL -> Res.string.explain_draw_full
         PhotoExplanation.CENSOR_MIN -> Res.string.explain_censor_min
         PhotoExplanation.CENSOR_MAX -> Res.string.explain_censor_max
+        PhotoExplanation.EXPORT_EMPTY -> Res.string.explain_photo_export_empty
+        PhotoExplanation.EXPORT_BUSY -> Res.string.explain_photo_export_busy
+        PhotoExplanation.EXPORT_NO_SPACE -> Res.string.explain_photo_export_no_space
     },
 )
 

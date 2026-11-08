@@ -244,4 +244,28 @@
     <string name="a11y_sticker_tile">Sticker %1$d of %2$d</string>
     <string name="a11y_sticker_added">Sticker added in front</string>
     <string name="edit_add_sticker">Add sticker</string>
+    <!-- Photo export (P2-08). Budgets and translator notes: docs/ux/specs/P2-08-photo-export.md -> Copy. JPG, PNG, px and Memix never translate. -->
+    <string name="photo_export_format">Format</string>
+    <string name="photo_export_quality">Quality</string>
+    <string name="photo_export_png_hint">Sharpest text and edges. Bigger file.</string>
+    <string name="photo_export_size">Size</string>
+    <string name="photo_export_size_a11y">%1$d pixels on the short side</string>
+    <string name="photo_export_watermark_body">Small text in the top-left corner of your picture</string>
+    <string name="photo_export_facts">%1$s · %2$s</string>
+    <string name="photo_export_estimate">About %1$s</string>
+    <string name="photo_export_facts_a11y">%1$s, %2$d by %3$d pixels. About %4$s.</string>
+    <string name="photo_export_save">Save to gallery</string>
+    <string name="photo_export_copy">Copy</string>
+    <string name="photo_export_saving">Saving…</string>
+    <string name="photo_export_copying">Copying…</string>
+    <string name="photo_export_copied">Copied. Paste it into a chat.</string>
+    <string name="photo_export_no_space">Not enough space. Free up about %1$s to save this picture.</string>
+    <string name="explain_photo_export_no_space">Free up space first, or pick a smaller size.</string>
+    <string name="photo_export_missing_media">A picture's file is missing, so it's left out.</string>
+    <string name="photo_export_fail_size">This phone couldn't make the picture at this size. Try a smaller size.</string>
+    <string name="photo_export_fail_media">One of your pictures couldn't be read. Replace it in the editor, then try again.</string>
+    <string name="photo_export_fail_space">Your phone ran out of space. Free up space and try again.</string>
+    <string name="photo_export_fail_other">Something went wrong. Your draft is safe. Try again.</string>
+    <string name="explain_photo_export_empty">Add a photo, text or sticker first.</string>
+    <string name="explain_photo_export_busy">Wait a moment. Your cut-out is still being made.</string>
 </resources>

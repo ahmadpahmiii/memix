@@ -7,6 +7,7 @@ import app.memix.core.model.project.BoxSize
 import app.memix.core.model.project.CaptionLook
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.Transform
+import app.memix.core.model.project.WatermarkCatalog
 import app.memix.core.ui.scene.SceneCaptions
 import kotlin.math.roundToInt
 
@@ -50,6 +51,11 @@ internal class AndroidSceneCaptions(private val renderer: AndroidCaptionRenderer
                 }
             }
         }
+    }
+
+    override fun drawWatermark(scope: DrawScope, widthPx: Int, heightPx: Int) {
+        val wordmark = renderer.typefaceOf(WatermarkCatalog.FONT_ID)
+        scope.drawIntoCanvas { canvas -> drawMemixWatermark(canvas.nativeCanvas, widthPx, heightPx, wordmark) }
     }
 
     private companion object {

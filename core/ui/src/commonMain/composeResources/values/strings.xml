@@ -175,4 +175,9 @@
     <string name="edit_filter">Filter</string>
     <string name="edit_adjust">Adjust</string>
     <string name="edit_deep_fry">Deep-fry</string>
+    <!-- Export, shared by both editors (P1-12, P2-08): moved here from the video editor. -->
+    <string name="editor_export">Export</string>
+    <string name="export_title">Export</string>
+    <string name="export_stopped_toast">Export stopped.</string>
+    <string name="export_watermark_title">Memix watermark</string>
 </resources>

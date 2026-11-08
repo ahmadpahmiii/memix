@@ -21,3 +21,5 @@ import kotlinx.serialization.Serializable
 @Serializable data object CatalogRoute
 /** The Exporting screen and, when the file is saved, the Exported screen (P1-12); pushed over the video editor. */
 @Serializable data object ExportRoute
+/** The Exported screen after a photo is saved to the gallery (P2-08); pushed over the photo editor. */
+@Serializable data object PhotoExportedRoute

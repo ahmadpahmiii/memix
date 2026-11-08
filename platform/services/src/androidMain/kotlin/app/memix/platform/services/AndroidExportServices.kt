@@ -14,14 +14,18 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
 /**
- * The Android share sheet for an exported video (spec P1-12 → Share): `ACTION_SEND` with `video/mp4`, the gallery
+ * The Android share sheet for an exported video or picture (spec P1-12 and P2-08 → Share): `ACTION_SEND` with the file's type, the gallery
  * item's content URI and read permission for the chosen app, in a chooser with the given title.
  */
 internal class AndroidSharer(private val context: Context) : Sharer {
-    override fun shareVideo(location: String, chooserTitle: String): Boolean {
+    override fun shareVideo(location: String, chooserTitle: String): Boolean = share(location, VIDEO_MP4, chooserTitle)
+
+    override fun sharePicture(location: String, mimeType: String, chooserTitle: String): Boolean = share(location, mimeType, chooserTitle)
+
+    private fun share(location: String, mimeType: String, chooserTitle: String): Boolean {
         val uri = Uri.parse(location)
         val send = Intent(Intent.ACTION_SEND)
-            .setType(VIDEO_MP4)
+            .setType(mimeType)
             .putExtra(Intent.EXTRA_STREAM, uri)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         // ClipData carries the grant through the chooser to the app the user picks.

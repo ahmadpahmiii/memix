@@ -1,5 +1,7 @@
 package app.memix.core.domain
 
+import app.memix.core.domain.photo.PhotoExportAction
+import app.memix.core.model.project.PhotoExportFormat
 import app.memix.core.model.project.ProjectType
 import kotlin.math.roundToLong
 
@@ -79,12 +81,27 @@ sealed interface AnalyticsEvent {
         )
     }
 
-    /** The file is in the gallery: [timeMs] from encode start to saved, [sizeMb] its size. */
-    data class ExportComplete(val editor: ProjectType, val timeMs: Long, val sizeMb: Double) : AnalyticsEvent {
+    /**
+     * A photo Save to gallery or Copy began (spec P2-08 → Analytics). [resolution] is the canvas's shorter side in pixels
+     * (`1080`, `2160`); [quality] is sent for JPG only. `action` and `quality` are additions to the PRD's list (PM, 5 Nov 2026).
+     */
+    data class PhotoExportStart(val format: PhotoExportFormat, val shortSidePx: Int, val action: PhotoExportAction, val quality: Int?) : AnalyticsEvent {
+        override val name = "export_start"
+        override val params = buildMap {
+            put("editor", ProjectType.PHOTO.eventValue)
+            put("format", format.eventValue)
+            put("resolution", shortSidePx.toString())
+            put("action", action.eventValue)
+            if (quality != null) put("quality", quality.toString())
+        }
+    }
+
+    /** The file is in the gallery (or on the clipboard): [timeMs] from start to done, [sizeMb] its size; [format] is `mp4` for video. */
+    data class ExportComplete(val editor: ProjectType, val timeMs: Long, val sizeMb: Double, val format: String = MP4) : AnalyticsEvent {
         override val name = "export_complete"
         override val params = mapOf(
             "editor" to editor.eventValue,
-            "format" to MP4,
+            "format" to format,
             "time_ms" to timeMs.toString(),
             // One decimal, as the sheet shows sizes.
             "size_mb" to ((sizeMb * TENTHS).roundToLong() / TENTHS).toString(),
