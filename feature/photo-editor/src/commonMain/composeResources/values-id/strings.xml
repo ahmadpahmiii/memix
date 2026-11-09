@@ -268,4 +268,13 @@
     <string name="photo_export_fail_other">Terjadi masalah. Draf kamu aman. Coba lagi.</string>
     <string name="explain_photo_export_empty">Tambahkan foto, teks, atau stiker dulu.</string>
     <string name="explain_photo_export_busy">Tunggu sebentar. Potongan objekmu masih dibuat.</string>
+    <!-- P2-09: the WhatsApp packs row on the Stickers sheet. Spec: docs/ux/specs/P2-09-whatsapp-sticker-pack.md -> Stickers sheet row. -->
+    <string name="packs_row_title">Paket WhatsApp</string>
+    <string name="packs_row_make">Buat paket dari stikermu</string>
+    <plurals name="packs_row_count">
+        <item quantity="other">%1$d paket</item>
+    </plurals>
+    <plurals name="packs_row_need">
+        <item quantity="other">Tambah %1$d stiker lagi untuk membuat paket</item>
+    </plurals>
 </resources>

@@ -134,6 +134,8 @@ data class PhotoEditorUiState(
     val exportSheet: PhotoExportSheetUi? = null,
     /** The picture is saved: the app opens the Exported screen and sends [PhotoEditorIntent.ExportedScreenOpened]. */
     val openExportedScreen: Boolean = false,
+    /** The WhatsApp packs row was tapped: the app opens the packs screen over the editor and sends [PhotoEditorIntent.StickerPacksOpened] (spec P2-09). */
+    val openStickerPacks: Boolean = false,
     val toast: PhotoToast? = null,
     val unsavedSheetOpen: Boolean = false,
     /** The editor is done; the app closes the screen. */
@@ -550,6 +552,12 @@ sealed interface PhotoEditorIntent {
     /** The app opened the Exported screen. */
     data object ExportedScreenOpened : PhotoEditorIntent
 
+    /** The packs screen is open over the editor. */
+    data object StickerPacksOpened : PhotoEditorIntent
+
+    /** The WhatsApp packs row on the Stickers sheet (spec P2-09 → Stickers sheet row). */
+    data object OpenStickerPacks : PhotoEditorIntent
+
     data object Undo : PhotoEditorIntent
 
     data object Redo : PhotoEditorIntent
@@ -905,6 +913,8 @@ enum class CutOutProblem { UNAVAILABLE, OFFLINE, MEMORY, SLOW }
 data class StickersUi(
     val items: ImmutableList<String> = persistentListOf(),
     val loaded: Boolean = false,
+    /** How many WhatsApp packs exist, or null where packs can't be made (the row is not shown) or until it is read (P2-09). */
+    val packCount: Int? = null,
     val toast: StickersToast? = null,
     /** The sticker being copied into the project (taps wait; its tile keeps the pressed look), or null. */
     val placing: String? = null,

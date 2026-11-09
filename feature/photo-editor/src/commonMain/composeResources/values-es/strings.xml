@@ -268,4 +268,15 @@
     <string name="photo_export_fail_other">Algo salió mal. Tu borrador está a salvo. Vuelve a intentarlo.</string>
     <string name="explain_photo_export_empty">Añade primero una foto, un texto o un sticker.</string>
     <string name="explain_photo_export_busy">Espera un momento. Tu recorte aún se está creando.</string>
+    <!-- P2-09: the WhatsApp packs row on the Stickers sheet. Spec: docs/ux/specs/P2-09-whatsapp-sticker-pack.md -> Stickers sheet row. -->
+    <string name="packs_row_title">Packs de WhatsApp</string>
+    <string name="packs_row_make">Crea un pack con tus stickers</string>
+    <plurals name="packs_row_count">
+        <item quantity="one">%1$d pack</item>
+        <item quantity="other">%1$d packs</item>
+    </plurals>
+    <plurals name="packs_row_need">
+        <item quantity="one">Añade %1$d sticker más para crear un pack</item>
+        <item quantity="other">Añade %1$d stickers más para crear un pack</item>
+    </plurals>
 </resources>

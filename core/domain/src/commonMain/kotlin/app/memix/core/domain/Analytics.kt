@@ -253,6 +253,10 @@ enum class EditorTool(val eventValue: String?) {
     ADD_STICKER("add_sticker"),
     DELETE_STICKER("delete_sticker"),
     CLEAR_CUTOUT("clear_cutout"),
+
+    /** P2-09 (PM, 5 Nov 2026): the pack builder opens; Add or Update in WhatsApp is tapped and the pack is ready. Names, emojis and counts send nothing. */
+    MAKE_PACK("make_pack"),
+    ADD_TO_WHATSAPP("add_to_whatsapp"),
     CENSOR_PIXELATE("censor_pixelate"),
     CENSOR_BAR("censor_bar"),
 

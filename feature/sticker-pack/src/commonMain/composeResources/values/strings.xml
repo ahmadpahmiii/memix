@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- English source. P2-09 WhatsApp sticker packs. Budgets and translator notes: docs/ux/specs/P2-09-whatsapp-sticker-pack.md -> Copy. "WhatsApp" never translates; "sticker" is the word WhatsApp uses in the language. -->
+    <string name="packs_title">WhatsApp packs</string>
+    <string name="packs_empty_title">No packs yet</string>
+    <string name="packs_empty_body">Make a pack from your stickers.</string>
+    <string name="packs_new">New pack</string>
+    <plurals name="packs_sticker_count">
+        <item quantity="one">%1$d sticker</item>
+        <item quantity="other">%1$d stickers</item>
+    </plurals>
+    <string name="packs_in_whatsapp">In WhatsApp</string>
+    <string name="packs_deleted">Pack deleted. It stays in WhatsApp until you remove it there.</string>
+    <string name="packs_undo">Undo</string>
+    <string name="explain_packs_max">You have 10 packs. Delete one to make another.</string>
+    <string name="pack_builder_new">New pack</string>
+    <string name="pack_builder_edit">Edit pack</string>
+    <string name="pack_name_label">Pack name</string>
+    <string name="pack_name_default">My pack</string>
+    <string name="pack_name_helper">Use pictures you have the right to share.</string>
+    <string name="pack_count_need">Pick at least 3 stickers</string>
+    <plurals name="pack_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <plurals name="pack_count_max">
+        <item quantity="one">%1$d selected. That's the most a pack holds.</item>
+        <item quantity="other">%1$d selected. That's the most a pack holds.</item>
+    </plurals>
+    <string name="explain_pack_min">Pick at least 3 stickers.</string>
+    <string name="explain_pack_max">A pack holds up to 30 stickers.</string>
+    <string name="pack_need_title">You need 3 stickers for a pack</string>
+    <plurals name="pack_need_body">
+        <item quantity="one">You have %1$d. Cut out more people, pets or objects from your photos and save them as stickers.</item>
+        <item quantity="other">You have %1$d. Cut out more people, pets or objects from your photos and save them as stickers.</item>
+    </plurals>
+    <string name="pack_need_remove_background">Remove background</string>
+    <string name="pack_need_add_photo">Add photo</string>
+    <string name="pack_emojis">Emojis</string>
+    <string name="pack_emojis_help">Emojis help people find your stickers in WhatsApp.</string>
+    <string name="pack_emojis_pick_title">Emojis for this sticker</string>
+    <string name="pack_emojis_change">Change emojis</string>
+    <string name="pack_back">Back</string>
+    <string name="pack_done">Done</string>
+    <string name="explain_pack_emoji_max">Up to 3 emojis per sticker.</string>
+    <string name="explain_pack_emoji_min">Pick at least 1 emoji.</string>
+    <string name="pack_add">Add to WhatsApp</string>
+    <string name="pack_update">Update in WhatsApp</string>
+    <string name="pack_preparing">Getting your pack ready · %1$d of %2$d</string>
+    <plurals name="pack_too_big">
+        <item quantity="one">%1$d sticker is too detailed for WhatsApp's size limit. Unselect it or pick another.</item>
+        <item quantity="other">%1$d stickers are too detailed for WhatsApp's size limit. Unselect them or pick others.</item>
+    </plurals>
+    <string name="a11y_pack_too_big">Too detailed for WhatsApp</string>
+    <string name="pack_added_title">Added</string>
+    <string name="pack_added_pill">Added to WhatsApp</string>
+    <string name="pack_added_body">Open a chat in WhatsApp, tap the sticker icon, and look for “%1$s”.</string>
+    <string name="pack_not_added">It's not in WhatsApp yet. Tap Add to WhatsApp when you're ready.</string>
+    <string name="pack_no_whatsapp">WhatsApp isn't on this phone. Your pack is saved: add it once WhatsApp is installed.</string>
+    <string name="pack_whatsapp_old">Your WhatsApp is too old for stickers. Update it, then try again.</string>
+    <string name="pack_save_failed">Couldn't make the pack. Free up space and try again.</string>
+    <string name="pack_file_missing">This sticker's file is missing, so it can't go in a pack.</string>
+    <string name="a11y_pack_tile">Sticker %1$d</string>
+    <string name="a11y_pack_tile_selected">%1$s, selected</string>
+    <string name="a11y_pack_emoji_row">Sticker %1$d, emojis %2$s</string>
+    <string name="a11y_pack_progress_milestone">Getting your pack ready, %1$d percent</string>
+</resources>

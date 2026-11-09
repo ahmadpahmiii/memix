@@ -8,7 +8,23 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROCESSING" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- WhatsApp's own check of whether a pack is added (P2-09) lives in these two packages; Android 11+ hides them unless named here
+         (WhatsApp's Android sample does the same). -->
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+    </queries>
+
     <application>
+        <!-- The WhatsApp sticker packs (P2-09). Exported and enabled as WhatsApp requires, and readable only with the permission WhatsApp
+             holds; it serves pack metadata and the files a pack lists, nothing else (StickerPackProvider). Its authority is
+             StickerPackAuthority.of(context). -->
+        <provider
+            android:name="app.memix.platform.services.StickerPackProvider"
+            android:authorities="${applicationId}.stickercontentprovider"
+            android:enabled="true"
+            android:exported="true"
+            android:readPermission="com.whatsapp.sticker.READ" />
         <service
             android:name="app.memix.platform.services.ExportForegroundService"
             android:exported="false"

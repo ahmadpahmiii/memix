@@ -3,6 +3,8 @@ package app.memix.engine.photo
 import app.memix.core.domain.photo.PhotoRenderOutcome
 import app.memix.core.domain.photo.PhotoRenderRequest
 import app.memix.core.domain.photo.PhotoRenderer
+import app.memix.core.domain.stickerpack.StickerEncoding
+import app.memix.core.domain.stickerpack.StickerPackEncoder
 import app.memix.core.domain.video.ExportError
 import app.memix.core.model.project.Project
 import app.memix.core.ui.scene.ImageToolRenderer
@@ -20,6 +22,7 @@ actual val photoEngineModule = module {
     // TODO(P7-09): file existence through NSFileManager, once the decoder below exists.
     single { PhotoSceneRenderer(get(), get(), get(), get(), isFilePresent = { false }, drawDispatcher = Dispatchers.Default) }
     single<PhotoRenderer> { IosPhotoRenderer }
+    single<StickerPackEncoder> { IosStickerPackEncoder }
 }
 
 // TODO(P7-09): decode with ImageIO at the target size (orientation applied), the same rules as Android's AndroidSceneImageSource.
@@ -32,4 +35,12 @@ private object IosPhotoRenderer : PhotoRenderer {
     override suspend fun render(project: Project, request: PhotoRenderRequest): PhotoRenderOutcome = PhotoRenderOutcome.Failed(ExportError.ENCODER)
 
     override suspend fun deleteOldCopies() = Unit
+}
+
+// TODO(P7-09): WebP with alpha through ImageIO/libwebp and the same quality search; until then WhatsApp packs are unsupported on iOS
+// (WhatsAppStickers.isSupported is false, so nothing reaches this).
+private object IosStickerPackEncoder : StickerPackEncoder {
+    override suspend fun encodeSticker(sourcePath: String): StickerEncoding = StickerEncoding.Unreadable
+
+    override suspend fun encodeTray(sourcePath: String): ByteArray? = null
 }

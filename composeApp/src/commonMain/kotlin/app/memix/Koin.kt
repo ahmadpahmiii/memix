@@ -28,6 +28,11 @@ import app.memix.core.domain.sticker.DeleteStickerUseCase
 import app.memix.core.domain.sticker.ListStickersUseCase
 import app.memix.core.domain.sticker.PlaceStickerUseCase
 import app.memix.core.domain.sticker.SaveStickerUseCase
+import app.memix.core.domain.stickerpack.CheckPackInWhatsAppUseCase
+import app.memix.core.domain.stickerpack.DeleteStickerPackUseCase
+import app.memix.core.domain.stickerpack.GetStickerPacksRowUseCase
+import app.memix.core.domain.stickerpack.ListStickerPacksUseCase
+import app.memix.core.domain.stickerpack.PrepareStickerPackUseCase
 import app.memix.core.domain.share.ShareVideoUseCase
 import app.memix.core.domain.sound.LoadStarterSoundsUseCase
 import app.memix.core.domain.sound.LogSoundEventsUseCase
@@ -65,6 +70,7 @@ import app.memix.feature.videoeditor.EditorExport
 import app.memix.feature.videoeditor.EditorSounds
 import app.memix.feature.videoeditor.VideoEditorViewModel
 import app.memix.feature.photoeditor.PhotoEditorViewModel
+import app.memix.feature.stickerpack.StickerPackViewModel
 import app.memix.feature.mediaimport.MediaImportViewModel
 import app.memix.feature.mediaimport.PhotoMemeImportViewModel
 import app.memix.platform.services.platformServicesModule
@@ -107,6 +113,12 @@ private val appModule = module {
     factoryOf(::ListStickersUseCase)
     factoryOf(::PlaceStickerUseCase)
     factoryOf(::DeleteStickerUseCase)
+    // WhatsApp sticker packs (P2-09).
+    factoryOf(::ListStickerPacksUseCase)
+    factoryOf(::GetStickerPacksRowUseCase)
+    factoryOf(::PrepareStickerPackUseCase)
+    factoryOf(::DeleteStickerPackUseCase)
+    factoryOf(::CheckPackInWhatsAppUseCase)
     factoryOf(::SaveGalleryProjectUseCase)
     factoryOf(::SaveGalleryPhotoProjectUseCase)
     // Drafts list (P1-14). The thumbnail writer and the delete with undo outlive every screen: singles in the app's scope.
@@ -143,6 +155,7 @@ private val appModule = module {
     viewModelOf(::HomeViewModel)
     viewModelOf(::ExportViewModel)
     viewModelOf(::PhotoExportedViewModel)
+    viewModelOf(::StickerPackViewModel)
     viewModelOf(::MediaImportViewModel)
     viewModelOf(::PhotoMemeImportViewModel)
     viewModel { DraftsViewModel(get(), get(), get(), get(), get(), get(), decodeDispatcher = Dispatchers.Default) }
@@ -163,6 +176,7 @@ private val appModule = module {
             listStickers = get(),
             placeSticker = get(),
             deleteSticker = get(),
+            getStickerPacksRow = get(),
             exportPhoto = get(),
             exportFacts = get(),
         )

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Machine-drafted until P5-06. P2-09 WhatsApp sticker packs. Budgets and translator notes: docs/ux/specs/P2-09-whatsapp-sticker-pack.md -> Copy. "WhatsApp" never translates; "sticker" is the word WhatsApp uses in the language. -->
+    <string name="packs_title">Pacotes do WhatsApp</string>
+    <string name="packs_empty_title">Nenhum pacote ainda</string>
+    <string name="packs_empty_body">Crie um pacote com suas figurinhas.</string>
+    <string name="packs_new">Novo pacote</string>
+    <plurals name="packs_sticker_count">
+        <item quantity="one">%1$d figurinha</item>
+        <item quantity="other">%1$d figurinhas</item>
+    </plurals>
+    <string name="packs_in_whatsapp">No WhatsApp</string>
+    <string name="packs_deleted">Pacote excluído. Ele continua no WhatsApp até você removê-lo lá.</string>
+    <string name="packs_undo">Desfazer</string>
+    <string name="explain_packs_max">Você tem 10 pacotes. Exclua um para criar outro.</string>
+    <string name="pack_builder_new">Novo pacote</string>
+    <string name="pack_builder_edit">Editar pacote</string>
+    <string name="pack_name_label">Nome do pacote</string>
+    <string name="pack_name_default">Meu pacote</string>
+    <string name="pack_name_helper">Use imagens que você tem o direito de compartilhar.</string>
+    <string name="pack_count_need">Escolha pelo menos 3 figurinhas</string>
+    <plurals name="pack_count">
+        <item quantity="one">%1$d selecionada</item>
+        <item quantity="other">%1$d selecionadas</item>
+    </plurals>
+    <plurals name="pack_count_max">
+        <item quantity="one">%1$d selecionada. É o máximo de um pacote.</item>
+        <item quantity="other">%1$d selecionadas. É o máximo de um pacote.</item>
+    </plurals>
+    <string name="explain_pack_min">Escolha pelo menos 3 figurinhas.</string>
+    <string name="explain_pack_max">Um pacote comporta até 30 figurinhas.</string>
+    <string name="pack_need_title">Você precisa de 3 figurinhas para um pacote</string>
+    <plurals name="pack_need_body">
+        <item quantity="one">Você tem %1$d. Recorte mais pessoas, pets ou objetos das suas fotos e salve como figurinhas.</item>
+        <item quantity="other">Você tem %1$d. Recorte mais pessoas, pets ou objetos das suas fotos e salve como figurinhas.</item>
+    </plurals>
+    <string name="pack_need_remove_background">Remover o fundo</string>
+    <string name="pack_need_add_photo">Adicionar foto</string>
+    <string name="pack_emojis">Emojis</string>
+    <string name="pack_emojis_help">Os emojis ajudam as pessoas a encontrar suas figurinhas no WhatsApp.</string>
+    <string name="pack_emojis_pick_title">Emojis para esta figurinha</string>
+    <string name="pack_emojis_change">Mudar emojis</string>
+    <string name="pack_back">Voltar</string>
+    <string name="pack_done">Concluir</string>
+    <string name="explain_pack_emoji_max">Até 3 emojis por figurinha.</string>
+    <string name="explain_pack_emoji_min">Escolha pelo menos 1 emoji.</string>
+    <string name="pack_add">Adicionar ao WhatsApp</string>
+    <string name="pack_update">Atualizar no WhatsApp</string>
+    <string name="pack_preparing">Preparando seu pacote · %1$d de %2$d</string>
+    <plurals name="pack_too_big">
+        <item quantity="one">%1$d figurinha é detalhada demais para o limite de tamanho do WhatsApp. Desmarque-a ou escolha outra.</item>
+        <item quantity="other">%1$d figurinhas são detalhadas demais para o limite de tamanho do WhatsApp. Desmarque-as ou escolha outras.</item>
+    </plurals>
+    <string name="a11y_pack_too_big">Detalhado demais para o WhatsApp</string>
+    <string name="pack_added_title">Adicionado</string>
+    <string name="pack_added_pill">Adicionado ao WhatsApp</string>
+    <string name="pack_added_body">Abra uma conversa no WhatsApp, toque no ícone de figurinhas e procure “%1$s”.</string>
+    <string name="pack_not_added">Ainda não está no WhatsApp. Toque em Adicionar ao WhatsApp quando quiser.</string>
+    <string name="pack_no_whatsapp">O WhatsApp não está neste celular. Seu pacote está salvo: adicione-o quando o WhatsApp estiver instalado.</string>
+    <string name="pack_whatsapp_old">Seu WhatsApp é antigo demais para figurinhas. Atualize-o e tente de novo.</string>
+    <string name="pack_save_failed">Não foi possível criar o pacote. Libere espaço e tente de novo.</string>
+    <string name="pack_file_missing">O arquivo desta figurinha não foi encontrado, então ela não pode entrar em um pacote.</string>
+    <string name="a11y_pack_tile">Figurinha %1$d</string>
+    <string name="a11y_pack_tile_selected">%1$s, selecionada</string>
+    <string name="a11y_pack_emoji_row">Figurinha %1$d, emojis %2$s</string>
+    <string name="a11y_pack_progress_milestone">Preparando seu pacote, %1$d por cento</string>
+</resources>

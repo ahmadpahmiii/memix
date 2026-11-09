@@ -23,3 +23,8 @@ import kotlinx.serialization.Serializable
 @Serializable data object ExportRoute
 /** The Exported screen after a photo is saved to the gallery (P2-08); pushed over the photo editor. */
 @Serializable data object PhotoExportedRoute
+/**
+ * The WhatsApp sticker packs flow (P2-09): the packs list, the builder and the result, pushed over the photo editor. [hasImage]: the
+ * canvas has a photo, which decides the action of the "you need 3 stickers" state.
+ */
+@Serializable data class StickerPacksRoute(val hasImage: Boolean)

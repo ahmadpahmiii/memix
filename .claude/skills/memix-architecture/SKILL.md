@@ -23,6 +23,7 @@ Full detail: `docs/TECHNICAL_DESIGN.md`. This is the working summary.
 | `:engine:segmentation` | Platform | `Segmenter`: ML Kit (MediaPipe with P4-13) / Vision | domain |
 | `:platform:services` | Platform | AdMob+UMP, Firebase, share intents, gallery picker | domain |
 | `:feature:onboarding/home/templates/sounds/drafts/video-editor/photo-editor/export` | UI | screens + ViewModels | domain, ui |
+| `:feature:sticker-pack` | UI | P2-09 WhatsApp packs: Packs list, builder, Emojis sheet, Added; pack files live in `files/stickerpacks/` (`StickerPackStore`), the provider WhatsApp reads is in `:platform:services` | domain, ui |
 | `:feature:media-import` | UI | the import flow (`MediaImportFlow`, the sheet, `ProjectPickImport<R>` for a pick into an open project) and its strings; used by both editors and the app root | domain, ui |
 
 ## Rules

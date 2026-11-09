@@ -268,4 +268,15 @@
     <string name="photo_export_fail_other">कुछ गलत हो गया। आपका ड्राफ़्ट सुरक्षित है। फिर कोशिश करें।</string>
     <string name="explain_photo_export_empty">पहले कोई फ़ोटो, टेक्स्ट या स्टिकर जोड़ें।</string>
     <string name="explain_photo_export_busy">थोड़ा रुकें। आपका कट-आउट अभी बन रहा है।</string>
+    <!-- P2-09: the WhatsApp packs row on the Stickers sheet. Spec: docs/ux/specs/P2-09-whatsapp-sticker-pack.md -> Stickers sheet row. -->
+    <string name="packs_row_title">WhatsApp पैक</string>
+    <string name="packs_row_make">अपने स्टिकर से पैक बनाएँ</string>
+    <plurals name="packs_row_count">
+        <item quantity="one">%1$d पैक</item>
+        <item quantity="other">%1$d पैक</item>
+    </plurals>
+    <plurals name="packs_row_need">
+        <item quantity="one">पैक बनाने के लिए %1$d स्टिकर और जोड़ें</item>
+        <item quantity="other">पैक बनाने के लिए %1$d स्टिकर और जोड़ें</item>
+    </plurals>
 </resources>

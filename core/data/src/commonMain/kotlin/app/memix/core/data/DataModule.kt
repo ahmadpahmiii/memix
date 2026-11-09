@@ -6,9 +6,11 @@ import app.memix.core.data.project.ProjectJsonMigrator
 import app.memix.core.data.project.SqlDelightProjectRepository
 import app.memix.core.data.project.projectMigrations
 import app.memix.core.data.settings.SettingsExportPreferences
+import app.memix.core.data.stickerpack.FileStickerPackRepository
 import app.memix.core.data.settings.SettingsPhotoExportPreferences
 import app.memix.core.domain.photo.PhotoExportPreferences
 import app.memix.core.domain.project.ProjectRepository
+import app.memix.core.domain.stickerpack.StickerPackRepository
 import app.memix.core.domain.video.ExportPreferences
 import app.memix.core.model.project.Project
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +27,7 @@ const val MEMIX_DATABASE_FILE = "memix.db"
 val dataModule = module {
     single<ExportPreferences> { SettingsExportPreferences(get(), Dispatchers.IO) }
     single<PhotoExportPreferences> { SettingsPhotoExportPreferences(get(), Dispatchers.IO) }
+    single<StickerPackRepository> { FileStickerPackRepository(get(), get()) }
     single { MemixDatabase(get()) }
     single<ProjectRepository> {
         SqlDelightProjectRepository(

@@ -80,6 +80,7 @@ import app.memix.core.domain.sticker.PlaceStickerUseCase
 import app.memix.core.domain.sticker.SaveStickerUseCase
 import app.memix.core.domain.sticker.StickerPlacement
 import app.memix.core.domain.sticker.StickerStore
+import app.memix.core.domain.stickerpack.GetStickerPacksRowUseCase
 import app.memix.core.domain.sticker.StickerSave
 import app.memix.core.domain.segmentation.SegmentationFailure
 import app.memix.core.model.project.CutOut
@@ -192,6 +193,7 @@ class PhotoEditorViewModel(
     private val listStickers: ListStickersUseCase,
     private val placeSticker: PlaceStickerUseCase,
     private val deleteSticker: DeleteStickerUseCase,
+    private val getStickerPacksRow: GetStickerPacksRowUseCase,
     exportPhoto: ExportPhotoUseCase,
     exportFacts: PhotoExportSheetFactsUseCase,
 ) : MemixViewModel<PhotoEditorUiState, PhotoEditorIntent>(PhotoEditorUiState()) {
@@ -299,6 +301,8 @@ class PhotoEditorViewModel(
             is PhotoEditorIntent.CutOutApply -> applyCutOut(intent.strokes, intent.softness)
             PhotoEditorIntent.CutOutRemove -> removeCutOut()
             PhotoEditorIntent.OpenStickers -> openStickers()
+            PhotoEditorIntent.OpenStickerPacks -> openStickerPacks()
+            PhotoEditorIntent.StickerPacksOpened -> updateState { it.copy(openStickerPacks = false) }
             PhotoEditorIntent.CloseStickers -> closeStickers()
             is PhotoEditorIntent.PickSticker -> pickSticker(intent.path)
             is PhotoEditorIntent.DeleteSticker -> deleteStickerWithUndo(intent.path)
@@ -1087,8 +1091,15 @@ class PhotoEditorViewModel(
         updateState { it.copy(stickers = StickersUi(), panel = null, canvasPanel = null) }
         viewModelScope.launch {
             val items = listStickers().toImmutableList()
-            updateState { current -> current.stickers?.let { current.copy(stickers = it.copy(items = items, loaded = true)) } ?: current }
+            val packCount = getStickerPacksRow()?.packCount
+            updateState { current -> current.stickers?.let { current.copy(stickers = it.copy(items = items, loaded = true, packCount = packCount)) } ?: current }
         }
+    }
+
+    // The WhatsApp packs row: the sheet closes and the app pushes the packs screen over the editor (spec P2-09 → Entry and exit).
+    private fun openStickerPacks() {
+        closeStickers()
+        updateState { it.copy(openStickerPacks = true) }
     }
 
     // Closing finishes a delete still waiting for its Undo (the file goes when the sheet and its toast go).

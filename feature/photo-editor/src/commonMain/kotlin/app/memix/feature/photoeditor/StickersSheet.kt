@@ -2,10 +2,12 @@ package app.memix.feature.photoeditor
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -51,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import app.memix.core.designsystem.Icon
 import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixIcons
+import app.memix.core.designsystem.MemixSize
 import app.memix.core.designsystem.MemixShapes
 import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.MemixTheme
@@ -64,11 +67,14 @@ import app.memix.core.designsystem.component.Sheet
 import app.memix.core.designsystem.component.Tabs
 import app.memix.core.designsystem.component.Toast
 import app.memix.core.designsystem.component.ToastAction
+import app.memix.core.model.stickerpack.StickerPackLimits
 import kotlinx.collections.immutable.persistentListOf
 import memix.core.ui.generated.resources.Res as UiRes
 import memix.core.ui.generated.resources.edit_delete
 import memix.feature.photo_editor.generated.resources.Res
 import memix.feature.photo_editor.generated.resources.a11y_sticker_tile
+import memix.feature.photo_editor.generated.resources.packs_row_count
+import memix.feature.photo_editor.generated.resources.packs_row_need
 import memix.feature.photo_editor.generated.resources.stickers_add_failed
 import memix.feature.photo_editor.generated.resources.tool_add_photo
 import memix.feature.photo_editor.generated.resources.stickers_deleted
@@ -78,8 +84,11 @@ import memix.feature.photo_editor.generated.resources.stickers_empty_body
 import memix.feature.photo_editor.generated.resources.stickers_empty_title
 import memix.feature.photo_editor.generated.resources.stickers_file_missing
 import memix.feature.photo_editor.generated.resources.stickers_tab_mine
+import memix.feature.photo_editor.generated.resources.packs_row_make
+import memix.feature.photo_editor.generated.resources.packs_row_title
 import memix.feature.photo_editor.generated.resources.stickers_title
 import memix.feature.photo_editor.generated.resources.stickers_undo
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /** The sticker sources the sheet can show. Today only My stickers; P4-15 adds a pack as one more entry and the tab row appears (spec P2-14 → Layout). */
@@ -141,8 +150,43 @@ private fun StickersContent(sheet: StickersUi, hasImage: Boolean, bitmaps: Scene
         when {
             !sheet.loaded -> Unit
             sheet.items.isEmpty() -> EmptyState(hasImage, onIntent)
-            else -> StickerGrid(sheet, bitmaps, onIntent, onMenu)
+            else -> {
+                // Shown whenever the store has a sticker; it opens the packs screen, or the builder when no pack exists (spec P2-09).
+                sheet.packCount?.let { packCount -> PacksRow(sheet.items.size, packCount) { onIntent(PhotoEditorIntent.OpenStickerPacks) } }
+                StickerGrid(sheet, bitmaps, onIntent, onMenu)
+            }
         }
+    }
+}
+
+// "WhatsApp packs": a 56 dp `surface-raised` row above the grid, the whole row one target; its second line says what comes next.
+@Composable
+private fun PacksRow(stickerCount: Int, packCount: Int, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val missing = (StickerPackLimits.MIN_STICKERS - stickerCount).coerceAtLeast(0)
+    val detail = when {
+        packCount > 0 -> pluralStringResource(Res.plurals.packs_row_count, packCount, packCount)
+        missing > 0 -> pluralStringResource(Res.plurals.packs_row_need, missing, missing)
+        else -> stringResource(Res.string.packs_row_make)
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = PACKS_ROW_HEIGHT)
+            .clip(MemixShapes.radiusMd)
+            .background(if (pressed) MemixColors.hairline else MemixColors.surfaceRaised)
+            .clickable(interactionSource, indication = null, role = Role.Button, onClick = onClick)
+            .semantics(mergeDescendants = true) { },
+        horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space3),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(MemixIcons.Sticker, null, MemixColors.text, Modifier.padding(start = MemixSpacing.space4))
+        Column(Modifier.weight(1f).padding(vertical = MemixSpacing.space2)) {
+            Text(stringResource(Res.string.packs_row_title), MemixTheme.type.bodyStrong)
+            Text(detail, MemixTheme.type.label, color = MemixColors.textSecondary)
+        }
+        Icon(MemixIcons.ChevronRight, null, MemixColors.textSecondary, Modifier.padding(end = MemixSpacing.space3))
     }
 }
 
@@ -229,6 +273,7 @@ private fun EmptyState(hasImage: Boolean, onIntent: (PhotoEditorIntent) -> Unit)
     }
 }
 
-private val TILE_MIN_WIDTH = 96.dp
+private val TILE_MIN_WIDTH = MemixSize.gridTileMin
 private val EMPTY_ICON_SIZE = 32.dp
-private const val SHEET_MAX_SHARE = 0.7f
+private val PACKS_ROW_HEIGHT = MemixSize.navRowHeight
+private const val SHEET_MAX_SHARE = MemixSize.sheetMaxHeightFraction

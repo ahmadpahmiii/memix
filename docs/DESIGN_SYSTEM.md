@@ -378,6 +378,13 @@ Fixed sizes used across screens (dp on Android).
 | `badge-size` | `MemixSize.badge` | `20px` | Side of a square icon badge over the user's picture (the type badge on a draft's thumbnail, P1-14): a `scrim` chip in `radius-sm` with an `icon-small` icon centered (2px around it), `space-1` from the picture's corner. Not for text badges. |
 | `play-disc-size` | `MemixSize.playDiscSize` | `56px` | The big play button centered on a video that isn't playing (the Exported screen, P1-12): a `radius-full` disc in `primary` with a 24px `play` icon in `on-primary` (7.9:1). It only draws; the tap belongs to the whole video, so its target is far above `touch-target`. Not for icon controls: those are IconButtons. |
 | `layer-thumb-size` | `MemixSize.layerThumbSize` | `40px` | Square thumbnail at the start of a LayerRow in the photo editor's Layers panel (P2-01), `radius-sm`, the layer's picture fitted inside. The row is at least this plus `space-2` above and below, 56px. |
+| `pack-row-height` | `MemixSize.packRowHeight` | `72px` | Minimum height of a row on the WhatsApp Packs screen (P2-09): tray 48px, name and count; grows with text at large font. |
+| `emoji-row-height` | `MemixSize.emojiRowHeight` | `64px` | Minimum height of a sticker row in the Emojis sheet's list pane (P2-09). |
+| `pack-tray-size` | `MemixSize.packTraySize` | `96px` | The pack's tray picture on the Added screen (P2-09), `surface-raised`, `radius-lg`. |
+| `grid-tile-min` | `MemixSize.gridTileMin` | `96px` | Minimum sticker tile width in the Stickers sheet and the pack builder grids (3 columns at 360 dp); never below `touch-target`. |
+| `nav-row-height` | `MemixSize.navRowHeight` | `56px` | A one-tap navigation row inside a sheet (the Stickers sheet's WhatsApp packs row): `surface-raised`, `radius-md`. |
+| `sheet-max-height-fraction` | `MemixSize.sheetMaxHeightFraction` (Float) | `0.7` | Share of the window height a content sheet may use before it scrolls (P2-14, P2-09). |
+| `pinned-bar-max-fraction` | `MemixSize.pinnedBarMaxFraction` (Float) | `0.4` | Share of the window height the pack builder's pinned bottom area may take at large font before only the buttons stay pinned (P2-09). |
 | `filter-tile-size` | `MemixSize.filterTileSize` | `72px` | Side of a filter tile's square picture in the Edit photo panel's Filters strip (P2-04): `radius-md`, the user's photo with that filter on, the name in `caption` under it; at least `touch-target` each way. |
 
 ### Motion

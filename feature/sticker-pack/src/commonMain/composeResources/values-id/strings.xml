@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Machine-drafted until P5-06. P2-09 WhatsApp sticker packs. Budgets and translator notes: docs/ux/specs/P2-09-whatsapp-sticker-pack.md -> Copy. "WhatsApp" never translates; "sticker" is the word WhatsApp uses in the language. -->
+    <string name="packs_title">Paket WhatsApp</string>
+    <string name="packs_empty_title">Belum ada paket</string>
+    <string name="packs_empty_body">Buat paket dari stikermu.</string>
+    <string name="packs_new">Paket baru</string>
+    <plurals name="packs_sticker_count">
+        <item quantity="other">%1$d stiker</item>
+    </plurals>
+    <string name="packs_in_whatsapp">Ada di WhatsApp</string>
+    <string name="packs_deleted">Paket dihapus. Paket tetap ada di WhatsApp sampai kamu menghapusnya di sana.</string>
+    <string name="packs_undo">Urungkan</string>
+    <string name="explain_packs_max">Kamu punya 10 paket. Hapus satu untuk membuat yang lain.</string>
+    <string name="pack_builder_new">Paket baru</string>
+    <string name="pack_builder_edit">Ubah paket</string>
+    <string name="pack_name_label">Nama paket</string>
+    <string name="pack_name_default">Paket saya</string>
+    <string name="pack_name_helper">Pakai gambar yang boleh kamu bagikan.</string>
+    <string name="pack_count_need">Pilih minimal 3 stiker</string>
+    <plurals name="pack_count">
+        <item quantity="other">%1$d dipilih</item>
+    </plurals>
+    <plurals name="pack_count_max">
+        <item quantity="other">%1$d dipilih. Itu batas satu paket.</item>
+    </plurals>
+    <string name="explain_pack_min">Pilih minimal 3 stiker.</string>
+    <string name="explain_pack_max">Satu paket berisi maksimal 30 stiker.</string>
+    <string name="pack_need_title">Kamu butuh 3 stiker untuk satu paket</string>
+    <plurals name="pack_need_body">
+        <item quantity="other">Kamu punya %1$d. Potong lebih banyak orang, hewan peliharaan, atau benda dari fotomu dan simpan sebagai stiker.</item>
+    </plurals>
+    <string name="pack_need_remove_background">Hapus latar belakang</string>
+    <string name="pack_need_add_photo">Tambah foto</string>
+    <string name="pack_emojis">Emoji</string>
+    <string name="pack_emojis_help">Emoji membantu orang menemukan stikermu di WhatsApp.</string>
+    <string name="pack_emojis_pick_title">Emoji untuk stiker ini</string>
+    <string name="pack_emojis_change">Ubah emoji</string>
+    <string name="pack_back">Kembali</string>
+    <string name="pack_done">Selesai</string>
+    <string name="explain_pack_emoji_max">Maksimal 3 emoji per stiker.</string>
+    <string name="explain_pack_emoji_min">Pilih minimal 1 emoji.</string>
+    <string name="pack_add">Tambahkan ke WhatsApp</string>
+    <string name="pack_update">Perbarui di WhatsApp</string>
+    <string name="pack_preparing">Menyiapkan paketmu · %1$d dari %2$d</string>
+    <plurals name="pack_too_big">
+        <item quantity="other">%1$d stiker terlalu rumit untuk batas ukuran WhatsApp. Batalkan pilihannya atau pilih yang lain.</item>
+    </plurals>
+    <string name="a11y_pack_too_big">Terlalu rumit untuk WhatsApp</string>
+    <string name="pack_added_title">Ditambahkan</string>
+    <string name="pack_added_pill">Ditambahkan ke WhatsApp</string>
+    <string name="pack_added_body">Buka obrolan di WhatsApp, ketuk ikon stiker, lalu cari “%1$s”.</string>
+    <string name="pack_not_added">Belum ada di WhatsApp. Ketuk Tambahkan ke WhatsApp saat kamu siap.</string>
+    <string name="pack_no_whatsapp">WhatsApp tidak ada di ponsel ini. Paketmu sudah disimpan: tambahkan setelah WhatsApp terpasang.</string>
+    <string name="pack_whatsapp_old">WhatsApp-mu terlalu lama untuk stiker. Perbarui lalu coba lagi.</string>
+    <string name="pack_save_failed">Paket tidak bisa dibuat. Kosongkan ruang lalu coba lagi.</string>
+    <string name="pack_file_missing">File stiker ini hilang, jadi tidak bisa masuk ke paket.</string>
+    <string name="a11y_pack_tile">Stiker %1$d</string>
+    <string name="a11y_pack_tile_selected">%1$s, dipilih</string>
+    <string name="a11y_pack_emoji_row">Stiker %1$d, emoji %2$s</string>
+    <string name="a11y_pack_progress_milestone">Menyiapkan paketmu, %1$d persen</string>
+</resources>

@@ -20,6 +20,7 @@ import app.memix.core.domain.media.MediaInspector
 import app.memix.core.domain.photo.PictureClipboard
 import app.memix.core.domain.share.Sharer
 import app.memix.core.domain.sound.SoundLibrary
+import app.memix.core.domain.stickerpack.WhatsAppStickers
 import app.memix.core.domain.video.AppExitReasons
 import app.memix.core.domain.video.ExportForeground
 import com.google.android.gms.tasks.Task
@@ -49,6 +50,7 @@ actual val platformServicesModule = module {
     single<PictureClipboard> { AndroidPictureClipboard(androidContext()) }
     single<AppExitReasons> { AndroidAppExitReasons(androidContext(), Dispatchers.IO) }
     single<LocalCalendar> { AndroidLocalCalendar() }
+    single<WhatsAppStickers> { AndroidWhatsAppStickers(androidContext(), Dispatchers.IO, get()) }
 }
 
 private class AndroidDeviceRegion(private val context: Context) : DeviceRegion {

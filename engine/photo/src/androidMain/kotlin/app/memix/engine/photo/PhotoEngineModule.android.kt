@@ -1,6 +1,7 @@
 package app.memix.engine.photo
 
 import app.memix.core.domain.photo.PhotoRenderer
+import app.memix.core.domain.stickerpack.StickerPackEncoder
 import app.memix.core.ui.scene.ImageToolRenderer
 import app.memix.core.ui.scene.SavedPictureSource
 import app.memix.core.ui.scene.SceneImageSource
@@ -18,5 +19,6 @@ actual val photoEngineModule = module {
         PhotoSceneRenderer(get(), get(), get(), get(), isFilePresent = { path -> File(filesDir, path).exists() }, drawDispatcher = Dispatchers.Default)
     }
     single<PhotoRenderer> { AndroidPhotoRenderer(androidContext(), get(), Dispatchers.IO, get()) }
+    single<StickerPackEncoder> { AndroidStickerPackEncoder(androidContext().filesDir, Dispatchers.Default, get()) }
     single<SavedPictureSource> { AndroidSavedPictureSource(androidContext(), Dispatchers.IO, get()) }
 }

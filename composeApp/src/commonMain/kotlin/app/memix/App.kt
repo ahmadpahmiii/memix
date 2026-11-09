@@ -82,7 +82,13 @@ import app.memix.feature.home.HomeScreen
 import app.memix.feature.home.HomeViewModel
 import app.memix.feature.photoeditor.PhotoEditorIntent
 import app.memix.feature.photoeditor.PhotoEditorScreen
+import app.memix.feature.photoeditor.LayerKind
 import app.memix.feature.photoeditor.PhotoEditorViewModel
+import app.memix.feature.stickerpack.StickerPackIntent
+import app.memix.feature.stickerpack.StickerPackScreen
+import app.memix.feature.stickerpack.StickerPackViewModel
+import app.memix.platform.services.rememberWhatsAppPackLauncher
+import kotlinx.coroutines.flow.StateFlow
 import app.memix.feature.sounds.SoundsScreen
 import app.memix.feature.templates.TemplatesScreen
 import app.memix.feature.videoeditor.VideoEditorIntent
@@ -201,6 +207,22 @@ fun App(isDebugBuild: Boolean, debugEditorProject: String? = null) {
                         // A restored back stack may already show the Exported screen; never a second one on top.
                         onOpenExported = {
                             if (navController.currentDestination?.hasRoute(PhotoExportedRoute::class) != true) navController.navigate(PhotoExportedRoute)
+                        },
+                        onOpenStickerPacks = { hasImage ->
+                            if (navController.currentDestination?.hasRoute(StickerPacksRoute::class) != true) navController.navigate(StickerPacksRoute(hasImage))
+                        },
+                        // "Remove background" or "Add photo" from the packs screen's need-3-stickers state comes back through the editor's saved state.
+                        packsEmptyAction = entry.savedStateHandle.getStateFlow(PACKS_EMPTY_ACTION_KEY, false),
+                        onPacksEmptyActionHandled = { entry.savedStateHandle[PACKS_EMPTY_ACTION_KEY] = false },
+                    )
+                }
+                fullScreen<StickerPacksRoute>(reduceMotion) { entry ->
+                    StickerPacksDestination(
+                        hasImage = entry.toRoute<StickerPacksRoute>().hasImage,
+                        onClose = { navController.popBackStack() },
+                        onEmptyAction = {
+                            navController.previousBackStackEntry?.savedStateHandle?.set(PACKS_EMPTY_ACTION_KEY, true)
+                            navController.popBackStack()
                         },
                     )
                 }
@@ -397,7 +419,16 @@ private fun VideoEditorDestination(projectId: String, onClose: () -> Unit, onCou
  * blank canvas made in memory.
  */
 @Composable
-private fun PhotoEditorDestination(projectId: String, blank: Boolean, onClose: () -> Unit, onCouldntOpen: () -> Unit, onOpenExported: () -> Unit) {
+private fun PhotoEditorDestination(
+    projectId: String,
+    blank: Boolean,
+    onClose: () -> Unit,
+    onCouldntOpen: () -> Unit,
+    onOpenExported: () -> Unit,
+    onOpenStickerPacks: (hasImage: Boolean) -> Unit,
+    packsEmptyAction: StateFlow<Boolean>,
+    onPacksEmptyActionHandled: () -> Unit,
+) {
     val viewModel = koinViewModel<PhotoEditorViewModel>(key = projectId) { parametersOf(projectId, blank) }
     val imageSource = koinInject<SceneImageSource>()
     // The image tools' color pass (P2-04); iOS binds an unsupported one until P7-09.
@@ -422,6 +453,20 @@ private fun PhotoEditorDestination(projectId: String, blank: Boolean, onClose: (
         currentOnOpenExported()
         viewModel.onIntent(PhotoEditorIntent.ExportedScreenOpened)
     }
+    // The WhatsApp packs row was tapped: the packs screen is pushed over the editor (spec P2-09 → Entry and exit).
+    val currentOnOpenStickerPacks by rememberUpdatedState(onOpenStickerPacks)
+    LaunchedEffect(state.openStickerPacks) {
+        if (!state.openStickerPacks) return@LaunchedEffect
+        currentOnOpenStickerPacks(state.layers.any { it.kind == LayerKind.IMAGE })
+        viewModel.onIntent(PhotoEditorIntent.StickerPacksOpened)
+    }
+    val emptyActionRequested by packsEmptyAction.collectAsStateWithLifecycle()
+    val currentOnPacksEmptyActionHandled by rememberUpdatedState(onPacksEmptyActionHandled)
+    LaunchedEffect(emptyActionRequested) {
+        if (!emptyActionRequested) return@LaunchedEffect
+        currentOnPacksEmptyActionHandled()
+        viewModel.onIntent(PhotoEditorIntent.StickersEmptyAction)
+    }
     PhotoEditorScreen(
         state = state,
         onIntent = viewModel::onIntent,
@@ -432,6 +477,26 @@ private fun PhotoEditorDestination(projectId: String, blank: Boolean, onClose: (
         onFreeUpSpace = { requestedBytes ->
             if (!freeUpSpace.launch(requestedBytes)) viewModel.onIntent(PhotoEditorIntent.FreeUpSpaceUnavailable)
         },
+    )
+}
+
+/**
+ * The WhatsApp sticker packs (P2-09) with the picture decoder and WhatsApp's add screen plugged in. [onEmptyAction] leaves for the
+ * editor's Remove background or Add photo; [onClose] leaves the flow.
+ */
+@Composable
+private fun StickerPacksDestination(hasImage: Boolean, onClose: () -> Unit, onEmptyAction: () -> Unit) {
+    val viewModel = koinViewModel<StickerPackViewModel>()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val whatsApp = rememberWhatsAppPackLauncher(onReturned = { viewModel.onIntent(StickerPackIntent.ReturnedFromWhatsApp) })
+    StickerPackScreen(
+        state = state,
+        onIntent = viewModel::onIntent,
+        imageSource = koinInject<SceneImageSource>(),
+        hasImage = hasImage,
+        onEmptyAction = onEmptyAction,
+        onOpenWhatsApp = whatsApp::launch,
+        onClose = onClose,
     )
 }
 
@@ -518,6 +583,9 @@ private fun NavHostController.leaveExport(exit: ExportExit) {
 
 /** Logcat tag of the editor-open timing: the drafts list's tap here, the engine's "Preview opened" (P1-14 must-know 11). */
 private const val OPEN_TIMING_TAG = "MemixPreview"
+
+/** The saved-state key the packs screen sets on the editor's entry to ask for Remove background or Add photo (P2-09). */
+private const val PACKS_EMPTY_ACTION_KEY = "stickerPacksEmptyAction"
 
 private inline fun <reified T : Any> NavGraphBuilder.fullScreen(
     reduceMotion: Boolean,

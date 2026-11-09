@@ -42,6 +42,7 @@ include(
     ":feature:drafts",
     ":feature:video-editor",
     ":feature:photo-editor",
+    ":feature:sticker-pack",
     ":feature:media-import",
     ":feature:export",
 )
