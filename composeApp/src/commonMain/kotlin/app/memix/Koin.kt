@@ -44,7 +44,9 @@ import app.memix.core.domain.text.PrepareCaptionsUseCase
 import app.memix.core.domain.video.ExportNotificationPermissionUseCase
 import app.memix.core.domain.video.ExportSheetFactsUseCase
 import app.memix.core.domain.photo.ExportPhotoUseCase
+import app.memix.core.domain.photo.MakeVideoMemeUseCase
 import app.memix.core.domain.photo.PhotoExportSheetFactsUseCase
+import app.memix.core.domain.photo.VideoMemeNoteUseCase
 import app.memix.core.domain.share.SharePictureUseCase
 import app.memix.core.domain.video.ExportVideoUseCase
 import app.memix.feature.export.PhotoExportedViewModel
@@ -152,6 +154,9 @@ private val appModule = module {
     single { ExportPhotoUseCase(get(), get(), get(), get(), get(), get(), get(appScope), Dispatchers.Main) }
     factoryOf(::PhotoExportSheetFactsUseCase)
     factoryOf(::SharePictureUseCase)
+    // Make it a video meme (P2-10) and its one-time note.
+    factoryOf(::MakeVideoMemeUseCase)
+    factoryOf(::VideoMemeNoteUseCase)
     viewModelOf(::HomeViewModel)
     viewModelOf(::ExportViewModel)
     viewModelOf(::PhotoExportedViewModel)
@@ -179,6 +184,7 @@ private val appModule = module {
             getStickerPacksRow = get(),
             exportPhoto = get(),
             exportFacts = get(),
+            makeVideoMeme = get(),
         )
     }
     viewModel { params ->
@@ -193,6 +199,7 @@ private val appModule = module {
             export = get(),
             importMedia = get(),
             updateDraftThumbnail = get(),
+            videoMemeNote = get(),
             decodeDispatcher = Dispatchers.Default,
             // Bound only in builds with hand checks (handCheckModule).
             debugEdit = getOrNull(),

@@ -136,6 +136,10 @@ data class PhotoEditorUiState(
     val openExportedScreen: Boolean = false,
     /** The WhatsApp packs row was tapped: the app opens the packs screen over the editor and sends [PhotoEditorIntent.StickerPacksOpened] (spec P2-09). */
     val openStickerPacks: Boolean = false,
+    /** "Make it a video meme" is working: its button says "Making video…" and the whole editor is inert (spec P2-10 → While it works). */
+    val makingVideo: Boolean = false,
+    /** The video draft is saved: the app opens the video editor in this one's place and sends [PhotoEditorIntent.VideoMemeOpened]. */
+    val openVideoMeme: String? = null,
     val toast: PhotoToast? = null,
     val unsavedSheetOpen: Boolean = false,
     /** The editor is done; the app closes the screen. */
@@ -153,6 +157,13 @@ data class PhotoEditorUiState(
 
     /** Whether a panel hides the tool bar (and then the selected-layer bar too). */
     val panelOpen: Boolean get() = panel != null
+
+    /**
+     * Whether the Make it a video meme row shows under the stage (spec P2-10 → Layout): in the default and layer-selected states, and
+     * never while a panel, the keyboard, Draw mode, the Crop or cut-out screen or the Stickers sheet takes the room.
+     */
+    val showsMakeVideoRow: Boolean
+        get() = scene != null && panel == null && textEntry == null && draw == null && cropLayerId == null && cutOut == null && stickers == null
 
     /** A picture's file is missing or can't be read, in a layer, a Panels cell or the background: an export leaves it out. */
     val hasMissingPicture: Boolean get() = missingLayerIds.isNotEmpty() || missingCells.isNotEmpty() || backgroundMissing
@@ -462,6 +473,8 @@ enum class PhotoExplanation {
     EXPORT_EMPTY,
     EXPORT_BUSY,
     EXPORT_NO_SPACE,
+    MAKE_VIDEO_FAILED,
+    MAKE_VIDEO_NO_SPACE,
 }
 
 /** A toast on the stage; a new [id] restarts its timer. [isSpokenOnly] when the save banner holds the slot. */
@@ -548,6 +561,12 @@ sealed interface PhotoEditorIntent {
 
     /** Something in the Export sheet. */
     data class Export(val intent: PhotoExportIntent) : PhotoEditorIntent
+
+    /** The Make it a video meme button under the stage (spec P2-10). */
+    data object MakeVideo : PhotoEditorIntent
+
+    /** The app opened the video editor for the new draft. */
+    data object VideoMemeOpened : PhotoEditorIntent
 
     /** The app opened the Exported screen. */
     data object ExportedScreenOpened : PhotoEditorIntent

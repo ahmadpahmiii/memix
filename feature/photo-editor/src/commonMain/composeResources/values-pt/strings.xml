@@ -279,4 +279,9 @@
         <item quantity="one">Adicione mais %1$d figurinha para criar um pacote</item>
         <item quantity="other">Adicione mais %1$d figurinhas para criar um pacote</item>
     </plurals>
+    <!-- Make it a video meme (P2-10). Machine drafts until P5. -->
+    <string name="make_video_title">Transforme em meme de vídeo</string>
+    <string name="make_video_working">Criando vídeo…</string>
+    <string name="make_video_fail">Não foi possível criar o meme de vídeo. Tente de novo.</string>
+    <string name="make_video_fail_space">Não foi possível criar o meme de vídeo. Libere espaço e tente de novo.</string>
 </resources>

@@ -61,6 +61,8 @@ internal class DebugPicture(val fileName: String, val widthPx: Int, val heightPx
  * - `photo-panels-6` (P2-02): a 2 x 3 grid of six 12 MP cells for the speed bar (three 3 s divider drags under 5% janky frames; peak Graphics and Native Heap).
  * - `photo-stickers` (P2-03): a photo, one text and five stickers with transparent backgrounds: a 512 px square, a 3:1 (locked),
  *   a 1:3 (hidden), a 96 px tiny one and one whose file is gone.
+ * - `photo-video-meme` (P2-10): a 4:3 photo in the Classic format with a text covered by a sticker, the drawings and censors of
+ *   `photo-draw-censor`, and two opaque texts on top ("SHARP ABOVE", "TOP TEXT"): Make it a video meme bakes everything but those two.
  * - `photo-layers-10` also carries three text layers on top (Classic at the top, Bubbly at 250% and 30°, a Hindi line).
  * The pictures for the photo-shape check (4:3, 3:2, 1:1, 9:16, 6:13, 3:1) are written too, for picking from the gallery.
  */
@@ -81,9 +83,10 @@ internal object PhotoCheckProjects {
     const val FORMAT_PANELS = "photo-format-panels"
     const val FORMAT_BUBBLES = "photo-format-bubbles"
     const val PANELS_6 = "photo-panels-6"
+    const val VIDEO_MEME = "photo-video-meme"
     val NAMES = listOf(
         LAYERS_10, EMPTY, MISSING_MEDIA, BACKGROUND_IMAGE, BACKGROUND_MISSING, TEXT_CHECK, TEXT_SHADOW_BOX, IMAGE_TOOLS, DRAW_CENSOR, STICKERS,
-        FORMAT_CLASSIC, FORMAT_CAPTION_BAR, FORMAT_DEMOTIVATIONAL, FORMAT_PANELS, FORMAT_BUBBLES, PANELS_6,
+        FORMAT_CLASSIC, FORMAT_CAPTION_BAR, FORMAT_DEMOTIVATIONAL, FORMAT_PANELS, FORMAT_BUBBLES, PANELS_6, VIDEO_MEME,
     )
 
     const val PICTURES_DIR = "${ExportCheckProject.MEDIA_DIR}/photo-scenes"
@@ -147,6 +150,7 @@ internal object PhotoCheckProjects {
         TEXT_SHADOW_BOX -> textShadowBox()
         IMAGE_TOOLS -> imageTools()
         DRAW_CENSOR -> drawCensor()
+        VIDEO_MEME -> videoMeme()
         STICKERS -> stickers()
         FORMAT_CLASSIC -> formatScene(FORMAT_CLASSIC, ClassicFormat, text("c-top", "WHEN THE BUILD PASSES", CAPTION, Transform(0.5f, 0.14f)), text("c-bottom", "FIRST TRY", CAPTION, Transform(0.5f, 0.86f)))
         FORMAT_CAPTION_BAR -> formatScene(FORMAT_CAPTION_BAR, CaptionBarFormat, text("b-text", "ME EXPLAINING THE BUG\nTO THE DUCK", CaptionStyle("poppins", BLACK, null), Transform(0.5f, 0.125f)))
@@ -217,6 +221,24 @@ internal object PhotoCheckProjects {
     private fun drawCensor(): Project {
         val layers = listOf(image("dc-photo", shapes[0], Transform()), text("dc-caption", "DRAW CHECK", CAPTION, Transform(0.5f, 0.1f)))
         return DrawCheckScene.withCensors(DrawCheckScene.withDrawings(project(DRAW_CENSOR, photoCanvasFor(PixelSize(shapes[0].widthPx, shapes[0].heightPx)), layers)))
+    }
+
+    /**
+     * The P2-10 check scene: every kind of layer under the lifted text. A Classic photo with a text hidden under a sticker (baked), the
+     * drawings and censors of [DrawCheckScene] (baked), and two opaque texts on top (lifted as video captions): the photo render, the
+     * video editor's first frame and the video export's first frame must agree.
+     */
+    private fun videoMeme(): Project {
+        val canvas = photoCanvasFor(PixelSize(shapes[0].widthPx, shapes[0].heightPx))
+        val layers = listOf(
+            image("vm-photo", shapes[0], Transform()),
+            text("vm-covered", "COVERED TEXT", CAPTION, Transform(0.5f, 0.5f)),
+            sticker("vm-sticker", stickerSquare, Transform(0.5f, 0.5f, 1.4f)),
+        )
+        val formatted = project(VIDEO_MEME, canvas, layers).setPhotoFormat(ClassicFormat, "restored").project
+        val rich = DrawCheckScene.withCensors(DrawCheckScene.withDrawings(formatted))
+        val top = text("vm-top", "TOP TEXT", CaptionStyle("poppins", YELLOW, BLACK), Transform(0.5f, 0.92f))
+        return rich.copy(photo = rich.photo?.copy(layers = rich.photo!!.layers + top))
     }
 
     /** The seven captions of the video's `text-shadow-check` on the same 9:16 photo canvas (spec P2-11 → QA compares → Measured). */

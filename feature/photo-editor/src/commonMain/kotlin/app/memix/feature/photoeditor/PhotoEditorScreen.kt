@@ -104,6 +104,8 @@ import memix.feature.photo_editor.generated.resources.edit_remove_bg
 import memix.feature.photo_editor.generated.resources.explain_photo_export_busy
 import memix.feature.photo_editor.generated.resources.explain_photo_export_empty
 import memix.feature.photo_editor.generated.resources.explain_photo_export_no_space
+import memix.feature.photo_editor.generated.resources.make_video_fail
+import memix.feature.photo_editor.generated.resources.make_video_fail_space
 import memix.feature.photo_editor.generated.resources.photo_export_copied
 import memix.core.ui.generated.resources.editor_export
 import memix.core.ui.generated.resources.export_stopped_toast
@@ -242,7 +244,7 @@ fun PhotoEditorScreen(
     // itself while something inside it comes first (a panel, the selection) or while saving fails, to ask first.
     NavigationBackHandler(
         rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled = !state.unsavedSheetOpen && (state.cropLayerId != null || state.cutOut != null || state.draw != null || state.textEntry != null || state.panel != null || state.selectedLayerId != null || state.selectedCell != null || state.selectedDivider != null || state.isSaveFailing),
+        isBackEnabled = !state.unsavedSheetOpen && (state.makingVideo || state.cropLayerId != null || state.cutOut != null || state.draw != null || state.textEntry != null || state.panel != null || state.selectedLayerId != null || state.selectedCell != null || state.selectedDivider != null || state.isSaveFailing),
         onBackCompleted = { onIntent(PhotoEditorIntent.Back) },
     )
     LifecycleEventEffect(Lifecycle.Event.ON_START) { onIntent(PhotoEditorIntent.AppStarted) }
@@ -298,6 +300,7 @@ fun PhotoEditorScreen(
                 PhotoStage(state, state.scene, bitmaps, captions, stage, live, coverPx, entryField, onIntent, Modifier.fillMaxSize())
                 StageMessages(state, onIntent, freeUpSpaceForSave, Modifier.align(Alignment.TopCenter).semantics { traversalIndex = -1f })
             }
+            MakeVideoRow(state, onIntent)
             Box(Modifier.coveredByModal(panelOpen).onSizeChanged { toolRegionPx = it.height }) {
                 ToolBarRegion(state, entryField, panelMaxHeight, onIntent)
             }
@@ -329,6 +332,7 @@ fun PhotoEditorScreen(
             onLeave = { onIntent(PhotoEditorIntent.LeaveAnyway) },
             onFreeUpSpace = freeUpSpaceForSave.takeIf { state.canFreeUpSpace },
         )
+        if (state.makingVideo) MakeVideoInputBlock()
     }
 }
 
@@ -760,6 +764,8 @@ private fun explanationText(explanation: PhotoExplanation): String = stringResou
         PhotoExplanation.EXPORT_EMPTY -> Res.string.explain_photo_export_empty
         PhotoExplanation.EXPORT_BUSY -> Res.string.explain_photo_export_busy
         PhotoExplanation.EXPORT_NO_SPACE -> Res.string.explain_photo_export_no_space
+        PhotoExplanation.MAKE_VIDEO_FAILED -> Res.string.make_video_fail
+        PhotoExplanation.MAKE_VIDEO_NO_SPACE -> Res.string.make_video_fail_space
     },
 )
 

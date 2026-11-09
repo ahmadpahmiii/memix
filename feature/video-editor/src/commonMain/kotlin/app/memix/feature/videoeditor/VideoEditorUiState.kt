@@ -122,6 +122,8 @@ data class VideoEditorUiState(
     /** False once the phone's storage screen failed to open: Free up space then hides (never a button that does nothing). */
     val canFreeUpSpace: Boolean = true,
     val toast: EditorToast? = null,
+    /** The one-time note after Make it a video meme is up, with its Got it button (spec P2-10 → Arriving); dismissed by the button or its time. */
+    val videoMemeNote: Boolean = false,
     /**
      * "Updating the preview" in the stage's message slot: an edit hasn't reached the preview after a second (spec
      * P1-06 → Preview catching up). Shown only when the save banner and toasts leave the slot free.
@@ -459,6 +461,12 @@ class EditorPreview internal constructor(internal val session: PreviewSession) {
 }
 
 sealed interface VideoEditorIntent {
+    /** The editor made from a photo (Make it a video meme) has finished arriving: the Meme sounds sheet opens by itself. */
+    data object ArrivedFromPhoto : VideoEditorIntent
+
+    /** Got it on the one-time note, or its time ran out. */
+    data object DismissVideoMemeNote : VideoEditorIntent
+
     /** The play button or a tap on the stage. */
     data object PlayPause : VideoEditorIntent
 

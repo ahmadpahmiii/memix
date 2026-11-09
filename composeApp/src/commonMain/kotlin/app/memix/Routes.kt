@@ -11,8 +11,11 @@ import kotlinx.serialization.Serializable
 @Serializable data object SoundsRoute
 @Serializable data object DraftsRoute
 // Full screens over MainRoute.
-/** A saved video draft; P1-02 opens it right after its first import. */
-@Serializable data class VideoEditorRoute(val projectId: String)
+/**
+ * A saved video draft; P1-02 opens it right after its first import. [madeFromPhoto]: the draft was just made by Make it a video
+ * meme (P2-10), so the Meme sounds sheet opens once the editor has arrived.
+ */
+@Serializable data class VideoEditorRoute(val projectId: String, val madeFromPhoto: Boolean = false)
 /**
  * A photo draft (P2-01). [blank] opens a blank canvas that only exists in memory: it is saved at its first committed step
  * that leaves a layer, and [projectId] is the id it is saved under.

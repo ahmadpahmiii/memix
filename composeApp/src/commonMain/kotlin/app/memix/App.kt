@@ -88,9 +88,11 @@ import app.memix.feature.stickerpack.StickerPackIntent
 import app.memix.feature.stickerpack.StickerPackScreen
 import app.memix.feature.stickerpack.StickerPackViewModel
 import app.memix.platform.services.rememberWhatsAppPackLauncher
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import app.memix.feature.sounds.SoundsScreen
 import app.memix.feature.templates.TemplatesScreen
+import app.memix.feature.videoeditor.StageContent
 import app.memix.feature.videoeditor.VideoEditorIntent
 import app.memix.feature.videoeditor.VideoEditorScreen
 import app.memix.feature.videoeditor.VideoEditorViewModel
@@ -181,8 +183,10 @@ fun App(isDebugBuild: Boolean, debugEditorProject: String? = null) {
                     )
                 }
                 fullScreen<VideoEditorRoute>(reduceMotion) { entry ->
+                    val route = entry.toRoute<VideoEditorRoute>()
                     VideoEditorDestination(
-                        entry.toRoute<VideoEditorRoute>().projectId,
+                        route.projectId,
+                        route.madeFromPhoto,
                         onClose = { navController.popBackStack() },
                         onCouldntOpen = { editorCouldntOpenCount++ },
                         onOpenExport = { navController.navigate(ExportRoute) },
@@ -204,6 +208,12 @@ fun App(isDebugBuild: Boolean, debugEditorProject: String? = null) {
                         route.blank,
                         onClose = { navController.popBackStack() },
                         onCouldntOpen = { editorCouldntOpenCount++ },
+                        // The video editor takes this editor's place, so Close there goes Home; the photo draft stays on Drafts (spec P2-10 → Entry and exit).
+                        onOpenVideoMeme = { videoProjectId ->
+                            navController.navigate(VideoEditorRoute(videoProjectId, madeFromPhoto = true)) {
+                                popUpTo<PhotoEditorRoute> { inclusive = true }
+                            }
+                        },
                         // A restored back stack may already show the Exported screen; never a second one on top.
                         onOpenExported = {
                             if (navController.currentDestination?.hasRoute(PhotoExportedRoute::class) != true) navController.navigate(PhotoExportedRoute)
@@ -375,7 +385,7 @@ private fun TabsNavHost(
  * and Replace (P1-16) plugged in.
  */
 @Composable
-private fun VideoEditorDestination(projectId: String, onClose: () -> Unit, onCouldntOpen: () -> Unit, onOpenExport: () -> Unit) {
+private fun VideoEditorDestination(projectId: String, madeFromPhoto: Boolean, onClose: () -> Unit, onCouldntOpen: () -> Unit, onOpenExport: () -> Unit) {
     val viewModel = koinViewModel<VideoEditorViewModel> { parametersOf(projectId) }
     // The engine's caption renderer, which its stand-in draws with (P1-10).
     val captionMeasurer = koinInject<CaptionMeasurer>()
@@ -392,6 +402,7 @@ private fun VideoEditorDestination(projectId: String, onClose: () -> Unit, onCou
         if (state.couldntOpen) currentOnCouldntOpen()
         currentOnClose()
     }
+    if (madeFromPhoto) SoundsSheetOnArrival(state.stage != StageContent.OPENING) { viewModel.onIntent(VideoEditorIntent.ArrivedFromPhoto) }
     // Export video started an export: the Exporting screen covers the editor (spec P1-12 → Entry and exit).
     val currentOnOpenExport by rememberUpdatedState(onOpenExport)
     LaunchedEffect(state.openExportScreen) {
@@ -415,6 +426,28 @@ private fun VideoEditorDestination(projectId: String, onClose: () -> Unit, onCou
 }
 
 /**
+ * Opens the Meme sounds sheet once, after the push into the editor (320 ms, or the 120 ms fade with reduce motion) and the first frame
+ * ([firstFrameShown]), as if the user had tapped Meme sounds (spec P2-10 → Arriving). Saved across a restart, so a restored editor
+ * doesn't open the sheet again.
+ */
+@Composable
+private fun SoundsSheetOnArrival(firstFrameShown: Boolean, open: () -> Unit) {
+    var pending by rememberSaveable { mutableStateOf(true) }
+    var pushDone by remember { mutableStateOf(false) }
+    val arrivalMillis = if (MemixTheme.reduceMotion) MemixMotion.durationPress else MemixMotion.durationScreen
+    LaunchedEffect(Unit) {
+        delay(arrivalMillis.toLong())
+        pushDone = true
+    }
+    val currentOpen by rememberUpdatedState(open)
+    LaunchedEffect(pending, pushDone, firstFrameShown) {
+        if (!pending || !pushDone || !firstFrameShown) return@LaunchedEffect
+        pending = false
+        currentOpen()
+    }
+}
+
+/**
  * The photo editor (P2-01) with the engine's picture decoder and the phone's storage screen plugged in. [blank] opens a
  * blank canvas made in memory.
  */
@@ -424,6 +457,7 @@ private fun PhotoEditorDestination(
     blank: Boolean,
     onClose: () -> Unit,
     onCouldntOpen: () -> Unit,
+    onOpenVideoMeme: (videoProjectId: String) -> Unit,
     onOpenExported: () -> Unit,
     onOpenStickerPacks: (hasImage: Boolean) -> Unit,
     packsEmptyAction: StateFlow<Boolean>,
@@ -452,6 +486,13 @@ private fun PhotoEditorDestination(
         if (!state.openExportedScreen) return@LaunchedEffect
         currentOnOpenExported()
         viewModel.onIntent(PhotoEditorIntent.ExportedScreenOpened)
+    }
+    // Make it a video meme made its draft: the video editor opens in this editor's place (spec P2-10 → Entry and exit).
+    val currentOnOpenVideoMeme by rememberUpdatedState(onOpenVideoMeme)
+    LaunchedEffect(state.openVideoMeme) {
+        val videoProjectId = state.openVideoMeme ?: return@LaunchedEffect
+        currentOnOpenVideoMeme(videoProjectId)
+        viewModel.onIntent(PhotoEditorIntent.VideoMemeOpened)
     }
     // The WhatsApp packs row was tapped: the packs screen is pushed over the editor (spec P2-09 → Entry and exit).
     val currentOnOpenStickerPacks by rememberUpdatedState(onOpenStickerPacks)

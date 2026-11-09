@@ -279,4 +279,9 @@
         <item quantity="one">Añade %1$d sticker más para crear un pack</item>
         <item quantity="other">Añade %1$d stickers más para crear un pack</item>
     </plurals>
+    <!-- Make it a video meme (P2-10). Machine drafts until P5. -->
+    <string name="make_video_title">Conviértelo en meme de video</string>
+    <string name="make_video_working">Creando video…</string>
+    <string name="make_video_fail">No se pudo crear el meme de video. Inténtalo de nuevo.</string>
+    <string name="make_video_fail_space">No se pudo crear el meme de video. Libera espacio e inténtalo de nuevo.</string>
 </resources>

@@ -260,6 +260,9 @@ enum class EditorTool(val eventValue: String?) {
     CENSOR_PIXELATE("censor_pixelate"),
     CENSOR_BAR("censor_bar"),
 
+    /** P2-10 (spec): the new video project exists and the video editor opens; sent with `editor: photo`, and no `project_create`. */
+    MAKE_VIDEO("make_video"),
+
     /** Undo names for the censor steps that send no event of their own (the mode's id is logged through `loggedAs`). */
     ADD_CENSOR(null),
     CENSOR_MODE(null),

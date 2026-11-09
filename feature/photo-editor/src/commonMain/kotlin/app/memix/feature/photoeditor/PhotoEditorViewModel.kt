@@ -66,6 +66,7 @@ import app.memix.core.domain.text.MeasureCaptionUseCase
 import app.memix.core.domain.text.PrepareCaptionsUseCase
 import app.memix.core.domain.Analytics
 import app.memix.core.domain.photo.ExportPhotoUseCase
+import app.memix.core.domain.photo.MakeVideoMemeUseCase
 import app.memix.core.domain.photo.PhotoExportSheetFactsUseCase
 import app.memix.core.domain.AnalyticsEvent
 import app.memix.core.domain.project.cutOutOf
@@ -196,6 +197,7 @@ class PhotoEditorViewModel(
     private val getStickerPacksRow: GetStickerPacksRowUseCase,
     exportPhoto: ExportPhotoUseCase,
     exportFacts: PhotoExportSheetFactsUseCase,
+    makeVideoMeme: MakeVideoMemeUseCase,
 ) : MemixViewModel<PhotoEditorUiState, PhotoEditorIntent>(PhotoEditorUiState()) {
     // A picked photo's copy, its sheet and its landing (spec P2-12); P2-13 adds Add photo to the same pick.
     private val pick = ProjectPickImport(importMedia, viewModelScope, projectId, PickLanding())
@@ -246,6 +248,27 @@ class PhotoEditorViewModel(
     }
     private val export = PhotoExportControl(viewModelScope, exportPhoto, exportFacts, exportHost)
 
+    // Make it a video meme (spec P2-10): converts the draft as it is at the tap; the photo draft stays.
+    private val makeVideo = MakeVideoControl(
+        viewModelScope,
+        makeVideoMeme,
+        object : MakeVideoHost {
+            override fun currentProject(): Project? = this@PhotoEditorViewModel.currentProject()
+
+            override fun updateUiState(transform: (PhotoEditorUiState) -> PhotoEditorUiState) = updateState(transform)
+
+            override val uiState: PhotoEditorUiState get() = state.value
+
+            override fun showToast(message: PhotoToastMessage) = this@PhotoEditorViewModel.showToast(message)
+
+            override fun commitTyping() = commitEntry()
+
+            override fun saveNow() {
+                editSession?.saveNow()
+            }
+        },
+    )
+
     init {
         export.follow()
         updateState { it.copy(photoImport = ProjectImportUi(pick.state), captionMeasure = PhotoCaptionMeasure(measureCaption)) }
@@ -282,6 +305,8 @@ class PhotoEditorViewModel(
             }
             is PhotoEditorIntent.Export -> export.onIntent(intent.intent)
             PhotoEditorIntent.ExportedScreenOpened -> updateState { it.copy(openExportedScreen = false) }
+            PhotoEditorIntent.MakeVideo -> makeVideo.start()
+            PhotoEditorIntent.VideoMemeOpened -> makeVideo.opened()
             PhotoEditorIntent.Undo -> undo()
             PhotoEditorIntent.Redo -> redo()
             // Close commits and closes while typing (spec P2-03 → Typing).
@@ -1471,6 +1496,8 @@ class PhotoEditorViewModel(
     private fun goBack() {
         val current = state.value
         when {
+            // Making the video can't be interrupted from here: back is ignored until the video editor opens (spec P2-10 → While it works).
+            current.makingVideo -> Unit
             // The Crop screen is a mode: back discards it (spec P2-04 → The Crop screen).
             current.cropLayerId != null -> updateState { it.copy(cropLayerId = null) }
             // The Stickers sheet closes first (it is the topmost thing).

@@ -7,6 +7,7 @@ import app.memix.core.domain.Outcome
 import app.memix.core.domain.drafts.UpdateDraftThumbnailUseCase
 import app.memix.core.domain.media.ImportMediaUseCase
 import app.memix.core.domain.project.MediaPlace
+import app.memix.core.domain.photo.VideoMemeNoteUseCase
 import app.memix.core.domain.project.OpenVideoDraftUseCase
 import app.memix.core.domain.project.ProjectEditSession
 import app.memix.core.domain.project.ProjectEditState
@@ -102,6 +103,7 @@ class VideoEditorViewModel(
     private val export: EditorExport,
     importMedia: ImportMediaUseCase,
     private val updateDraftThumbnail: UpdateDraftThumbnailUseCase,
+    private val videoMemeNote: VideoMemeNoteUseCase,
     private val decodeDispatcher: CoroutineDispatcher,
     private val debugEdit: EditorDebugEdit?,
 ) : MemixViewModel<VideoEditorUiState, VideoEditorIntent>(VideoEditorUiState(canMakeDebugEdit = debugEdit != null)) {
@@ -128,6 +130,8 @@ class VideoEditorViewModel(
     private val draftOpened = CompletableDeferred<ProjectEditSession>()
     private val mediaImport = EditorMediaImport(importMedia, viewModelScope, projectId, MediaImportEditor())
     private var nextFocusSerial = 0L
+    // Arrived from Make it a video meme: once the sounds sheet that opened itself closes, the one-time note may show (spec P2-10).
+    private var noteWaitsForSheet = false
     private val host = Host()
     private val soundTools = EditorSoundTools(sounds, host)
     private val volumePanel = VolumePanelControl(host)
@@ -205,9 +209,23 @@ class VideoEditorViewModel(
                 updateState { it.withSelection(null, null) }
                 soundTools.openSheet(FocusTarget.ADD_SOUND_PILL)
             }
-            VideoEditorIntent.CloseSoundsSheet -> soundTools.dismissSheet()
+            VideoEditorIntent.ArrivedFromPhoto -> {
+                noteWaitsForSheet = true
+                soundTools.openSheet(FocusTarget.MEME_SOUNDS_TOOL)
+            }
+            VideoEditorIntent.CloseSoundsSheet -> {
+                soundTools.dismissSheet()
+                showVideoMemeNoteOnce()
+            }
+            VideoEditorIntent.DismissVideoMemeNote -> {
+                updateState { it.copy(videoMemeNote = false) }
+                viewModelScope.launch { videoMemeNote.dismissed() }
+            }
             is VideoEditorIntent.ToggleSoundPreview -> soundTools.togglePreview(intent.soundId)
-            is VideoEditorIntent.AddSound -> soundTools.add(intent.soundId)
+            is VideoEditorIntent.AddSound -> {
+                soundTools.add(intent.soundId)
+                showVideoMemeNoteOnce()
+            }
             VideoEditorIntent.VolumeTool -> volumePanel.open()
             is VideoEditorIntent.VolumeChanged -> volumePanel.change(intent.volume)
             VideoEditorIntent.VolumeReleased -> volumePanel.commit()
@@ -538,6 +556,15 @@ class VideoEditorViewModel(
         // The moved clip comes into view under the playhead.
         state.value.timeline.item(reorder.movingId)?.let { preview?.seekTo(it.startUs) }
         announce(VideoEdit.REORDER, state.value.timeline.nameOf(reorder.movingId))
+    }
+
+    // The sheet that opened on arrival is closed (a sound added, or none): the note shows the first time ever (spec P2-10 → Arriving).
+    private fun showVideoMemeNoteOnce() {
+        if (!noteWaitsForSheet) return
+        noteWaitsForSheet = false
+        viewModelScope.launch {
+            if (videoMemeNote.isDue()) updateState { it.copy(videoMemeNote = true) }
+        }
     }
 
     // The starter pack labels the sounds on the timeline; a draft opened before it loaded gets its titles now.

@@ -138,4 +138,7 @@
     <!-- Watermark row (P1-13). "Memix" never translates. -->
     <string name="export_watermark_body">Texto pequeno no canto superior esquerdo do seu vídeo</string>
     <string name="export_facts_a11y">MP4, %1$s, AAC. Até %2$s, cerca de %3$s.</string>
+    <!-- The one-time note after Make it a video meme (P2-10). Machine drafts until P5. -->
+    <string name="make_video_note">Suas camadas agora são uma só imagem, exceto o texto no topo, que continua editável.</string>
+    <string name="make_video_note_ok">Entendi</string>
 </resources>

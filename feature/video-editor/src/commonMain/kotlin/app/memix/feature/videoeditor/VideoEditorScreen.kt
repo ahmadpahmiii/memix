@@ -90,6 +90,7 @@ import app.memix.core.designsystem.component.FadingToast
 import app.memix.core.designsystem.component.IconButton
 import app.memix.core.designsystem.component.SettingPill
 import app.memix.core.designsystem.component.Toast
+import app.memix.core.designsystem.component.ToastAction
 import app.memix.core.designsystem.component.coveredByModal
 import app.memix.core.domain.media.ImportMediaUseCase
 import app.memix.core.model.project.Transform
@@ -211,6 +212,8 @@ import memix.feature.video_editor.generated.resources.explain_replace_detached
 import memix.feature.video_editor.generated.resources.explain_replace_too_short
 import memix.feature.video_editor.generated.resources.explain_sound_unreadable
 import memix.feature.video_editor.generated.resources.explain_split
+import memix.feature.video_editor.generated.resources.make_video_note
+import memix.feature.video_editor.generated.resources.make_video_note_ok
 import memix.core.ui.generated.resources.explain_text_biggest
 import memix.feature.video_editor.generated.resources.explain_text_edge
 import memix.core.ui.generated.resources.explain_text_smallest
@@ -749,6 +752,9 @@ private fun StageMessages(
     val toast = state.toast
     if (toast != null) ToastTimer(toast, onTimedOut = { onIntent(VideoEditorIntent.ToastTimedOut(it)) })
     val banner = state.saveBanner
+    // The one-time note after Make it a video meme waits while a toast that explains something (a sound that can't be read) has the slot.
+    VideoMemeNoteTimer(state.videoMemeNote, onTimedOut = { onIntent(VideoEditorIntent.DismissVideoMemeNote) })
+    val noteShown = state.videoMemeNote && banner == null
     val shownToast = toast?.takeIf { banner == null && !it.isSpokenOnly }
     // The quietest message: only when nothing else is in the slot, and never announced (spec P1-06 → Preview catching up).
     val updatingShown = state.previewUpdating && banner == null && shownToast == null
@@ -763,6 +769,12 @@ private fun StageMessages(
                 )
             }
             FadingToast(shownToast) { shown -> Toast(toastText(shown.message)) }
+            FadingToast((noteShown && shownToast == null).takeIf { it }) {
+                Toast(
+                    stringResource(Res.string.make_video_note),
+                    action = ToastAction(stringResource(Res.string.make_video_note_ok)) { onIntent(VideoEditorIntent.DismissVideoMemeNote) },
+                )
+            }
             FadingToast(if (updatingShown) PreviewUpdating else null) { Toast(stringResource(Res.string.editor_preview_updating), announce = false) }
         }
         // A new node per toast, so the same text twice ("Undo: Trim") is announced twice.
@@ -770,6 +782,19 @@ private fun StageMessages(
         SavedAgainAnnouncement(state.savedAgainCount)
     }
 }
+
+/** The note stays [VIDEO_MEME_NOTE_MILLIS], or longer when the user's "Time to take action" setting asks for it (the Got it button ends it sooner). */
+@Composable
+private fun VideoMemeNoteTimer(shown: Boolean, onTimedOut: () -> Unit) {
+    val accessibilityManager = LocalAccessibilityManager.current
+    LaunchedEffect(shown) {
+        if (!shown) return@LaunchedEffect
+        delay(recommendedTimeoutMillis(accessibilityManager, VIDEO_MEME_NOTE_MILLIS))
+        onTimedOut()
+    }
+}
+
+private const val VIDEO_MEME_NOTE_MILLIS = 8_000L
 
 /**
  * Hides [toast] after its time: 2 s for what happened, 4 s for an explanation, or longer when the user's "Time to
