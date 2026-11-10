@@ -12,14 +12,27 @@ import app.memix.core.domain.drafts.RenameDraftUseCase
 import app.memix.core.domain.drafts.UpdateDraftThumbnailUseCase
 import app.memix.core.domain.media.ImportMediaUseCase
 import app.memix.core.domain.media.LeftoverMediaCleaner
+import app.memix.core.domain.media.SaveGalleryPhotoProjectUseCase
 import app.memix.core.domain.media.SaveGalleryProjectUseCase
+import app.memix.core.domain.project.CreatePhotoProjectUseCase
 import app.memix.core.domain.project.CreateVideoProjectUseCase
 import app.memix.core.domain.project.DeleteProjectUseCase
 import app.memix.core.domain.project.GetProjectUseCase
 import app.memix.core.domain.project.ObserveProjectSummariesUseCase
+import app.memix.core.domain.project.OpenPhotoDraftUseCase
 import app.memix.core.domain.project.OpenVideoDraftUseCase
 import app.memix.core.domain.project.SaveProjectUseCase
 import app.memix.core.domain.project.StartEditSessionUseCase
+import app.memix.core.domain.segmentation.RemoveBackgroundUseCase
+import app.memix.core.domain.sticker.DeleteStickerUseCase
+import app.memix.core.domain.sticker.ListStickersUseCase
+import app.memix.core.domain.sticker.PlaceStickerUseCase
+import app.memix.core.domain.sticker.SaveStickerUseCase
+import app.memix.core.domain.stickerpack.CheckPackInWhatsAppUseCase
+import app.memix.core.domain.stickerpack.DeleteStickerPackUseCase
+import app.memix.core.domain.stickerpack.GetStickerPacksRowUseCase
+import app.memix.core.domain.stickerpack.ListStickerPacksUseCase
+import app.memix.core.domain.stickerpack.PrepareStickerPackUseCase
 import app.memix.core.domain.share.ShareVideoUseCase
 import app.memix.core.domain.sound.LoadStarterSoundsUseCase
 import app.memix.core.domain.sound.LogSoundEventsUseCase
@@ -30,15 +43,24 @@ import app.memix.core.domain.text.MeasureCaptionUseCase
 import app.memix.core.domain.text.PrepareCaptionsUseCase
 import app.memix.core.domain.video.ExportNotificationPermissionUseCase
 import app.memix.core.domain.video.ExportSheetFactsUseCase
+import app.memix.core.domain.photo.ExportPhotoUseCase
+import app.memix.core.domain.photo.MakeVideoMemeUseCase
+import app.memix.core.domain.photo.PhotoExportSheetFactsUseCase
+import app.memix.core.domain.photo.VideoMemeNoteUseCase
+import app.memix.core.domain.share.SharePictureUseCase
 import app.memix.core.domain.video.ExportVideoUseCase
+import app.memix.feature.export.PhotoExportedViewModel
 import app.memix.core.domain.video.GetExportCapabilitiesUseCase
 import app.memix.core.domain.video.OpenResultPlayerUseCase
 import app.memix.core.domain.video.RecoverUnfinishedExportUseCase
 import app.memix.core.domain.video.StartPreviewUseCase
 import app.memix.core.domain.video.StartThumbnailsUseCase
+import app.memix.debug.BgRemoveFailure
 import app.memix.debug.DebugEdits
 import app.memix.debug.EditorSaveDiffLog
 import app.memix.debug.ImportSaveFailure
+import app.memix.engine.photo.photoEngineModule
+import app.memix.engine.segmentation.segmentationEngineModule
 import app.memix.engine.video.HAND_CHECKS_PROPERTY
 import app.memix.engine.video.videoEngineModule
 import app.memix.feature.drafts.DraftsViewModel
@@ -49,7 +71,10 @@ import app.memix.feature.videoeditor.EditorDebugEdit
 import app.memix.feature.videoeditor.EditorExport
 import app.memix.feature.videoeditor.EditorSounds
 import app.memix.feature.videoeditor.VideoEditorViewModel
-import app.memix.feature.videoeditor.importmedia.MediaImportViewModel
+import app.memix.feature.photoeditor.PhotoEditorViewModel
+import app.memix.feature.stickerpack.StickerPackViewModel
+import app.memix.feature.mediaimport.MediaImportViewModel
+import app.memix.feature.mediaimport.PhotoMemeImportViewModel
 import app.memix.platform.services.platformServicesModule
 import kotlin.time.Clock
 import kotlinx.coroutines.CoroutineScope
@@ -72,18 +97,32 @@ private val appModule = module {
     factoryOf(::GetPhoneRegionUseCase)
     factoryOf(::RefreshAppConfigUseCase)
     factoryOf(::CreateVideoProjectUseCase)
+    factoryOf(::CreatePhotoProjectUseCase)
     factoryOf(::SaveProjectUseCase)
     factoryOf(::GetProjectUseCase)
     factoryOf(::DeleteProjectUseCase)
     factoryOf(::ObserveProjectSummariesUseCase)
     factoryOf(::OpenVideoDraftUseCase)
+    factoryOf(::OpenPhotoDraftUseCase)
     factoryOf(::StartPreviewUseCase)
     factoryOf(::StartThumbnailsUseCase)
     factory { StartEditSessionUseCase(get(), get(), get(), get(appScope)) }
     // Created at start-up so it clears last run's leftover media in the background before any import copies.
     single(createdAtStart = true) { LeftoverMediaCleaner(get(), get(), get(), get(), get(appScope)) }
     factoryOf(::ImportMediaUseCase)
+    factoryOf(::RemoveBackgroundUseCase)
+    factoryOf(::SaveStickerUseCase)
+    factoryOf(::ListStickersUseCase)
+    factoryOf(::PlaceStickerUseCase)
+    factoryOf(::DeleteStickerUseCase)
+    // WhatsApp sticker packs (P2-09).
+    factoryOf(::ListStickerPacksUseCase)
+    factoryOf(::GetStickerPacksRowUseCase)
+    factoryOf(::PrepareStickerPackUseCase)
+    factoryOf(::DeleteStickerPackUseCase)
+    factoryOf(::CheckPackInWhatsAppUseCase)
     factoryOf(::SaveGalleryProjectUseCase)
+    factoryOf(::SaveGalleryPhotoProjectUseCase)
     // Drafts list (P1-14). The thumbnail writer and the delete with undo outlive every screen: singles in the app's scope.
     single { UpdateDraftThumbnailUseCase(get(), get(), get(), get(), get(appScope)) }
     single { DeleteDraftUseCase(get(), get(), get(), get(appScope)) }
@@ -111,10 +150,43 @@ private val appModule = module {
     factoryOf(::OpenResultPlayerUseCase)
     factoryOf(::ShareVideoUseCase)
     factoryOf(::EditorExport)
+    // The photo export (P2-08) outlives the sheet too: a single in the app's scope, like the video's.
+    single { ExportPhotoUseCase(get(), get(), get(), get(), get(), get(), get(appScope), Dispatchers.Main) }
+    factoryOf(::PhotoExportSheetFactsUseCase)
+    factoryOf(::SharePictureUseCase)
+    // Make it a video meme (P2-10) and its one-time note.
+    factoryOf(::MakeVideoMemeUseCase)
+    factoryOf(::VideoMemeNoteUseCase)
     viewModelOf(::HomeViewModel)
     viewModelOf(::ExportViewModel)
+    viewModelOf(::PhotoExportedViewModel)
+    viewModelOf(::StickerPackViewModel)
     viewModelOf(::MediaImportViewModel)
+    viewModelOf(::PhotoMemeImportViewModel)
     viewModel { DraftsViewModel(get(), get(), get(), get(), get(), get(), decodeDispatcher = Dispatchers.Default) }
+    viewModel { params ->
+        PhotoEditorViewModel(
+            projectId = params.get(),
+            newBlank = params.get(),
+            openPhotoDraft = get(),
+            createPhotoProject = get(),
+            startEditSession = get(),
+            updateDraftThumbnail = get(),
+            importMedia = get(),
+            prepareCaptions = get(),
+            measureCaption = get(),
+            removeBackground = get(),
+            analytics = get(),
+            saveSticker = get(),
+            listStickers = get(),
+            placeSticker = get(),
+            deleteSticker = get(),
+            getStickerPacksRow = get(),
+            exportPhoto = get(),
+            exportFacts = get(),
+            makeVideoMeme = get(),
+        )
+    }
     viewModel { params ->
         VideoEditorViewModel(
             projectId = params.get(),
@@ -127,6 +199,7 @@ private val appModule = module {
             export = get(),
             importMedia = get(),
             updateDraftThumbnail = get(),
+            videoMemeNote = get(),
             decodeDispatcher = Dispatchers.Default,
             // Bound only in builds with hand checks (handCheckModule).
             debugEdit = getOrNull(),
@@ -140,6 +213,7 @@ private val appModule = module {
 // the plain ones.
 private val handCheckModule = module {
     single<EditorDebugEdit> { DebugEdits.shortenLastClip }
+    factory { RemoveBackgroundUseCase(BgRemoveFailure.around(get()), get()) }
     factory { SaveGalleryProjectUseCase(SaveProjectUseCase(ImportSaveFailure.around(get()), get()), get(), get()) }
     factory { StartEditSessionUseCase(SaveProjectUseCase(EditorSaveDiffLog.around(get(), get()), get()), get(), get(), get(appScope)) }
 }
@@ -152,7 +226,7 @@ fun initKoin(handChecks: Boolean = false, platformSetup: KoinAppDeclaration = {}
     startKoin {
         platformSetup()
         properties(mapOf(HAND_CHECKS_PROPERTY to handChecks))
-        modules(platformServicesModule, databaseDriverModule, settingsModule, dataModule, videoEngineModule, appModule)
+        modules(platformServicesModule, databaseDriverModule, settingsModule, dataModule, videoEngineModule, photoEngineModule, segmentationEngineModule, appModule)
         if (handChecks) modules(handCheckModule)
     }
 }

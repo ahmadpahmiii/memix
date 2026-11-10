@@ -76,6 +76,10 @@ object MemixSize {
 
     /** The white scale-and-rotate handle on a selected caption on the preview; its target is still [touchTarget]. */
     val canvasHandleSize = 24.dp
+    /** A censor's edge handle: a white bar 20 dp long and 6 dp thick in the middle of each edge (P2-05). */
+    val edgeHandleLength = 20.dp
+    val edgeHandleThickness = 6.dp
+    val filterTileSize = 72.dp
 
     /** A color swatch's circle, drawn in a [touchTarget] square. */
     val swatchSize = 32.dp
@@ -86,8 +90,25 @@ object MemixSize {
     /** The square thumbnail at the start of a list row (a draft's first frame, P1-14); `list-thumb-size` in design/tokens.json. */
     val listThumbSize = 56.dp
 
+    /** The square thumbnail at the start of a LayerRow in the photo editor's Layers panel (P2-01); `layer-thumb-size` in design/tokens.json. */
+    val layerThumbSize = 40.dp
+
     /** The square icon chip over a picture (the type badge on a draft's thumbnail, P1-14); `badge-size` in design/tokens.json. */
     val badge = 20.dp
+    /** A row on the WhatsApp Packs screen (P2-09), its minimum height; `pack-row-height` in design/tokens.json. */
+    val packRowHeight = 72.dp
+    /** A row in the Emojis sheet of the pack builder (P2-09); `emoji-row-height` in design/tokens.json. */
+    val emojiRowHeight = 64.dp
+    /** The tray icon on the Added page (P2-09); `pack-tray-size` in design/tokens.json. */
+    val packTraySize = 96.dp
+    /** The minimum width of a sticker grid tile (P2-14, P2-09); `grid-tile-min` in design/tokens.json. */
+    val gridTileMin = 96.dp
+    /** A full-width row that opens another screen, such as "WhatsApp packs" in the Stickers sheet (P2-09); `nav-row-height` in design/tokens.json. */
+    val navRowHeight = 56.dp
+    /** Share of the window height a content sheet may use before its content scrolls; `sheet-max-height-fraction` in design/tokens.json. */
+    const val sheetMaxHeightFraction = 0.7f
+    /** Share of the window height the pack builder's pinned bottom area may take at large font; `pinned-bar-max-fraction` in design/tokens.json. */
+    const val pinnedBarMaxFraction = 0.4f
 }
 
 object MemixElevation {

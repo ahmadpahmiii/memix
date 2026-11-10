@@ -30,6 +30,15 @@ interface ExportPreferences {
 
     /** Records the running export (about once a second), or clears the record with null when it ends. */
     suspend fun saveUnfinishedExport(export: UnfinishedExport?)
+
+    /**
+     * How many exports have finished on this phone, video saves and photo saves and copies together: the count P5-03's
+     * "1 interstitial per 3 exports, never on the first" reads.
+     */
+    suspend fun finishedExportCount(): Int
+
+    /** One more export finished. */
+    suspend fun countFinishedExport()
 }
 
 /** An export that was running: its draft and how far it got, whole percent. */

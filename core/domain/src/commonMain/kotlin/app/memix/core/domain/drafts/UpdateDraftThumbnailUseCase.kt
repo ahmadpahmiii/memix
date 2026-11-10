@@ -6,7 +6,7 @@ import app.memix.core.domain.media.LeftoverMediaCleaner
 import app.memix.core.domain.media.MediaFiles
 import app.memix.core.domain.media.MediaPaths
 import app.memix.core.domain.project.ProjectRepository
-import app.memix.core.domain.project.coverClip
+import app.memix.core.domain.project.cover
 import app.memix.core.domain.video.VideoEngine
 import app.memix.core.model.project.Project
 import kotlinx.coroutines.CoroutineScope
@@ -15,12 +15,13 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Keeps a draft's thumbnail, the drafts list's picture (spec P1-14 → Draft row), in step with its cover: the first
- * main clip's frame at its trim-in, a [THUMBNAIL_SIZE_PX] square JPEG from the engine's thumbnail reader, in the
- * draft's folder. Called after the first save (P1-02 import) and when the editor goes to the background or closes.
+ * Keeps a draft's thumbnail, the drafts list's picture (spec P1-14 → Draft row), in step with its cover ([cover]): a
+ * video's first main clip's frame at its trim-in, a photo's lowest image layer; a [THUMBNAIL_SIZE_PX] square JPEG from
+ * the engine's thumbnail reader, in the draft's folder. Called after the first save (P1-02 import) and when the editor
+ * goes to the background or closes.
  *
  * The file is named after the cover ([MediaPaths.thumbnail]), so a draft whose saved path already matches is left
- * alone: nothing is read or written unless the first clip or its trim-in changed. A draft saved before P1-14 gets its
+ * alone: nothing is read or written unless the cover's file or its time changed. A draft saved before P1-14 gets its
  * thumbnail the first time it's left. Never changes the edit time. Runs in [scope], the app's, one draft at a time,
  * so it finishes after the editor has gone; failures only leave the placeholder.
  */
@@ -39,15 +40,15 @@ class UpdateDraftThumbnailUseCase(
     }
 
     private suspend fun update(project: Project) {
-        val cover = project.coverClip() ?: return
+        val cover = project.cover() ?: return
         val coverFile = cover.source.cachedCopyPath ?: return
-        val path = MediaPaths.thumbnail(project.id, coverFile, cover.trimInUs)
+        val path = MediaPaths.thumbnail(project.id, coverFile, cover.atUs)
         // The cleanup at start would take a new thumbnail for an unused file while the row still names the old one.
         leftoverCleaner.awaitDone()
         // NotFound: the draft was deleted meanwhile (an empty draft leaving the editor).
         val saved = repository.thumbnailPath(project.id) as? Outcome.Success ?: return
         if (saved.value == path) return
-        val picture = videoEngine.openThumbnails().use { reader -> reader.thumbnail(cover.source, cover.trimInUs, THUMBNAIL_SIZE_PX) }
+        val picture = videoEngine.openThumbnails().use { reader -> reader.thumbnail(cover.source, cover.atUs, THUMBNAIL_SIZE_PX) }
         if (picture !is Outcome.Success) return
         if (mediaFiles.write(picture.value.jpegBytes, path) != CopyResult.COPIED) return
         if (repository.setThumbnailPath(project.id, path) !is Outcome.Success) {

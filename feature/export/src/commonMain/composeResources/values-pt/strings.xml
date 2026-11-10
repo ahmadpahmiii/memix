@@ -31,4 +31,7 @@
     <string name="export_last_stopped">Sua última exportação não terminou. Nada foi salvo.</string>
     <string name="export_open_draft">Abrir rascunho</string>
     <string name="export_dismiss">Fechar</string>
+    <!-- Photo Exported screen (P2-08). -->
+    <string name="photo_export_saved">Salvo na sua galeria · %1$s · %2$s</string>
+    <string name="photo_export_result_a11y">Sua imagem exportada</string>
 </resources>

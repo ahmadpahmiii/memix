@@ -31,6 +31,12 @@ import org.jetbrains.compose.resources.DrawableResource
 /** Primary is the one main action on a screen; never two on the same screen. */
 enum class ButtonVariant { Primary, Secondary, Danger, Ghost, Quiet }
 
+/**
+ * [busy] is a progress state, not a disabled variant (design/system/components/Button): while the action this button started
+ * runs (the photo Export sheet's "Saving…"), it and any neighbour that can't act meanwhile take `surface-raised` and a
+ * `text-secondary` label whatever the variant, and taps do nothing. A control that can't act for any other reason keeps its look
+ * and explains on tap.
+ */
 @Composable
 fun Button(
     text: String,
@@ -38,9 +44,10 @@ fun Button(
     modifier: Modifier = Modifier,
     variant: ButtonVariant = ButtonVariant.Secondary,
     leadingIcon: DrawableResource? = null,
+    busy: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val colors = variant.colors()
+    val colors = if (busy) BusyColors else variant.colors()
     val container = pressedColor(interactionSource, colors.container, colors.containerPressed)
     val content by pressedColor(interactionSource, colors.content, colors.contentPressed)
     val horizontalPadding = if (variant == ButtonVariant.Quiet) MemixSpacing.space2 else MemixSpacing.space5
@@ -50,7 +57,7 @@ fun Button(
             .defaultMinSize(minHeight = MemixSize.touchTarget)
             .clip(MemixShapes.radiusMd)
             .drawBehind { drawRect(container.value) }
-            .clickable(interactionSource, indication = null, role = Role.Button, onClick = onClick)
+            .clickable(interactionSource, indication = null, enabled = !busy, role = Role.Button, onClick = onClick)
             .padding(horizontal = horizontalPadding, vertical = MemixSpacing.space3),
         horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space2, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
@@ -59,6 +66,8 @@ fun Button(
         Text(text, MemixTheme.type.bodyStrong, color = content, textAlign = TextAlign.Center)
     }
 }
+
+private val BusyColors = ButtonColors(MemixColors.surfaceRaised, MemixColors.surfaceRaised, MemixColors.textSecondary, MemixColors.textSecondary)
 
 private class ButtonColors(val container: Color, val containerPressed: Color, val content: Color, val contentPressed: Color)
 

@@ -10,6 +10,6 @@ A row of two to five equal segments for picking one setting value: the Export sh
   - Labels in `body-strong`, centered, never truncated.
 - **Can't act** (the phone can't export it): the normal look; a tap explains with a toast and keeps the current selection. Never dimmed, never hidden.
 - **Pressed:** unselected segments fill `surface-raised` over `duration-press`. Nothing moves.
-- **Large text:** when the labels don't fit their equal widths (200% font), the segments wrap into two rows of equal segments; the track grows.
+- **Large text:** when the labels don't fit their equal widths (200% font), the segments wrap into two rows of equal segments; the track grows. **A word is never broken** (P2-11 review: es "Cuadradas" and "Redondeadas" split mid-word in half-width segments at 200%): if a label's longest word doesn't fit a two-row segment, the segments stack one per row at full width.
 - **Accessibility:** a single-choice group named by its heading ("Resolution"). Each segment reads its label (spoken form: "1080p", "30 frames per second"), "selected" when it is, and its position ("3 of 5").
 - **Don't:** use it for more than five options (use OptionTiles in a scrolling row), for switching views (SegmentedTabs), or for filters on browse screens (Chip).

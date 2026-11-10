@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Machine-drafted until P5-06. P2-09 WhatsApp sticker packs. Budgets and translator notes: docs/ux/specs/P2-09-whatsapp-sticker-pack.md -> Copy. "WhatsApp" never translates; "sticker" is the word WhatsApp uses in the language. -->
+    <string name="packs_title">WhatsApp पैक</string>
+    <string name="packs_empty_title">अभी कोई पैक नहीं</string>
+    <string name="packs_empty_body">अपने स्टिकर से पैक बनाएँ।</string>
+    <string name="packs_new">नया पैक</string>
+    <plurals name="packs_sticker_count">
+        <item quantity="one">%1$d स्टिकर</item>
+        <item quantity="other">%1$d स्टिकर</item>
+    </plurals>
+    <string name="packs_in_whatsapp">WhatsApp में</string>
+    <string name="packs_deleted">पैक हटा दिया गया। जब तक आप उसे WhatsApp से नहीं हटाते, वह वहीं रहेगा।</string>
+    <string name="packs_undo">पूर्ववत करें</string>
+    <string name="explain_packs_max">आपके पास 10 पैक हैं। नया बनाने के लिए एक हटाएँ।</string>
+    <string name="pack_builder_new">नया पैक</string>
+    <string name="pack_builder_edit">पैक बदलें</string>
+    <string name="pack_name_label">पैक का नाम</string>
+    <string name="pack_name_default">मेरा पैक</string>
+    <string name="pack_name_helper">ऐसी तस्वीरें इस्तेमाल करें जिन्हें साझा करने का आपको अधिकार है।</string>
+    <string name="pack_count_need">कम से कम 3 स्टिकर चुनें</string>
+    <plurals name="pack_count">
+        <item quantity="one">%1$d चुना गया</item>
+        <item quantity="other">%1$d चुने गए</item>
+    </plurals>
+    <plurals name="pack_count_max">
+        <item quantity="one">%1$d चुना गया। एक पैक में इतने ही आते हैं।</item>
+        <item quantity="other">%1$d चुने गए। एक पैक में इतने ही आते हैं।</item>
+    </plurals>
+    <string name="explain_pack_min">कम से कम 3 स्टिकर चुनें।</string>
+    <string name="explain_pack_max">एक पैक में अधिकतम 30 स्टिकर आते हैं।</string>
+    <string name="pack_need_title">पैक के लिए 3 स्टिकर चाहिए</string>
+    <plurals name="pack_need_body">
+        <item quantity="one">आपके पास %1$d है। अपनी तस्वीरों से और लोग, पालतू जानवर या चीज़ें काटें और उन्हें स्टिकर के रूप में सहेजें।</item>
+        <item quantity="other">आपके पास %1$d हैं। अपनी तस्वीरों से और लोग, पालतू जानवर या चीज़ें काटें और उन्हें स्टिकर के रूप में सहेजें।</item>
+    </plurals>
+    <string name="pack_need_remove_background">बैकग्राउंड हटाएं</string>
+    <string name="pack_need_add_photo">फ़ोटो जोड़ें</string>
+    <string name="pack_emojis">इमोजी</string>
+    <string name="pack_emojis_help">इमोजी से लोगों को WhatsApp में आपके स्टिकर ढूँढने में मदद मिलती है।</string>
+    <string name="pack_emojis_pick_title">इस स्टिकर के इमोजी</string>
+    <string name="pack_emojis_change">इमोजी बदलें</string>
+    <string name="pack_back">वापस</string>
+    <string name="pack_done">हो गया</string>
+    <string name="explain_pack_emoji_max">हर स्टिकर के लिए अधिकतम 3 इमोजी।</string>
+    <string name="explain_pack_emoji_min">कम से कम 1 इमोजी चुनें।</string>
+    <string name="pack_add">WhatsApp में जोड़ें</string>
+    <string name="pack_update">WhatsApp में अपडेट करें</string>
+    <string name="pack_preparing">आपका पैक तैयार हो रहा है · %1$d / %2$d</string>
+    <plurals name="pack_too_big">
+        <item quantity="one">%1$d स्टिकर WhatsApp की साइज़ सीमा के लिए बहुत बारीक है। उसे हटाएँ या दूसरा चुनें।</item>
+        <item quantity="other">%1$d स्टिकर WhatsApp की साइज़ सीमा के लिए बहुत बारीक हैं। उन्हें हटाएँ या दूसरे चुनें।</item>
+    </plurals>
+    <string name="a11y_pack_too_big">WhatsApp के लिए बहुत बारीक</string>
+    <string name="pack_added_title">जोड़ा गया</string>
+    <string name="pack_added_pill">WhatsApp में जोड़ा गया</string>
+    <string name="pack_added_body">WhatsApp में कोई चैट खोलें, स्टिकर आइकन पर टैप करें और “%1$s” खोजें।</string>
+    <string name="pack_not_added">यह अभी WhatsApp में नहीं है। तैयार हों तो WhatsApp में जोड़ें पर टैप करें।</string>
+    <string name="pack_no_whatsapp">इस फ़ोन में WhatsApp नहीं है। आपका पैक सहेज लिया गया है: WhatsApp इंस्टॉल होने पर उसे जोड़ें।</string>
+    <string name="pack_whatsapp_old">आपका WhatsApp स्टिकर के लिए बहुत पुराना है। उसे अपडेट करें, फिर दोबारा कोशिश करें।</string>
+    <string name="pack_save_failed">पैक नहीं बन सका। जगह खाली करें और दोबारा कोशिश करें।</string>
+    <string name="pack_file_missing">इस स्टिकर की फ़ाइल नहीं मिली, इसलिए यह पैक में नहीं जा सकता।</string>
+    <string name="a11y_pack_tile">स्टिकर %1$d</string>
+    <string name="a11y_pack_tile_selected">%1$s, चुना गया</string>
+    <string name="a11y_pack_emoji_row">स्टिकर %1$d, इमोजी %2$s</string>
+    <string name="a11y_pack_progress_milestone">आपका पैक तैयार हो रहा है, %1$d प्रतिशत</string>
+</resources>

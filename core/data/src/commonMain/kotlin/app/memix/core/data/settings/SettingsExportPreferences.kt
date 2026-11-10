@@ -53,6 +53,10 @@ internal class SettingsExportPreferences(
         }
     }
 
+    override suspend fun finishedExportCount(): Int = withContext(ioDispatcher) { settings.getInt(FINISHED_COUNT, 0) }
+
+    override suspend fun countFinishedExport() = withContext(ioDispatcher) { settings.putInt(FINISHED_COUNT, settings.getInt(FINISHED_COUNT, 0) + 1) }
+
     // Keys are saved on phones: never rename them.
     private companion object {
         const val LAST_RESOLUTION = "export.lastResolution"
@@ -61,5 +65,6 @@ internal class SettingsExportPreferences(
         const val SPEED_PREFIX = "export.secondsPerMegapixelSecond."
         const val UNFINISHED_PROJECT = "export.unfinished.projectId"
         const val UNFINISHED_PERCENT = "export.unfinished.percent"
+        const val FINISHED_COUNT = "export.finishedCount"
     }
 }

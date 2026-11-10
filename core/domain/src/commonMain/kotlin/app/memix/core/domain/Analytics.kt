@@ -1,5 +1,7 @@
 package app.memix.core.domain
 
+import app.memix.core.domain.photo.PhotoExportAction
+import app.memix.core.model.project.PhotoExportFormat
 import app.memix.core.model.project.ProjectType
 import kotlin.math.roundToLong
 
@@ -30,16 +32,29 @@ sealed interface AnalyticsEvent {
      * one with a [EditorTool.eventValue]. [font] is the caption font id, sent only with `add_text` and `text_font`
      * (owner, 9 Oct 2026: PRD → Analytics). [value] is the choice a canvas tool made, sent only with `canvas_ratio`
      * (`9:16` … `16:9` or `custom`, never the custom numbers), `canvas_fit` (`fit`, `fill`) and `canvas_background`
-     * (`blur`, `color`, never the color itself) (owner, 21 Oct 2026).
+     * (`blur`, `color`, never the color itself) (owner, 21 Oct 2026). [filter] is the filter id, sent only with `filter` (`none` when removed; owner, 2 Nov 2026). The photo editor sends `editor: photo` (P2-01).
      */
-    data class ToolUse(val editor: ProjectType, val tool: EditorTool, val font: String? = null, val value: String? = null) : AnalyticsEvent {
+    data class ToolUse(val editor: ProjectType, val tool: EditorTool, val font: String? = null, val value: String? = null, val filter: String? = null) : AnalyticsEvent {
         override val name = "tool_use"
         override val params = buildMap {
             put("editor", editor.eventValue)
             put("tool", requireNotNull(tool.eventValue))
             if (font != null) put("font", font)
             if (value != null) put("value", value)
+            if (filter != null) put("filter", filter)
         }
+    }
+
+    /** The segmenter finished (a success or a failure) on a photo; [durationMillis] counts a model download too (PM, 5 Nov 2026; spec P2-07 → Analytics). */
+    data class BgRemove(val editor: ProjectType, val success: Boolean, val durationMillis: Long) : AnalyticsEvent {
+        override val name = "bg_remove"
+        override val params = mapOf("editor" to editor.eventValue, "success" to success.toString(), "duration_ms" to durationMillis.toString())
+    }
+
+    /** A cut-out was saved to My stickers (PM, 5 Nov 2026). */
+    data class SaveSticker(val editor: ProjectType) : AnalyticsEvent {
+        override val name = "save_sticker"
+        override val params = mapOf("editor" to editor.eventValue)
     }
 
     /** A meme sound landed on the timeline from the sounds sheet; not for duplicates (spec P1-06 → Analytics). */
@@ -66,12 +81,27 @@ sealed interface AnalyticsEvent {
         )
     }
 
-    /** The file is in the gallery: [timeMs] from encode start to saved, [sizeMb] its size. */
-    data class ExportComplete(val editor: ProjectType, val timeMs: Long, val sizeMb: Double) : AnalyticsEvent {
+    /**
+     * A photo Save to gallery or Copy began (spec P2-08 → Analytics). [resolution] is the canvas's shorter side in pixels
+     * (`1080`, `2160`); [quality] is sent for JPG only. `action` and `quality` are additions to the PRD's list (PM, 5 Nov 2026).
+     */
+    data class PhotoExportStart(val format: PhotoExportFormat, val shortSidePx: Int, val action: PhotoExportAction, val quality: Int?) : AnalyticsEvent {
+        override val name = "export_start"
+        override val params = buildMap {
+            put("editor", ProjectType.PHOTO.eventValue)
+            put("format", format.eventValue)
+            put("resolution", shortSidePx.toString())
+            put("action", action.eventValue)
+            if (quality != null) put("quality", quality.toString())
+        }
+    }
+
+    /** The file is in the gallery (or on the clipboard): [timeMs] from start to done, [sizeMb] its size; [format] is `mp4` for video. */
+    data class ExportComplete(val editor: ProjectType, val timeMs: Long, val sizeMb: Double, val format: String = MP4) : AnalyticsEvent {
         override val name = "export_complete"
         override val params = mapOf(
             "editor" to editor.eventValue,
-            "format" to MP4,
+            "format" to format,
             "time_ms" to timeMs.toString(),
             // One decimal, as the sheet shows sizes.
             "size_mb" to ((sizeMb * TENTHS).roundToLong() / TENTHS).toString(),
@@ -133,6 +163,30 @@ enum class EditorTool(val eventValue: String?) {
     TEXT_FONT("text_font"),
     TEXT_COLOR("text_color"),
     TEXT_OUTLINE("text_outline"),
+
+    /** P2-11: one id per Style panel row, with no parameter (PM, 2 Nov 2026); a softness or corners step counts as its row. */
+    TEXT_SHADOW("text_shadow"),
+    TEXT_BOX("text_box"),
+
+    /**
+     * P2-04: the image tools (PM, 2 Nov 2026), the ids P4-07 and P4-16 reuse. A crop screen's Done sends one event per part
+     * that changed; `filter` also sends the optional `filter` parameter (the filter id, `none` when removed).
+     */
+    CROP("crop"),
+    ROTATE_IMAGE("rotate_image"),
+    FLIP_IMAGE("flip_image"),
+    STRAIGHTEN("straighten"),
+    ADJUST_BRIGHTNESS("adjust_brightness"),
+    ADJUST_CONTRAST("adjust_contrast"),
+    ADJUST_SATURATION("adjust_saturation"),
+    ADJUST_WARMTH("adjust_warmth"),
+    ADJUST_SHARPEN("adjust_sharpen"),
+    ADJUST_VIGNETTE("adjust_vignette"),
+    FILTER("filter"),
+    DEEP_FRY("deep_fry"),
+
+    /** A tab's Reset in the Edit photo panel: names the undo step; the events logged are the parts it changed (no event of its own). */
+    EDIT_PHOTO_RESET(null),
     POSITION_TEXT("position_text"),
     TRANSFORM_TEXT("transform_text"),
 
@@ -144,6 +198,76 @@ enum class EditorTool(val eventValue: String?) {
     CANVAS_FIT("canvas_fit"),
     CANVAS_FILL("canvas_fit"),
     CANVAS_BACKGROUND("canvas_background"),
+
+    /**
+     * P2-01: the photo editor's layer tools (PM, 27 Oct 2026). `transform_layer` is a gesture's release, `position_layer`
+     * one Position-panel step, as video has `transform_text` and `position_text`. `move` and `reorder` already mean time
+     * order in the video editor, so layers have their own ids; delete, duplicate, undo, redo and the canvas tools are shared.
+     */
+    TRANSFORM_LAYER("transform_layer"),
+    POSITION_LAYER("position_layer"),
+    LAYER_OPACITY("layer_opacity"),
+    LOCK_LAYER("lock_layer"),
+    UNLOCK_LAYER("unlock_layer"),
+    HIDE_LAYER("hide_layer"),
+    SHOW_LAYER("show_layer"),
+    REORDER_LAYER("reorder_layer"),
+
+    /** P2-13: a photo landed as a new top layer, once per pick. */
+    ADD_PHOTO("add_photo"),
+
+    /**
+     * P2-02: meme formats (PM, 29 Oct 2026): one id per format, none with a parameter; `format_plain` is going back to plain.
+     * `add_bubble` sends no `font` (a bubble's font change is `text_font`).
+     */
+    FORMAT_PLAIN("format_plain"),
+    FORMAT_CLASSIC("format_classic"),
+    FORMAT_CAPTION_BAR("format_caption_bar"),
+    FORMAT_PANELS("format_panels"),
+    FORMAT_DEMOTIVATIONAL("format_demotivational"),
+    FORMAT_BUBBLES("format_bubbles"),
+    PANELS_LAYOUT("panels_layout"),
+    PANELS_DIVIDER("panels_divider"),
+    ADD_CELL_PHOTO("add_cell_photo"),
+    REMOVE_CELL_PHOTO("remove_cell_photo"),
+
+    /** A Panels cell's pan or zoom: P2-01's ids (PM), but their own entries so the undo history says "Panel photo". */
+    CELL_TRANSFORM("transform_layer"),
+    CELL_POSITION("position_layer"),
+    ADD_BUBBLE("add_bubble"),
+    BUBBLE_SHAPE("bubble_shape"),
+    BUBBLE_FILL("bubble_fill"),
+    BUBBLE_TAIL("bubble_tail"),
+
+    /** P2-05: a brush or eraser stroke, one event per committed stroke (PM, 2 Nov 2026); nothing for brush color or size. */
+    DRAW_STROKE("draw_stroke"),
+    ERASE_STROKE("erase_stroke"),
+
+    /** P2-05b: a censor added with its mode, or its mode changed (PM, 2 Nov 2026): the mode it now has. Shape, strength and size send nothing. */
+    CENSOR_BLUR("censor_blur"),
+
+    /** P2-07 (PM, 5 Nov 2026): Apply on the cut-out screen, and Remove cut-out. Strokes and softness fire nothing. */
+    REMOVE_BG("remove_bg"),
+
+    /** P2-14 (PM, 5 Nov 2026): a sticker lands from My stickers; `delete_sticker` when a deletion becomes final (an Undo fires nothing). */
+    ADD_STICKER("add_sticker"),
+    DELETE_STICKER("delete_sticker"),
+    CLEAR_CUTOUT("clear_cutout"),
+
+    /** P2-09 (PM, 5 Nov 2026): the pack builder opens; Add or Update in WhatsApp is tapped and the pack is ready. Names, emojis and counts send nothing. */
+    MAKE_PACK("make_pack"),
+    ADD_TO_WHATSAPP("add_to_whatsapp"),
+    CENSOR_PIXELATE("censor_pixelate"),
+    CENSOR_BAR("censor_bar"),
+
+    /** P2-10 (spec): the new video project exists and the video editor opens; sent with `editor: photo`, and no `project_create`. */
+    MAKE_VIDEO("make_video"),
+
+    /** Undo names for the censor steps that send no event of their own (the mode's id is logged through `loggedAs`). */
+    ADD_CENSOR(null),
+    CENSOR_MODE(null),
+    CENSOR_SHAPE(null),
+    CENSOR_STRENGTH(null),
 }
 
 /** `sound_add.tab` and `sound_preview.tab`: where in the sounds UI it happened. "starter" until P3-05 (PM, 8 Oct 2026). */

@@ -27,34 +27,36 @@ import kotlin.math.min
  * videos; the engine tone-maps HDR to SDR instead, P1-03).
  */
 @Composable
-actual fun rememberMediaPickerLauncher(maxItems: Int, onPicked: (List<MediaOrigin>) -> Unit): MediaPickerLauncher {
+actual fun rememberMediaPickerLauncher(maxItems: Int, media: PickerMedia, onPicked: (List<MediaOrigin>) -> Unit): MediaPickerLauncher {
     // Saved with the activity, so a tap while the picker is still opening is ignored even across a rotation.
     val awaitingResult = rememberSaveable { mutableStateOf(false) }
     // A call site always passes the same maxItems, so this branch never switches for a given picker.
-    val launchPicker = if (maxItems == 1) rememberSinglePicker(awaitingResult, onPicked) else rememberMultiplePicker(maxItems, awaitingResult, onPicked)
+    val launchPicker = if (maxItems == 1) rememberSinglePicker(media, awaitingResult, onPicked) else rememberMultiplePicker(media, maxItems, awaitingResult, onPicked)
     return remember(launchPicker) { AndroidMediaPickerLauncher(awaitingResult, launchPicker) }
 }
 
 // PickMultipleVisualMedia requires a maximum above 1 (androidx.activity 1.13), so one item uses PickVisualMedia.
 @Composable
-private fun rememberSinglePicker(awaitingResult: MutableState<Boolean>, onPicked: (List<MediaOrigin>) -> Unit): () -> Unit {
+private fun rememberSinglePicker(media: PickerMedia, awaitingResult: MutableState<Boolean>, onPicked: (List<MediaOrigin>) -> Unit): () -> Unit {
     // The launcher re-registers whenever the contract instance changes, so it must stay the same object.
     val contract = remember { PickVisualMedia() }
     val activityLauncher = rememberLauncherForActivityResult(contract) { uri ->
         awaitingResult.value = false
         onPicked(listOfNotNull(uri).map { MediaOrigin.GalleryUri(it.toString()) })
     }
-    return remember(activityLauncher) { { activityLauncher.launch(PICK_ONE_REQUEST) } }
+    val request = remember(media) { pickRequest(media, ordered = false) }
+    return remember(activityLauncher) { { activityLauncher.launch(request) } }
 }
 
 @Composable
-private fun rememberMultiplePicker(maxItems: Int, awaitingResult: MutableState<Boolean>, onPicked: (List<MediaOrigin>) -> Unit): () -> Unit {
+private fun rememberMultiplePicker(media: PickerMedia, maxItems: Int, awaitingResult: MutableState<Boolean>, onPicked: (List<MediaOrigin>) -> Unit): () -> Unit {
     val contract = remember(maxItems) { PickMultipleVisualMedia(pickerMaxItems(maxItems)) }
     val activityLauncher = rememberLauncherForActivityResult(contract) { uris ->
         awaitingResult.value = false
         onPicked(uris.map { uri -> MediaOrigin.GalleryUri(uri.toString()) })
     }
-    return remember(activityLauncher) { { activityLauncher.launch(PICK_REQUEST) } }
+    val request = remember(media) { pickRequest(media, ordered = true) }
+    return remember(activityLauncher) { { activityLauncher.launch(request) } }
 }
 
 private class AndroidMediaPickerLauncher(
@@ -73,14 +75,10 @@ private class AndroidMediaPickerLauncher(
     }
 }
 
-// Images and videos, returned in the order the user tapped them where the picker supports ordered selection.
-private val PICK_REQUEST = PickVisualMediaRequest.Builder()
-    .setMediaType(PickVisualMedia.ImageAndVideo)
-    .setOrderedSelection(true)
-    .build()
-
-private val PICK_ONE_REQUEST = PickVisualMediaRequest.Builder()
-    .setMediaType(PickVisualMedia.ImageAndVideo)
+// Images and videos or images only; several items come back in the order the user tapped them where the picker supports it.
+private fun pickRequest(media: PickerMedia, ordered: Boolean): PickVisualMediaRequest = PickVisualMediaRequest.Builder()
+    .setMediaType(if (media == PickerMedia.IMAGES_ONLY) PickVisualMedia.ImageOnly else PickVisualMedia.ImageAndVideo)
+    .setOrderedSelection(ordered)
     .build()
 
 // The contract refuses a maximum above the system picker's own limit, so ask for the lower of the two.

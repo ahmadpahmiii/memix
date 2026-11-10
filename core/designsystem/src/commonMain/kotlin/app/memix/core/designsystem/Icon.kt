@@ -9,12 +9,19 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import memix.core.designsystem.generated.resources.Res
+import memix.core.designsystem.generated.resources.ic_adjust
 import memix.core.designsystem.generated.resources.ic_arrow
 import memix.core.designsystem.generated.resources.ic_arrow_back
 import memix.core.designsystem.generated.resources.ic_blur
+import memix.core.designsystem.generated.resources.ic_bubble
 import memix.core.designsystem.generated.resources.ic_check
 import memix.core.designsystem.generated.resources.ic_chevron_right
 import memix.core.designsystem.generated.resources.ic_close
+import memix.core.designsystem.generated.resources.ic_censor
+import memix.core.designsystem.generated.resources.ic_cutout
+import memix.core.designsystem.generated.resources.ic_sticker
+import memix.core.designsystem.generated.resources.ic_crop
+import memix.core.designsystem.generated.resources.ic_draw
 import memix.core.designsystem.generated.resources.ic_create
 import memix.core.designsystem.generated.resources.ic_delete
 import memix.core.designsystem.generated.resources.ic_detach_audio
@@ -24,7 +31,16 @@ import memix.core.designsystem.generated.resources.ic_edit
 import memix.core.designsystem.generated.resources.ic_edit_text
 import memix.core.designsystem.generated.resources.ic_fill
 import memix.core.designsystem.generated.resources.ic_fit
+import memix.core.designsystem.generated.resources.ic_flip
+import memix.core.designsystem.generated.resources.ic_formats
+import memix.core.designsystem.generated.resources.ic_panels
 import memix.core.designsystem.generated.resources.ic_globe
+import memix.core.designsystem.generated.resources.ic_eye
+import memix.core.designsystem.generated.resources.ic_eye_off
+import memix.core.designsystem.generated.resources.ic_layers
+import memix.core.designsystem.generated.resources.ic_lock
+import memix.core.designsystem.generated.resources.ic_opacity
+import memix.core.designsystem.generated.resources.ic_unlock
 import memix.core.designsystem.generated.resources.ic_heart
 import memix.core.designsystem.generated.resources.ic_heart_filled
 import memix.core.designsystem.generated.resources.ic_home
@@ -58,12 +74,19 @@ import org.jetbrains.compose.resources.painterResource
 
 /** The Memix-drawn icon set (docs/DESIGN_SYSTEM.md → Iconography). */
 object MemixIcons {
+    val Adjust = Res.drawable.ic_adjust
     val Arrow = Res.drawable.ic_arrow
     val ArrowBack = Res.drawable.ic_arrow_back
     val Blur = Res.drawable.ic_blur
+    val Bubble = Res.drawable.ic_bubble
     val Check = Res.drawable.ic_check
     val ChevronRight = Res.drawable.ic_chevron_right
     val Close = Res.drawable.ic_close
+    val Crop = Res.drawable.ic_crop
+    val Draw = Res.drawable.ic_draw
+    val Censor = Res.drawable.ic_censor
+    val Cutout = Res.drawable.ic_cutout
+    val Sticker = Res.drawable.ic_sticker
     val Create = Res.drawable.ic_create
     val Delete = Res.drawable.ic_delete
     val DetachAudio = Res.drawable.ic_detach_audio
@@ -72,14 +95,22 @@ object MemixIcons {
     val Edit = Res.drawable.ic_edit
     val Fill = Res.drawable.ic_fill
     val Fit = Res.drawable.ic_fit
+    val Flip = Res.drawable.ic_flip
+    val Formats = Res.drawable.ic_formats
+    val Panels = Res.drawable.ic_panels
     val EditText = Res.drawable.ic_edit_text
+    val Eye = Res.drawable.ic_eye
+    val EyeOff = Res.drawable.ic_eye_off
     val Globe = Res.drawable.ic_globe
     val Heart = Res.drawable.ic_heart
     val HeartFilled = Res.drawable.ic_heart_filled
     val Home = Res.drawable.ic_home
+    val Layers = Res.drawable.ic_layers
+    val Lock = Res.drawable.ic_lock
     val Minus = Res.drawable.ic_minus
     val More = Res.drawable.ic_more
     val MoveHere = Res.drawable.ic_move_here
+    val Opacity = Res.drawable.ic_opacity
     val Pause = Res.drawable.ic_pause
     val Photo = Res.drawable.ic_photo
     val Play = Res.drawable.ic_play
@@ -98,6 +129,7 @@ object MemixIcons {
     val Style = Res.drawable.ic_style
     val Templates = Res.drawable.ic_templates
     val Text = Res.drawable.ic_text
+    val Unlock = Res.drawable.ic_unlock
     val Undo = Res.drawable.ic_undo
     val Video = Res.drawable.ic_video
     val Volume = Res.drawable.ic_volume

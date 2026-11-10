@@ -15,6 +15,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.collapse
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.expand
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
@@ -39,7 +40,7 @@ import org.jetbrains.compose.resources.stringResource
  * `primary-subtle`. A tap opens or closes; screen readers hear "Expanded" or "Collapsed" as its state.
  */
 @Composable
-fun SettingPill(value: String, name: String, expanded: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun SettingPill(value: String, name: String, expanded: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val interactionSource = remember { MutableInteractionSource() }
     // A state, not only actions: TalkBack reads expand/collapse actions in its menu but never says which one applies.
     val state = stringResource(if (expanded) Res.string.setting_expanded else Res.string.setting_collapsed)
@@ -48,11 +49,16 @@ fun SettingPill(value: String, name: String, expanded: Boolean, onClick: () -> U
     Box(
         modifier
             .defaultMinSize(minWidth = MemixSize.touchTarget, minHeight = MemixSize.touchTarget)
-            .clickable(interactionSource, indication = null, onClick = onClick)
+            .clickable(interactionSource, indication = null, enabled = enabled, onClick = onClick)
             .clearAndSetSemantics {
                 contentDescription = name
                 stateDescription = state
                 role = Role.Button
+                if (!enabled) {
+                    // Inert while the editor is typing: drawn muted and read as disabled (spec P2-03 → Typing).
+                    disabled()
+                    return@clearAndSetSemantics
+                }
                 onClick { onClick(); true }
                 if (expanded) collapse { onClick(); true } else expand { onClick(); true }
             },
@@ -66,7 +72,7 @@ fun SettingPill(value: String, name: String, expanded: Boolean, onClick: () -> U
                 .padding(horizontal = MemixSpacing.space3, vertical = MemixSpacing.space2),
             contentAlignment = Alignment.Center,
         ) {
-            Text(value, MemixTheme.type.timecode, color = if (expanded) MemixColors.primary else MemixColors.text)
+            Text(value, MemixTheme.type.timecode, color = if (!enabled) MemixColors.textMuted else if (expanded) MemixColors.primary else MemixColors.text)
         }
     }
 }

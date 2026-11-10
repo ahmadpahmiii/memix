@@ -113,6 +113,8 @@ fun Sheet(
     blocking: Boolean = false,
     drawScrim: Boolean = true,
     opensAtHalfHeight: Boolean = false,
+    /** A control at the start of the title row (the Emojis picker's back arrow, P2-09); the title keeps the rest of the row. */
+    titleLeading: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val reduceMotion = MemixTheme.reduceMotion
@@ -129,7 +131,7 @@ fun Sheet(
             enter = if (reduceMotion) fadeIn(tween(MemixMotion.durationPress)) else slideInVertically(tween(MemixMotion.durationSheet)) { it },
             exit = if (reduceMotion) fadeOut(tween(MemixMotion.durationPress)) else slideOutVertically(tween(MemixMotion.durationSheet)) { it },
         ) {
-            SheetSurface(visible, title, heroTitle, blocking, opensAtHalfHeight, onDismiss, content)
+            SheetSurface(visible, title, heroTitle, blocking, opensAtHalfHeight, onDismiss, titleLeading, content)
         }
     }
 }
@@ -171,6 +173,7 @@ private fun SheetSurface(
     blocking: Boolean,
     opensAtHalfHeight: Boolean,
     onDismiss: () -> Unit,
+    titleLeading: (@Composable () -> Unit)?,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -226,6 +229,7 @@ private fun SheetSurface(
     ) {
         if (!blocking) Grabber(Modifier.align(Alignment.CenterHorizontally))
         Row(verticalAlignment = Alignment.CenterVertically) {
+            titleLeading?.invoke()
             if (heroTitle) DisplayText(title, Modifier.weight(1f)) else Text(title, MemixTheme.type.title, Modifier.weight(1f))
             if (!blocking) CloseButton(onDismiss)
         }

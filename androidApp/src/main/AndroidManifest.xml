@@ -34,6 +34,17 @@
             </intent-filter>
             <meta-data android:name="photopicker_activity:0:required" android:value="" />
         </service>
+        <!-- The clipboard copy of an exported picture (P2-08): a file in cache/photo-copies/ that a chat app reads through
+             Android's grant on the copied URI. Not exported; the next start deletes the copies. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.photocopies"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/photo_copy_paths" />
+        </provider>
         <!-- Analytics stays off until the consent flow turns it on (P5-01, P5-04). -->
         <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />
         <meta-data android:name="google_analytics_adid_collection_enabled" android:value="false" />

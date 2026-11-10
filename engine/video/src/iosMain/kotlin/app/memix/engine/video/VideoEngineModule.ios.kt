@@ -17,11 +17,14 @@ import app.memix.core.domain.video.Thumbnail
 import app.memix.core.domain.video.ThumbnailReader
 import app.memix.core.domain.video.VideoEngine
 import app.memix.core.model.project.CaptionCatalog
+import app.memix.core.model.project.CaptionLook
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
+import app.memix.core.ui.scene.NoSceneCaptions
+import app.memix.core.ui.scene.SceneCaptions
 import kotlin.math.ceil
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +33,8 @@ import org.koin.dsl.module
 actual val videoEngineModule = module {
     single<VideoEngine> { IosVideoEngine() }
     single<CaptionMeasurer> { EstimatedCaptionMeasurer }
+    // TODO(P7-04): draw photo text layers with the same Core Text layout; nothing draws captions on iOS until then.
+    single<SceneCaptions> { NoSceneCaptions }
 }
 
 // TODO(P7-04): measure with Core Text and the bundled fonts, the same rules as Android's AndroidCaptionRenderer. Until
@@ -37,14 +42,18 @@ actual val videoEngineModule = module {
 private object EstimatedCaptionMeasurer : CaptionMeasurer {
     override suspend fun prepare() = Unit
 
-    override fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int): CaptionBlockSize {
+    override fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook): CaptionBlockSize {
         val shortSidePx = minOf(canvasWidthPx, canvasHeightPx).toFloat()
-        val fontSizePx = shortSidePx * CaptionCatalog.FONT_SIZE_OF_SHORT_SIDE
-        val wrapPx = shortSidePx * CaptionCatalog.WRAP_WIDTH_OF_SHORT_SIDE
+        val fontSizePx = shortSidePx * CaptionCatalog.FONT_SIZE_OF_SHORT_SIDE * look.sizeFactor
+        val wrapPx = shortSidePx * look.wrapOfShortSide
         val lines = text.lines()
         val widestPx = lines.maxOf { it.length } * fontSizePx * AVERAGE_GLYPH_WIDTH
         val wrappedLines = lines.sumOf { maxOf(1, ceil(it.length * fontSizePx * AVERAGE_GLYPH_WIDTH / wrapPx).toInt()) }
-        return CaptionBlockSize(minOf(widestPx, wrapPx), wrappedLines * fontSizePx * LINE_HEIGHT)
+        // A box adds its padding to the block (spec P2-11); a bubble's words have none.
+        val hasBox = style.box != null && look.drawsBox
+        val paddingX = if (hasBox) 2f * CaptionCatalog.BOX_PADDING_X_EM * fontSizePx else 0f
+        val paddingY = if (hasBox) 2f * CaptionCatalog.BOX_PADDING_Y_EM * fontSizePx else 0f
+        return CaptionBlockSize(minOf(widestPx, wrapPx) + paddingX, wrappedLines * fontSizePx * LINE_HEIGHT + paddingY)
     }
 
     private const val AVERAGE_GLYPH_WIDTH = 0.5f

@@ -23,6 +23,7 @@ import app.memix.core.model.project.Track
 import app.memix.core.model.project.TrackKind
 import app.memix.core.model.project.Transform
 import app.memix.core.model.project.VideoTimeline
+import kotlin.uuid.Uuid
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -32,7 +33,10 @@ import org.koin.core.component.inject
  * docs/qa/phase-1/engineer-hand-checks.md → P1-04). Null for an unknown name or a failed save, both logged under
  * [EditorCheckProjects.TAG].
  */
-internal suspend fun openDebugEditorProject(name: String): String? = EditorCheckProjects().save(name)
+internal suspend fun openDebugEditorProject(name: String): DebugEditor? = EditorCheckProjects().save(name)
+
+/** The editor to open for a hand-check project: its kind, and whether it is a blank canvas made in memory (`photo-empty`). */
+internal class DebugEditor(val projectId: String, val type: ProjectType, val blank: Boolean = false)
 
 /**
  * The projects, all built from the test files pushed into `files/debug-media/` for P1-03 plus `clip-1080p.mp4`.
@@ -43,7 +47,10 @@ internal class EditorCheckProjects : KoinComponent {
     private val saveProject: SaveProjectUseCase by inject()
     private val logger: Logger by inject()
 
-    suspend fun save(name: String): String? {
+    suspend fun save(name: String): DebugEditor? {
+        if (name == PhotoCheckProjects.EMPTY) return DebugEditor(Uuid.random().toString(), ProjectType.PHOTO, blank = true)
+        // The photo scenes' pictures are generated on first use.
+        if (name in PhotoCheckProjects.NAMES || name == CANVAS_IMAGE_CHECK) writeDebugPhotos()
         val project = build(name)
         if (project == null) {
             logger.error(TAG, "Unknown memix.openEditor '$name'. Use ${NAMES.joinToString()}.")
@@ -52,7 +59,7 @@ internal class EditorCheckProjects : KoinComponent {
         return when (val saved = saveProject(project)) {
             is Outcome.Success -> {
                 logger.debug(TAG, "openEditor: saved ${project.id}, opening it")
-                project.id
+                DebugEditor(project.id, project.type)
             }
             is Outcome.Failure -> {
                 logger.error(TAG, "openEditor: saving $name failed with ${saved.error}")
@@ -61,7 +68,7 @@ internal class EditorCheckProjects : KoinComponent {
         }
     }
 
-    private fun build(name: String): Project? = when (name) {
+    private fun build(name: String): Project? = PhotoCheckProjects.build(name) ?: when (name) {
         EXPORT_CHECK -> ExportCheckProject.build()
         PREVIEW_CHECK -> previewCheck()
         PREVIEW_ERROR -> previewError()
@@ -72,7 +79,9 @@ internal class EditorCheckProjects : KoinComponent {
         HOUR_LONG -> hourLong()
         SOUND_SYNC -> soundSync()
         TEXT_CHECK -> textCheck()
+        TEXT_SHADOW_CHECK -> textShadowCheck()
         CANVAS_CHECK -> canvasCheck()
+        CANVAS_IMAGE_CHECK -> canvasImageCheck()
         else -> null
     }
 
@@ -247,6 +256,23 @@ internal class EditorCheckProjects : KoinComponent {
     }
 
     /**
+     * The P2-11 Done when (spec P2-11 → QA compares → Measured): `text-check`'s three clips with the seven captions of
+     * `photo-text-shadow-box` on their own lanes for all 9 s, in shadow, box and both. Pause at 1.0 s, compare with the
+     * exported frame (and the photo editor's render of the same captions).
+     */
+    private fun textShadowCheck(): Project {
+        val clips = listOf(
+            MediaClip("sb-clip-a", 0, clipA, trimInUs = 0, trimOutUs = 3_000_000),
+            MediaClip("sb-clip-b", 3_000_000, clipB, trimInUs = 0, trimOutUs = 3_000_000),
+            MediaClip("sb-photo", 6_000_000, photo, trimInUs = 0, trimOutUs = 3_000_000),
+        )
+        val lanes = ShadowBoxCheckCaptions.all.mapIndexed { index, caption ->
+            Track("sb-lane-${index + 1}", TrackKind.TEXT, listOf(TextItem(caption.id, 0, 9_000_000, caption.text, caption.style, caption.transform)))
+        }
+        return project(TEXT_SHADOW_CHECK, clips, extraTracks = lanes)
+    }
+
+    /**
      * The P1-11 checks (spec P1-11 → QA compares, request 10): a 16:9 video, a 9:16 video and a 4:3 photo, Fit on black,
      * with four captions on their own lanes for all 9 s: a large two-line one near the top at 200% (pulled in by 16:9),
      * one turned 30° near the right edge, one half off the left edge on purpose (never moved) and one in the middle.
@@ -265,6 +291,21 @@ internal class EditorCheckProjects : KoinComponent {
             caption("canvas-middle", "MIDDLE", Transform(0.5f, 0.5f)),
         )
         return project(CANVAS_CHECK, clips, extraTracks = captions.mapIndexed { index, item -> Track("canvas-lane-${index + 1}", TrackKind.TEXT, listOf(item)) })
+    }
+
+    /**
+     * The P2-12 check: `canvas-check`'s three clips (16:9 video, 9:16 video, 4:3 photo, all Fit) on a 9:16 canvas over the
+     * patterned background picture, no captions, so the bars show the picture and a shift of it would show: compare the
+     * preview with the export (spec P2-12 → QA compares 3). Remove the picture in the Canvas panel for the black baseline.
+     */
+    private fun canvasImageCheck(): Project {
+        val clips = listOf(
+            MediaClip("canvas-wide", 0, clipA, trimInUs = 0, trimOutUs = 3_000_000),
+            MediaClip("canvas-tall", 3_000_000, clipB, trimInUs = 0, trimOutUs = 3_000_000),
+            MediaClip("canvas-photo", 6_000_000, photo4x3, trimInUs = 0, trimOutUs = 3_000_000),
+        )
+        val withPicture = project(CANVAS_IMAGE_CHECK, clips)
+        return withPicture.copy(canvas = withPicture.canvas.copy(background = CanvasBackground.Image(PhotoCheckProjects.backgroundMedia(missing = false))))
     }
 
     private fun project(id: String, mainClips: List<MediaClip>, extraTracks: List<Track> = emptyList()) = Project(
@@ -289,11 +330,13 @@ internal class EditorCheckProjects : KoinComponent {
         const val HOUR_LONG = "hour-long"
         const val SOUND_SYNC = "sound-sync"
         const val TEXT_CHECK = "text-check"
+        const val TEXT_SHADOW_CHECK = "text-shadow-check"
         const val CANVAS_CHECK = "canvas-check"
+        const val CANVAS_IMAGE_CHECK = "canvas-image-check"
         private val NAMES = listOf(
             EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK,
-            CANVAS_CHECK,
-        )
+            TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK,
+        ) + PhotoCheckProjects.NAMES
         private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20
         private const val HOUR_LONG_CLIPS = 120

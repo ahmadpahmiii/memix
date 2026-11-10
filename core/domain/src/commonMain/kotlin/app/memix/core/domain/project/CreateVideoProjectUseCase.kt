@@ -1,8 +1,8 @@
 package app.memix.core.domain.project
 
-import app.memix.core.model.project.ArgbColor
 import app.memix.core.model.project.Canvas
 import app.memix.core.model.project.CanvasBackground
+import app.memix.core.model.project.CanvasCatalog
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.ProjectType
@@ -42,7 +42,7 @@ class CreateVideoProjectUseCase(private val clock: Clock) {
             ratio = CanvasRatio.RATIO_9_16,
             widthPx = 1080,
             heightPx = 1920,
-            background = CanvasBackground.Solid(ArgbColor(0xFF000000)),
+            background = CanvasBackground.Solid(CanvasCatalog.VIDEO_BACKGROUND),
         )
     }
 }

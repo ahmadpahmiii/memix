@@ -11,4 +11,5 @@
     <string name="create_photo_title">Photo meme</string>
     <string name="create_photo_body">Pick a photo from your gallery</string>
     <string name="create_template">Start from a template</string>
+    <string name="create_blank">Start with a blank canvas</string>
 </resources>

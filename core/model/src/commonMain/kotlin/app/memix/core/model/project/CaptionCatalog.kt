@@ -48,6 +48,36 @@ object CaptionCatalog {
     /** The outline's stroke width is the font size divided by this (round joins, drawn under the fill). */
     const val OUTLINE_WIDTH_DIVISOR = 12f
 
+    /**
+     * Shadow and box rules (P2-11; spec docs/ux/specs/P2-11-text-shadow-and-box.md; design/tokens.json → caption). All in em, the
+     * caption's font size, so they scale with the text, the canvas and the export size, and neither re-flows the text.
+     * Changing one after the closed test needs a schema bump.
+     */
+    const val SHADOW_OFFSET_X_EM = 0.05f
+    const val SHADOW_OFFSET_Y_EM = 0.07f
+    const val SHADOW_OPACITY = 0.6f
+
+    /** The blur radius of a shadow edge, in em. */
+    fun shadowBlurEm(softness: ShadowSoftness): Float = when (softness) {
+        ShadowSoftness.SHARP -> 0f
+        ShadowSoftness.SOFT -> 0.06f
+        ShadowSoftness.BLURRY -> 0.14f
+    }
+
+    /** How far the blur reaches past the shadow's shape, as a multiple of its radius. */
+    const val SHADOW_BLUR_REACH = 3f
+
+    /** The box extends past the laid-out block by this much left and right, and above and below, in em. */
+    const val BOX_PADDING_X_EM = 0.30f
+    const val BOX_PADDING_Y_EM = 0.18f
+
+    /** The corner radius of a box step, in em; the drawing never rounds past half of the box's shorter side. */
+    fun boxCornerEm(corners: BoxCorners): Float = when (corners) {
+        BoxCorners.SQUARE -> 0f
+        BoxCorners.ROUNDED -> 0.25f
+        BoxCorners.PILL -> 0.60f
+    }
+
     const val MIN_SCALE = 0.25f
     const val MAX_SCALE = 5f
 
@@ -60,3 +90,20 @@ object CaptionCatalog {
  * Devanagari ([devanagariFallbackFileName]). Anything none of them has falls back to the system font.
  */
 data class CaptionFont(val id: String, val fileName: String, val devanagariFallbackFileName: String? = null)
+
+/**
+ * How a caption's words are laid out: [sizeFactor] times the caption's base size ([CaptionCatalog.FONT_SIZE_OF_SHORT_SIDE] of
+ * the shorter side) and wrapped at [wrapOfShortSide] of the shorter side. Text uses [Text]; the words of a bubble use
+ * [Bubble] (spec P2-02 → Bubbles). The one renderer takes it as a parameter, so a bubble's words are a caption too.
+ */
+data class CaptionLook(
+    val sizeFactor: Float = 1f,
+    val wrapOfShortSide: Float = CaptionCatalog.WRAP_WIDTH_OF_SHORT_SIDE,
+    /** False for a bubble's words: the bubble body is already their box (spec P2-11 → Layout), so a box in the style is ignored. */
+    val drawsBox: Boolean = true,
+) {
+    companion object {
+        val Text = CaptionLook()
+        val Bubble = CaptionLook(PhotoFormatCatalog.BUBBLE_TEXT_SCALE_OF_CAPTION, PhotoFormatCatalog.BUBBLE_WRAP_OF_SHORT_SIDE, drawsBox = false)
+    }
+}

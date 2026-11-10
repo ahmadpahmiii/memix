@@ -7,11 +7,13 @@ import app.memix.core.domain.Outcome
 import app.memix.core.domain.drafts.UpdateDraftThumbnailUseCase
 import app.memix.core.domain.media.ImportMediaUseCase
 import app.memix.core.domain.project.MediaPlace
+import app.memix.core.domain.photo.VideoMemeNoteUseCase
 import app.memix.core.domain.project.OpenVideoDraftUseCase
 import app.memix.core.domain.project.ProjectEditSession
 import app.memix.core.domain.project.ProjectEditState
 import app.memix.core.domain.project.StartEditSessionUseCase
 import app.memix.core.domain.project.TrimEdge
+import app.memix.core.domain.project.backgroundImage
 import app.memix.core.domain.project.backgroundShows
 import app.memix.core.domain.project.canDelete
 import app.memix.core.domain.project.canSplit
@@ -44,8 +46,12 @@ import app.memix.core.model.project.Project
 import app.memix.core.model.project.RatioTerms
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TrackKind
+import app.memix.core.model.project.size
 import app.memix.core.ui.MemixViewModel
-import app.memix.feature.videoeditor.importmedia.ImportIntent
+import app.memix.core.ui.editor.SaveProblem
+import app.memix.core.ui.panels.toUi
+import app.memix.feature.mediaimport.ImportIntent
+import app.memix.feature.mediaimport.ImportWording
 import app.memix.feature.videoeditor.timeline.ItemName
 import app.memix.feature.videoeditor.timeline.TimelineThumbnails
 import app.memix.feature.videoeditor.timeline.TrimRanges
@@ -97,6 +103,7 @@ class VideoEditorViewModel(
     private val export: EditorExport,
     importMedia: ImportMediaUseCase,
     private val updateDraftThumbnail: UpdateDraftThumbnailUseCase,
+    private val videoMemeNote: VideoMemeNoteUseCase,
     private val decodeDispatcher: CoroutineDispatcher,
     private val debugEdit: EditorDebugEdit?,
 ) : MemixViewModel<VideoEditorUiState, VideoEditorIntent>(VideoEditorUiState(canMakeDebugEdit = debugEdit != null)) {
@@ -108,6 +115,9 @@ class VideoEditorViewModel(
     private var saveFailure: AppError? = null
     private var bannerDismissed = false
     private var missingMediaShown = false
+    private var backgroundMissingShown = false
+    // The background picture's file that couldn't be read, so a replaced picture isn't called missing.
+    private var missingBackgroundPath: String? = null
     private var nextToastId = 0L
     private var nextLandingSerial = 0L
     // Runs from the first edit the preview hasn't shown yet; one second later the stage says it's updating.
@@ -120,13 +130,15 @@ class VideoEditorViewModel(
     private val draftOpened = CompletableDeferred<ProjectEditSession>()
     private val mediaImport = EditorMediaImport(importMedia, viewModelScope, projectId, MediaImportEditor())
     private var nextFocusSerial = 0L
+    // Arrived from Make it a video meme: once the sounds sheet that opened itself closes, the one-time note may show (spec P2-10).
+    private var noteWaitsForSheet = false
     private val host = Host()
     private val soundTools = EditorSoundTools(sounds, host)
     private val volumePanel = VolumePanelControl(host)
     private val move = MoveControl(host)
     private val originalAudio = OriginalAudioControl(host)
     private val captions = CaptionControl(host)
-    private val canvasPanel = CanvasPanelControl(host) { text, style, widthPx, heightPx -> captionRendering.measure(text, style, widthPx, heightPx) }
+    private val canvasPanel = CanvasPanelControl(host) { text, style, widthPx, heightPx, look -> captionRendering.measure(text, style, widthPx, heightPx, look) }
     private val exportSheet = ExportSheetControl(host, export)
     // The canvas size of the picture on screen, as the preview last reported it.
     private var shownCanvasSize: PixelSize? = null
@@ -197,9 +209,23 @@ class VideoEditorViewModel(
                 updateState { it.withSelection(null, null) }
                 soundTools.openSheet(FocusTarget.ADD_SOUND_PILL)
             }
-            VideoEditorIntent.CloseSoundsSheet -> soundTools.dismissSheet()
+            VideoEditorIntent.ArrivedFromPhoto -> {
+                noteWaitsForSheet = true
+                soundTools.openSheet(FocusTarget.MEME_SOUNDS_TOOL)
+            }
+            VideoEditorIntent.CloseSoundsSheet -> {
+                soundTools.dismissSheet()
+                showVideoMemeNoteOnce()
+            }
+            VideoEditorIntent.DismissVideoMemeNote -> {
+                updateState { it.copy(videoMemeNote = false) }
+                viewModelScope.launch { videoMemeNote.dismissed() }
+            }
             is VideoEditorIntent.ToggleSoundPreview -> soundTools.togglePreview(intent.soundId)
-            is VideoEditorIntent.AddSound -> soundTools.add(intent.soundId)
+            is VideoEditorIntent.AddSound -> {
+                soundTools.add(intent.soundId)
+                showVideoMemeNoteOnce()
+            }
             VideoEditorIntent.VolumeTool -> volumePanel.open()
             is VideoEditorIntent.VolumeChanged -> volumePanel.change(intent.volume)
             VideoEditorIntent.VolumeReleased -> volumePanel.commit()
@@ -228,23 +254,25 @@ class VideoEditorViewModel(
             is VideoEditorIntent.SetCaptionFont -> captions.setFont(intent.fontId)
             is VideoEditorIntent.SetCaptionColor -> captions.setColor(intent.argb)
             is VideoEditorIntent.SetCaptionOutline -> captions.setOutline(intent.argb)
+            is VideoEditorIntent.SetCaptionShadow -> captions.setShadow(intent.shadow)
+            is VideoEditorIntent.SetCaptionBox -> captions.setBox(intent.box)
             is VideoEditorIntent.PositionStepped -> captions.step(intent.step, intent.repeats)
             is VideoEditorIntent.PositionStepHeld -> captions.stepHeld(intent.step, intent.repeats)
             is VideoEditorIntent.CaptionTapped -> captions.tap(intent.itemId)
             is VideoEditorIntent.CaptionGestureStarted -> captions.startGesture(intent.itemId)
             is VideoEditorIntent.CaptionGestureEnded -> captions.endGesture(intent.itemId, intent.transform)
             VideoEditorIntent.CaptionGestureCancelled -> captions.cancelGesture()
-            VideoEditorIntent.RatioPill -> {
-                // Typing commits first, then the panel opens (spec P1-11 → Opening from other states).
-                captions.commitEntry()
-                canvasPanel.togglePanel()
-            }
+            // Inert while typing (spec P2-03 → Typing; before P2-03 typing committed first and the panel opened).
+            VideoEditorIntent.RatioPill -> if (state.value.textEntry == null) canvasPanel.togglePanel()
             VideoEditorIntent.CloseCanvasPanel -> canvasPanel.close()
             is VideoEditorIntent.SetCanvasRatio -> canvasPanel.setRatio(intent.ratio)
             is VideoEditorIntent.CanvasStepped -> canvasPanel.step(intent.step, intent.repeats)
             is VideoEditorIntent.CanvasStepHeld -> canvasPanel.stepHeld(intent.step, intent.repeats)
             is VideoEditorIntent.SetClipsFit -> canvasPanel.setFit(intent.fit)
             is VideoEditorIntent.SetCanvasBackground -> canvasPanel.setBackground(intent.argb)
+            VideoEditorIntent.PickBackgroundImage -> requestPick(MediaPickRequest.Background)
+            VideoEditorIntent.RemoveBackgroundImage -> canvasPanel.removeBackgroundImage()
+            is VideoEditorIntent.BackgroundImageUnreadable -> showUnreadableBackground(intent.path)
             VideoEditorIntent.ExportTool -> {
                 // Typing commits first, so the export has the words (spec P1-12 → Export from other editor states).
                 captions.commitEntry()
@@ -530,6 +558,15 @@ class VideoEditorViewModel(
         announce(VideoEdit.REORDER, state.value.timeline.nameOf(reorder.movingId))
     }
 
+    // The sheet that opened on arrival is closed (a sound added, or none): the note shows the first time ever (spec P2-10 → Arriving).
+    private fun showVideoMemeNoteOnce() {
+        if (!noteWaitsForSheet) return
+        noteWaitsForSheet = false
+        viewModelScope.launch {
+            if (videoMemeNote.isDue()) updateState { it.copy(videoMemeNote = true) }
+        }
+    }
+
     // The starter pack labels the sounds on the timeline; a draft opened before it loaded gets its titles now.
     private suspend fun loadStarterSounds() {
         soundTools.load()
@@ -542,8 +579,11 @@ class VideoEditorViewModel(
     private fun requestPick(request: MediaPickRequest) {
         if (state.value.isImporting || editSession == null) return
         preview?.pause()
-        updateState { it.copy(isImporting = true, mediaPicker = request) }
+        updateState { it.copy(isImporting = true, mediaPicker = request, importWording = importWordingOf(request)) }
     }
+
+    private fun importWordingOf(request: MediaPickRequest): ImportWording =
+        if (request == MediaPickRequest.Background) ImportWording.PHOTO else ImportWording.MEDIA
 
     private fun pickerUnavailable() {
         val request = state.value.mediaPicker ?: return
@@ -552,7 +592,8 @@ class VideoEditorViewModel(
     }
 
     private fun onMediaPicked(request: MediaPickRequest, items: List<MediaOrigin>) {
-        updateState { it.copy(isImporting = true, mediaPicker = null) }
+        // Also here: after Android restarted the app behind the picker, the request comes back with the result.
+        updateState { it.copy(isImporting = true, mediaPicker = null, importWording = importWordingOf(request)) }
         if (items.isEmpty()) mediaImport.nothingPicked(request) else mediaImport.start(request, items)
     }
 
@@ -572,6 +613,7 @@ class VideoEditorViewModel(
             when (landing) {
                 is MediaLanding.Added -> showAddedMedia(landing.clipIds)
                 is MediaLanding.Replaced -> showReplacedClip(landing)
+                MediaLanding.Background -> showToast(ToastMessage.BackgroundImageSet, spokenOnly = true)
             }
         }
     }
@@ -594,8 +636,21 @@ class VideoEditorViewModel(
         if (landing.newSoundMuted) showToast(ToastMessage.Explain(Explanation.REPLACE_DETACHED))
     }
 
+    // The background picture is unreadable: the swatch and the panel say so, the canvas bars are black, and a toast names the way out once per open.
+    private fun showUnreadableBackground(path: String) {
+        val project = currentProject() ?: return
+        if (project.backgroundImage()?.cachedCopyPath != path) return
+        missingBackgroundPath = path
+        updateState { it.copy(canvas = canvasUiOf(project)) }
+        if (backgroundMissingShown) return
+        backgroundMissingShown = true
+        showToast(ToastMessage.BackgroundMissing(state.value.canvas?.ratioLabel.orEmpty()))
+    }
+
     private fun endPick(request: MediaPickRequest) {
         val opener = when (request) {
+            // The Canvas panel is still open under the pick: nothing to move focus back to until the shared helper lands (P2-12 known limit).
+            MediaPickRequest.Background -> null
             is MediaPickRequest.Replace -> FocusTarget.REPLACE_TOOL
             is MediaPickRequest.Add -> when (request.place) {
                 is MediaPlace.AfterClipAt -> FocusTarget.ADD_MEDIA_TOOL
@@ -603,7 +658,7 @@ class VideoEditorViewModel(
             }
         }
         updateState { it.copy(isImporting = false) }
-        returnFocusTo(opener)
+        opener?.let(::returnFocusTo)
     }
 
     // Serials are taken outside updateState, whose block may run again.
@@ -638,7 +693,7 @@ class VideoEditorViewModel(
     private inner class MediaImportEditor : EditorMediaImport.Editor {
         override suspend fun openedProject(): Project = draftOpened.await().state.value.project
 
-        override fun commit(edit: VideoEdit, change: (Project) -> Project): Boolean = this@VideoEditorViewModel.commit(edit, change = change)
+        override fun commit(edit: VideoEdit, value: String?, change: (Project) -> Project): Boolean = this@VideoEditorViewModel.commit(edit, value = value, change = change)
 
         override fun showToast(message: ToastMessage) = this@VideoEditorViewModel.showToast(message)
 
@@ -704,7 +759,7 @@ class VideoEditorViewModel(
     ): Boolean {
         val session = editSession ?: return false
         if (pausesPlayback) preview?.pause()
-        val recorded = session.commit(edit.tool, font, value, change)
+        val recorded = session.commit(edit.tool, font, value, edit = change)
         if (recorded) showEditState(session.state.value)
         return recorded
     }
@@ -826,7 +881,7 @@ class VideoEditorViewModel(
             widthPx = canvas.widthPx,
             heightPx = canvas.heightPx,
             ratio = canvas.ratio,
-            backgroundArgb = (canvas.background as? CanvasBackground.Solid)?.color?.argb,
+            background = canvas.background.toUi(imageMissing = project.backgroundImage()?.cachedCopyPath?.let { it == missingBackgroundPath } == true),
             clipsFit = project.sharedClipsFit(),
             backgroundShows = project.backgroundShows(),
         )

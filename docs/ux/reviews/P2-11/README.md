@@ -1,0 +1,5 @@
+# P2-11 Style panel renders (Shadow and Box rows)
+
+Desktop renders of the lifted Style panel (`:core:ui` `StylePanel`) as the photo editor hosts it (Compose `ImageComposeScene`, 3x density, generated pictures; no emulator), scrolled to the new rows (the 70-* frames). The video editor hosts the same composable, so these rows are what it shows; the render harness can't host the video editor's own panel. The caption text is drawn by a stand-in with no shadow or box (the canvas is chrome only here): judge the shadow and box drawing on a device.
+
+70-style-panel-shadow-box-off (none selected) | 70-style-panel-shadow-on-softness (Softness row shown) | 70-style-panel-box-on-corners (Corners row shown) | 70-style-panel-bubble-no-box-shadow-kept (a bubble: Shape, Font, Color, Shadow + Softness, Fill; no Box) | 70-style-panel-shadow-on-360x640-scrolled, 70-style-panel-box-on-360x640-scrolled | 70-spanish-200-style-panel-shadow-box, 70-hindi-200-style-panel-shadow-box (200% font, 360 x 640, scrolled).

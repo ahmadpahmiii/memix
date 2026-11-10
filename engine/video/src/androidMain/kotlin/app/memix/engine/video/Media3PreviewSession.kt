@@ -280,6 +280,7 @@ internal class Media3PreviewSession(
                 liveGains,
                 captionOverlay = captions,
                 frameShortSidePx = if (playablePlan.background == PlanBackground.Blur) BLUR_PREVIEW_SHORT_SIDE_PX else null,
+                backgroundFile = resolved.backgroundFile,
             ).build()
             PreparedPreview.Ready(
                 composition,

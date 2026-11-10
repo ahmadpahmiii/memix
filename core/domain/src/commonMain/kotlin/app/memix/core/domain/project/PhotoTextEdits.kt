@@ -1,0 +1,62 @@
+package app.memix.core.domain.project
+
+import app.memix.core.model.project.CaptionStyle
+import app.memix.core.model.project.FormatSlot
+import app.memix.core.model.project.PixelSize
+import app.memix.core.model.project.SlotKind
+import app.memix.core.model.project.emptySlots
+import app.memix.core.model.project.PhotoCatalog
+import app.memix.core.model.project.Project
+import app.memix.core.model.project.TextLayer
+import app.memix.core.model.project.Transform
+import kotlin.math.abs
+
+/*
+ * Text layers of the photo editor (spec docs/ux/specs/P2-03-photo-text-and-stickers.md → Text on the canvas). A caption's
+ * look is the video editor's (P1-10): the same CaptionStyle, the same renderer, the same size ladder. What differs is that
+ * a text is a layer in the stack, not an item on a timeline. Locked layers refuse like every layer (LayerEdits).
+ */
+
+/** The first landing slot (top, bottom, middle) that no visible text layer sits on; the middle when all are taken. */
+fun Project.photoTextLandingCenterY(): Float {
+    val taken = layers().filterIsInstance<TextLayer>().filter { !it.hidden }.map { it.transform.centerY }
+    val slots = PhotoCatalog.TEXT_LANDING_SLOTS
+    return slots.firstOrNull { slot -> taken.none { abs(it - slot) < PhotoCatalog.TEXT_SLOT_TAKEN_WITHIN } } ?: slots.last()
+}
+
+/**
+ * The first empty text slot of the active format (spec P2-02 → How a format works, rule 6), or null while the canvas is plain or
+ * every slot of the format is filled: then [photoTextLandingCenterY] applies.
+ */
+fun Project.nextTextSlot(): FormatSlot? =
+    photo?.format.emptySlots(PixelSize(canvas.widthPx, canvas.heightPx), layers()).firstOrNull { it.kind == SlotKind.TEXT }
+
+/**
+ * Adds [text] in [style] as layer [id] at the front of the stack, at 100% and 0°: centered horizontally at the first free
+ * landing slot ([photoTextLandingCenterY]), or at [transform] when the caller has one (a format's slot). Blank text adds nothing.
+ */
+fun Project.addTextLayer(text: String, style: CaptionStyle, id: String, transform: Transform? = null): Project {
+    if (text.isBlank()) return this
+    val layer = TextLayer(id, text, style, transform ?: Transform(centerX = 0.5f, centerY = photoTextLandingCenterY()))
+    return withLayers(layers() + layer)
+}
+
+/**
+ * New words for text layer [layerId]; cleared to blank the layer is deleted (spec → Typing → commit, as P1-10). Refused
+ * while it's locked.
+ */
+fun Project.editTextLayer(layerId: String, text: String): LayerEdit {
+    val layer = layer(layerId) as? TextLayer ?: return LayerEdit.Edited(this)
+    if (layer.locked) return LayerEdit.Refused(LayerRefusal.LOCKED)
+    if (text.isBlank()) return deleteLayer(layerId)
+    if (text == layer.text) return LayerEdit.Edited(this)
+    return LayerEdit.Edited(replaceLayer(layerId) { layer.copy(text = text) })
+}
+
+/** Text layer [layerId] in [style]. Refused while it's locked. */
+fun Project.setTextLayerStyle(layerId: String, style: CaptionStyle): LayerEdit {
+    val layer = layer(layerId) as? TextLayer ?: return LayerEdit.Edited(this)
+    if (layer.locked) return LayerEdit.Refused(LayerRefusal.LOCKED)
+    if (layer.style == style) return LayerEdit.Edited(this)
+    return LayerEdit.Edited(replaceLayer(layerId) { layer.copy(style = style) })
+}

@@ -179,7 +179,7 @@ fun ExportScreen(
 }
 
 /** The room a screen has: [area] inside the insets and padding, and the whole [screen] height its picture floors are shares of. */
-private class ScreenSizes(val area: Dp, val screen: Dp)
+internal class ScreenSizes(val area: Dp, val screen: Dp)
 
 /**
  * The shape of the Exporting, Exported and failure screens at every font size (spec P1-12 → Large font; review M1): the
@@ -188,7 +188,7 @@ private class ScreenSizes(val area: Dp, val screen: Dp)
  * picture fills the middle exactly and nothing scrolls.
  */
 @Composable
-private fun PictureScreen(
+internal fun PictureScreen(
     sizes: ScreenSizes,
     floor: Float,
     title: @Composable () -> Unit,
@@ -254,7 +254,7 @@ private fun Exporting(state: ExportUiState, sizes: ScreenSizes, titleFocus: Focu
 }
 
 @Composable
-private fun Title(text: String, focus: FocusRequester, modifier: Modifier = Modifier) {
+internal fun Title(text: String, focus: FocusRequester, modifier: Modifier = Modifier) {
     // Screen readers start on the title (spec → Accessibility).
     LaunchedEffect(Unit) { focus.requestFocus() }
     DisplayText(text, modifier.focusRequester(focus).focusable().semantics { heading() })
@@ -358,7 +358,7 @@ private fun Result(
 
 // "Saved to your gallery · 0:08 · 1080p": a success pill with the check icon, announced as it appears.
 @Composable
-private fun StatusPill(text: String) {
+internal fun StatusPill(text: String) {
     Row(
         Modifier
             .clip(MemixShapes.radiusFull)
@@ -378,7 +378,7 @@ private fun StatusPill(text: String) {
  * either label doesn't fit its half (200% font), so [last] stays last and lowest.
  */
 @Composable
-private fun Footer(first: @Composable (Modifier) -> Unit, last: @Composable (Modifier) -> Unit) {
+internal fun Footer(first: @Composable (Modifier) -> Unit, last: @Composable (Modifier) -> Unit) {
     val gap = MemixSpacing.space3
     Layout(content = { first(Modifier); last(Modifier) }, modifier = Modifier.fillMaxWidth()) { measurables, constraints ->
         val gapPx = gap.roundToPx()
@@ -496,7 +496,7 @@ private fun StopSheet(open: Boolean, onIntent: (ExportIntent) -> Unit) {
 
 /** The least of the screen's height the frame keeps on Exporting and the failure state, and the result on Exported (spec P1-12 → Large font). */
 private const val FRAME_FLOOR = 0.3f
-private const val RESULT_FLOOR = 0.4f
+internal const val RESULT_FLOOR = 0.4f
 private const val PERCENT = 100f
 private const val TIME_LEFT_FROM_SECONDS = 10L
 private const val MILESTONE = 25

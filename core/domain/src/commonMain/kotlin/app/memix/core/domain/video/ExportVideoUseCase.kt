@@ -120,6 +120,8 @@ class ExportVideoUseCase(
             preferences.saveSecondsPerMegapixelSecond(speedGroupOf(job.choice.resolution), it)
         }
         preferences.saveUnfinishedExport(null)
+        // Counts toward P5-03's "1 interstitial per 3 exports", with the photo editor's saves and copies.
+        preferences.countFinishedExport()
         foreground.finish(ExportNotice.Saved(lengthLabelOf(video.durationUs), job.choice.resolution.label))
         mutableState.value = ExportJobState.Done(job, video, option)
     }

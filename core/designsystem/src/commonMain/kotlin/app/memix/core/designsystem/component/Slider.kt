@@ -67,6 +67,7 @@ fun Slider(
     onValueChangeFinished: () -> Unit = {},
     snapValue: Float? = null,
     snapDistance: Float = 0f,
+    origin: Float? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val currentValue by rememberUpdatedState(value)
@@ -146,7 +147,13 @@ fun Slider(
                     val thumbX = fractionOf(currentValue) * size.width
                     val radius = CornerRadius(railHeight / 2)
                     drawRoundRect(MemixColors.hairline, Offset(0f, centerY - railHeight / 2), Size(size.width, railHeight), radius)
-                    drawRoundRect(MemixColors.primary, Offset(0f, centerY - railHeight / 2), Size(thumbX, railHeight), radius)
+                    // A bipolar slider fills from its origin to the thumb and marks the origin with a short tick (Slider README).
+                    val fillFrom = origin?.let { fractionOf(it) * size.width } ?: 0f
+                    drawRoundRect(MemixColors.primary, Offset(minOf(fillFrom, thumbX), centerY - railHeight / 2), Size(kotlin.math.abs(thumbX - fillFrom), railHeight), radius)
+                    if (origin != null) {
+                        val tickHalf = ThumbDiameter.toPx() / 2
+                        drawLine(MemixColors.textMuted, Offset(fillFrom, centerY - tickHalf), Offset(fillFrom, centerY + tickHalf), MemixSize.railHeight.toPx() / 2)
+                    }
                     drawCircle(MemixColors.selection, thumbRadius, Offset(thumbX.coerceIn(thumbRadius, size.width - thumbRadius), centerY))
                 },
         ) {}

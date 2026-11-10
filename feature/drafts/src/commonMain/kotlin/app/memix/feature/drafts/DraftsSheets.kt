@@ -50,8 +50,8 @@ import app.memix.core.designsystem.component.ButtonVariant
 import app.memix.core.designsystem.component.ProgressBar
 import app.memix.core.designsystem.component.Sheet
 import app.memix.core.domain.drafts.MAX_DRAFT_NAME_CHARACTERS
-import app.memix.core.domain.text.graphemeCount
-import app.memix.core.domain.text.takeGraphemes
+import app.memix.core.model.text.graphemeCount
+import app.memix.core.model.text.takeGraphemes
 import app.memix.core.model.project.ProjectType
 import app.memix.core.ui.SizeRounding
 import app.memix.core.ui.fileSizeText

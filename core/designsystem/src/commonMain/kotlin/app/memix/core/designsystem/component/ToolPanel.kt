@@ -10,12 +10,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -41,6 +43,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
@@ -61,6 +64,11 @@ import app.memix.core.designsystem.Text
  * no Cancel: each committed change is an undo step. [content] (Slider, Toggle and similar rows) scrolls under the top
  * row when it doesn't fit. Opening moves focus to the title; it slides up and down in 200 ms, or fades in 120 ms with
  * reduce motion.
+ *
+ * With [contentMaxHeight] the panel is as tall as its content up to that height (the photo editor, where no timeline
+ * reserves the space; the caller anchors it at the bottom and refits the stage above it), and then scrolls inside.
+ * [headerActions] sit between the title and Done and wrap under the title when the row doesn't fit (the Layers panel's
+ * Move buttons); with [scrolls] false the content scrolls itself (a lazy list) instead of the panel.
  */
 @Composable
 fun ToolPanel(
@@ -69,6 +77,9 @@ fun ToolPanel(
     doneLabel: String,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
+    contentMaxHeight: Dp? = null,
+    headerActions: (@Composable () -> Unit)? = null,
+    scrolls: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val reduceMotion = MemixTheme.reduceMotion
@@ -83,7 +94,8 @@ fun ToolPanel(
         LaunchedEffect(Unit) { titleFocus.requestFocus() }
         Column(
             Modifier
-                .fillMaxSize()
+                // The video editor's panel fills the region it covers; the photo editor's is as tall as its content, up to a cap.
+                .then(if (contentMaxHeight == null) Modifier.fillMaxSize() else Modifier.fillMaxWidth().heightIn(max = contentMaxHeight))
                 // Takes every touch in its region, so nothing reaches the timeline underneath.
                 .pointerInput(Unit) {}
                 .background(MemixColors.surface)
@@ -99,16 +111,27 @@ fun ToolPanel(
                 .padding(MemixSpacing.space4),
             verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4),
         ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    title,
-                    MemixTheme.type.title,
-                    Modifier.weight(1f).focusRequester(titleFocus).focusable().semantics { heading() },
-                )
-                Button(doneLabel, onDone, variant = ButtonVariant.Ghost)
+            val titleModifier = Modifier.focusRequester(titleFocus).focusable().semantics { heading() }
+            if (headerActions == null) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, MemixTheme.type.title, titleModifier.weight(1f))
+                    Button(doneLabel, onDone, variant = ButtonVariant.Ghost)
+                }
+            } else {
+                FlowRow(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    itemVerticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(title, MemixTheme.type.title, titleModifier)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        headerActions()
+                        Button(doneLabel, onDone, variant = ButtonVariant.Ghost)
+                    }
+                }
             }
             Column(
-                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                Modifier.weight(1f, fill = false).then(if (scrolls) Modifier.verticalScroll(rememberScrollState()) else Modifier),
                 verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4),
                 content = content,
             )

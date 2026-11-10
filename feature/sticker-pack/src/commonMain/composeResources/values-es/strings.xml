@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Machine-drafted until P5-06. P2-09 WhatsApp sticker packs. Budgets and translator notes: docs/ux/specs/P2-09-whatsapp-sticker-pack.md -> Copy. "WhatsApp" never translates; "sticker" is the word WhatsApp uses in the language. -->
+    <string name="packs_title">Packs de WhatsApp</string>
+    <string name="packs_empty_title">Aún no hay packs</string>
+    <string name="packs_empty_body">Crea un pack con tus stickers.</string>
+    <string name="packs_new">Nuevo pack</string>
+    <plurals name="packs_sticker_count">
+        <item quantity="one">%1$d sticker</item>
+        <item quantity="other">%1$d stickers</item>
+    </plurals>
+    <string name="packs_in_whatsapp">En WhatsApp</string>
+    <string name="packs_deleted">Pack eliminado. Sigue en WhatsApp hasta que lo quites allí.</string>
+    <string name="packs_undo">Deshacer</string>
+    <string name="explain_packs_max">Tienes 10 packs. Elimina uno para crear otro.</string>
+    <string name="pack_builder_new">Nuevo pack</string>
+    <string name="pack_builder_edit">Editar pack</string>
+    <string name="pack_name_label">Nombre del pack</string>
+    <string name="pack_name_default">Mi pack</string>
+    <string name="pack_name_helper">Usa imágenes que tengas derecho a compartir.</string>
+    <string name="pack_count_need">Elige al menos 3 stickers</string>
+    <plurals name="pack_count">
+        <item quantity="one">%1$d seleccionado</item>
+        <item quantity="other">%1$d seleccionados</item>
+    </plurals>
+    <plurals name="pack_count_max">
+        <item quantity="one">%1$d seleccionado. Es el máximo de un pack.</item>
+        <item quantity="other">%1$d seleccionados. Es el máximo de un pack.</item>
+    </plurals>
+    <string name="explain_pack_min">Elige al menos 3 stickers.</string>
+    <string name="explain_pack_max">Un pack admite hasta 30 stickers.</string>
+    <string name="pack_need_title">Necesitas 3 stickers para un pack</string>
+    <plurals name="pack_need_body">
+        <item quantity="one">Tienes %1$d. Recorta más personas, mascotas u objetos de tus fotos y guárdalos como stickers.</item>
+        <item quantity="other">Tienes %1$d. Recorta más personas, mascotas u objetos de tus fotos y guárdalos como stickers.</item>
+    </plurals>
+    <string name="pack_need_remove_background">Quitar el fondo</string>
+    <string name="pack_need_add_photo">Añadir foto</string>
+    <string name="pack_emojis">Emojis</string>
+    <string name="pack_emojis_help">Los emojis ayudan a encontrar tus stickers en WhatsApp.</string>
+    <string name="pack_emojis_pick_title">Emojis para este sticker</string>
+    <string name="pack_emojis_change">Cambiar emojis</string>
+    <string name="pack_back">Atrás</string>
+    <string name="pack_done">Listo</string>
+    <string name="explain_pack_emoji_max">Hasta 3 emojis por sticker.</string>
+    <string name="explain_pack_emoji_min">Elige al menos 1 emoji.</string>
+    <string name="pack_add">Añadir a WhatsApp</string>
+    <string name="pack_update">Actualizar en WhatsApp</string>
+    <string name="pack_preparing">Preparando tu pack · %1$d de %2$d</string>
+    <plurals name="pack_too_big">
+        <item quantity="one">%1$d sticker es demasiado detallado para el límite de tamaño de WhatsApp. Quítalo o elige otro.</item>
+        <item quantity="other">%1$d stickers son demasiado detallados para el límite de tamaño de WhatsApp. Quítalos o elige otros.</item>
+    </plurals>
+    <string name="a11y_pack_too_big">Demasiado detallado para WhatsApp</string>
+    <string name="pack_added_title">Añadido</string>
+    <string name="pack_added_pill">Añadido a WhatsApp</string>
+    <string name="pack_added_body">Abre un chat en WhatsApp, toca el icono de stickers y busca “%1$s”.</string>
+    <string name="pack_not_added">Todavía no está en WhatsApp. Toca Añadir a WhatsApp cuando quieras.</string>
+    <string name="pack_no_whatsapp">WhatsApp no está en este teléfono. Tu pack está guardado: añádelo cuando instales WhatsApp.</string>
+    <string name="pack_whatsapp_old">Tu WhatsApp es demasiado antiguo para los stickers. Actualízalo e inténtalo de nuevo.</string>
+    <string name="pack_save_failed">No se pudo crear el pack. Libera espacio e inténtalo de nuevo.</string>
+    <string name="pack_file_missing">Falta el archivo de este sticker, así que no puede entrar en un pack.</string>
+    <string name="a11y_pack_tile">Sticker %1$d</string>
+    <string name="a11y_pack_tile_selected">%1$s, seleccionado</string>
+    <string name="a11y_pack_emoji_row">Sticker %1$d, emojis %2$s</string>
+    <string name="a11y_pack_progress_milestone">Preparando tu pack, %1$d por ciento</string>
+</resources>

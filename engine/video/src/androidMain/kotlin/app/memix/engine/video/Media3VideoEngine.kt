@@ -22,6 +22,7 @@ import app.memix.core.domain.video.VideoEngine
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
+import java.io.File
 import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.TimeSource
@@ -90,12 +91,13 @@ internal class Media3VideoEngine(
         } catch (e: SecurityException) {
             return failed(e)
         }
-        return writeFile(playable, resolved.uriByMedia, settings, output, onProgress)
+        return writeFile(playable, resolved.uriByMedia, resolved.backgroundFile, settings, output, onProgress)
     }
 
     private suspend fun writeFile(
         plan: CompositionPlan,
         sources: Map<MediaRef, Uri>,
+        backgroundFile: File?,
         settings: ExportSettings,
         output: ExportOutput,
         onProgress: (Float) -> Unit,
@@ -107,15 +109,19 @@ internal class Media3VideoEngine(
             val captions = plan.captions.takeIf { it.isNotEmpty() }?.let {
                 CaptionOverlay(it, captionRenderer, plan.canvasWidthPx, plan.canvasHeightPx)
             }
-            val composition = Media3CompositionBuilder(
-                plan,
-                sources,
-                settings.frameRate,
-                captionOverlay = captions,
-                watermarkOverlay = if (settings.watermark) WatermarkOverlay(captionRenderer) else null,
-                frameShortSidePx = settings.shortSidePx,
-                frameSizePx = settings.frameSize,
-            ).build()
+            // Off the main thread: a background picture is decoded at the export's frame size (P2-12).
+            val composition = withContext(ioDispatcher) {
+                Media3CompositionBuilder(
+                    plan,
+                    sources,
+                    settings.frameRate,
+                    captionOverlay = captions,
+                    watermarkOverlay = if (settings.watermark) WatermarkOverlay(captionRenderer) else null,
+                    frameShortSidePx = settings.shortSidePx,
+                    frameSizePx = settings.frameSize,
+                    backgroundFile = backgroundFile,
+                ).build()
+            }
             val result = transformerExport.run(
                 composition,
                 output.transformerPath,

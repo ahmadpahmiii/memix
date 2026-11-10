@@ -11,4 +11,5 @@
     <string name="create_photo_title">फ़ोटो मीम</string>
     <string name="create_photo_body">अपनी गैलरी से फ़ोटो चुनें</string>
     <string name="create_template">टेम्पलेट से शुरू करें</string>
+    <string name="create_blank">खाली कैनवास से शुरू करें</string>
 </resources>

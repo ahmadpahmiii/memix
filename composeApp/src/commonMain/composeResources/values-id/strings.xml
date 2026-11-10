@@ -11,4 +11,5 @@
     <string name="create_photo_title">Meme foto</string>
     <string name="create_photo_body">Pilih foto dari galeri</string>
     <string name="create_template">Mulai dari template</string>
+    <string name="create_blank">Mulai dengan kanvas kosong</string>
 </resources>

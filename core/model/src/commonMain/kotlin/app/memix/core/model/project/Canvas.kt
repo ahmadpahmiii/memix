@@ -13,6 +13,9 @@ data class Canvas(
     val background: CanvasBackground,
 )
 
+/** The canvas's width and height in pixels. */
+fun Canvas.size(): PixelSize = PixelSize(widthPx, heightPx)
+
 @Serializable
 enum class CanvasRatio {
     @SerialName("9:16") RATIO_9_16,
@@ -34,4 +37,13 @@ sealed interface CanvasBackground {
     @Serializable
     @SerialName("blur")
     data object Blur : CanvasBackground
+
+    /**
+     * A picture the user picked, drawn to cover the whole canvas (centered, the overflow cropped) under every clip and
+     * layer (spec P2-12 → How it draws). [source] is the app's own copy in the project's media folder; its
+     * [MediaRef.pixelSize] is the size as shown.
+     */
+    @Serializable
+    @SerialName("image")
+    data class Image(val source: MediaRef) : CanvasBackground
 }

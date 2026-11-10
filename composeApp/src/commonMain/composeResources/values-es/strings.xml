@@ -11,4 +11,5 @@
     <string name="create_photo_title">Meme de foto</string>
     <string name="create_photo_body">Elige una foto de tu galería</string>
     <string name="create_template">Empieza con una plantilla</string>
+    <string name="create_blank">Empezar con un lienzo en blanco</string>
 </resources>

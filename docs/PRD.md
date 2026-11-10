@@ -115,7 +115,7 @@ How it works for the user:
 - Video shows a progress bar, previews at reduced resolution, and renders at full resolution on export.
 - The first use on Android may show "Preparing…" while Google Play services downloads the model.
 
-The ML Kit API is in beta and may change, so it sits behind our own interface with MediaPipe as the fallback.
+The ML Kit API is in beta and may change, so it sits behind our own interface. If its model is unavailable on a phone, the user sees a calm "can't remove the background right now" state with a retry; a MediaPipe fallback for photos is reconsidered when MediaPipe arrives for video (P4-13) (owner's delegation, 5 Nov 2026).
 
 ## Sound library
 
@@ -234,9 +234,9 @@ The north-star metric is **DAU, with a target of 5,000 by month 3 after the Andr
 | `template_open` | A template opens | template\_id, type |
 | `sound_preview` | A sound plays in the library | sound\_id, tab |
 | `sound_add` | A sound lands on a timeline | sound\_id, tab, editor |
-| `tool_use` | A tool is applied | editor, tool; font (font id: anton, poppins, baloo2, kalam, rozha) when tool is add_text or text_font; value when tool is a canvas tool (owner, 21 Oct 2026): `canvas_ratio` → 9:16, 1:1, 4:5, 3:4, 16:9 or custom (never the custom numbers), `canvas_fit` → fit or fill, `canvas_background` → blur or color (never the color itself) |
+| `tool_use` | A tool is applied | editor, tool; font (font id: anton, poppins, baloo2, kalam, rozha) when tool is add_text or text_font; filter (filter id) when tool is filter (P2-04, owner's delegation 2 Nov 2026); tool `make_video` is sent by the photo editor when Make it a video meme starts (P2-10, PM 9 Nov 2026; other tool ids live in `EditorTool` and `docs/pm/decision-log.md`); value when tool is a canvas tool (owner, 21 Oct 2026): `canvas_ratio` → 9:16, 1:1, 4:5, 3:4, 16:9 or custom (never the custom numbers), `canvas_fit` → fit or fill, `canvas_background` → blur, color or image (never the color itself or anything about the picture; Remove sends `color`; `image` comes with P2-12, PM clarification 27 Oct 2026) |
 | `bg_remove` | Background removal finishes | editor, success, duration\_ms |
-| `export_start` | The user starts an export (Export video in the export sheet, PM 20 Oct 2026) | editor, format, resolution, fps, length\_s |
+| `export_start` | The user starts an export (Export video in the export sheet, PM 20 Oct 2026) | editor, format, resolution, fps, length\_s; for a photo: editor, format (png, jpg), resolution (shorter side), action (save, copy), quality (jpg only) (P2-08, delegation 5 Nov 2026) |
 | `export_complete` | The file is saved | editor, format, time\_ms, size\_mb |
 | `export_fail` | Export errors | editor, error\_code |
 | `export_cancel` | The user cancels a running export (owner, 21 Oct 2026) | editor, progress (percent done, 0–100) |
@@ -300,7 +300,7 @@ Each phase ends with a build in internal testing and a manual QA pass, so proble
 | Sound licensing | Muted posts, takedowns, store removal | License rule and CMS fields, takedown flow, lawyer review |
 | Two native video engines | iOS later, engine bugs | One shared engine spec, reference renders compared during QA, Android first |
 | Video background removal quality | Rough edges | People only in v1, refine brush, low-res preview |
-| ML Kit subject segmentation is beta | API changes | Behind our own interface, MediaPipe fallback |
+| ML Kit subject segmentation is beta | API changes | Behind our own interface; a calm unavailable state with a retry, MediaPipe fallback reconsidered at P4-13 |
 | Name conflict | Costly rename later | Trademark search before launch |
 | File download costs | Bill grows with users | Supabase Storage while only the team downloads, Cloudflare R2 (free egress) before launch, on-device caching |
 | Supabase Free limits | Backend restricted when over quota | Monitor usage, move to Pro at about 1,500 DAU |

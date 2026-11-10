@@ -9,10 +9,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import app.memix.App
+import app.memix.debug.BgRemoveFailure
 import app.memix.debug.DraftsCheck
 import app.memix.debug.ExportCheck
 import app.memix.debug.ImportSaveFailure
 import app.memix.debug.MemixTestCrash
+import app.memix.debug.PhotoExportCheck
+import app.memix.debug.SceneRender
+import app.memix.debug.SegmentCheck
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -48,6 +52,37 @@ class MainActivity : ComponentActivity() {
         // Debug and benchmark builds (P1-14): --ez memix.draftsCheck true saves 25 drafts for the Drafts list checks. Logcat tag
         // MemixDraftsCheck; steps in docs/qa/phase-1/engineer-hand-checks.md → P1-14.
         if (handChecks && savedInstanceState == null && intent.getBooleanExtra("memix.draftsCheck", false)) lifecycleScope.launch { DraftsCheck().run() }
+        // Debug and benchmark builds (P2-01): --es memix.renderScene <photo project id> --ei memix.renderWidth 1080 writes the saved
+        // scene to cache/scene-renders/<id>-<width>.png through the editor's scene-drawing function. Logcat tag MemixSceneRender.
+        val renderScene = if (handChecks && savedInstanceState == null) intent.getStringExtra("memix.renderScene") else null
+        if (renderScene != null) {
+            val width = intent.getIntExtra("memix.renderWidth", 1080)
+            // P2-02: --ei memix.renderShortSide 1080|2160 sizes the canvas's shorter side instead of the width (the formats' two export sizes).
+            val shortSide = intent.getIntExtra("memix.renderShortSide", 0)
+            lifecycleScope.launch { SceneRender().run(renderScene, width, shortSide) }
+        }
+        // Debug and benchmark builds (P2-08): --es memix.exportPhoto <photo project id> exports it through the sheet's own renderer; options
+        // --es memix.exportPhotoFormat jpg|png, --ei memix.exportPhotoQuality 90, --ei memix.exportShortSide 1080|2160,
+        // --es memix.exportPhotoTo cache|gallery|clipboard, --ez memix.exportWatermarkFree true. Logcat tag MemixPhotoExport.
+        val exportPhoto = if (handChecks && savedInstanceState == null) intent.getStringExtra("memix.exportPhoto") else null
+        if (exportPhoto != null) {
+            val format = intent.getStringExtra("memix.exportPhotoFormat")
+            val quality = intent.getIntExtra("memix.exportPhotoQuality", 0)
+            val shortSide = intent.getIntExtra("memix.exportShortSide", 0)
+            val destination = intent.getStringExtra("memix.exportPhotoTo")
+            lifecycleScope.launch { PhotoExportCheck().run(exportPhoto, format, quality, shortSide, destination, watermark) }
+        }
+        // Debug and benchmark builds (P2-07): --es memix.bgRemoveFail unavailable|offline|memory|none|slow|off makes the cut-out end that way
+        // (the spec's bg-remove-fail:<kind> hooks), so each status card can be reached. Steps in docs/qa/phase-2/engineer-hand-checks.md.
+        if (handChecks && savedInstanceState == null) intent.getStringExtra("memix.bgRemoveFail")?.let(BgRemoveFailure::arm)
+        // Debug and benchmark builds (P2-06): --es memix.segmentCheck <photo path under files/> --ei memix.segmentPasses 6 (--ez memix.segmentKeepMasks true) runs
+        // the cut-out that many times and logs each duration. Logcat tag MemixSegmentCheck; steps in docs/qa/phase-2/engineer-hand-checks.md.
+        val segmentCheck = if (handChecks && savedInstanceState == null) intent.getStringExtra("memix.segmentCheck") else null
+        if (segmentCheck != null) {
+            val passes = intent.getIntExtra("memix.segmentPasses", 6)
+            val keepMasks = intent.getBooleanExtra("memix.segmentKeepMasks", false)
+            lifecycleScope.launch { SegmentCheck().run(segmentCheck, passes, keepMasks) }
+        }
         setContent { App(isDebugBuild, debugEditorProject = editorCheck) }
     }
 }

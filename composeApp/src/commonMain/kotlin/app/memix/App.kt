@@ -23,8 +23,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
@@ -49,6 +49,10 @@ import app.memix.core.designsystem.component.NavDestination
 import app.memix.core.designsystem.component.FadingToast
 import app.memix.core.designsystem.component.Scrim
 import app.memix.core.designsystem.component.coveredByModal
+import app.memix.core.model.project.ProjectType
+import app.memix.core.ui.scene.SceneCaptions
+import app.memix.core.ui.scene.ImageToolRenderer
+import app.memix.core.ui.scene.SceneImageSource
 import app.memix.core.domain.Logger
 import app.memix.core.domain.RefreshAppConfigUseCase
 import app.memix.core.domain.text.CaptionMeasurer
@@ -63,6 +67,10 @@ import app.memix.engine.video.VideoResultSurface
 import app.memix.feature.export.ExportExit
 import app.memix.feature.export.ExportScreen
 import app.memix.feature.export.ExportViewModel
+import app.memix.feature.export.PhotoExportedScreen
+import app.memix.feature.export.PhotoExportedViewModel
+import app.memix.core.domain.photo.ExportPhotoUseCase
+import app.memix.core.ui.scene.SavedPictureSource
 import app.memix.feature.export.LastExportStoppedToast
 import app.memix.feature.drafts.DraftsIntent
 import app.memix.feature.drafts.DraftsScreen
@@ -72,9 +80,19 @@ import app.memix.feature.drafts.DraftsUiState
 import app.memix.feature.drafts.DraftsViewModel
 import app.memix.feature.home.HomeScreen
 import app.memix.feature.home.HomeViewModel
-import app.memix.feature.photoeditor.PhotoEditorPlaceholder
+import app.memix.feature.photoeditor.PhotoEditorIntent
+import app.memix.feature.photoeditor.PhotoEditorScreen
+import app.memix.feature.photoeditor.LayerKind
+import app.memix.feature.photoeditor.PhotoEditorViewModel
+import app.memix.feature.stickerpack.StickerPackIntent
+import app.memix.feature.stickerpack.StickerPackScreen
+import app.memix.feature.stickerpack.StickerPackViewModel
+import app.memix.platform.services.rememberWhatsAppPackLauncher
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
 import app.memix.feature.sounds.SoundsScreen
 import app.memix.feature.templates.TemplatesScreen
+import app.memix.feature.videoeditor.StageContent
 import app.memix.feature.videoeditor.VideoEditorIntent
 import app.memix.feature.videoeditor.VideoEditorScreen
 import app.memix.feature.videoeditor.VideoEditorViewModel
@@ -90,6 +108,7 @@ import memix.composeapp.generated.resources.nav_templates
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import kotlin.uuid.Uuid
 import org.koin.core.parameter.parametersOf
 
 private val tabRoutes = listOf(HomeRoute, TemplatesRoute, SoundsRoute, DraftsRoute)
@@ -103,6 +122,9 @@ private val tabRoutes = listOf(HomeRoute, TemplatesRoute, SoundsRoute, DraftsRou
 fun App(isDebugBuild: Boolean, debugEditorProject: String? = null) {
     val refreshAppConfig = koinInject<RefreshAppConfigUseCase>()
     LaunchedEffect(Unit) { refreshAppConfig() }
+    // The clipboard copies of earlier runs go at the start (spec P2-08 → Copy).
+    val exportPhoto = koinInject<ExportPhotoUseCase>()
+    LaunchedEffect(Unit) { exportPhoto.deleteOldCopies() }
     MemixTheme {
         val navController = rememberNavController()
         val logger = koinInject<Logger>()
@@ -114,10 +136,17 @@ fun App(isDebugBuild: Boolean, debugEditorProject: String? = null) {
             closeCreateSheet = { createSheetOpen = false },
             openEditor = { projectId -> navController.navigate(VideoEditorRoute(projectId)) },
         )
+        val photoMemeImport = rememberPhotoMemeImport(
+            closeCreateSheet = { createSheetOpen = false },
+            openEditor = { projectId -> navController.navigate(PhotoEditorRoute(projectId)) },
+        )
         if (debugEditorProject != null) {
             LaunchedEffect(debugEditorProject) {
-                val projectId = openDebugEditorProject(debugEditorProject) ?: return@LaunchedEffect
-                navController.navigate(VideoEditorRoute(projectId))
+                val editor = openDebugEditorProject(debugEditorProject) ?: return@LaunchedEffect
+                when (editor.type) {
+                    ProjectType.VIDEO -> navController.navigate(VideoEditorRoute(editor.projectId))
+                    ProjectType.PHOTO -> navController.navigate(PhotoEditorRoute(editor.projectId, editor.blank))
+                }
             }
         }
         val reduceMotion = MemixTheme.reduceMotion
@@ -138,20 +167,26 @@ fun App(isDebugBuild: Boolean, debugEditorProject: String? = null) {
                         createSheetOpen = createSheetOpen,
                         onCreateSheetOpenChange = { createSheetOpen = it },
                         videoMemeImport = videoMemeImport,
-                        onOpenPhotoEditor = { navController.navigate(PhotoEditorRoute) },
+                        photoMemeImport = photoMemeImport,
+                        onOpenBlankCanvas = { navController.navigate(PhotoEditorRoute(Uuid.random().toString(), blank = true)) },
                         onOpenCatalog = { navController.navigate(CatalogRoute) },
-                        onOpenDraft = { draftId ->
+                        onOpenDraft = { draftId, type ->
                             // Start of the PRD's "open an editor" time; the engine logs "Preview opened" under the same tag.
                             logger.debug(OPEN_TIMING_TAG, "Draft opened from the drafts list")
-                            navController.navigate(VideoEditorRoute(draftId))
+                            when (type) {
+                                ProjectType.VIDEO -> navController.navigate(VideoEditorRoute(draftId))
+                                ProjectType.PHOTO -> navController.navigate(PhotoEditorRoute(draftId))
+                            }
                         },
                         editorCouldntOpenCount = editorCouldntOpenCount,
                         onEditorCouldntOpenShown = { editorCouldntOpenCount = 0L },
                     )
                 }
                 fullScreen<VideoEditorRoute>(reduceMotion) { entry ->
+                    val route = entry.toRoute<VideoEditorRoute>()
                     VideoEditorDestination(
-                        entry.toRoute<VideoEditorRoute>().projectId,
+                        route.projectId,
+                        route.madeFromPhoto,
                         onClose = { navController.popBackStack() },
                         onCouldntOpen = { editorCouldntOpenCount++ },
                         onOpenExport = { navController.navigate(ExportRoute) },
@@ -166,7 +201,50 @@ fun App(isDebugBuild: Boolean, debugEditorProject: String? = null) {
                         },
                     )
                 }
-                fullScreen<PhotoEditorRoute>(reduceMotion) { PhotoEditorPlaceholder(onClose = { navController.popBackStack() }) }
+                fullScreen<PhotoEditorRoute>(reduceMotion) { entry ->
+                    val route = entry.toRoute<PhotoEditorRoute>()
+                    PhotoEditorDestination(
+                        route.projectId,
+                        route.blank,
+                        onClose = { navController.popBackStack() },
+                        onCouldntOpen = { editorCouldntOpenCount++ },
+                        // The video editor takes this editor's place, so Close there goes Home; the photo draft stays on Drafts (spec P2-10 → Entry and exit).
+                        onOpenVideoMeme = { videoProjectId ->
+                            navController.navigate(VideoEditorRoute(videoProjectId, madeFromPhoto = true)) {
+                                popUpTo<PhotoEditorRoute> { inclusive = true }
+                            }
+                        },
+                        // A restored back stack may already show the Exported screen; never a second one on top.
+                        onOpenExported = {
+                            if (navController.currentDestination?.hasRoute(PhotoExportedRoute::class) != true) navController.navigate(PhotoExportedRoute)
+                        },
+                        onOpenStickerPacks = { hasImage ->
+                            if (navController.currentDestination?.hasRoute(StickerPacksRoute::class) != true) navController.navigate(StickerPacksRoute(hasImage))
+                        },
+                        // "Remove background" or "Add photo" from the packs screen's need-3-stickers state comes back through the editor's saved state.
+                        packsEmptyAction = entry.savedStateHandle.getStateFlow(PACKS_EMPTY_ACTION_KEY, false),
+                        onPacksEmptyActionHandled = { entry.savedStateHandle[PACKS_EMPTY_ACTION_KEY] = false },
+                    )
+                }
+                fullScreen<StickerPacksRoute>(reduceMotion) { entry ->
+                    StickerPacksDestination(
+                        hasImage = entry.toRoute<StickerPacksRoute>().hasImage,
+                        onClose = { navController.popBackStack() },
+                        onEmptyAction = {
+                            navController.previousBackStackEntry?.savedStateHandle?.set(PACKS_EMPTY_ACTION_KEY, true)
+                            navController.popBackStack()
+                        },
+                    )
+                }
+                fullScreen<PhotoExportedRoute>(reduceMotion) {
+                    PhotoExportedDestination(
+                        onExit = { exit ->
+                            navController.leaveExport(exit)
+                            // Make another: Home with the Create sheet open (spec P1-12 → Exported screen).
+                            if (exit == ExportExit.MAKE_ANOTHER) createSheetOpen = true
+                        },
+                    )
+                }
                 if (isDebugBuild) {
                     fullScreen<CatalogRoute>(reduceMotion) { DebugComponentCatalog(onClose = { navController.popBackStack() }) }
                 }
@@ -187,10 +265,11 @@ private fun MainShell(
     isDebugBuild: Boolean,
     createSheetOpen: Boolean,
     onCreateSheetOpenChange: (Boolean) -> Unit,
-    videoMemeImport: VideoMemeImport,
-    onOpenPhotoEditor: () -> Unit,
+    videoMemeImport: MemeImport,
+    photoMemeImport: MemeImport,
+    onOpenBlankCanvas: () -> Unit,
     onOpenCatalog: () -> Unit,
-    onOpenDraft: (draftId: String) -> Unit,
+    onOpenDraft: (draftId: String, type: ProjectType) -> Unit,
     editorCouldntOpenCount: Long,
     onEditorCouldntOpenShown: () -> Unit,
 ) {
@@ -210,7 +289,7 @@ private fun MainShell(
     }
     // While a sheet or its scrim is up, the tabs and nav behind it are hidden from TalkBack and the keyboard (P1-08
     // review, F1). The scrim's own rule decides, so the hand-over from Create to the import stays covered throughout.
-    val sheetUp = createSheetOpen || videoMemeImport.needsScrim
+    val sheetUp = createSheetOpen || videoMemeImport.needsScrim || photoMemeImport.needsScrim
     Box(Modifier.fillMaxSize().background(MemixColors.canvas)) {
         Column(Modifier.fillMaxSize().coveredByModal(sheetUp || draftsSheetUp)) {
             Box(Modifier.weight(1f)) {
@@ -220,7 +299,7 @@ private fun MainShell(
                     onDraftsIntent = drafts::onIntent,
                     onOpenCreate = { onCreateSheetOpenChange(true) },
                     onStartVideoMeme = { videoMemeImport.start(fromCreateSheet = false) },
-                    onOpenPhotoEditor = onOpenPhotoEditor,
+                    onStartPhotoMeme = { photoMemeImport.start(fromCreateSheet = false) },
                     onOpenDraft = onOpenDraft,
                     onOpenCatalog = if (isDebugBuild) onOpenCatalog else null,
                     modifier = Modifier.fillMaxSize(),
@@ -233,22 +312,24 @@ private fun MainShell(
         // One scrim for both sheets, so it stays up when the Create sheet hands over to the import (spec P1-02).
         Scrim(
             visible = sheetUp,
-            onDismiss = if (createSheetOpen) ({ onCreateSheetOpenChange(false) }) else videoMemeImport.scrimTap,
+            onDismiss = if (createSheetOpen) ({ onCreateSheetOpenChange(false) }) else videoMemeImport.scrimTap ?: photoMemeImport.scrimTap,
         )
         CreateSheet(
             visible = createSheetOpen,
             onDismiss = { onCreateSheetOpenChange(false) },
             onVideoMeme = { videoMemeImport.start(fromCreateSheet = true) },
-            onPhotoMeme = {
+            onPhotoMeme = { photoMemeImport.start(fromCreateSheet = true) },
+            onBlankCanvas = {
                 onCreateSheetOpenChange(false)
-                onOpenPhotoEditor()
+                onOpenBlankCanvas()
             },
             onTemplates = {
                 onCreateSheetOpenChange(false)
                 tabsController.navigateToTab(TemplatesRoute)
             },
         )
-        VideoMemeImportSheet(videoMemeImport)
+        MemeImportSheet(videoMemeImport)
+        MemeImportSheet(photoMemeImport)
         DraftsSheetsOver(draftsState, drafts::onIntent, onFreeUpSpace = { requestedBytes ->
             if (!freeUpSpace.launch(requestedBytes)) drafts.onIntent(DraftsIntent.FreeUpSpaceUnavailable)
         })
@@ -271,8 +352,8 @@ private fun TabsNavHost(
     onDraftsIntent: (DraftsIntent) -> Unit,
     onOpenCreate: () -> Unit,
     onStartVideoMeme: () -> Unit,
-    onOpenPhotoEditor: () -> Unit,
-    onOpenDraft: (String) -> Unit,
+    onStartPhotoMeme: () -> Unit,
+    onOpenDraft: (draftId: String, type: ProjectType) -> Unit,
     onOpenCatalog: (() -> Unit)?,
     modifier: Modifier,
 ) {
@@ -289,7 +370,7 @@ private fun TabsNavHost(
         composable<HomeRoute> {
             val viewModel = koinViewModel<HomeViewModel>()
             val state by viewModel.state.collectAsStateWithLifecycle()
-            HomeScreen(state = state, onStartVideoMeme = onStartVideoMeme, onOpenPhotoEditor = onOpenPhotoEditor, onOpenCatalog = onOpenCatalog)
+            HomeScreen(state = state, onStartVideoMeme = onStartVideoMeme, onStartPhotoMeme = onStartPhotoMeme, onOpenCatalog = onOpenCatalog)
         }
         composable<TemplatesRoute> { TemplatesScreen() }
         composable<SoundsRoute> { SoundsScreen() }
@@ -304,10 +385,12 @@ private fun TabsNavHost(
  * and Replace (P1-16) plugged in.
  */
 @Composable
-private fun VideoEditorDestination(projectId: String, onClose: () -> Unit, onCouldntOpen: () -> Unit, onOpenExport: () -> Unit) {
+private fun VideoEditorDestination(projectId: String, madeFromPhoto: Boolean, onClose: () -> Unit, onCouldntOpen: () -> Unit, onOpenExport: () -> Unit) {
     val viewModel = koinViewModel<VideoEditorViewModel> { parametersOf(projectId) }
     // The engine's caption renderer, which its stand-in draws with (P1-10).
     val captionMeasurer = koinInject<CaptionMeasurer>()
+    // Decodes the Canvas panel's background picture for its swatch (P2-12).
+    val imageSource = koinInject<SceneImageSource>()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val freeUpSpace = rememberFreeUpSpaceLauncher()
     LockPortraitOnPhones()
@@ -319,6 +402,7 @@ private fun VideoEditorDestination(projectId: String, onClose: () -> Unit, onCou
         if (state.couldntOpen) currentOnCouldntOpen()
         currentOnClose()
     }
+    if (madeFromPhoto) SoundsSheetOnArrival(state.stage != StageContent.OPENING) { viewModel.onIntent(VideoEditorIntent.ArrivedFromPhoto) }
     // Export video started an export: the Exporting screen covers the editor (spec P1-12 → Entry and exit).
     val currentOnOpenExport by rememberUpdatedState(onOpenExport)
     LaunchedEffect(state.openExportScreen) {
@@ -333,10 +417,127 @@ private fun VideoEditorDestination(projectId: String, onClose: () -> Unit, onCou
         captionStandIn = { text, style, transform, canvasWidthPx, canvasHeightPx, modifier ->
             CaptionStandIn(captionMeasurer, text, style, transform, canvasWidthPx, canvasHeightPx, modifier)
         },
+        imageSource = imageSource,
         // When no storage screen opens, the editor hides the button (spec P1-04 → Saving).
         onFreeUpSpace = { requestedBytes ->
             if (!freeUpSpace.launch(requestedBytes)) viewModel.onIntent(VideoEditorIntent.FreeUpSpaceUnavailable)
         },
+    )
+}
+
+/**
+ * Opens the Meme sounds sheet once, after the push into the editor (320 ms, or the 120 ms fade with reduce motion) and the first frame
+ * ([firstFrameShown]), as if the user had tapped Meme sounds (spec P2-10 → Arriving). Saved across a restart, so a restored editor
+ * doesn't open the sheet again.
+ */
+@Composable
+private fun SoundsSheetOnArrival(firstFrameShown: Boolean, open: () -> Unit) {
+    var pending by rememberSaveable { mutableStateOf(true) }
+    var pushDone by remember { mutableStateOf(false) }
+    val arrivalMillis = if (MemixTheme.reduceMotion) MemixMotion.durationPress else MemixMotion.durationScreen
+    LaunchedEffect(Unit) {
+        delay(arrivalMillis.toLong())
+        pushDone = true
+    }
+    val currentOpen by rememberUpdatedState(open)
+    LaunchedEffect(pending, pushDone, firstFrameShown) {
+        if (!pending || !pushDone || !firstFrameShown) return@LaunchedEffect
+        pending = false
+        currentOpen()
+    }
+}
+
+/**
+ * The photo editor (P2-01) with the engine's picture decoder and the phone's storage screen plugged in. [blank] opens a
+ * blank canvas made in memory.
+ */
+@Composable
+private fun PhotoEditorDestination(
+    projectId: String,
+    blank: Boolean,
+    onClose: () -> Unit,
+    onCouldntOpen: () -> Unit,
+    onOpenVideoMeme: (videoProjectId: String) -> Unit,
+    onOpenExported: () -> Unit,
+    onOpenStickerPacks: (hasImage: Boolean) -> Unit,
+    packsEmptyAction: StateFlow<Boolean>,
+    onPacksEmptyActionHandled: () -> Unit,
+) {
+    val viewModel = koinViewModel<PhotoEditorViewModel>(key = projectId) { parametersOf(projectId, blank) }
+    val imageSource = koinInject<SceneImageSource>()
+    // The image tools' color pass (P2-04); iOS binds an unsupported one until P7-09.
+    val imageTools = koinInject<ImageToolRenderer>()
+    // Draws the text layers with the video engine's caption renderer (P2-03).
+    val captions = koinInject<SceneCaptions>()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val freeUpSpace = rememberFreeUpSpaceLauncher()
+    LockPortraitOnPhones()
+    PhotoEditorPicker(state.pickRequest, viewModel::onIntent)
+    val currentOnClose by rememberUpdatedState(onClose)
+    val currentOnCouldntOpen by rememberUpdatedState(onCouldntOpen)
+    LaunchedEffect(state.isClosing) {
+        if (!state.isClosing) return@LaunchedEffect
+        if (state.couldntOpen) currentOnCouldntOpen()
+        currentOnClose()
+    }
+    // Save to gallery finished: the Exported screen covers the editor (spec P2-08 → Entry and exit).
+    val currentOnOpenExported by rememberUpdatedState(onOpenExported)
+    LaunchedEffect(state.openExportedScreen) {
+        if (!state.openExportedScreen) return@LaunchedEffect
+        currentOnOpenExported()
+        viewModel.onIntent(PhotoEditorIntent.ExportedScreenOpened)
+    }
+    // Make it a video meme made its draft: the video editor opens in this editor's place (spec P2-10 → Entry and exit).
+    val currentOnOpenVideoMeme by rememberUpdatedState(onOpenVideoMeme)
+    LaunchedEffect(state.openVideoMeme) {
+        val videoProjectId = state.openVideoMeme ?: return@LaunchedEffect
+        currentOnOpenVideoMeme(videoProjectId)
+        viewModel.onIntent(PhotoEditorIntent.VideoMemeOpened)
+    }
+    // The WhatsApp packs row was tapped: the packs screen is pushed over the editor (spec P2-09 → Entry and exit).
+    val currentOnOpenStickerPacks by rememberUpdatedState(onOpenStickerPacks)
+    LaunchedEffect(state.openStickerPacks) {
+        if (!state.openStickerPacks) return@LaunchedEffect
+        currentOnOpenStickerPacks(state.layers.any { it.kind == LayerKind.IMAGE })
+        viewModel.onIntent(PhotoEditorIntent.StickerPacksOpened)
+    }
+    val emptyActionRequested by packsEmptyAction.collectAsStateWithLifecycle()
+    val currentOnPacksEmptyActionHandled by rememberUpdatedState(onPacksEmptyActionHandled)
+    LaunchedEffect(emptyActionRequested) {
+        if (!emptyActionRequested) return@LaunchedEffect
+        currentOnPacksEmptyActionHandled()
+        viewModel.onIntent(PhotoEditorIntent.StickersEmptyAction)
+    }
+    PhotoEditorScreen(
+        state = state,
+        onIntent = viewModel::onIntent,
+        imageSource = imageSource,
+        imageTools = imageTools,
+        captions = captions,
+        // When no storage screen opens, the editor hides the button (spec P1-04 → Saving).
+        onFreeUpSpace = { requestedBytes ->
+            if (!freeUpSpace.launch(requestedBytes)) viewModel.onIntent(PhotoEditorIntent.FreeUpSpaceUnavailable)
+        },
+    )
+}
+
+/**
+ * The WhatsApp sticker packs (P2-09) with the picture decoder and WhatsApp's add screen plugged in. [onEmptyAction] leaves for the
+ * editor's Remove background or Add photo; [onClose] leaves the flow.
+ */
+@Composable
+private fun StickerPacksDestination(hasImage: Boolean, onClose: () -> Unit, onEmptyAction: () -> Unit) {
+    val viewModel = koinViewModel<StickerPackViewModel>()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val whatsApp = rememberWhatsAppPackLauncher(onReturned = { viewModel.onIntent(StickerPackIntent.ReturnedFromWhatsApp) })
+    StickerPackScreen(
+        state = state,
+        onIntent = viewModel::onIntent,
+        imageSource = koinInject<SceneImageSource>(),
+        hasImage = hasImage,
+        onEmptyAction = onEmptyAction,
+        onOpenWhatsApp = whatsApp::launch,
+        onClose = onClose,
     )
 }
 
@@ -360,6 +561,14 @@ private fun ExportDestination(onExit: (ExportExit) -> Unit) {
         onFreeUpSpace = if (canFreeUpSpace) ({ neededBytes -> if (!freeUpSpace.launch(neededBytes)) canFreeUpSpace = false }) else null,
         onExit = onExit,
     )
+}
+
+/** The photo Exported screen (P2-08) with the engine's decoder for the saved picture plugged in. [onExit] leaves the screen. */
+@Composable
+private fun PhotoExportedDestination(onExit: (ExportExit) -> Unit) {
+    val viewModel = koinViewModel<PhotoExportedViewModel>()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    PhotoExportedScreen(state = state, onIntent = viewModel::onIntent, pictures = koinInject<SavedPictureSource>(), onExit = onExit)
 }
 
 /**
@@ -415,6 +624,9 @@ private fun NavHostController.leaveExport(exit: ExportExit) {
 
 /** Logcat tag of the editor-open timing: the drafts list's tap here, the engine's "Preview opened" (P1-14 must-know 11). */
 private const val OPEN_TIMING_TAG = "MemixPreview"
+
+/** The saved-state key the packs screen sets on the editor's entry to ask for Remove background or Add photo (P2-09). */
+private const val PACKS_EMPTY_ACTION_KEY = "stickerPacksEmptyAction"
 
 private inline fun <reified T : Any> NavGraphBuilder.fullScreen(
     reduceMotion: Boolean,

@@ -78,6 +78,12 @@ internal sealed interface PlanBackground {
 
     /** A copy of the clip itself, scaled to Fill and blurred (CanvasCatalog.BLUR_SIGMA_OF_SHORT_SIDE). */
     data object Blur : PlanBackground
+
+    /**
+     * The user's picture (P2-12), scaled to cover the whole frame, centered, the overflow cropped; it shows only in the
+     * bars a Fit clip leaves. [source] is the app's copy; a missing file draws black, like a gap.
+     */
+    data class Image(val source: MediaRef) : PlanBackground
 }
 
 internal const val BLACK_ARGB = 0xFF000000

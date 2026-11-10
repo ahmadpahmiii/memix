@@ -6,6 +6,8 @@ plugins {
 kotlin {
     sourceSets.commonMain.dependencies {
         implementation(projects.core.domain)
+        // The scene-captions interface the photo editor draws text through (P2-03); this engine implements it.
+        implementation(projects.core.ui)
         implementation(project.dependencies.platform(libs.koin.bom))
         implementation(libs.koin.core)
     }

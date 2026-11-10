@@ -1,24 +1,27 @@
 package app.memix.core.domain.project
 
 import app.memix.core.domain.text.CaptionBlockSize
+import app.memix.core.model.project.BoxSize
 import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.CanvasCatalog
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.CaptionCatalog
+import app.memix.core.model.project.CaptionLook
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.MediaClip
+import app.memix.core.model.project.MediaRef
+import app.memix.core.model.project.PhotoCatalog
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
+import app.memix.core.model.project.ProjectType
 import app.memix.core.model.project.RatioTerms
 import app.memix.core.model.project.TextItem
+import app.memix.core.model.project.Transform
 import app.memix.core.model.project.TrackKind
-import kotlin.math.PI
-import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.max
+import app.memix.core.model.project.hasSameShape
+import app.memix.core.model.project.turnedBounds
 import kotlin.math.min
-import kotlin.math.sin
 
 /*
  * Canvas edits (spec docs/ux/specs/P1-11-canvas.md → Ratio change, Interactions): the shape, how main clips sit in
@@ -31,7 +34,7 @@ import kotlin.math.sin
  * canvas pixels, on a canvas of the given width and height.
  */
 fun interface CaptionBlockMeasure {
-    fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int): CaptionBlockSize
+    fun measure(text: String, style: CaptionStyle, canvasWidthPx: Int, canvasHeightPx: Int, look: CaptionLook): CaptionBlockSize
 }
 
 /** What [setCanvasRatio] did: the new project, and whether it moved or shrank a caption (the toast says so). */
@@ -44,10 +47,7 @@ data class CanvasRatioChange(val project: Project, val movedLayers: Boolean)
  * the new canvas size. Unchanged when the canvas already has that size and ratio, or the custom terms aren't allowed.
  */
 fun Project.setCanvasRatio(ratio: CanvasRatio, customTerms: RatioTerms? = null, measure: CaptionBlockMeasure): CanvasRatioChange {
-    val size = when (ratio) {
-        CanvasRatio.CUSTOM -> customTerms?.takeIf(CanvasCatalog::allowsCustom)?.let(CanvasCatalog::customSize)
-        else -> CanvasCatalog.presetSize(ratio)
-    } ?: return CanvasRatioChange(this, movedLayers = false)
+    val size = canvasSizeFor(ratio, customTerms) ?: return CanvasRatioChange(this, movedLayers = false)
     val old = PixelSize(canvas.widthPx, canvas.heightPx)
     if (canvas.ratio == ratio && old == size) return CanvasRatioChange(this, movedLayers = false)
     var moved = false
@@ -64,6 +64,12 @@ fun Project.setCanvasRatio(ratio: CanvasRatio, customTerms: RatioTerms? = null, 
     return CanvasRatioChange(resized.withTracks(tracks), moved)
 }
 
+/** The canvas size of preset [ratio], or of the custom ratio [customTerms] for [CanvasRatio.CUSTOM]; null when the terms aren't allowed. */
+internal fun canvasSizeFor(ratio: CanvasRatio, customTerms: RatioTerms?): PixelSize? = when (ratio) {
+    CanvasRatio.CUSTOM -> customTerms?.takeIf(CanvasCatalog::allowsCustom)?.let(CanvasCatalog::customSize)
+    else -> CanvasCatalog.presetSize(ratio)
+}
+
 /** Every main clip drawn [fit] (spec → Clips: it applies to all of them at once). */
 fun Project.setClipsFit(fit: FrameFit): Project {
     val track = mainTrack() ?: return this
@@ -74,6 +80,22 @@ fun Project.setClipsFit(fit: FrameFit): Project {
 /** What shows around fitted clips: a color or a blurred copy of the clip. */
 fun Project.setCanvasBackground(background: CanvasBackground): Project =
     if (canvas.background == background) this else copy(canvas = canvas.copy(background = background))
+
+/** The picture behind everything, or null when the background is a color or Blur. */
+fun Project.backgroundImage(): MediaRef? = (canvas.background as? CanvasBackground.Image)?.source
+
+/** The picture [source] as the background, covering the canvas (a new pick, or Replace: [source] is always a new file). */
+fun Project.setBackgroundImage(source: MediaRef): Project = setCanvasBackground(CanvasBackground.Image(source))
+
+/**
+ * The background picture gone, the editor's default color back (video black, photo white). The picture's file stays in
+ * the draft's media folder while Undo can bring it back (spec P2-12 → Entry and exit). Unchanged without a picture.
+ */
+fun Project.removeBackgroundImage(): Project {
+    if (canvas.background !is CanvasBackground.Image) return this
+    val color = if (type == ProjectType.PHOTO) PhotoCatalog.BACKGROUND else CanvasCatalog.VIDEO_BACKGROUND
+    return setCanvasBackground(CanvasBackground.Solid(color))
+}
 
 /** The fit every main clip shares; null when they differ (an older debug draft, a later per-clip tool) or there are none. */
 fun Project.sharedClipsFit(): FrameFit? {
@@ -93,79 +115,28 @@ fun Project.backgroundShows(): Boolean {
     }
 }
 
-/** Whether [a] and [b] have the same width-to-height ratio within CanvasCatalog.SAME_SHAPE_TOLERANCE. */
-fun hasSameShape(a: PixelSize, b: PixelSize): Boolean {
-    if (a.widthPx <= 0 || a.heightPx <= 0 || b.widthPx <= 0 || b.heightPx <= 0) return false
-    val aspectA = a.widthPx.toFloat() / a.heightPx
-    val aspectB = b.widthPx.toFloat() / b.heightPx
-    return abs(aspectA / aspectB - 1f) <= CanvasCatalog.SAME_SHAPE_TOLERANCE
-}
-
 /**
  * This caption on the canvas [new] after a ratio change from [old] (spec → Ratio change → Layers). Its box is its
- * laid-out block, outline included, scaled and turned. Fully inside [old] and crossing an edge of [new]: it shrinks
- * first if it's bigger than [new] less two margins (never below CaptionCatalog.MIN_SCALE), then moves straight in to
- * the margin. Still too big at the smallest size, it's centered on that axis. Partly outside [old]: unchanged.
+ * laid-out block, outline included, scaled and turned; the rule is [keptInside]'s, with CaptionCatalog.MIN_SCALE as the
+ * smallest size and the 2% margin.
  */
 internal fun TextItem.keptInside(old: PixelSize, new: PixelSize, measure: CaptionBlockMeasure): TextItem {
-    val oldBox = boxOn(old, transform.scale, measure)
-    val oldCenterX = transform.centerX * old.widthPx
-    val oldCenterY = transform.centerY * old.heightPx
-    // Hung off the edge on purpose: it keeps its place (spec → Layers, 3).
-    if (crosses(oldCenterX, oldBox.width, old.widthPx.toFloat()) || crosses(oldCenterY, oldBox.height, old.heightPx.toFloat())) return this
-
-    var scale = transform.scale
-    var box = boxOn(new, scale, measure)
-    val newCenterX = transform.centerX * new.widthPx
-    val newCenterY = transform.centerY * new.heightPx
-    if (!crosses(newCenterX, box.width, new.widthPx.toFloat()) && !crosses(newCenterY, box.height, new.heightPx.toFloat())) return this
-
-    val marginPx = min(new.widthPx, new.heightPx) * CanvasCatalog.LAYER_MARGIN_OF_SHORT_SIDE
-    val roomWidth = new.widthPx - 2 * marginPx
-    val roomHeight = new.heightPx - 2 * marginPx
-    if (box.width > roomWidth + EDGE_TOLERANCE_PX || box.height > roomHeight + EDGE_TOLERANCE_PX) {
-        // The box grows with the scale, so one ratio finds the size that fits.
-        val fitting = scale * min(roomWidth / box.width, roomHeight / box.height)
-        scale = max(fitting, min(scale, CaptionCatalog.MIN_SCALE))
-        box = boxOn(new, scale, measure)
+    val kept = transform.keptInside(old, new, CaptionCatalog.MIN_SCALE, CanvasCatalog.LAYER_MARGIN_OF_SHORT_SIDE) { canvas, scale ->
+        captionBoxOn(text, style, transform, canvas, scale, measure)
     }
-    val centerX = keptOnAxis(newCenterX, box.width, new.widthPx.toFloat(), marginPx)
-    val centerY = keptOnAxis(newCenterY, box.height, new.heightPx.toFloat(), marginPx)
-    val kept = transform.copy(centerX = centerX / new.widthPx, centerY = centerY / new.heightPx, scale = scale)
     return if (kept == transform) this else copy(transform = kept)
 }
 
-// Where a box [length] long centered at [center] goes on an axis [size] long: where it is when it doesn't cross an edge,
-// else just far enough in to sit [margin] inside it; centered when it can't fit between the margins.
-private fun keptOnAxis(center: Float, length: Float, size: Float, margin: Float): Float {
-    val half = length / 2
-    return when {
-        !crosses(center, length, size) -> center
-        length > size - 2 * margin + EDGE_TOLERANCE_PX -> size / 2
-        else -> center.coerceIn(margin + half, size - margin - half)
-    }
-}
-
-// Whether a box [length] long centered at [center] reaches past either end of an axis [size] long.
-private fun crosses(center: Float, length: Float, size: Float): Boolean =
-    center - length / 2 < -EDGE_TOLERANCE_PX || center + length / 2 > size + EDGE_TOLERANCE_PX
-
-/** The caption's box at [scale] on a canvas [canvasSize]: its turned block's bounds, in canvas pixels. */
-private fun TextItem.boxOn(canvasSize: PixelSize, scale: Float, measure: CaptionBlockMeasure): BoxSize {
-    val block = measure.measure(text, style, canvasSize.widthPx, canvasSize.heightPx)
+/**
+ * A caption's box at [scale] on a canvas [canvasSize]: its turned block's bounds, in canvas pixels. Video captions and
+ * photo text layers share it (spec P2-03 → Ratio change with text).
+ */
+internal fun captionBoxOn(text: String, style: CaptionStyle, transform: Transform, canvasSize: PixelSize, scale: Float, measure: CaptionBlockMeasure): BoxSize {
+    val block = measure.measure(text, style, canvasSize.widthPx, canvasSize.heightPx, CaptionLook.Text)
     // The outline is stroked on the letters' edges, so half its width lies outside the block.
     val shortSide = min(canvasSize.widthPx, canvasSize.heightPx)
     val outlineOutside = if (style.outlineColor == null) 0f else shortSide * CaptionCatalog.FONT_SIZE_OF_SHORT_SIDE / CaptionCatalog.OUTLINE_WIDTH_DIVISOR / 2
     val width = (block.widthPx + 2 * outlineOutside) * scale
     val height = (block.heightPx + 2 * outlineOutside) * scale
-    val radians = transform.rotationDegrees * PI.toFloat() / HALF_TURN
-    val cosine = abs(cos(radians))
-    val sine = abs(sin(radians))
-    return BoxSize(width * cosine + height * sine, width * sine + height * cosine)
+    return turnedBounds(BoxSize(width, height), transform.rotationDegrees)
 }
-
-private data class BoxSize(val width: Float, val height: Float)
-
-/** Rounding slack: a box this close to an edge counts as touching it, not crossing it. */
-private const val EDGE_TOLERANCE_PX = 0.5f
-private const val HALF_TURN = 180f

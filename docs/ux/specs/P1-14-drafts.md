@@ -13,7 +13,7 @@ Replaces the P0-05 Drafts tab (title plus empty state) with the real list. Consi
 
 ## Entry and exit
 - **Arrives from:** the Drafts tab in the bottom navigation, and back from an editor opened here.
-- **A row** → the editor for that draft (P1-04 entry: playhead at 0:00, paused, nothing selected). Photo drafts open the photo editor once P2 exists.
+- **A row** → the editor for that draft (P1-04 entry: playhead at 0:00, paused, nothing selected). Photo drafts open the photo editor (P2-01: nothing selected, no panel open). **A photo draft's thumbnail** is the lowest image layer's picture, center-cropped square (`P2-01-photo-editor-shell.md` → Drafts cover); a photo draft with no image layer shows the placeholder.
 - **Back from the editor:**
   - If the draft changed, it's now first (it was edited last): the list scrolls to the top and focus goes to its row.
   - If it didn't change, the list keeps its scroll and focus returns to its row.
