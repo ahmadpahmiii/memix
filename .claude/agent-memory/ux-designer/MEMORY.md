@@ -2,6 +2,13 @@
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: Design decisions and their reasons, patterns that worked or failed, recurring review issues, competitor insights.
 
+- 2026-11-11 · P3-08 voiceover, P3-09 audio effects, P3-11 Region sheet, P3-14 Home trending row (last Phase 3 specs). Decisions and reasons:
+  - **Recording UX:** tap-to-toggle (no hold), 3 s countdown, no headphones = project audio silent during a take (speaker bleeds into the mic), Bluetooth mic never used (low-quality SCO route, outside the 67 ms bar, no BT permission), stop-and-keep on any interruption, stop at video end (project never grows), under 0.5 s or silent = discarded with a toast. Record/Stop are `danger` Buttons (DESIGN_SYSTEM gives danger to recording), not blue.
+  - **Effects panel:** 5 Tabs (Voice, Tone, Bass, Echo, Fades) so each tab fits 2 rows at 360x640 (panel region about 229 dp; compute it before adding rows); presets stack on sliders instead of rewriting them (no hidden state); Reset is clip-wide; Split puts Fade in left, Fade out right; Speed changes clip length and moves lane on overlap. One schema bump in 09a for all fields.
+  - **Waveform on clips:** `on-track` bars at 60% (3.3:1 green, 3.6:1 blue; I first wrote 3.4, recompute contrast by hand with linear RGB before quoting), label on a solid patch of the clip color so no bar runs behind a letter.
+  - **Region sheet:** region first, 2-column label-tile grid + scrolling language tiles; first run blocking with Continue (back = Continue); outside-five country is kept (Local says "No local sounds yet") rather than silently mapped; unreadable region falls back to the language's launch region. OptionTile got a label layout.
+  - **Home becomes top-aligned** once the trending row exists (P0-05's own note); section absent when empty; `tab` is `trending` until the PRD lists `home`.
+  - **Cross-spec edits done in the same pass:** P3-02 (region line = opener, unknown state), P0-05 (Home button), P1-06 (tool order). Changelog rows go at the END of the file, not by date.
 - 2026-11-11 · P3-05 picker, P3-07 My sounds, P3-15 Use flow specs. Decisions and reasons:
   - **The picker is one Sheet with panes** (list, details, report, import), never stacked sheets; a toast under a scrim can't be reached, so a storage-full action there is a strip inside the sheet, and Delete/Rename of My sounds live only on the Sounds tab.
   - **Half-height sheet math:** the header (frame + search + tabs) eats about 190 dp, leaving 1.9 rows at 640 dp tall; so a sheet with a pinned header gets a minimum of header + 3 rows, and chips are dropped in the picker. Do the arithmetic before promising "two taps".

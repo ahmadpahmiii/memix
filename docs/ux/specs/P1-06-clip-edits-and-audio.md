@@ -77,8 +77,8 @@ The tools stay in thumb reach, at the bottom where the main tools were. This rep
 | Video clip (main track) | Split · Volume · Delete · Duplicate · Detach audio · Reorder · Replace (P1-16) |
 | Photo clip (main track) | Split · Delete · Duplicate · Reorder · Replace (P1-16) |
 | Main clip whose file is missing (P1-16 on) | **Replace first**, then the clip's usual tools in their order without Replace. Replace is the only tool that fixes it, and P1-04's toast names it, so it must show without scrolling. |
-| Meme sound | Volume · Split · Delete · Move here · Duplicate |
-| Audio clip (detached original audio) | Volume · Split · Delete · Move here · Duplicate |
+| Meme sound | Volume · Split · Delete · Move here · Duplicate (P3-09 inserts **Audio effects** fourth, before Move here) |
+| Audio clip (detached original audio; later voiceover and imported audio) | Volume · Split · Delete · Move here · Duplicate (P3-09: Audio effects fourth) |
 | Text item | Edit text · Style · Position · Delete · Split · Move here · Duplicate (P1-10: Delete ahead of Split, because captions are deleted more often than cut) |
 | Any item on a locked track: **Later (L-02)** | Unlock, then that item's usual tools |
 

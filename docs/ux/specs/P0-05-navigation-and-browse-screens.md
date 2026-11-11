@@ -18,7 +18,7 @@ The one blue action: the Create block in the bottom navigation on every browse s
 - Hero: "MAKE A MEME" in `display-xl`.
 - Entry cards: Video meme (`primary`) and Photo meme (`surface-raised`), two columns, `space-3` gap. Both open the matching editor placeholder.
 - **Differences from the board:**
-  - The region is a **label, not a pill button**: `globe` icon + region name in `label`, `text-secondary`, no fill. Changing region comes with P3-11; until then a pill that looks tappable would be a dead control.
+  - The region is a **label, not a pill button**: `globe` icon + region name in `label`, `text-secondary`, no fill. Changing region comes with P3-11; until then a pill that looks tappable would be a dead control. **Updated 11 Nov (P3-11):** from P3-11 it is a live button (globe, name, `chevron_right`, 48 dp target) that opens the Region sheet; and from P3-14 Home is top-aligned with the trending sounds row under the cards (`P3-11-region-sheet.md`, `P3-14-home-trending-sounds.md`).
   - **Trending templates and Trending sounds are left out** until the catalog is live (P3-01, P4-05). Showing the board's sample items would present invented content as real.
   - **Composition while Home has one job.** With the trending rows out, picking an editor is all Home does, so the hero and the two cards sit in the vertical center of the space under the top row, and the cards take the 4:5 meme canvas ratio (one of the export ratios in the PRD) instead of the board's 132 dp minimum. The two doors become the screen, and the space above and below them is balanced on purpose instead of left over under the cards. When the trending rows arrive, the block moves back to the top and the cards return to the board's size.
 

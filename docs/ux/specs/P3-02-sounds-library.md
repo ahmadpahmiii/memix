@@ -7,7 +7,7 @@ Phase 3 spec set for the sound library. Four linked files; this one is the scree
 
 Builds on, and does not repeat: `P0-05-navigation-and-browse-screens.md` (frame, bottom nav, empty-state look, Home region label), `P1-06-clip-edits-and-audio.md` → Meme sounds sheet (the SoundRow, one sound plays at a time, the playing band), `P1-14-drafts.md` (toast with Undo, sheets, no spinner), and the component READMEs in `design/system/components/` (SoundRow, Tabs, Chip, Sheet, Toast, ProgressBar).
 
-Out of this set (the owner is deciding): P3-11's Region sheet and a new Home trending row. Where this screen touches them it leaves a slot and says so.
+Decided since (owner, 11 Nov): P3-11's Region sheet (`P3-11-region-sheet.md`) and the Home trending row (`P3-14-home-trending-sounds.md`) now have specs. Where this screen touches them it says so.
 
 Board: `design/screens/Sounds.dc.html`. Differences are listed under Layout.
 
@@ -55,7 +55,7 @@ Top to bottom, inside the P0-05 frame (status bar inset on top, bottom nav under
 | Favorites | Two sections: **Recently used** (up to 5), then **Favorites** (all) | Recent: last used first. Favorites: last favorited first | No |
 | My sounds | The user's imported and extracted sounds (P3-07 builds the import) | Newest first | No |
 
-- **Local's region line:** the first list item, a `globe` icon (24 dp, `text-secondary`) and "Sounds for {region}" in `label` `text-secondary`, where {region} is the same country name Home shows (P0-05 `region_*`). It is a **label, not a button**, for the same reason as Home's region: until the owner decides P3-11's Region sheet, a tappable-looking control would be a dead one. If P3-11 adds the sheet, this line becomes its opener, in that ticket's spec.
+- **Local's region line:** the first list item, a `globe` icon (24 dp, `text-secondary`) and "Sounds for {region}" in `label` `text-secondary`, where {region} is the same country name Home shows (P0-05 `region_*`). **Updated 11 Nov (P3-11):** the line is now the **opener of the Region sheet**: a `surface-raised` row, `touch-target` tall, with the word "Change" in `primary` at its end; the whole row is one button. If the region is missing it reads "Choose your region". The row's exact look, copy and behavior are in `P3-11-region-sheet.md` → The Local tab's header. (It was a label while the owner had not decided the sheet; a tappable-looking control would have been a dead one.)
 - **Favorites tab:** "Recently used" is every sound that landed on a timeline in the editor or the Use flow, last 20 stored, 5 shown (Assumption: five rows fit one screen above the second section; no "see all" in v1). A sound can be in both sections. Sections have a `label` `text-secondary` heading, `space-6` above (not on the first), `space-2` below. When a section is empty it is not drawn, except Favorites, which shows its hint when Recently used is present.
 - **Un-favoriting inside the Favorites tab** does not remove the row at once: the heart turns off and the row stays until the user leaves the tab or refreshes, so a mis-tap can be undone with the same tap and the list never shifts under a finger. TalkBack hears "Favorite {name}, off".
 - **A favorite or recent whose sound left the catalog:** the row stays, with the disc and Use block disabled and the meta "No longer available" (P3-04); the heart still works so the user can remove it.
@@ -84,7 +84,7 @@ Top to bottom, inside the P0-05 frame (status bar inset on top, bottom nav under
 | Offline, nothing cached ever | The load-error block with the offline wording of the body | `sounds_load_error_title`, `sounds_load_error_body` |
 | Empty, Trending | Title, body, Secondary "Browse global" which opens Global | `sounds_empty_trending_title`, `sounds_empty_trending_body`, `sounds_browse_global` |
 | Empty, Local (region known) | Title, body with the region, Secondary "See global sounds" which opens Global | `sounds_empty_local_title`, `sounds_empty_local_body`, `sounds_browse_global` |
-| Empty, Local (region unknown) | Title and body, no button until P3-11 gives one | `sounds_local_unknown_title`, `sounds_local_unknown_body` |
+| Empty, Local (region unknown; defensive after P3-11, since the first-run sheet always sets one) | The region row at the top reads "Choose your region" and is the button; title and body below it, no button of their own | `sounds_region_choose`, `sounds_local_unknown_title`, `sounds_local_unknown_body` |
 | Empty, Global (catalog empty) | The P0-05 empty state with new body | `sounds_empty_title`, `sounds_empty_body` |
 | Empty, category | Title, body, Secondary "Show all" which selects All | `sounds_empty_category_title`, `sounds_empty_category_body`, `sounds_show_all` |
 | Empty, Favorites (and no recents) | Heart icon (32 dp, `text-secondary`), title, body, Secondary "Browse trending" | `sounds_empty_favorites_title`, `sounds_empty_favorites_body`, `sounds_browse_trending` |
@@ -160,7 +160,8 @@ English source. **Budget** is the longest the string may be in any of the five l
 | `sounds_empty_local_title` | No local sounds yet | 28 | |
 | `sounds_empty_local_body` | We're adding sounds for {region}. Try global in the meantime. | 80 | |
 | `sounds_local_unknown_title` | We don't know your region | 32 | |
-| `sounds_local_unknown_body` | Local sounds show up once Memix knows your region. | 70 | P3-11 adds the way to set it |
+| `sounds_local_unknown_body` | Pick your region to see local sounds. | 56 | Changed 11 Nov (P3-11): the region row above is the way to set it |
+| `sounds_region_change`, `sounds_region_change_a11y`, `sounds_region_choose` | Change / Change region / Choose your region | 14 / 24 / 30 | P3-11 (`P3-11-region-sheet.md` has all five languages) |
 | `sounds_empty_category_title` | Nothing in this category | 36 | |
 | `sounds_empty_category_body` | Try another category, or see all sounds. | 60 | |
 | `sounds_show_all` | Show all | 16 | Button |

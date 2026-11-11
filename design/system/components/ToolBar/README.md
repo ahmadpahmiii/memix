@@ -8,7 +8,8 @@ The bottom tool bar in both editors: a horizontally scrolling row of icon-plus-l
   - Meme sounds (P1-08)
   - Text (P1-10)
   - Add media (P1-16): adds videos or photos after the clip under the playhead
-  - then later: Audio, Stickers, Effects, Filters, Overlay, Remove BG, Speed
+  - Voiceover (P3-08, icon `mic`): opens the recording panel; not shown in an empty project
+  - then later: Stickers, Effects, Filters, Overlay, Remove BG, Speed (there is no parent "Audio" tool: audio effects live in the sound clips' tool bar, P3-09)
   - Canvas and ratio are entered from the top-bar chip. Tools are left-aligned so each keeps its place as more arrive. Before launch a tool may sit one place to the left until the tool before it is built; users only ever see the final order.
   - Empty project (no clips): Add media is the only tool.
 - **Clip mode (an item is selected):**
@@ -19,7 +20,7 @@ The bottom tool bar in both editors: a horizontally scrolling row of icon-plus-l
 - **Photo editor tools (final order, each added with its ticket; spec `docs/ux/specs/P2-01-photo-editor-shell.md`):** Formats (P2-02; or the board's separate format bar, P2-02 decides) · Text (P2-03) · Stickers (P2-03) · Add photo (P2-13) · **Layers** (P2-01, the only tool at first) · Draw (P2-05) · Adjust and Filters (P2-04) · Remove BG (P2-07) · Censor (P2-05) · Crop (P2-04). Before a tool exists the others sit one place to the left; users only ever see the final order. Never a disabled placeholder.
 - **Photo editor, a layer selected:** the clip-mode pattern (Close layer tools, divider, tools): **Position · Opacity · Delete · Duplicate · Lock · Hide · Layers**, with each layer type's own tools in front (text: Edit text · Style · Position, P2-03). A locked layer's Lock slot reads **Unlock**, a hidden layer's Hide slot reads **Show**; the icon shows the layer's current state (closed lock, slashed eye), the label names the action. A layer whose file is missing starts with Delete.
 - **Meme sounds tool:** always `primary` icon and label, because it's meme-sound UI.
-- **Sound clip tools** (P1-08): Volume · Split · Delete · Move here · Duplicate. Icons `volume` (three rising bars, the tallest solid) and `move_here` (an arrow into the playhead bar).
+- **Sound clip tools** (P1-08, P3-09): Volume · Split · Delete · **Audio effects** (P3-09, icon `audio_effects`) · Move here · Duplicate. The same for meme sounds and audio clips (voiceover, imported, detached original audio); a video clip has none (Detach audio first). Icons `volume` (three rising bars, the tallest solid) and `move_here` (an arrow into the playhead bar).
 - **Main clip tools:** Split · Volume (P1-09) · Delete · Duplicate · Detach audio (P1-09) · Reorder · Replace (P1-16; photos have no Volume or Detach audio). On a clip whose file is missing, Replace comes first, because it's the one tool that fixes it and the missing-file toast names it. Once fixed, the usual order returns. Icon `replace`: a solid clip between two curved arrows (DESIGN_SYSTEM → Iconography).
 - **Active tool** (its panel or sheet is open): `primary` icon and label on a `primary-subtle` `radius-md` highlight, where it can be seen. In the video editor the Volume panel and the half-height Meme sounds sheet both cover the bar, so the look never shows there.
 - **Other tools:** `text-secondary`. A tool that can't act right now keeps its look and explains on tap with a Toast. It never shows as a disabled placeholder.
