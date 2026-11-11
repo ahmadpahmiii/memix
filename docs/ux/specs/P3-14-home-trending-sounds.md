@@ -102,7 +102,7 @@ Notes for translators: "Trending" is what is popular now (the same word as the S
 
 ## Analytics
 Events from the PRD; no names, no query text.
-- `sound_preview {sound_id, tab}` once per tap that starts playback (not for resume or replay). **`tab` for a Home row: `home`** once the PRD lists it (proposal for the PM, the same kind of addition as `recent` and `search`, PM 10 Nov, and already asked for in P3-15's spec); **until then P3-14 sends `trending`**. Build it as one constant so the switch is one line.
+- `sound_preview {sound_id, tab}` once per tap that starts playback (not for resume or replay). **`tab` for a Home row: `home`** (in the PRD since 11 Nov).
 - `sound_add {sound_id, tab, editor: "video"}` from P3-15, with the same `tab` value, when the editor opens with the sound on the timeline; `project_create {editor: "video", source: "gallery"}` as in P3-15 / P1-02. Order: `project_create`, then `sound_add`.
 - Not events: opening the section, See all, the details sheet, a failed load.
 
@@ -124,7 +124,7 @@ Each is decided in the spec as recommended, so the build can go on.
    - C. Ten, or a horizontal strip. More choice, more to scroll past; a strip hides the names and the Use block.
 2. **Home becomes top-aligned and scrolling** (decided, a consequence of P0-05's own note). The centered hero was for a Home with one job.
 3. **Nothing is drawn when the catalog has no trending sounds** (recommended) rather than a "coming soon" block, so Home never advertises missing content. If the owner prefers to show the section with a message, it is one block (the offline wording).
-4. **`tab: home`** for events from this row: a proposal for the PM (the PRD does not list it yet); `trending` until then.
+4. **`tab: home`** for events from this row: accepted by the PM on 11 Nov and in the PRD.
 
 ## Requests to the principal mobile engineer
 - **Home layout:** a vertical scroll column, top-aligned; remove the vertical centering and the 4:5 card minimum (P0-05); entry cards at the board's size.

@@ -110,7 +110,7 @@ English source; id, es, pt and hi are machine drafts (P5-06 has the final say). 
 Events from the PRD; no names, no query text.
 - `sound_add {sound_id, tab, editor: "video"}` fires **once, when the editor opens with the sound on the timeline** (not when Use is tapped, not when the picker is cancelled, and not when the download fails). `tab` is the row's tab (`trending`, `local`, `global`, `favorites`, `recent`, `my_sounds`, `search`); from the details sheet, the tab of the screen that opened it. For a My sound `sound_id` is `my_sound` (P3-07).
 - `project_create {editor: "video", source: "gallery"}` once, when the new project is first saved with at least one item (P1-02 rules). Order: `project_create`, then `sound_add`.
-- **Home row (P3-14):** `tab` needs a value for a sound added from Home. **Proposal for the product manager:** `home` as a new value of the existing `tab` parameter (the same kind of addition as `recent` and `search`, PM 10 Nov). Until the PRD has it, P3-14 sends `trending`. P3-14's spec asks for it.
+- **Home row (P3-14):** `tab` needs a value for a sound added from Home. `home`, a value of the existing `tab` parameter (in the PRD since 11 Nov).
 - No `sound_add` if the sound is missing on arrival. `sound_preview` is unchanged: a preview before Use already fired it.
 
 ## QA compares
