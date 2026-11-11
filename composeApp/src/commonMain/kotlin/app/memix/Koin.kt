@@ -40,6 +40,7 @@ import app.memix.core.domain.stickerpack.GetStickerPacksRowUseCase
 import app.memix.core.domain.stickerpack.ListStickerPacksUseCase
 import app.memix.core.domain.stickerpack.PrepareStickerPackUseCase
 import app.memix.core.domain.share.ShareVideoUseCase
+import app.memix.core.domain.sound.GetSavedSoundIdsUseCase
 import app.memix.core.domain.sound.LoadStarterSoundsUseCase
 import app.memix.core.domain.sound.LogSoundEventsUseCase
 import app.memix.core.domain.sound.OpenSoundPlayerUseCase
@@ -72,6 +73,8 @@ import app.memix.engine.video.videoEngineModule
 import app.memix.feature.drafts.DraftsViewModel
 import app.memix.feature.export.ExportViewModel
 import app.memix.feature.home.HomeViewModel
+import app.memix.feature.sounds.SoundsTabExit
+import app.memix.feature.sounds.SoundsViewModel
 import app.memix.feature.videoeditor.EditorCaptionRendering
 import app.memix.feature.videoeditor.EditorDebugEdit
 import app.memix.feature.videoeditor.EditorExport
@@ -88,6 +91,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.factoryOf
+import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.qualifier.named
@@ -146,6 +150,7 @@ private val appModule = module {
     factoryOf(::ObserveSoundFeedUseCase)
     factoryOf(::LoadSoundFeedPageUseCase)
     factoryOf(::SearchSoundsUseCase)
+    factoryOf(::GetSavedSoundIdsUseCase)
     factoryOf(::LoadWaveformUseCase)
     factoryOf(::EditorSounds)
     // The caption fonts live with the interface fonts in the design system; the engine's renderer reads them (P1-10).
@@ -171,6 +176,8 @@ private val appModule = module {
     factoryOf(::MakeVideoMemeUseCase)
     factoryOf(::VideoMemeNoteUseCase)
     viewModelOf(::HomeViewModel)
+    singleOf(::SoundsTabExit)
+    viewModelOf(::SoundsViewModel)
     viewModelOf(::ExportViewModel)
     viewModelOf(::PhotoExportedViewModel)
     viewModelOf(::StickerPackViewModel)

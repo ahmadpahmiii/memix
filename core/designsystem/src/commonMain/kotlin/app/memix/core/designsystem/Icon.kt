@@ -59,6 +59,7 @@ import memix.core.designsystem.generated.resources.ic_replace
 import memix.core.designsystem.generated.resources.ic_rotate_left
 import memix.core.designsystem.generated.resources.ic_rotate_right
 import memix.core.designsystem.generated.resources.ic_scale_rotate
+import memix.core.designsystem.generated.resources.ic_search
 import memix.core.designsystem.generated.resources.ic_share
 import memix.core.designsystem.generated.resources.ic_sounds
 import memix.core.designsystem.generated.resources.ic_split
@@ -123,6 +124,7 @@ object MemixIcons {
     val RotateLeft = Res.drawable.ic_rotate_left
     val RotateRight = Res.drawable.ic_rotate_right
     val ScaleRotate = Res.drawable.ic_scale_rotate
+    val Search = Res.drawable.ic_search
     val Share = Res.drawable.ic_share
     val Sounds = Res.drawable.ic_sounds
     val Split = Res.drawable.ic_split

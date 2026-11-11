@@ -69,7 +69,6 @@
     <string name="volume_title">Volume</string>
     <string name="volume_this_sound">Este som</string>
     <string name="volume_percent">%1$d%</string>
-    <string name="sound_meta">%1$s · %2$s</string>
     <string name="explain_sound_unreadable">Esse som não toca. Tente outro.</string>
     <string name="a11y_sound_added">%1$s adicionado em %2$s</string>
     <string name="edit_move">Mover</string>

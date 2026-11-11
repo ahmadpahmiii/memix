@@ -15,8 +15,10 @@ import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.component.Sheet
 import app.memix.core.designsystem.component.SoundRow
 import app.memix.core.ui.EmptyState
+import app.memix.core.ui.soundLengthText
+import memix.core.ui.generated.resources.Res as UiRes
+import memix.core.ui.generated.resources.sound_meta
 import memix.feature.video_editor.generated.resources.Res
-import memix.feature.video_editor.generated.resources.sound_meta
 import memix.feature.video_editor.generated.resources.sounds_empty_body
 import memix.feature.video_editor.generated.resources.sounds_empty_title
 import memix.feature.video_editor.generated.resources.sounds_title
@@ -49,7 +51,7 @@ internal fun MemeSoundsSheet(sounds: SoundsSheetUi, onIntent: (VideoEditorIntent
             sounds.sounds.forEach { sound ->
                 SoundRow(
                     name = sound.title.inLanguage(language),
-                    meta = stringResource(Res.string.sound_meta, soundLengthText(sound.durationUs), sound.credit),
+                    meta = stringResource(UiRes.string.sound_meta, soundLengthText(sound.durationUs), sound.credit),
                     isPlaying = sound.id == sounds.playingId,
                     isFavorite = false,
                     onPlayToggle = { onIntent(VideoEditorIntent.ToggleSoundPreview(sound.id)) },
@@ -63,12 +65,3 @@ internal fun MemeSoundsSheet(sounds: SoundsSheetUi, onIntent: (VideoEditorIntent
         }
     }
 }
-
-/** "0:02": minutes and seconds, rounded up to whole seconds, at least 0:01 (the library's format on the Sounds board). */
-private fun soundLengthText(durationUs: Long): String {
-    val seconds = ((durationUs + MICROS_PER_SECOND - 1) / MICROS_PER_SECOND).coerceAtLeast(1)
-    return "${seconds / SECONDS_PER_MINUTE}:${(seconds % SECONDS_PER_MINUTE).toString().padStart(2, '0')}"
-}
-
-private const val MICROS_PER_SECOND = 1_000_000L
-private const val SECONDS_PER_MINUTE = 60L

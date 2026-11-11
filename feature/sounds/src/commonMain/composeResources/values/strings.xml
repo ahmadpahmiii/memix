@@ -1,6 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Sounds screen, P3-02. Spec: docs/ux/specs/P3-02-sounds-library.md -> Copy (budgets there). Machine drafts until P5-06; tab labels are the spec's table. -->
     <string name="sounds_title">Meme sounds</string>
     <string name="sounds_empty_title">No sounds yet</string>
-    <string name="sounds_empty_body">The meme sound library comes in a later build.</string>
+    <string name="sounds_empty_body">New sounds arrive every month. Check back soon.</string>
+    <string name="sounds_search_hint">Try bruh, boom or sad violin</string>
+    <string name="sounds_search_hint_favorites">Search your favorites</string>
+    <string name="sounds_search_hint_mine">Search your sounds</string>
+    <string name="sounds_search_a11y">Search sounds</string>
+    <string name="sounds_search_clear_a11y">Clear search</string>
+    <string name="sounds_tab_trending">Trending</string>
+    <string name="sounds_tab_local">Local</string>
+    <string name="sounds_tab_global">Global</string>
+    <string name="sounds_tab_favorites">Favorites</string>
+    <string name="sounds_tab_mine">My sounds</string>
+    <string name="sounds_chip_all">All</string>
+    <string name="sounds_region_line">Sounds for %1$s</string>
+    <string name="sounds_offline_strip">You're offline. Saved sounds still play.</string>
+    <string name="sounds_searching">Searching…</string>
+    <string name="sounds_loading_status">Loading sounds</string>
+    <string name="sounds_load_error_title">Couldn't load sounds</string>
+    <string name="sounds_load_error_body">Check your connection, then try again.</string>
+    <string name="sounds_try_again">Try again</string>
+    <string name="sounds_refresh_failed">Couldn't refresh. Showing saved sounds.</string>
+    <string name="sounds_more_loading">Loading more</string>
+    <string name="sounds_more_failed">Couldn't load more.</string>
+    <string name="sounds_empty_trending_title">No trending sounds yet</string>
+    <string name="sounds_empty_trending_body">New picks arrive every month.</string>
+    <string name="sounds_browse_global">Browse global</string>
+    <string name="sounds_empty_local_title">No local sounds yet</string>
+    <string name="sounds_empty_local_body">We're adding sounds for %1$s. Try global in the meantime.</string>
+    <string name="sounds_local_unknown_title">We don't know your region</string>
+    <string name="sounds_local_unknown_body">Pick your region to see local sounds.</string>
+    <string name="sounds_empty_category_title">Nothing in this category</string>
+    <string name="sounds_empty_category_body">Try another category, or see all sounds.</string>
+    <string name="sounds_show_all">Show all</string>
+    <string name="sounds_empty_favorites_title">No favorites yet</string>
+    <string name="sounds_empty_favorites_body">Tap the heart on a sound to keep it here.</string>
+    <string name="sounds_browse_trending">Browse trending</string>
+    <string name="sounds_empty_mine_title">No imported sounds yet</string>
+    <string name="sounds_empty_mine_body">Sounds you import from your files or videos show up here. They stay on your phone.</string>
+    <string name="sounds_search_none_title">No sounds for "%1$s"</string>
+    <string name="sounds_search_none_body">Check the spelling or try a shorter word.</string>
+    <string name="sounds_clear_search">Clear search</string>
+    <string name="sounds_search_offline_strip">Offline: showing matches from saved sounds</string>
+    <string name="sounds_search_none_offline_title">No saved sounds match "%1$s"</string>
+    <string name="sounds_search_none_offline_body">You're offline, so only sounds saved on this phone are searched.</string>
+    <string name="sound_play_failed">That sound won't play. Try another one.</string>
+    <plurals name="sounds_results_a11y">
+        <item quantity="one">%1$d result</item>
+        <item quantity="other">%1$d results</item>
+    </plurals>
 </resources>

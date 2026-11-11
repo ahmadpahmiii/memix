@@ -95,6 +95,12 @@ object MemixSize {
 
     /** The square icon chip over a picture (the type badge on a draft's thumbnail, P1-14); `badge-size` in design/tokens.json. */
     val badge = 20.dp
+
+    /** A medium glyph: the search field's magnifier, the glyphs in SoundRow's play disc and Use block (P3-02); `icon-medium` in design/tokens.json. */
+    val iconMedium = 20.dp
+
+    /** SoundRow's play disc and its loading placeholder (P3-02); `sound-disc-size` in design/tokens.json. */
+    val soundDiscSize = 40.dp
     /** A row on the WhatsApp Packs screen (P2-09), its minimum height; `pack-row-height` in design/tokens.json. */
     val packRowHeight = 72.dp
     /** A row in the Emojis sheet of the pack builder (P2-09); `emoji-row-height` in design/tokens.json. */

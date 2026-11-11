@@ -43,7 +43,8 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * One meme sound. Sound controls are Memix blue everywhere, so this row may carry blue next to a screen's main action.
  * The title takes up to two lines; the meta line is never cut, because it can hold a license's credit. Without
- * [onFavoriteChange] the favorite heart isn't shown (the editor's sounds sheet has no Favorites list, P1-08).
+ * [onFavoriteChange] the favorite heart isn't shown (the editor's sounds sheet has no Favorites list, P1-08), and without
+ * [onAdd] the blue block isn't shown (the Sounds screen draws it only once the Use flow exists, P3-15).
  *
  * While playing, the row sits one value step above its container: `surface` on `canvas`, or `surface-raised` when
  * it's [onSurface] (inside a sheet), where a `surface` band wouldn't show.
@@ -56,7 +57,7 @@ fun SoundRow(
     isFavorite: Boolean,
     onPlayToggle: () -> Unit,
     onFavoriteChange: ((Boolean) -> Unit)?,
-    onAdd: () -> Unit,
+    onAdd: (() -> Unit)?,
     modifier: Modifier = Modifier,
     onSurface: Boolean = false,
 ) {
@@ -76,7 +77,7 @@ fun SoundRow(
             Text(meta, MemixTheme.type.label, color = MemixColors.textSecondary)
         }
         if (onFavoriteChange != null) FavoriteToggle(isFavorite, stringResource(Res.string.sound_favorite, name), onFavoriteChange)
-        AddSoundButton(stringResource(Res.string.sound_add, name), onAdd)
+        if (onAdd != null) AddSoundButton(stringResource(Res.string.sound_add, name), onAdd)
     }
 }
 
@@ -95,7 +96,7 @@ private fun PlayDisc(isPlaying: Boolean, description: String, onClick: () -> Uni
         Box(
             Modifier
                 .focusRing(interactionSource, MemixShapes.radiusFull)
-                .size(40.dp)
+                .size(MemixSize.soundDiscSize)
                 .clip(MemixShapes.radiusFull)
                 .drawBehind { drawRect(disc.value) },
             contentAlignment = Alignment.Center,
@@ -104,7 +105,7 @@ private fun PlayDisc(isPlaying: Boolean, description: String, onClick: () -> Uni
                 if (isPlaying) MemixIcons.Pause else MemixIcons.Play,
                 contentDescription = null,
                 tint = if (isPlaying) MemixColors.onPrimary else MemixColors.primary,
-                size = 20.dp,
+                size = MemixSize.iconMedium,
             )
         }
     }
@@ -148,7 +149,7 @@ private fun AddSoundButton(description: String, onClick: () -> Unit) {
                 .drawBehind { drawRect(block.value) },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(MemixIcons.Create, contentDescription = null, tint = MemixColors.onPrimary, size = 20.dp)
+            Icon(MemixIcons.Create, contentDescription = null, tint = MemixColors.onPrimary, size = MemixSize.iconMedium)
         }
     }
 }

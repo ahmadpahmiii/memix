@@ -177,4 +177,5 @@
     <string name="export_title">Exportar</string>
     <string name="export_stopped_toast">Exportación detenida.</string>
     <string name="export_watermark_title">Marca de agua de Memix</string>
+    <string name="sound_meta">%1$s · %2$s</string>
 </resources>

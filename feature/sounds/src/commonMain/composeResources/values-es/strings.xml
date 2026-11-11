@@ -1,6 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Sounds screen, P3-02. Spec: docs/ux/specs/P3-02-sounds-library.md -> Copy (budgets there). Machine drafts until P5-06; tab labels are the spec's table. -->
     <string name="sounds_title">Sonidos de memes</string>
     <string name="sounds_empty_title">Aún no hay sonidos</string>
-    <string name="sounds_empty_body">La biblioteca de sonidos llega en una versión posterior.</string>
+    <string name="sounds_empty_body">Cada mes llegan sonidos nuevos. Vuelve pronto.</string>
+    <string name="sounds_search_hint">Prueba bruh, boom, violín triste</string>
+    <string name="sounds_search_hint_favorites">Busca en tus favoritos</string>
+    <string name="sounds_search_hint_mine">Busca tus sonidos</string>
+    <string name="sounds_search_a11y">Buscar sonidos</string>
+    <string name="sounds_search_clear_a11y">Borrar búsqueda</string>
+    <string name="sounds_tab_trending">Tendencias</string>
+    <string name="sounds_tab_local">Local</string>
+    <string name="sounds_tab_global">Global</string>
+    <string name="sounds_tab_favorites">Favoritos</string>
+    <string name="sounds_tab_mine">Mis sonidos</string>
+    <string name="sounds_chip_all">Todos</string>
+    <string name="sounds_region_line">Sonidos para %1$s</string>
+    <string name="sounds_offline_strip">Sin conexión. Los sonidos guardados siguen sonando.</string>
+    <string name="sounds_searching">Buscando…</string>
+    <string name="sounds_loading_status">Cargando sonidos</string>
+    <string name="sounds_load_error_title">No se cargaron los sonidos</string>
+    <string name="sounds_load_error_body">Revisa tu conexión y vuelve a intentarlo.</string>
+    <string name="sounds_try_again">Reintentar</string>
+    <string name="sounds_refresh_failed">No se pudo actualizar. Mostrando sonidos guardados.</string>
+    <string name="sounds_more_loading">Cargando más</string>
+    <string name="sounds_more_failed">No se cargó más.</string>
+    <string name="sounds_empty_trending_title">Aún no hay tendencias</string>
+    <string name="sounds_empty_trending_body">Cada mes llegan nuevas selecciones.</string>
+    <string name="sounds_browse_global">Ver globales</string>
+    <string name="sounds_empty_local_title">Aún no hay sonidos locales</string>
+    <string name="sounds_empty_local_body">Estamos añadiendo sonidos para %1$s. Mientras, prueba los globales.</string>
+    <string name="sounds_local_unknown_title">No sabemos tu región</string>
+    <string name="sounds_local_unknown_body">Elige tu región para ver sonidos locales.</string>
+    <string name="sounds_empty_category_title">Nada en esta categoría</string>
+    <string name="sounds_empty_category_body">Prueba otra categoría o mira todos los sonidos.</string>
+    <string name="sounds_show_all">Ver todo</string>
+    <string name="sounds_empty_favorites_title">Aún no hay favoritos</string>
+    <string name="sounds_empty_favorites_body">Toca el corazón de un sonido para guardarlo aquí.</string>
+    <string name="sounds_browse_trending">Ver tendencias</string>
+    <string name="sounds_empty_mine_title">Aún no importaste sonidos</string>
+    <string name="sounds_empty_mine_body">Los sonidos que importes de tus archivos o videos aparecen aquí. Se quedan en tu teléfono.</string>
+    <string name="sounds_search_none_title">Sin sonidos para "%1$s"</string>
+    <string name="sounds_search_none_body">Revisa la ortografía o prueba una palabra más corta.</string>
+    <string name="sounds_clear_search">Borrar búsqueda</string>
+    <string name="sounds_search_offline_strip">Sin conexión: coincidencias de sonidos guardados</string>
+    <string name="sounds_search_none_offline_title">Ningún sonido guardado coincide con "%1$s"</string>
+    <string name="sounds_search_none_offline_body">Sin conexión, solo se buscan los sonidos guardados en este teléfono.</string>
+    <string name="sound_play_failed">Ese sonido no se puede reproducir. Prueba otro.</string>
+    <plurals name="sounds_results_a11y">
+        <item quantity="one">%1$d resultado</item>
+        <item quantity="other">%1$d resultados</item>
+    </plurals>
 </resources>

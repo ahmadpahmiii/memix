@@ -180,4 +180,5 @@
     <string name="export_title">Export</string>
     <string name="export_stopped_toast">Export stopped.</string>
     <string name="export_watermark_title">Memix watermark</string>
+    <string name="sound_meta">%1$s · %2$s</string>
 </resources>

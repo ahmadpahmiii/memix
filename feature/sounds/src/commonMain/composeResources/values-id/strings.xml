@@ -1,6 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Sounds screen, P3-02. Spec: docs/ux/specs/P3-02-sounds-library.md -> Copy (budgets there). Machine drafts until P5-06; tab labels are the spec's table. -->
     <string name="sounds_title">Suara meme</string>
     <string name="sounds_empty_title">Belum ada suara</string>
-    <string name="sounds_empty_body">Koleksi suara meme hadir di build berikutnya.</string>
+    <string name="sounds_empty_body">Suara baru hadir setiap bulan. Cek lagi nanti.</string>
+    <string name="sounds_search_hint">Coba bruh, boom, atau biola sedih</string>
+    <string name="sounds_search_hint_favorites">Cari favoritmu</string>
+    <string name="sounds_search_hint_mine">Cari suaramu</string>
+    <string name="sounds_search_a11y">Cari suara</string>
+    <string name="sounds_search_clear_a11y">Hapus pencarian</string>
+    <string name="sounds_tab_trending">Tren</string>
+    <string name="sounds_tab_local">Lokal</string>
+    <string name="sounds_tab_global">Global</string>
+    <string name="sounds_tab_favorites">Favorit</string>
+    <string name="sounds_tab_mine">Suaraku</string>
+    <string name="sounds_chip_all">Semua</string>
+    <string name="sounds_region_line">Suara untuk %1$s</string>
+    <string name="sounds_offline_strip">Kamu sedang offline. Suara tersimpan tetap bisa diputar.</string>
+    <string name="sounds_searching">Mencari…</string>
+    <string name="sounds_loading_status">Memuat suara</string>
+    <string name="sounds_load_error_title">Suara tak bisa dimuat</string>
+    <string name="sounds_load_error_body">Periksa koneksimu, lalu coba lagi.</string>
+    <string name="sounds_try_again">Coba lagi</string>
+    <string name="sounds_refresh_failed">Gagal menyegarkan. Menampilkan suara tersimpan.</string>
+    <string name="sounds_more_loading">Memuat lagi</string>
+    <string name="sounds_more_failed">Gagal memuat lagi.</string>
+    <string name="sounds_empty_trending_title">Belum ada suara tren</string>
+    <string name="sounds_empty_trending_body">Pilihan baru hadir tiap bulan.</string>
+    <string name="sounds_browse_global">Lihat global</string>
+    <string name="sounds_empty_local_title">Belum ada suara lokal</string>
+    <string name="sounds_empty_local_body">Kami sedang menambah suara untuk %1$s. Coba global dulu.</string>
+    <string name="sounds_local_unknown_title">Wilayahmu belum diketahui</string>
+    <string name="sounds_local_unknown_body">Pilih wilayahmu untuk melihat suara lokal.</string>
+    <string name="sounds_empty_category_title">Tak ada di kategori ini</string>
+    <string name="sounds_empty_category_body">Coba kategori lain, atau lihat semua suara.</string>
+    <string name="sounds_show_all">Tampilkan semua</string>
+    <string name="sounds_empty_favorites_title">Belum ada favorit</string>
+    <string name="sounds_empty_favorites_body">Ketuk hati pada suara untuk menyimpannya di sini.</string>
+    <string name="sounds_browse_trending">Lihat tren</string>
+    <string name="sounds_empty_mine_title">Belum ada suara impor</string>
+    <string name="sounds_empty_mine_body">Suara yang kamu impor dari file atau video muncul di sini. Tetap ada di ponselmu.</string>
+    <string name="sounds_search_none_title">Tak ada suara untuk "%1$s"</string>
+    <string name="sounds_search_none_body">Periksa ejaan atau coba kata yang lebih pendek.</string>
+    <string name="sounds_clear_search">Hapus pencarian</string>
+    <string name="sounds_search_offline_strip">Offline: menampilkan hasil dari suara tersimpan</string>
+    <string name="sounds_search_none_offline_title">Tak ada suara tersimpan cocok dengan "%1$s"</string>
+    <string name="sounds_search_none_offline_body">Kamu offline, jadi hanya suara tersimpan di ponsel ini yang dicari.</string>
+    <string name="sound_play_failed">Suara itu tidak bisa diputar. Coba yang lain.</string>
+    <plurals name="sounds_results_a11y">
+        <item quantity="other">%1$d hasil</item>
+    </plurals>
 </resources>

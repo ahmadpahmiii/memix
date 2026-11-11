@@ -1,6 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Sounds screen, P3-02. Spec: docs/ux/specs/P3-02-sounds-library.md -> Copy (budgets there). Machine drafts until P5-06; tab labels are the spec's table. -->
     <string name="sounds_title">Sons de memes</string>
     <string name="sounds_empty_title">Nenhum som ainda</string>
-    <string name="sounds_empty_body">A biblioteca de sons chega em uma versão futura.</string>
+    <string name="sounds_empty_body">Todo mês chegam sons novos. Volte em breve.</string>
+    <string name="sounds_search_hint">Tente bruh, boom ou violino triste</string>
+    <string name="sounds_search_hint_favorites">Pesquise nos favoritos</string>
+    <string name="sounds_search_hint_mine">Pesquise seus sons</string>
+    <string name="sounds_search_a11y">Pesquisar sons</string>
+    <string name="sounds_search_clear_a11y">Limpar pesquisa</string>
+    <string name="sounds_tab_trending">Em alta</string>
+    <string name="sounds_tab_local">Local</string>
+    <string name="sounds_tab_global">Global</string>
+    <string name="sounds_tab_favorites">Favoritos</string>
+    <string name="sounds_tab_mine">Meus sons</string>
+    <string name="sounds_chip_all">Tudo</string>
+    <string name="sounds_region_line">Sons para %1$s</string>
+    <string name="sounds_offline_strip">Você está offline. Os sons salvos ainda tocam.</string>
+    <string name="sounds_searching">Pesquisando…</string>
+    <string name="sounds_loading_status">Carregando sons</string>
+    <string name="sounds_load_error_title">Não carregou os sons</string>
+    <string name="sounds_load_error_body">Verifique sua conexão e tente de novo.</string>
+    <string name="sounds_try_again">Tentar de novo</string>
+    <string name="sounds_refresh_failed">Não deu para atualizar. Mostrando sons salvos.</string>
+    <string name="sounds_more_loading">Carregando mais</string>
+    <string name="sounds_more_failed">Não carregou mais.</string>
+    <string name="sounds_empty_trending_title">Nenhum som em alta ainda</string>
+    <string name="sounds_empty_trending_body">Novas seleções chegam todo mês.</string>
+    <string name="sounds_browse_global">Ver globais</string>
+    <string name="sounds_empty_local_title">Nenhum som local ainda</string>
+    <string name="sounds_empty_local_body">Estamos adicionando sons para %1$s. Por ora, veja os globais.</string>
+    <string name="sounds_local_unknown_title">Não sabemos sua região</string>
+    <string name="sounds_local_unknown_body">Escolha sua região para ver sons locais.</string>
+    <string name="sounds_empty_category_title">Nada nesta categoria</string>
+    <string name="sounds_empty_category_body">Tente outra categoria ou veja todos os sons.</string>
+    <string name="sounds_show_all">Ver tudo</string>
+    <string name="sounds_empty_favorites_title">Nenhum favorito ainda</string>
+    <string name="sounds_empty_favorites_body">Toque no coração de um som para guardá-lo aqui.</string>
+    <string name="sounds_browse_trending">Ver em alta</string>
+    <string name="sounds_empty_mine_title">Nenhum som importado ainda</string>
+    <string name="sounds_empty_mine_body">Os sons que você importar de arquivos ou vídeos aparecem aqui. Eles ficam no seu celular.</string>
+    <string name="sounds_search_none_title">Nenhum som para "%1$s"</string>
+    <string name="sounds_search_none_body">Confira a ortografia ou tente uma palavra mais curta.</string>
+    <string name="sounds_clear_search">Limpar pesquisa</string>
+    <string name="sounds_search_offline_strip">Offline: mostrando resultados dos sons salvos</string>
+    <string name="sounds_search_none_offline_title">Nenhum som salvo corresponde a "%1$s"</string>
+    <string name="sounds_search_none_offline_body">Você está offline, então só os sons salvos neste celular são pesquisados.</string>
+    <string name="sound_play_failed">Esse som não toca. Tente outro.</string>
+    <plurals name="sounds_results_a11y">
+        <item quantity="one">%1$d resultado</item>
+        <item quantity="other">%1$d resultados</item>
+    </plurals>
 </resources>

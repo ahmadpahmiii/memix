@@ -14,7 +14,12 @@ class LogSoundEventsUseCase(private val analytics: Analytics) {
         analytics.log(AnalyticsEvent.SoundAdd(soundId, SoundTab.STARTER, editor))
     }
 
-    fun previewed(soundId: String) {
-        analytics.log(AnalyticsEvent.SoundPreview(soundId, SoundTab.STARTER))
+    fun previewed(soundId: String, tab: SoundTab = SoundTab.STARTER) {
+        analytics.log(AnalyticsEvent.SoundPreview(soundId, tab))
+    }
+
+    /** A search settled; the count and the offline flag only, never the text (PRD → `sound_search`). */
+    fun searched(results: Int, offline: Boolean) {
+        analytics.log(AnalyticsEvent.SoundSearch(results, offline))
     }
 }

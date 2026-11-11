@@ -177,4 +177,5 @@
     <string name="export_title">एक्सपोर्ट</string>
     <string name="export_stopped_toast">एक्सपोर्ट रोका गया।</string>
     <string name="export_watermark_title">Memix वॉटरमार्क</string>
+    <string name="sound_meta">%1$s · %2$s</string>
 </resources>

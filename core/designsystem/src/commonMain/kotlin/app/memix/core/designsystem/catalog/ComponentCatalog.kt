@@ -468,7 +468,7 @@ private fun IconSection() = Section("Icons") {
         "minus" to MemixIcons.Minus, "plus" to MemixIcons.Plus, "rotate_left" to MemixIcons.RotateLeft,
         "rotate_right" to MemixIcons.RotateRight, "arrow" to MemixIcons.Arrow, "scale_rotate" to MemixIcons.ScaleRotate,
         "fit" to MemixIcons.Fit, "fill" to MemixIcons.Fill, "blur" to MemixIcons.Blur, "ratio_custom" to MemixIcons.RatioCustom,
-        "share" to MemixIcons.Share, "check" to MemixIcons.Check,
+        "share" to MemixIcons.Share, "check" to MemixIcons.Check, "search" to MemixIcons.Search,
     )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space4), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4)) {
         icons.forEach { (name, icon) ->

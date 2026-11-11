@@ -91,6 +91,8 @@ import app.memix.platform.services.rememberWhatsAppPackLauncher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import app.memix.feature.sounds.SoundsScreen
+import app.memix.feature.sounds.SoundsTabExit
+import app.memix.feature.sounds.SoundsViewModel
 import app.memix.feature.templates.TemplatesScreen
 import app.memix.feature.videoeditor.StageContent
 import app.memix.feature.videoeditor.VideoEditorIntent
@@ -282,6 +284,7 @@ private fun MainShell(
     val draftsState = drafts.state.collectAsStateWithLifecycle()
     val draftsSheetUp by remember { derivedStateOf { draftsState.value.sheetUp } }
     val freeUpSpace = rememberFreeUpSpaceLauncher()
+    val soundsExit = koinInject<SoundsTabExit>()
     LaunchedEffect(editorCouldntOpenCount) {
         if (editorCouldntOpenCount == 0L) return@LaunchedEffect
         drafts.onIntent(DraftsIntent.EditorCouldntOpen(editorCouldntOpenCount))
@@ -307,7 +310,17 @@ private fun MainShell(
                 // Above the bottom nav (spec P1-14 → States: Deleted).
                 DraftsToast(draftsState, drafts::onIntent, Modifier.align(Alignment.BottomCenter).padding(MemixSpacing.space4))
             }
-            MemixBottomNav(currentTab, onSelect = { tabsController.navigateToTab(it) }, onCreate = { onCreateSheetOpenChange(true) })
+            MemixBottomNav(
+                currentTab,
+                onSelect = {
+                    soundsExit.notifyLeft()
+                    tabsController.navigateToTab(it)
+                },
+                onCreate = {
+                    soundsExit.notifyLeft()
+                    onCreateSheetOpenChange(true)
+                },
+            )
         }
         // One scrim for both sheets, so it stays up when the Create sheet hands over to the import (spec P1-02).
         Scrim(
@@ -373,7 +386,11 @@ private fun TabsNavHost(
             HomeScreen(state = state, onStartVideoMeme = onStartVideoMeme, onStartPhotoMeme = onStartPhotoMeme, onOpenCatalog = onOpenCatalog)
         }
         composable<TemplatesRoute> { TemplatesScreen() }
-        composable<SoundsRoute> { SoundsScreen() }
+        composable<SoundsRoute> {
+            val viewModel = koinViewModel<SoundsViewModel>()
+            val state by viewModel.state.collectAsStateWithLifecycle()
+            SoundsScreen(state = state, onIntent = viewModel::onIntent)
+        }
         composable<DraftsRoute> {
             DraftsScreen(drafts.value, onDraftsIntent, onMakeMeme = onOpenCreate, onOpenDraft = onOpenDraft)
         }

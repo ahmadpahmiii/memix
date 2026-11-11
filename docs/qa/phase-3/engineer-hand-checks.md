@@ -113,3 +113,22 @@ Run this on `./gradlew :androidApp:installBenchmark` (the R8-minified release co
 4. A sound with a waveform shows its bars on play; one with no waveform shows the rail (no crash). Check one with the file removed in the dashboard.
 5. Upgrade check: install the previous build (Phase 2, database version 1) with a draft, then install this build over it: the draft opens.
 
+## P3-02 · Sounds screen
+
+Needs P3-01's migration applied and `memix.supabase.*` in `local.properties`. Use `installBenchmark` for the scroll check.
+
+1. Open Sounds: title, search, five tabs, chips (All plus 8; no "Trending" or "Local" chip). The list shows at once on a second launch.
+2. Type "bruhh" slowly, then fast: results appear about 300 ms after the last key; "Bruh" is in them. Clear (x): back to the tab at the same scroll. Back button with text: clears first, then leaves.
+3. One character does nothing. A nonsense word shows "No sounds for ...". Hindi: type a Devanagari title word.
+4. Airplane mode, then pull down: offline strip. Search "bruh": strip says saved sounds, only starter sounds match; "bruhh" finds nothing offline (expected: contains-match).
+5. Play a starter sound (disc), tap again: stops. Play another: first stops. Tap a non-starter sound: "That sound won't play" toast (downloads arrive with P3-04). Leave the tab and return: preview stopped, search cleared, tab and chip kept.
+6. Favorites and My sounds show their empty states; no heart, no Use block, name is not a button yet (P3-06, P3-15, P3-03, P3-07).
+7. Scroll the list with 100+ sounds (after P3-12b): `adb shell dumpsys gfxinfo app.memix framestats` janky frames under 5 percent; page 2 loads near the end.
+8. TalkBack: tabs read as tabs, discs "Play {name}", result count is spoken after a search (live region on a zero-size node: not verified, report if silent). 200% font and Hindi: nothing cut.
+9. Rotate the phone with text in the search and a sound playing: both stay. Switch to Home and back: search cleared, preview stopped. (Review fixes.)
+10. Tab fade: switch tabs and watch for one frame of the new list at full brightness; pull-to-refresh feel; scroll kept across a bottom-nav trip (only if navigation saves state).
+11. Focus: "Clear search" button puts focus in the search box; "Show all" puts it on the "All" chip.
+12. Not built from the spec: pause/resume (the player only stops), "turn up your volume" toast, long-press and TalkBack row actions (details sheet is P3-03), focus return after Show all and Clear search.
+
+Desktop proof of the search path (not a phone): the ViewModel, `SearchSoundsUseCase`, the SQLDelight repository and the repo's real `search_sounds` SQL on a local Postgres 16: 34 checks, 0 failed (types "bruhh" at 50 ms per key: one server call 302 ms after the last key, result exactly "Bruh"). The HTTP layer (PostgREST), the live project and the phone are not covered.
+

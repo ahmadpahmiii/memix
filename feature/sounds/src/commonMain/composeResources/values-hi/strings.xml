@@ -1,6 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Sounds screen, P3-02. Spec: docs/ux/specs/P3-02-sounds-library.md -> Copy (budgets there). Machine drafts until P5-06; tab labels are the spec's table. -->
     <string name="sounds_title">मीम साउंड</string>
     <string name="sounds_empty_title">अभी कोई साउंड नहीं</string>
-    <string name="sounds_empty_body">मीम साउंड लाइब्रेरी अगले बिल्ड में आएगी।</string>
+    <string name="sounds_empty_body">हर महीने नए साउंड आते हैं। जल्द फिर देखें।</string>
+    <string name="sounds_search_hint">bruh, boom या sad violin आज़माएं</string>
+    <string name="sounds_search_hint_favorites">अपने पसंदीदा खोजें</string>
+    <string name="sounds_search_hint_mine">अपने साउंड खोजें</string>
+    <string name="sounds_search_a11y">साउंड खोजें</string>
+    <string name="sounds_search_clear_a11y">खोज साफ़ करें</string>
+    <string name="sounds_tab_trending">ट्रेंडिंग</string>
+    <string name="sounds_tab_local">स्थानीय</string>
+    <string name="sounds_tab_global">ग्लोबल</string>
+    <string name="sounds_tab_favorites">पसंदीदा</string>
+    <string name="sounds_tab_mine">मेरे साउंड</string>
+    <string name="sounds_chip_all">सभी</string>
+    <string name="sounds_region_line">%1$s के साउंड</string>
+    <string name="sounds_offline_strip">आप ऑफ़लाइन हैं। सेव किए साउंड अब भी चलते हैं।</string>
+    <string name="sounds_searching">खोज रहे हैं…</string>
+    <string name="sounds_loading_status">साउंड लोड हो रहे हैं</string>
+    <string name="sounds_load_error_title">साउंड लोड नहीं हुए</string>
+    <string name="sounds_load_error_body">कनेक्शन जाँचें, फिर दोबारा कोशिश करें।</string>
+    <string name="sounds_try_again">फिर कोशिश करें</string>
+    <string name="sounds_refresh_failed">रिफ़्रेश नहीं हुआ। सेव किए साउंड दिख रहे हैं।</string>
+    <string name="sounds_more_loading">और लोड हो रहे हैं</string>
+    <string name="sounds_more_failed">और लोड नहीं हुए।</string>
+    <string name="sounds_empty_trending_title">अभी कोई ट्रेंडिंग साउंड नहीं</string>
+    <string name="sounds_empty_trending_body">हर महीने नए चुनिंदा साउंड आते हैं।</string>
+    <string name="sounds_browse_global">ग्लोबल देखें</string>
+    <string name="sounds_empty_local_title">अभी कोई स्थानीय साउंड नहीं</string>
+    <string name="sounds_empty_local_body">हम %1$s के साउंड जोड़ रहे हैं। तब तक ग्लोबल देखें।</string>
+    <string name="sounds_local_unknown_title">हमें आपका क्षेत्र नहीं पता</string>
+    <string name="sounds_local_unknown_body">स्थानीय साउंड देखने के लिए क्षेत्र चुनें।</string>
+    <string name="sounds_empty_category_title">इस श्रेणी में कुछ नहीं</string>
+    <string name="sounds_empty_category_body">दूसरी श्रेणी आज़माएं, या सभी साउंड देखें।</string>
+    <string name="sounds_show_all">सभी दिखाएं</string>
+    <string name="sounds_empty_favorites_title">अभी कोई पसंदीदा नहीं</string>
+    <string name="sounds_empty_favorites_body">किसी साउंड के हार्ट पर टैप करें, वह यहाँ सेव रहेगा।</string>
+    <string name="sounds_browse_trending">ट्रेंडिंग देखें</string>
+    <string name="sounds_empty_mine_title">अभी कोई इम्पोर्ट साउंड नहीं</string>
+    <string name="sounds_empty_mine_body">फ़ाइलों या वीडियो से इम्पोर्ट किए साउंड यहाँ दिखते हैं। वे आपके फ़ोन में ही रहते हैं।</string>
+    <string name="sounds_search_none_title">"%1$s" के लिए कोई साउंड नहीं</string>
+    <string name="sounds_search_none_body">वर्तनी जाँचें या छोटा शब्द आज़माएं।</string>
+    <string name="sounds_clear_search">खोज साफ़ करें</string>
+    <string name="sounds_search_offline_strip">ऑफ़लाइन: सेव किए साउंड से नतीजे</string>
+    <string name="sounds_search_none_offline_title">"%1$s" से कोई सेव साउंड नहीं मिला</string>
+    <string name="sounds_search_none_offline_body">आप ऑफ़लाइन हैं, इसलिए सिर्फ़ इस फ़ोन में सेव साउंड खोजे जाते हैं।</string>
+    <string name="sound_play_failed">यह साउंड नहीं चलेगा। कोई और आज़माएं।</string>
+    <plurals name="sounds_results_a11y">
+        <item quantity="other">%1$d नतीजे</item>
+    </plurals>
 </resources>

@@ -69,6 +69,12 @@ sealed interface AnalyticsEvent {
         override val params = mapOf("sound_id" to soundId, "tab" to tab.eventValue)
     }
 
+    /** A sound search settled (P3-02): how many sounds it found and whether it only searched the saved ones. Never the text. */
+    data class SoundSearch(val results: Int, val offline: Boolean) : AnalyticsEvent {
+        override val name = "sound_search"
+        override val params = mapOf("results" to results.toString(), "offline" to offline.toString())
+    }
+
     /** Export video was tapped and the export started (PM, 20 Oct 2026). [resolution] as named ("1080p"). */
     data class ExportStart(val editor: ProjectType, val resolution: String, val fps: Int, val lengthSeconds: Long) : AnalyticsEvent {
         override val name = "export_start"
@@ -270,9 +276,19 @@ enum class EditorTool(val eventValue: String?) {
     CENSOR_STRENGTH(null),
 }
 
-/** `sound_add.tab` and `sound_preview.tab`: where in the sounds UI it happened. "starter" until P3-05 (PM, 8 Oct 2026). */
+/**
+ * `sound_add.tab` and `sound_preview.tab`: where in the sounds UI it happened. "starter" is the editor's P1 sheet; the
+ * rest are the Sounds screen's tabs and its Recently used section and search results (PRD → analytics, P3-02).
+ */
 enum class SoundTab(val eventValue: String) {
     STARTER("starter"),
+    TRENDING("trending"),
+    LOCAL("local"),
+    GLOBAL("global"),
+    FAVORITES("favorites"),
+    RECENT("recent"),
+    MY_SOUNDS("my_sounds"),
+    SEARCH("search"),
 }
 
 /** Where a new project came from (`project_create.source`). */

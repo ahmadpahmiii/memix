@@ -16,7 +16,10 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +28,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixShapes
@@ -35,11 +39,30 @@ import app.memix.core.designsystem.MemixTheme
 import app.memix.core.designsystem.Text
 import app.memix.core.designsystem.focusRing
 
-/** Four or more sibling views of one screen; the row scrolls when it overflows. Fewer than four: [SegmentedTabs]. */
+/**
+ * Four or more sibling views of one screen; the row scrolls when it overflows and keeps the selected tab in view.
+ * Fewer than four: [SegmentedTabs]. [contentPadding] is the gutter inside the scrolling row, so tabs scroll to the screen edge.
+ */
 @Composable
-fun Tabs(labels: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+fun Tabs(
+    labels: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: Dp = 0.dp,
+) {
+    val scroll = rememberScrollState()
+    val lefts = remember(labels.size) { IntArray(labels.size) }
+    val widths = remember(labels.size) { IntArray(labels.size) }
+    var viewportPx by remember { mutableIntStateOf(0) }
+    // Counts first measurements of the selected tab, so the scroll runs again once its width is known.
+    var measuredTabs by remember { mutableIntStateOf(0) }
+    LaunchedEffect(selectedIndex, labels, viewportPx, measuredTabs) {
+        val width = widths.getOrElse(selectedIndex) { 0 }
+        if (width > 0) scroll.animateScrollTo((lefts[selectedIndex] + width / 2 - viewportPx / 2).coerceAtLeast(0))
+    }
     Row(
-        modifier.horizontalScroll(rememberScrollState()).selectableGroup(),
+        modifier.onGloballyPositioned { viewportPx = it.size.width }.horizontalScroll(scroll).padding(horizontal = contentPadding).selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space5),
     ) {
         labels.forEachIndexed { index, label ->
@@ -47,8 +70,14 @@ fun Tabs(labels: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, modi
             val interactionSource = remember { MutableInteractionSource() }
             Box(
                 Modifier
+                    .onGloballyPositioned {
+                        val firstMeasure = widths[index] == 0
+                        lefts[index] = it.positionInParent().x.toInt()
+                        widths[index] = it.size.width
+                        if (firstMeasure && index == selectedIndex) measuredTabs++
+                    }
                     .focusRing(interactionSource, MemixShapes.radiusSm)
-                    .defaultMinSize(minHeight = MemixSize.touchTarget)
+                    .defaultMinSize(minWidth = MemixSize.touchTarget, minHeight = MemixSize.touchTarget)
                     .selectable(selected, interactionSource, indication = null, role = Role.Tab) { onSelect(index) }
                     .drawBehind {
                         if (!selected) return@drawBehind
