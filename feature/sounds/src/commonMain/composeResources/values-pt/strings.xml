@@ -53,4 +53,20 @@
         <item quantity="one">%1$d resultado</item>
         <item quantity="other">%1$d resultados</item>
     </plurals>
+    <string name="sound_detail_category">Categoria</string>
+    <string name="sound_detail_credit">Crédito</string>
+    <string name="sound_detail_license">Licença</string>
+    <string name="sound_detail_source">Fonte</string>
+    <string name="sound_detail_device">Neste celular</string>
+    <string name="sound_license_cc0">CC0. Uso livre, sem precisar de crédito.</string>
+    <string name="sound_license_cc_by">CC BY. Uso livre com crédito ao autor.</string>
+    <string name="sound_license_royalty_free">Livre de royalties. Use de graça nos seus vídeos.</string>
+    <string name="sound_license_own">Gravado pela Memix. Uso livre.</string>
+    <string name="sound_license_licensed">Licenciado à Memix para uso nos seus vídeos.</string>
+    <string name="sound_detail_saved">Salvo neste celular</string>
+    <string name="sound_detail_included">Incluído na Memix</string>
+    <string name="sound_detail_not_saved">Salvo quando você reproduz ou adiciona</string>
+    <string name="sound_detail_source_failed">Não foi possível abrir a página.</string>
+    <string name="sound_detail_source_a11y">Abrir %1$s no seu navegador</string>
+    <string name="sound_volume_low">Aumente o volume para ouvir.</string>
 </resources>

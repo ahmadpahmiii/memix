@@ -43,6 +43,7 @@ import app.memix.core.domain.share.ShareVideoUseCase
 import app.memix.core.domain.sound.GetSavedSoundIdsUseCase
 import app.memix.core.domain.sound.LoadStarterSoundsUseCase
 import app.memix.core.domain.sound.LogSoundEventsUseCase
+import app.memix.core.domain.sound.LowVolumeWarningUseCase
 import app.memix.core.domain.sound.ObserveFavoriteSoundIdsUseCase
 import app.memix.core.domain.sound.ObserveFavoriteSoundsUseCase
 import app.memix.core.domain.sound.ObserveRecentSoundsUseCase
@@ -149,6 +150,8 @@ private val appModule = module {
     factoryOf(::PrepareSoundUseCase)
     factoryOf(::OpenSoundPlayerUseCase)
     factoryOf(::LogSoundEventsUseCase)
+    // Once per app session, so a single (P3-03).
+    singleOf(::LowVolumeWarningUseCase)
     // The online sound catalog (P3-01); the Sounds screen (P3-02) and the picker (P3-05) use these.
     factoryOf(::ObserveSoundCategoriesUseCase)
     factoryOf(::RefreshSoundCategoriesUseCase)

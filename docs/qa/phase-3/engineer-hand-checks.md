@@ -132,6 +132,21 @@ Needs P3-01's migration applied and `memix.supabase.*` in `local.properties`. Us
 
 Desktop proof of the search path (not a phone): the ViewModel, `SearchSoundsUseCase`, the SQLDelight repository and the repo's real `search_sounds` SQL on a local Postgres 16: 34 checks, 0 failed (types "bruhh" at 50 ms per key: one server call 302 ms after the last key, result exactly "Bruh"). The HTTP layer (PostgREST), the live project and the phone are not covered.
 
+## P3-03 · Sound preview, waveform and details
+
+Built and checked on the desktop only: a JVM harness (56 of 56, after review: pause and resume, replay rule, volume toast, details facts, waveform loading, focus-return state, tap-to-play timing) and 14 renders in `docs/ux/reviews/P3-03/` (stand-in fonts). Nothing ran on a phone, with TalkBack or as the iOS link. Starter sounds have no waveform until P3-12b, so they show the rail.
+
+1. **Done when, cached sound starts within 300 ms** (release or `installBenchmark` build, owner's phone): open Sounds, wait one second, tap a starter sound's disc for the first time, and record tap to first audible sound with a screen recording plus the audio (or `adb logcat` timestamps around `MemixSounds`). Repeat on a second sound and on a second tap of the same sound after it ended. Write median and worst of 5 per case in the P3-03 QA result. If the first-ever tap is over 300 ms, the suspects are the starter file write (`BundledSoundLibrary`), the file check (`MediaInspector`) and ExoPlayer start; report which.
+2. **Pause/resume:** tap a playing disc: sound holds, disc shows Play, waveform keeps its split. Tap again: it carries on from there. At the end the row goes idle and the next tap plays from the start. Another row's tap replaces it.
+3. **Waveform:** with a waveform loaded (after P3-12b, or a sound whose `waveform_path` is set), the playing row shows bars filling blue; with none, the thin rail. Scroll the list while playing and watch for dropped frames (`dumpsys gfxinfo` janky %). Check the bar shape looks right on real sounds; if not, change `DISPLAY_CURVE_EXPONENT`.
+4. **Volume toast:** set media volume to 0, tap a sound: "Turn up your volume to hear it." for 2 s, the sound starts anyway; the next tap in the same app run shows no toast. Kill and reopen the app: it shows once again.
+5. **Details sheet:** tap a name block, and long-press it (a tick is felt): the sheet slides over the nav; title, heart, player, category, credit exactly as stored, license sentence, source host, "Included with Memix". The disc plays and pauses inside it; the time counts; closing keeps the sound playing; leaving the tab stops it. Tap the source link: the browser opens; with no browser installed, "Couldn't open the page.". Back, scrim tap, drag down and the close button all close it.
+6. **TalkBack:** a row reads disc, name block ("name, 0:02, credit", actions: Show details, Add to favorites), heart as a switch. Open details: focus is in the sheet and the list behind is unreachable; closing returns focus to the name block that opened it (also a row under Recently used). The link reads "Open freesound.org in your browser".
+7. **Language and size:** switch to Hindi and Spanish, font 200%: nothing cut; above 1.5x the time sits under the disc and waveform row. A two-line sheet title ends in an ellipsis.
+7b. **Back and player lifetime:** with a sound playing and text in the search box, press system Back from Sounds: the sound stops and the search clears (the Sounds tab signal now comes from the tab change). Leave the tab and return: the first tap is as quick as before (the player is kept; it is released only when the app goes to the background, and rebuilt on return). Delete a starter file with `adb shell run-as` and tap it: play-failed toast, and a restored file plays on the next tap.
+8. **Startup:** cold start to Home is not slower than before this ticket (the Sounds ViewModel is made with the tabs but reads the database and fetches nothing until the Sounds tab first shows).
+9. **Not built here, by plan:** Use button (P3-15), Report row (P3-10), download, offline and removed states (P3-04), My sounds facts (P3-07).
+
 ## P3-06 · Favorites and recently used
 
 Needs P3-01's catalog rows on the phone (open Trending once online). Use `installBenchmark` for the restart checks so the database file is the real one.

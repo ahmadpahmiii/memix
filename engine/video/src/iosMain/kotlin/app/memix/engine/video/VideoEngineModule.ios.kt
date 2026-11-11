@@ -26,8 +26,10 @@ import app.memix.core.model.project.Project
 import app.memix.core.ui.scene.NoSceneCaptions
 import app.memix.core.ui.scene.SceneCaptions
 import kotlin.math.ceil
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import org.koin.dsl.module
 
 actual val videoEngineModule = module {
@@ -95,9 +97,15 @@ private class SilentResultPlayer : ResultPlayer {
 
 private class SilentSoundPlayer : SoundPlayer {
     override val playing: StateFlow<MediaRef?> = MutableStateFlow(null)
+    override val paused: StateFlow<MediaRef?> = MutableStateFlow(null)
+    override val failures: Flow<MediaRef> = emptyFlow()
 
+    override fun warmUp() = Unit
     override fun play(sound: MediaRef) = Unit
+    override fun pause() = Unit
+    override fun resume() = Unit
     override fun stop() = Unit
+    override fun positionUs(): Long = 0L
     override fun close() = Unit
 }
 

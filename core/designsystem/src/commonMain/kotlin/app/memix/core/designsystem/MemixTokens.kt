@@ -101,6 +101,18 @@ object MemixSize {
 
     /** SoundRow's play disc and its loading placeholder (P3-02); `sound-disc-size` in design/tokens.json. */
     val soundDiscSize = 40.dp
+
+    /** One waveform bar's width, and the gap between bars (P3-03); `waveform-bar-width` and `waveform-bar-gap` in design/tokens.json. */
+    val waveformBarWidth = 2.dp
+    val waveformBarGap = 2.dp
+
+    /** A waveform's height in a SoundRow and in the details sheet (P3-03); `waveform-height` and `waveform-height-large`. */
+    val waveformHeight = 24.dp
+    val waveformHeightLarge = 56.dp
+
+    /** Opacity of the on-track waveform inside a meme sound or audio clip (P3-09); `waveform-clip-opacity`. */
+    const val waveformClipOpacity = 0.6f
+
     /** A row on the WhatsApp Packs screen (P2-09), its minimum height; `pack-row-height` in design/tokens.json. */
     val packRowHeight = 72.dp
     /** A row in the Emojis sheet of the pack builder (P2-09); `emoji-row-height` in design/tokens.json. */

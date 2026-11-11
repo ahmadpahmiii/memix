@@ -38,6 +38,9 @@ import app.memix.core.designsystem.component.Chip
 import app.memix.core.ui.EmptyState
 import kotlinx.collections.immutable.ImmutableList
 import memix.feature.sounds.generated.resources.Res
+import memix.feature.sounds.generated.resources.sound_detail_source_failed
+import memix.feature.sounds.generated.resources.sound_play_failed
+import memix.feature.sounds.generated.resources.sound_volume_low
 import memix.feature.sounds.generated.resources.sounds_browse_global
 import memix.feature.sounds.generated.resources.sounds_browse_trending
 import memix.feature.sounds.generated.resources.sounds_chip_all
@@ -62,6 +65,7 @@ import memix.feature.sounds.generated.resources.sounds_local_unknown_title
 import memix.feature.sounds.generated.resources.sounds_more_failed
 import memix.feature.sounds.generated.resources.sounds_more_loading
 import memix.feature.sounds.generated.resources.sounds_offline_strip
+import memix.feature.sounds.generated.resources.sounds_refresh_failed
 import memix.feature.sounds.generated.resources.sounds_region_line
 import memix.feature.sounds.generated.resources.sounds_search_none_body
 import memix.feature.sounds.generated.resources.sounds_search_none_offline_body
@@ -117,6 +121,17 @@ internal fun StatusStrip(notice: SoundsNotice, modifier: Modifier = Modifier) {
             .semantics { liveRegion = LiveRegionMode.Polite },
     )
 }
+
+/** The words of a toast; the screen and the details sheet each show their own. */
+@Composable
+internal fun soundsToastText(toast: SoundsToast): String = stringResource(
+    when (toast) {
+        SoundsToast.PLAY_FAILED -> Res.string.sound_play_failed
+        SoundsToast.REFRESH_FAILED -> Res.string.sounds_refresh_failed
+        SoundsToast.VOLUME_LOW -> Res.string.sound_volume_low
+        SoundsToast.SOURCE_FAILED -> Res.string.sound_detail_source_failed
+    },
+)
 
 /** The Local tab's first line. A label until P3-11 turns it into the Region sheet's opener. */
 @Composable

@@ -27,7 +27,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.State
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -54,6 +56,7 @@ import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.MemixStroke
 import app.memix.core.designsystem.MemixTheme
 import app.memix.core.designsystem.component.FadingToast
+import app.memix.core.designsystem.component.SoundProgress
 import app.memix.core.designsystem.component.SoundRow
 import app.memix.core.designsystem.component.Tabs
 import app.memix.core.designsystem.component.Toast
@@ -63,9 +66,7 @@ import kotlinx.coroutines.launch
 import memix.core.ui.generated.resources.Res as UiRes
 import memix.core.ui.generated.resources.sound_meta
 import memix.feature.sounds.generated.resources.Res
-import memix.feature.sounds.generated.resources.sound_play_failed
 import memix.feature.sounds.generated.resources.sounds_empty_favorites_body
-import memix.feature.sounds.generated.resources.sounds_refresh_failed
 import memix.feature.sounds.generated.resources.sounds_results_a11y
 import memix.feature.sounds.generated.resources.sounds_search_hint
 import memix.feature.sounds.generated.resources.sounds_search_hint_favorites
@@ -84,15 +85,21 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * The Sounds tab (spec P3-02): title, search and tabs (pinned once the title scrolls off), category chips, a status
  * strip and the rows, all in one lazy list so they scroll together. Stateless: the ViewModel one level up owns the
- * state; only the search text, the scroll and a few animations live here.
+ * state; only the search text, the scroll and a few animations live here. The details sheet is [SoundDetailsSheet], which
+ * the app places over the bottom nav; [clock] says where the playing sound is, read in draw code for the row's waveform.
  */
 @Composable
-fun SoundsScreen(state: SoundsUiState, onIntent: (SoundsIntent) -> Unit, modifier: Modifier = Modifier) {
+fun SoundsScreen(state: SoundsUiState, onIntent: (SoundsIntent) -> Unit, clock: PlaybackClock, modifier: Modifier = Modifier) {
     // Back clears the search first (the keyboard, when open, takes the first back itself); then the app's own back runs.
     NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None), isBackEnabled = state.query.isNotEmpty()) {
         onIntent(SoundsIntent.ClearQuery)
     }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { onIntent(SoundsIntent.AppStopped) }
+    // After the first frame, so opening the tab never waits for the catalog or the player.
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        onIntent(SoundsIntent.ScreenShown)
+    }
     val currentOnIntent by rememberUpdatedState(onIntent)
 
     val listState = rememberLazyListState()
@@ -112,6 +119,7 @@ fun SoundsScreen(state: SoundsUiState, onIntent: (SoundsIntent) -> Unit, modifie
         )
     }
     val fade = rememberTabFade(state.tab)
+    val position = rememberPlaybackPosition(clock, state.activeId, isPlaying = state.playingId != null)
 
     Box(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars)) {
         SoundsList(
@@ -122,11 +130,13 @@ fun SoundsScreen(state: SoundsUiState, onIntent: (SoundsIntent) -> Unit, modifie
             allChipFocus = allChipFocus,
             onSearchFocusChange = { searchHasFocus = it },
             fade = fade,
+            position = position,
             onIntent = onIntent,
             modifier = Modifier.fillMaxSize().nestedScroll(scrollEffects),
         )
-        FadingToast(state.toast, Modifier.align(Alignment.BottomCenter).padding(MemixSpacing.space4)) { toast ->
-            Toast(stringResource(if (toast == SoundsToast.PLAY_FAILED) Res.string.sound_play_failed else Res.string.sounds_refresh_failed))
+        // While the details sheet is open it shows the toasts itself, above its scrim.
+        FadingToast(state.toast.takeIf { state.details == null }, Modifier.align(Alignment.BottomCenter).padding(MemixSpacing.space4)) { toast ->
+            Toast(soundsToastText(toast))
         }
     }
 }
@@ -140,6 +150,7 @@ private fun SoundsList(
     allChipFocus: FocusRequester,
     onSearchFocusChange: (Boolean) -> Unit,
     fade: Modifier,
+    position: State<Long>,
     onIntent: (SoundsIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -175,7 +186,7 @@ private fun SoundsList(
             }
             onIntent(intent)
         }
-        contentItems(state, content, language, fade, onBlockIntent)
+        contentItems(state, content, language, fade, position, onBlockIntent)
     }
 }
 
@@ -184,6 +195,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.contentItems(
     content: SoundsContent,
     language: String,
     fade: Modifier,
+    position: State<Long>,
     onIntent: (SoundsIntent) -> Unit,
 ) {
     when (content) {
@@ -199,11 +211,11 @@ private fun androidx.compose.foundation.lazy.LazyListScope.contentItems(
         }
         is SoundsContent.Rows -> {
             items(content.rows, key = { it.id }, contentType = { "sound" }) { row ->
-                LibrarySoundRow(row, row.id == state.playingId, row.id in state.favoriteIds, language, fade, onIntent)
+                LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = false), language, fade, position, onIntent)
             }
             item(key = "footer", contentType = "footer") { ListFooterItem(content.footer, { onIntent(SoundsIntent.TryAgain) }) }
         }
-        is SoundsContent.Favorites -> favoriteSections(content, state, language, fade, onIntent)
+        is SoundsContent.Favorites -> favoriteSections(content, state, language, fade, position, onIntent)
     }
 }
 
@@ -213,12 +225,13 @@ private fun androidx.compose.foundation.lazy.LazyListScope.favoriteSections(
     state: SoundsUiState,
     language: String,
     fade: Modifier,
+    position: State<Long>,
     onIntent: (SoundsIntent) -> Unit,
 ) {
     if (content.recent.isNotEmpty()) {
         item(key = "recent-heading", contentType = "section") { SectionHeading(Res.string.sounds_section_recent, isFirst = true, modifier = fade) }
         items(content.recent, key = { "recent-${it.id}" }, contentType = { "sound" }) { row ->
-            LibrarySoundRow(row, row.id == state.playingId, row.id in state.favoriteIds, language, fade, onIntent, fromRecent = true)
+            LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = true), language, fade, position, onIntent, fromRecent = true)
         }
     }
     val showsHint = content.favorites.isEmpty() && state.query.isBlank()
@@ -229,25 +242,39 @@ private fun androidx.compose.foundation.lazy.LazyListScope.favoriteSections(
     }
     if (showsHint) item(key = "favorites-hint", contentType = "hint") { SectionHint(Res.string.sounds_empty_favorites_body, fade) }
     items(content.favorites, key = { "favorite-${it.id}" }, contentType = { "sound" }) { row ->
-        LibrarySoundRow(row, row.id == state.playingId, row.id in state.favoriteIds, language, fade, onIntent)
+        LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = false), language, fade, position, onIntent)
     }
 }
 
 @Composable
 private fun LibrarySoundRow(
     row: SoundItemUi,
-    isPlaying: Boolean,
+    playback: RowPlayback,
     isFavorite: Boolean,
+    peaks: List<Float>?,
+    returnsFocus: Boolean,
     language: String,
     fade: Modifier,
+    position: State<Long>,
     onIntent: (SoundsIntent) -> Unit,
     fromRecent: Boolean = false,
 ) {
     val haptics = LocalHapticFeedback.current
+    val progress = remember(playback == RowPlayback.IDLE, peaks, position, row.durationUs) {
+        if (playback == RowPlayback.IDLE) null else SoundProgress(peaks) { playedFraction(position.value, row.durationUs) }
+    }
+    // After the details sheet closes, the row that opened it takes focus back (spec P3-02 → Accessibility → Focus).
+    val detailsFocus = remember { FocusRequester() }
+    LaunchedEffect(returnsFocus) {
+        if (!returnsFocus) return@LaunchedEffect
+        // The row can have scrolled out of the list while the sheet was up; then there is nothing to focus.
+        runCatching { detailsFocus.requestFocus() }
+        onIntent(SoundsIntent.FocusReturned)
+    }
     SoundRow(
         name = row.title.inLanguage(language),
         meta = stringResource(UiRes.string.sound_meta, row.length, row.credit),
-        isPlaying = isPlaying,
+        isPlaying = playback == RowPlayback.PLAYING,
         isFavorite = isFavorite,
         onPlayToggle = { onIntent(SoundsIntent.TogglePlay(row.id, fromRecent)) },
         onFavoriteChange = { on ->
@@ -258,8 +285,17 @@ private fun LibrarySoundRow(
         // TODO(P3-15): the blue Use block appears once the Use flow exists.
         onAdd = null,
         modifier = fade.padding(horizontal = MemixSpacing.space2, vertical = MemixSpacing.space2),
+        isPaused = playback == RowPlayback.PAUSED,
+        progress = progress,
+        onShowDetails = { onIntent(SoundsIntent.OpenDetails(row.id, fromRecent)) },
+        detailsFocus = detailsFocus,
     )
 }
+
+// What a row needs from the state, as plain values, so a row whose own values are unchanged is skipped.
+private fun SoundsUiState.isFavorite(soundId: String) = soundId in favoriteIds
+private fun SoundsUiState.peaksFor(soundId: String): List<Float>? = if (playbackOf(soundId) == RowPlayback.IDLE) null else waveforms[soundId]
+private fun SoundsUiState.returnsFocusTo(soundId: String, fromRecent: Boolean) = focusReturn == RowFocusTarget(soundId, fromRecent)
 
 /** The pinned pair under the title: the search box, then the five tabs. */
 @Composable

@@ -52,4 +52,20 @@
     <plurals name="sounds_results_a11y">
         <item quantity="other">%1$d नतीजे</item>
     </plurals>
+    <string name="sound_detail_category">श्रेणी</string>
+    <string name="sound_detail_credit">क्रेडिट</string>
+    <string name="sound_detail_license">लाइसेंस</string>
+    <string name="sound_detail_source">स्रोत</string>
+    <string name="sound_detail_device">इस फोन पर</string>
+    <string name="sound_license_cc0">CC0. मुफ़्त इस्तेमाल, क्रेडिट की ज़रूरत नहीं।</string>
+    <string name="sound_license_cc_by">CC BY. बनाने वाले को क्रेडिट देकर मुफ़्त इस्तेमाल करें।</string>
+    <string name="sound_license_royalty_free">रॉयल्टी-मुक्त। अपने वीडियो में मुफ़्त इस्तेमाल करें।</string>
+    <string name="sound_license_own">Memix ने रिकॉर्ड किया। मुफ़्त इस्तेमाल करें।</string>
+    <string name="sound_license_licensed">Memix को आपके वीडियो में इस्तेमाल के लिए लाइसेंस मिला है।</string>
+    <string name="sound_detail_saved">इस फोन में सेव है</string>
+    <string name="sound_detail_included">Memix के साथ शामिल</string>
+    <string name="sound_detail_not_saved">चलाने या जोड़ने पर सेव होता है</string>
+    <string name="sound_detail_source_failed">पेज नहीं खुल सका।</string>
+    <string name="sound_detail_source_a11y">%1$s को अपने ब्राउज़र में खोलें</string>
+    <string name="sound_volume_low">सुनने के लिए वॉल्यूम बढ़ाएं।</string>
 </resources>

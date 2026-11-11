@@ -62,6 +62,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -115,6 +116,10 @@ fun Sheet(
     opensAtHalfHeight: Boolean = false,
     /** A control at the start of the title row (the Emojis picker's back arrow, P2-09); the title keeps the rest of the row. */
     titleLeading: (@Composable () -> Unit)? = null,
+    /** A control at the end of the title row, before the close button (the sound details' heart, P3-03). */
+    titleTrailing: (@Composable () -> Unit)? = null,
+    /** How many lines the title may take before an ellipsis; a screen reader still hears all of it. */
+    titleMaxLines: Int = Int.MAX_VALUE,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val reduceMotion = MemixTheme.reduceMotion
@@ -131,7 +136,7 @@ fun Sheet(
             enter = if (reduceMotion) fadeIn(tween(MemixMotion.durationPress)) else slideInVertically(tween(MemixMotion.durationSheet)) { it },
             exit = if (reduceMotion) fadeOut(tween(MemixMotion.durationPress)) else slideOutVertically(tween(MemixMotion.durationSheet)) { it },
         ) {
-            SheetSurface(visible, title, heroTitle, blocking, opensAtHalfHeight, onDismiss, titleLeading, content)
+            SheetSurface(visible, title, heroTitle, blocking, opensAtHalfHeight, onDismiss, titleLeading, titleTrailing, titleMaxLines, content)
         }
     }
 }
@@ -174,6 +179,8 @@ private fun SheetSurface(
     opensAtHalfHeight: Boolean,
     onDismiss: () -> Unit,
     titleLeading: (@Composable () -> Unit)?,
+    titleTrailing: (@Composable () -> Unit)?,
+    titleMaxLines: Int,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -230,7 +237,8 @@ private fun SheetSurface(
         if (!blocking) Grabber(Modifier.align(Alignment.CenterHorizontally))
         Row(verticalAlignment = Alignment.CenterVertically) {
             titleLeading?.invoke()
-            if (heroTitle) DisplayText(title, Modifier.weight(1f)) else Text(title, MemixTheme.type.title, Modifier.weight(1f))
+            if (heroTitle) DisplayText(title, Modifier.weight(1f)) else Text(title, MemixTheme.type.title, Modifier.weight(1f), maxLines = titleMaxLines, overflow = TextOverflow.Ellipsis)
+            titleTrailing?.invoke()
             if (!blocking) CloseButton(onDismiss)
         }
         content()

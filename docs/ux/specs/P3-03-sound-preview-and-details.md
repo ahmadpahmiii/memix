@@ -8,7 +8,7 @@ Part of the Sounds library set; read `P3-02-sounds-library.md` first (screen, ro
 **The one blue action:** on the sheet, **Use in a video meme** (Primary, the only Button). The play disc is blue because it is a meme sound.
 
 ## Entry and exit
-- **Opens from:** the name block or a long-press on a row of the Sounds tab (P3-02). The editor's picker (P3-05) opens the same sheet from its rows; there the Primary is **Add to video** and lands at the playhead (P3-05 spec decides the rest; this sheet only takes the label and action as parameters).
+- **Opens from:** a tap or a long-press on the name block of a row of the Sounds tab (P3-02); the long-press is on the name block only, not the whole row, so it doesn't fight the disc and heart (review P3-03, 11 Nov 2026). The editor's picker (P3-05) opens the same sheet from its rows; there the Primary is **Add to video** and lands at the playhead (P3-05 spec decides the rest; this sheet only takes the label and action as parameters).
 - **Closes:** close button, scrim, drag down, system back, Escape. Back from the Report pane returns to the details pane first (P3-10). Nothing changes on close. Focus returns to the row's name block (Sheet README).
 - **Playback continues** if the sound was playing when the sheet opened, and keeps playing when it closes; the row shows the state. One sound plays at a time across rows and the sheet (one player, P1-08). Leaving the Sounds tab or the app stops it.
 - **Kept:** nothing beyond what the actions inside do (favorite, report flag).

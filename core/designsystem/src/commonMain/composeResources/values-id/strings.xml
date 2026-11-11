@@ -9,4 +9,5 @@
     <string name="sound_add">Tambahkan %1$s ke video</string>
     <string name="setting_expanded">Diperluas</string>
     <string name="setting_collapsed">Diciutkan</string>
+    <string name="sound_action_details">Lihat detail</string>
 </resources>

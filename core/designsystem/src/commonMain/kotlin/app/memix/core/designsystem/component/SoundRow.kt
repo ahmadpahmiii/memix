@@ -2,6 +2,7 @@ package app.memix.core.designsystem.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,7 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -36,6 +41,7 @@ import app.memix.core.designsystem.Text
 import app.memix.core.designsystem.focusRing
 import app.memix.core.designsystem.pressedColor
 import memix.core.designsystem.generated.resources.Res
+import memix.core.designsystem.generated.resources.sound_action_details
 import memix.core.designsystem.generated.resources.sound_action_favorite
 import memix.core.designsystem.generated.resources.sound_action_unfavorite
 import memix.core.designsystem.generated.resources.sound_add
@@ -51,8 +57,13 @@ import org.jetbrains.compose.resources.stringResource
  * is a switch, so screen readers say "on" or "off" (P3-06). Without [onAdd] the blue block isn't shown (the Sounds
  * screen draws it only once the Use flow exists, P3-15).
  *
- * While playing, the row sits one value step above its container: `surface` on `canvas`, or `surface-raised` when
- * it's [onSurface] (inside a sheet), where a `surface` band wouldn't show.
+ * While playing or paused, the row sits one value step above its container: `surface` on `canvas`, or `surface-raised`
+ * when it's [onSurface] (inside a sheet), where a `surface` band wouldn't show. A playing row shows [progress] under its
+ * name; a paused one keeps it where it stopped, with the disc back to Play (P3-03).
+ *
+ * With [onShowDetails] the name block is the details button: a tap or a long press calls it (the long press adds a
+ * haptic tick), and a screen reader hears "Show details" on it. [detailsFocus] lets the screen send focus back to
+ * the block when the details sheet closes. Without it the block isn't clickable, as in the editor's sheet.
  */
 @Composable
 fun SoundRow(
@@ -65,49 +76,90 @@ fun SoundRow(
     onAdd: (() -> Unit)?,
     modifier: Modifier = Modifier,
     onSurface: Boolean = false,
+    isPaused: Boolean = false,
+    progress: SoundProgress? = null,
+    onShowDetails: (() -> Unit)? = null,
+    detailsFocus: FocusRequester? = null,
 ) {
     val playingBand = if (onSurface) MemixColors.surfaceRaised else MemixColors.surface
     Row(
         modifier
             .fillMaxWidth()
             .clip(MemixShapes.radiusMd)
-            .background(if (isPlaying) playingBand else Color.Transparent)
+            .background(if (isPlaying || isPaused) playingBand else Color.Transparent)
             .padding(horizontal = MemixSpacing.space2),
         horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space2),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PlayDisc(isPlaying, stringResource(if (isPlaying) Res.string.sound_pause else Res.string.sound_play, name), onPlayToggle)
+        SoundPlayDisc(name, isPlaying, onPlayToggle)
         Column(
-            Modifier.weight(1f).padding(vertical = MemixSpacing.space2).nameBlockSemantics(isFavorite, onFavoriteChange),
+            Modifier
+                .weight(1f)
+                .padding(vertical = MemixSpacing.space2)
+                .nameBlock(isFavorite, onFavoriteChange, onShowDetails, detailsFocus),
         ) {
             Text(name, MemixTheme.type.bodyStrong, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(meta, MemixTheme.type.label, color = MemixColors.textSecondary)
+            if (progress != null) ProgressUnderName(progress)
         }
-        if (onFavoriteChange != null) FavoriteToggle(isFavorite, stringResource(Res.string.sound_favorite, name), onFavoriteChange)
+        if (onFavoriteChange != null) SoundFavoriteHeart(name, isFavorite, onFavoriteChange)
         if (onAdd != null) AddSoundButton(stringResource(Res.string.sound_add, name), onAdd)
     }
 }
 
-/**
- * On a row with a heart, the name and meta read as one stop ("{name}, {meta}") that also offers the heart as a screen
- * reader action, so favoriting never depends on finding the small control (spec P3-02 → Accessibility → Row actions).
- */
 @Composable
-private fun Modifier.nameBlockSemantics(isFavorite: Boolean, onFavoriteChange: ((Boolean) -> Unit)?): Modifier {
-    if (onFavoriteChange == null) return this
-    val label = stringResource(if (isFavorite) Res.string.sound_action_unfavorite else Res.string.sound_action_favorite)
-    return semantics(mergeDescendants = true) {
-        customActions = listOf(CustomAccessibilityAction(label) { onFavoriteChange(!isFavorite); true })
-    }
+private fun ProgressUnderName(progress: SoundProgress) {
+    val peaks = progress.peaks
+    val modifier = Modifier.padding(top = MemixSpacing.space2)
+    if (peaks.isNullOrEmpty()) SoundRail(progress.played, modifier) else SoundWaveform(peaks, progress.played, modifier)
 }
 
+/**
+ * The name and meta read as one stop ("{name}, {meta}"). On a row with a heart it also offers the heart as a screen
+ * reader action, so favoriting never depends on finding the small control (spec P3-02 → Accessibility → Row actions);
+ * with [onShowDetails] the stop itself is the details button.
+ */
 @Composable
-private fun PlayDisc(isPlaying: Boolean, description: String, onClick: () -> Unit) {
+private fun Modifier.nameBlock(
+    isFavorite: Boolean,
+    onFavoriteChange: ((Boolean) -> Unit)?,
+    onShowDetails: (() -> Unit)?,
+    detailsFocus: FocusRequester?,
+): Modifier {
+    if (onFavoriteChange == null && onShowDetails == null) return this
+    val favoriteLabel = stringResource(if (isFavorite) Res.string.sound_action_unfavorite else Res.string.sound_action_favorite)
+    val actions = if (onFavoriteChange == null) emptyList() else listOf(CustomAccessibilityAction(favoriteLabel) { onFavoriteChange(!isFavorite); true })
+    val withActions = semantics(mergeDescendants = true) { customActions = actions }
+    if (onShowDetails == null) return withActions
+    val detailsLabel = stringResource(Res.string.sound_action_details)
+    val haptics = LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
+    return withActions
+        .then(if (detailsFocus != null) Modifier.focusRequester(detailsFocus) else Modifier)
+        .focusRing(interactionSource, MemixShapes.radiusMd)
+        .combinedClickable(
+            interactionSource,
+            indication = null,
+            role = Role.Button,
+            onClickLabel = detailsLabel,
+            onLongClickLabel = detailsLabel,
+            onLongClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                onShowDetails()
+            },
+            onClick = onShowDetails,
+        )
+}
+
+/** The 40 dp play disc in a 48 dp target: `primary-subtle` with Play, or `primary` with Pause while [isPlaying]. Also the details sheet's. */
+@Composable
+fun SoundPlayDisc(name: String, isPlaying: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val description = stringResource(if (isPlaying) Res.string.sound_pause else Res.string.sound_play, name)
     val interactionSource = remember { MutableInteractionSource() }
     val normal = if (isPlaying) MemixColors.primary else MemixColors.primarySubtle
     val disc = pressedColor(interactionSource, normal, if (isPlaying) MemixColors.primaryPressed else MemixColors.surfaceRaised)
     Box(
-        Modifier
+        modifier
             .size(MemixSize.touchTarget)
             .clickable(interactionSource, indication = null, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description },
@@ -131,11 +183,13 @@ private fun PlayDisc(isPlaying: Boolean, description: String, onClick: () -> Uni
     }
 }
 
+/** The favorite heart in a 48 dp target; a switch, so screen readers say "on" or "off" (P3-06). Also the details sheet's. */
 @Composable
-private fun FavoriteToggle(isFavorite: Boolean, description: String, onFavoriteChange: (Boolean) -> Unit) {
+fun SoundFavoriteHeart(name: String, isFavorite: Boolean, onFavoriteChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+    val description = stringResource(Res.string.sound_favorite, name)
     val interactionSource = remember { MutableInteractionSource() }
     Box(
-        Modifier
+        modifier
             .size(MemixSize.touchTarget)
             .focusRing(interactionSource, MemixShapes.radiusFull)
             .toggleable(isFavorite, interactionSource, indication = null, role = Role.Switch, onValueChange = onFavoriteChange)

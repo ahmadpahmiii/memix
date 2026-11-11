@@ -53,4 +53,20 @@
         <item quantity="one">%1$d result</item>
         <item quantity="other">%1$d results</item>
     </plurals>
+    <string name="sound_detail_category">Category</string>
+    <string name="sound_detail_credit">Credit</string>
+    <string name="sound_detail_license">License</string>
+    <string name="sound_detail_source">Source</string>
+    <string name="sound_detail_device">On this phone</string>
+    <string name="sound_license_cc0">CC0. Free to use, no credit needed.</string>
+    <string name="sound_license_cc_by">CC BY. Free to use with credit to the author.</string>
+    <string name="sound_license_royalty_free">Royalty-free. Free to use in your videos.</string>
+    <string name="sound_license_own">Recorded by Memix. Free to use.</string>
+    <string name="sound_license_licensed">Licensed to Memix for use in your videos.</string>
+    <string name="sound_detail_saved">Saved on this phone</string>
+    <string name="sound_detail_included">Included with Memix</string>
+    <string name="sound_detail_not_saved">Saves when you play or add it</string>
+    <string name="sound_detail_source_failed">Couldn't open the page.</string>
+    <string name="sound_detail_source_a11y">Open %1$s in your browser</string>
+    <string name="sound_volume_low">Turn up your volume to hear it.</string>
 </resources>

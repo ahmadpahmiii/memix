@@ -52,4 +52,20 @@
     <plurals name="sounds_results_a11y">
         <item quantity="other">%1$d hasil</item>
     </plurals>
+    <string name="sound_detail_category">Kategori</string>
+    <string name="sound_detail_credit">Kredit</string>
+    <string name="sound_detail_license">Lisensi</string>
+    <string name="sound_detail_source">Sumber</string>
+    <string name="sound_detail_device">Di ponsel ini</string>
+    <string name="sound_license_cc0">CC0. Bebas dipakai, tanpa kredit.</string>
+    <string name="sound_license_cc_by">CC BY. Bebas dipakai dengan kredit untuk pembuatnya.</string>
+    <string name="sound_license_royalty_free">Bebas royalti. Bebas dipakai di videomu.</string>
+    <string name="sound_license_own">Direkam oleh Memix. Bebas dipakai.</string>
+    <string name="sound_license_licensed">Berlisensi untuk Memix, boleh dipakai di videomu.</string>
+    <string name="sound_detail_saved">Tersimpan di ponsel ini</string>
+    <string name="sound_detail_included">Termasuk di Memix</string>
+    <string name="sound_detail_not_saved">Disimpan saat kamu memutar atau menambahkannya</string>
+    <string name="sound_detail_source_failed">Tidak bisa membuka halaman.</string>
+    <string name="sound_detail_source_a11y">Buka %1$s di browser kamu</string>
+    <string name="sound_volume_low">Naikkan volume untuk mendengarnya.</string>
 </resources>

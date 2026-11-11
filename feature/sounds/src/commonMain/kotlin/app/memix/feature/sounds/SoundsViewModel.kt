@@ -6,6 +6,7 @@ import app.memix.core.domain.GetPhoneRegionUseCase
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.SoundTab
 import app.memix.core.domain.catalog.LoadSoundFeedPageUseCase
+import app.memix.core.domain.catalog.LoadWaveformUseCase
 import app.memix.core.domain.catalog.MIN_SEARCH_LENGTH
 import app.memix.core.domain.catalog.ObserveSoundCategoriesUseCase
 import app.memix.core.domain.catalog.ObserveSoundFeedUseCase
@@ -14,6 +15,7 @@ import app.memix.core.domain.catalog.SearchSoundsUseCase
 import app.memix.core.domain.catalog.SoundSearchPage
 import app.memix.core.domain.sound.GetSavedSoundIdsUseCase
 import app.memix.core.domain.sound.LogSoundEventsUseCase
+import app.memix.core.domain.sound.LowVolumeWarningUseCase
 import app.memix.core.domain.sound.ObserveFavoriteSoundIdsUseCase
 import app.memix.core.domain.sound.ObserveFavoriteSoundsUseCase
 import app.memix.core.domain.sound.ObserveRecentSoundsUseCase
@@ -23,12 +25,15 @@ import app.memix.core.domain.sound.SoundPlayer
 import app.memix.core.domain.sound.ToggleFavoriteSoundUseCase
 import app.memix.core.model.Region
 import app.memix.core.model.catalog.LibrarySound
+import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.catalog.SoundFeed
 import app.memix.core.model.catalog.SoundFeedContent
 import app.memix.core.model.project.MediaOrigin
+import app.memix.core.model.project.MediaRef
 import app.memix.core.ui.MemixViewModel
 import app.memix.core.ui.soundLengthText
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -41,25 +46,34 @@ import kotlinx.coroutines.launch
  *
  * Favorites and Recently used are kept on the phone (P3-06) and fill the Favorites tab; My sounds has no storage yet
  * (P3-07), so it shows its empty state.
+ *
+ * Previews (P3-03): a second tap on the playing disc pauses and the next resumes; the details sheet plays through the
+ * same player, so one sound plays at a time. The app places the sheet over the bottom nav, so this ViewModel lives with
+ * the tabs, and the catalog is not touched until the tab first shows ([SoundsIntent.ScreenShown]).
  */
 class SoundsViewModel(
-    observeCategories: ObserveSoundCategoriesUseCase,
+    private val observeCategories: ObserveSoundCategoriesUseCase,
     private val refreshCategories: RefreshSoundCategoriesUseCase,
     private val observeFeed: ObserveSoundFeedUseCase,
     private val loadFeedPage: LoadSoundFeedPageUseCase,
     private val searchSounds: SearchSoundsUseCase,
     getPhoneRegion: GetPhoneRegionUseCase,
     private val getSavedSoundIds: GetSavedSoundIdsUseCase,
-    observeFavoriteIds: ObserveFavoriteSoundIdsUseCase,
-    observeFavorites: ObserveFavoriteSoundsUseCase,
-    observeRecents: ObserveRecentSoundsUseCase,
+    private val observeFavoriteIds: ObserveFavoriteSoundIdsUseCase,
+    private val observeFavorites: ObserveFavoriteSoundsUseCase,
+    private val observeRecents: ObserveRecentSoundsUseCase,
     private val toggleFavorite: ToggleFavoriteSoundUseCase,
     private val prepareSound: PrepareSoundUseCase,
     private val openSoundPlayer: OpenSoundPlayerUseCase,
+    private val waveformOf: LoadWaveformUseCase,
+    private val lowVolumeWarning: LowVolumeWarningUseCase,
     private val logEvents: LogSoundEventsUseCase,
     tabExit: SoundsTabExit,
 ) : MemixViewModel<SoundsUiState, SoundsIntent>(SoundsUiState()) {
     private val regionCode: String?
+
+    /** Where the playing sound is; the screen reads it in draw code, 30 times a second at most. */
+    val clock = PlaybackClock { player?.positionUs() ?: 0L }
 
     // What the lists hold. The screen state is derived from these by render(), always on the main thread.
     private var feedSaved = SoundFeedContent.NotLoaded
@@ -76,6 +90,17 @@ class SoundsViewModel(
     private var recentSounds: List<LibrarySound> = emptyList()
     private var latestFavorites: List<LibrarySound> = emptyList()
     private var favoritesOnScreen: List<LibrarySound> = emptyList()
+    private var started = false
+    private var categoryNames: Map<String, LocalizedText> = emptyMap()
+    // The open details sheet: its sound, and the `tab` a play from it is logged with (the screen that opened it).
+    private var detailsSound: LibrarySound? = null
+    private var detailsFromRecent = false
+    private var detailsTab = SoundTab.TRENDING
+    // A sound's file once it has been checked, so the next tap starts without measuring it again (300 ms budget).
+    private val preparedSounds = HashMap<String, MediaRef>()
+    private val waveformRequests = HashSet<String>()
+    // A sound played again right after it ended or stopped is a replay: `sound_preview` counts only a new sound (spec P3-03 → Analytics).
+    private var lastPreviewedId: String? = null
 
     private var feedJob: Job? = null
     private var moreJob: Job? = null
@@ -84,31 +109,35 @@ class SoundsViewModel(
     private var previewJob: Job? = null
     private var toastJob: Job? = null
     private var placeholderJob: Job? = null
-    private var playerJob: Job? = null
+    private var playerJobs: List<Job> = emptyList()
     private var player: SoundPlayer? = null
 
     init {
         val region = getPhoneRegion()
         regionCode = (region as? Region.Country)?.code
         updateState { it.copy(regionName = (region as? Region.Country)?.displayName) }
+        // Rotation keeps the search and the preview; only a real move to another bottom-nav item ends them.
+        viewModelScope.launch { tabExit.left.collect { leaveScreen() } }
+    }
+
+    // The first time the tab shows: nothing is read or fetched at app start, because this ViewModel is made with the tabs.
+    private fun screenShown() {
+        openedPlayer().warmUp()
+        if (started) return
+        started = true
         viewModelScope.launch {
             observeCategories().collect { categories ->
+                categoryNames = categories.associate { it.id to it.name }
                 val chips = categories.filter { it.id !in TAB_CATEGORY_IDS }.map { CategoryChipUi(it.id, it.name) }
                 updateState { it.copy(categories = chips.toImmutableList()) }
             }
         }
+        observeCollections()
         viewModelScope.launch { refreshCategories(force = false) }
-        observeCollections(observeFavoriteIds, observeFavorites, observeRecents)
-        // Rotation keeps the search and the preview; only a real move to another bottom-nav item ends them.
-        viewModelScope.launch { tabExit.left.collect { leaveScreen() } }
         showFeed()
     }
 
-    private fun observeCollections(
-        observeFavoriteIds: ObserveFavoriteSoundIdsUseCase,
-        observeFavorites: ObserveFavoriteSoundsUseCase,
-        observeRecents: ObserveRecentSoundsUseCase,
-    ) {
+    private fun observeCollections() {
         viewModelScope.launch {
             observeFavoriteIds().collect { ids -> updateState { it.copy(favoriteIds = ids.toImmutableSet()) } }
         }
@@ -130,18 +159,29 @@ class SoundsViewModel(
 
     override fun onIntent(intent: SoundsIntent) {
         when (intent) {
-            is SoundsIntent.SelectTab -> selectTab(intent.tab)
-            is SoundsIntent.SelectCategory -> selectCategory(intent.categoryId)
-            is SoundsIntent.QueryChanged -> changeQuery(intent.text)
+            is SoundsIntent.SelectTab -> { dropFocusReturn(); selectTab(intent.tab) }
+            is SoundsIntent.SelectCategory -> { dropFocusReturn(); selectCategory(intent.categoryId) }
+            is SoundsIntent.QueryChanged -> { dropFocusReturn(); changeQuery(intent.text) }
             SoundsIntent.ClearQuery -> changeQuery("")
-            is SoundsIntent.TogglePlay -> togglePreview(intent.soundId, intent.fromRecent)
+            is SoundsIntent.TogglePlay -> togglePreview(intent.soundId, tabOf(intent.fromRecent))
+            is SoundsIntent.OpenDetails -> { dropFocusReturn(); openDetails(intent.soundId, intent.fromRecent) }
+            SoundsIntent.CloseDetails -> closeDetails()
+            SoundsIntent.ToggleDetailsPlay -> detailsSound?.let { togglePreview(it.id, detailsTab) }
+            SoundsIntent.SourceOpenFailed -> showToast(SoundsToast.SOURCE_FAILED)
+            SoundsIntent.FocusReturned -> dropFocusReturn()
+            SoundsIntent.ScreenShown -> screenShown()
             is SoundsIntent.ToggleFavorite -> viewModelScope.launch { toggleFavorite(intent.soundId) }
             SoundsIntent.LoadMore -> loadMore()
             SoundsIntent.TryAgain -> tryAgain()
             SoundsIntent.Refresh -> refresh()
-            SoundsIntent.AppStopped -> stopPreview()
+            SoundsIntent.AppStopped -> backgrounded()
             SoundsIntent.LeftScreen -> leaveScreen()
         }
+    }
+
+    // A pending focus request must not fire later, when the user has moved on (a new tab, a typed query).
+    private fun dropFocusReturn() {
+        if (state.value.focusReturn != null) updateState { it.copy(focusReturn = null) }
     }
 
     private fun selectTab(tab: SoundsTab) {
@@ -160,14 +200,19 @@ class SoundsViewModel(
         showFeed()
     }
 
-    private fun stopPreview() {
-        previewJob?.cancel()
-        player?.stop()
-    }
-
-    private fun leaveScreen() {
+    // In the background the player is released; coming back sends ScreenShown, which makes it again.
+    private fun backgrounded() {
         previewJob?.cancel()
         closePlayer()
+    }
+
+    // The player stays for the next visit (building an ExoPlayer on every tab entry is main-thread work); a sound stops.
+    private fun leaveScreen() {
+        previewJob?.cancel()
+        player?.stop()
+        lastPreviewedId = null
+        detailsSound = null
+        updateState { it.copy(details = null, focusReturn = null) }
         // Leaving the screen ends the visit: an un-hearted row is gone when the user comes back (spec P3-02 → Tab contents).
         favoritesOnScreen = latestFavorites
         if (state.value.query.isNotEmpty()) changeQuery("")
@@ -437,29 +482,93 @@ class SoundsViewModel(
         else -> null
     }
 
-    private fun LibrarySound.toRow() = SoundItemUi(id, title, soundLengthText(durationUs), creditLine)
+    private fun LibrarySound.toRow() = SoundItemUi(id, title, soundLengthText(durationUs), creditLine, durationUs)
 
     // ---- Previews ----
 
-    private fun togglePreview(soundId: String, fromRecent: Boolean) {
-        if (state.value.playingId == soundId) {
-            // TODO(P3-03): pause and resume plug in here once the player reports its position.
-            player?.stop()
-            return
+    // The disc: pause what plays, carry on what is paused, otherwise start this sound.
+    private fun togglePreview(soundId: String, tab: SoundTab) {
+        when (state.value.playbackOf(soundId)) {
+            RowPlayback.PLAYING -> player?.pause()
+            RowPlayback.PAUSED -> player?.resume()
+            RowPlayback.IDLE -> startPreview(soundId, tab)
         }
-        val sound = shownSounds().firstOrNull { it.id == soundId } ?: return
-        val tab = if (fromRecent) SoundTab.RECENT else analyticsTab()
+    }
+
+    private fun startPreview(soundId: String, tab: SoundTab) {
+        val sound = shownSounds().firstOrNull { it.id == soundId } ?: detailsSound?.takeIf { it.id == soundId } ?: return
+        loadWaveform(sound)
         previewJob?.cancel()
         previewJob = viewModelScope.launch {
             // TODO(P3-04): a sound that is not on the phone downloads here first; until then only the starter pack plays.
-            val file = when (val prepared = prepareSound(sound.toCatalogSound())) {
-                is Outcome.Success -> prepared.value
-                is Outcome.Failure -> return@launch showToast(SoundsToast.PLAY_FAILED)
-            }
-            // TODO(P3-03): the "turn up your volume" toast plugs in here (needs a media-volume check in platform services).
+            val file = preparedFile(sound) ?: return@launch showToast(SoundsToast.PLAY_FAILED)
+            // The sound plays anyway; the toast is a hint that a silent phone is not a broken app.
+            if (lowVolumeWarning.isDue()) showToast(SoundsToast.VOLUME_LOW)
             openedPlayer().play(file)
-            logEvents.previewed(soundId, tab)
+            if (soundId != lastPreviewedId) logEvents.previewed(soundId, tab)
+            lastPreviewedId = soundId
         }
+    }
+
+    private suspend fun preparedFile(sound: LibrarySound): MediaRef? {
+        preparedSounds[sound.id]?.let { return it }
+        return when (val prepared = prepareSound(sound.toCatalogSound())) {
+            is Outcome.Success -> prepared.value.also {
+                if (preparedSounds.size >= MAX_PREPARED_SOUNDS) preparedSounds.clear()
+                preparedSounds[sound.id] = it
+            }
+            is Outcome.Failure -> null
+        }
+    }
+
+    // The peaks arrive after the sound starts when they have to be fetched; until then the row shows the rail.
+    // A failed load saves nothing, so the next play asks again.
+    private fun loadWaveform(sound: LibrarySound) {
+        if (sound.waveformPath == null || sound.id in state.value.waveforms || !waveformRequests.add(sound.id)) return
+        viewModelScope.launch {
+            val waveform = waveformOf(sound)
+            waveformRequests.remove(sound.id)
+            if (waveform == null) return@launch
+            updateState { it.copy(waveforms = (it.waveforms + (sound.id to waveform.peaks)).toImmutableMap()) }
+        }
+    }
+
+    // ---- Details sheet ----
+
+    private fun openDetails(soundId: String, fromRecent: Boolean) {
+        val sound = shownSounds().firstOrNull { it.id == soundId } ?: return
+        detailsSound = sound
+        detailsFromRecent = fromRecent
+        detailsTab = tabOf(fromRecent)
+        loadWaveform(sound)
+        viewModelScope.launch {
+            val onPhone = if (sound.id in getSavedSoundIds()) SoundOnPhone.INCLUDED else SoundOnPhone.NOT_SAVED
+            // Closed (or another sound opened) while the saved ids were read: nothing to show.
+            if (detailsSound?.id != sound.id) return@launch
+            updateState { it.copy(details = sound.toDetails(onPhone)) }
+        }
+    }
+
+    private fun closeDetails() {
+        val sound = detailsSound ?: return
+        detailsSound = null
+        updateState { it.copy(details = null, focusReturn = RowFocusTarget(sound.id, detailsFromRecent)) }
+    }
+
+    private fun LibrarySound.toDetails(onPhone: SoundOnPhone): SoundDetailsUi {
+        val host = sourceHostOf(sourceUrl)
+        return SoundDetailsUi(
+            id = id,
+            title = title,
+            durationUs = durationUs,
+            length = soundLengthText(durationUs),
+            categoryName = categoryNames[categoryId],
+            credit = credit?.takeIf { it.isNotBlank() },
+            licenseType = licenseType,
+            sourceUrl = sourceUrl.takeIf { host != null },
+            sourceHost = host,
+            onPhone = onPhone,
+        )
     }
 
     private fun shownSounds(): List<LibrarySound> = search?.sounds ?: when {
@@ -467,6 +576,8 @@ class SoundsViewModel(
         state.value.tab == SoundsTab.FAVORITES -> recentSounds + favoritesOnScreen
         else -> emptyList()
     }
+
+    private fun tabOf(fromRecent: Boolean): SoundTab = if (fromRecent) SoundTab.RECENT else analyticsTab()
 
     private fun analyticsTab(): SoundTab = when {
         search != null -> SoundTab.SEARCH
@@ -481,28 +592,35 @@ class SoundsViewModel(
 
     private fun openedPlayer(): SoundPlayer = player ?: openSoundPlayer().also { opened ->
         player = opened
-        playerJob = viewModelScope.launch {
-            opened.playing.collect { media ->
-                val playingId = (media?.origin as? MediaOrigin.CatalogItem)?.itemId
-                updateState { it.copy(playingId = playingId) }
-            }
-        }
+        playerJobs = listOf(
+            viewModelScope.launch { opened.playing.collect { media -> updateState { it.copy(playingId = media?.catalogId()) } } },
+            viewModelScope.launch { opened.paused.collect { media -> updateState { it.copy(pausedId = media?.catalogId()) } } },
+            // A file that would not play (deleted, damaged) is checked again on the next tap instead of being trusted.
+            viewModelScope.launch {
+                opened.failures.collect { media ->
+                    media.catalogId()?.let { preparedSounds.remove(it) }
+                    showToast(SoundsToast.PLAY_FAILED)
+                }
+            },
+        )
     }
 
-    // The player is opened on the first play and lives only while the user is on this screen.
+    private fun MediaRef.catalogId(): String? = (origin as? MediaOrigin.CatalogItem)?.itemId
+
+    // The player is opened on the first tap on the tab and lives only while the user is on this screen.
     private fun closePlayer() {
-        playerJob?.cancel()
-        playerJob = null
+        playerJobs.forEach { it.cancel() }
+        playerJobs = emptyList()
         player?.close()
         player = null
-        updateState { it.copy(playingId = null) }
+        updateState { it.copy(playingId = null, pausedId = null) }
     }
 
     private fun showToast(toast: SoundsToast) {
         updateState { it.copy(toast = toast) }
         toastJob?.cancel()
         toastJob = viewModelScope.launch {
-            delay(TOAST_MILLIS)
+            delay(if (toast == SoundsToast.VOLUME_LOW) VOLUME_TOAST_MILLIS else TOAST_MILLIS)
             updateState { it.copy(toast = null) }
         }
     }
@@ -530,6 +648,12 @@ class SoundsViewModel(
         /** The first load shows placeholder rows only when it takes longer than this. */
         const val PLACEHOLDER_DELAY_MILLIS = 300L
         const val TOAST_MILLIS = 4_000L
+
+        /** Prepared files kept for quick replays; far more than a visit touches, so the map stays small. */
+        const val MAX_PREPARED_SOUNDS = 100
+
+        /** The volume hint is short and gone before the sound ends (spec P3-02 → States). */
+        const val VOLUME_TOAST_MILLIS = 2_000L
 
         // Trending and Local are tabs here, so the catalog's categories of the same name are not chips (spec Q2).
         val TAB_CATEGORY_IDS = setOf("sound_trending", "sound_local")

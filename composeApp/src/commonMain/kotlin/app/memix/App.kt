@@ -90,8 +90,12 @@ import app.memix.feature.stickerpack.StickerPackViewModel
 import app.memix.platform.services.rememberWhatsAppPackLauncher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import app.memix.feature.sounds.PlaybackClock
+import app.memix.feature.sounds.SoundDetailsSheet
+import app.memix.feature.sounds.SoundsIntent
 import app.memix.feature.sounds.SoundsScreen
 import app.memix.feature.sounds.SoundsTabExit
+import app.memix.feature.sounds.SoundsUiState
 import app.memix.feature.sounds.SoundsViewModel
 import app.memix.feature.templates.TemplatesScreen
 import app.memix.feature.videoeditor.StageContent
@@ -283,8 +287,17 @@ private fun MainShell(
     val drafts = koinViewModel<DraftsViewModel>()
     val draftsState = drafts.state.collectAsStateWithLifecycle()
     val draftsSheetUp by remember { derivedStateOf { draftsState.value.sheetUp } }
+    // The Sounds ViewModel lives with the tabs too, so the details sheet can sit over the bottom nav (P3-03). It does
+    // nothing until the Sounds tab first shows.
+    val sounds = koinViewModel<SoundsViewModel>()
+    val soundsState = sounds.state.collectAsStateWithLifecycle()
+    val soundDetailsUp by remember { derivedStateOf { soundsState.value.details != null } }
     val freeUpSpace = rememberFreeUpSpaceLauncher()
     val soundsExit = koinInject<SoundsTabExit>()
+    // Any way off the Sounds tab (a nav tap, system Back) ends its search and preview; a rotation keeps currentTab (spec P3-02).
+    LaunchedEffect(currentTab) {
+        if (currentTab != SoundsRoute) soundsExit.notifyLeft()
+    }
     LaunchedEffect(editorCouldntOpenCount) {
         if (editorCouldntOpenCount == 0L) return@LaunchedEffect
         drafts.onIntent(DraftsIntent.EditorCouldntOpen(editorCouldntOpenCount))
@@ -294,12 +307,15 @@ private fun MainShell(
     // review, F1). The scrim's own rule decides, so the hand-over from Create to the import stays covered throughout.
     val sheetUp = createSheetOpen || videoMemeImport.needsScrim || photoMemeImport.needsScrim
     Box(Modifier.fillMaxSize().background(MemixColors.canvas)) {
-        Column(Modifier.fillMaxSize().coveredByModal(sheetUp || draftsSheetUp)) {
+        Column(Modifier.fillMaxSize().coveredByModal(sheetUp || draftsSheetUp || soundDetailsUp)) {
             Box(Modifier.weight(1f)) {
                 TabsNavHost(
                     tabsController,
                     drafts = draftsState,
                     onDraftsIntent = drafts::onIntent,
+                    sounds = soundsState,
+                    soundsClock = sounds.clock,
+                    onSoundsIntent = sounds::onIntent,
                     onOpenCreate = { onCreateSheetOpenChange(true) },
                     onStartVideoMeme = { videoMemeImport.start(fromCreateSheet = false) },
                     onStartPhotoMeme = { photoMemeImport.start(fromCreateSheet = false) },
@@ -312,10 +328,7 @@ private fun MainShell(
             }
             MemixBottomNav(
                 currentTab,
-                onSelect = {
-                    soundsExit.notifyLeft()
-                    tabsController.navigateToTab(it)
-                },
+                onSelect = { tabsController.navigateToTab(it) },
                 onCreate = {
                     soundsExit.notifyLeft()
                     onCreateSheetOpenChange(true)
@@ -346,6 +359,7 @@ private fun MainShell(
         DraftsSheetsOver(draftsState, drafts::onIntent, onFreeUpSpace = { requestedBytes ->
             if (!freeUpSpace.launch(requestedBytes)) drafts.onIntent(DraftsIntent.FreeUpSpaceUnavailable)
         })
+        SoundDetailsOver(soundsState, sounds.clock, sounds::onIntent)
     }
 }
 
@@ -358,11 +372,19 @@ private fun DraftsToast(state: State<DraftsUiState>, onIntent: (DraftsIntent) ->
 private fun DraftsSheetsOver(state: State<DraftsUiState>, onIntent: (DraftsIntent) -> Unit, onFreeUpSpace: (Long) -> Unit) =
     DraftsSheets(state.value, onIntent, onFreeUpSpace)
 
+// The Sounds state is read in this small scope, so a change to it redraws the sheet, not MainShell.
+@Composable
+private fun SoundDetailsOver(state: State<SoundsUiState>, clock: PlaybackClock, onIntent: (SoundsIntent) -> Unit) =
+    SoundDetailsSheet(state, clock, onIntent)
+
 @Composable
 private fun TabsNavHost(
     navController: NavHostController,
     drafts: State<DraftsUiState>,
     onDraftsIntent: (DraftsIntent) -> Unit,
+    sounds: State<SoundsUiState>,
+    soundsClock: PlaybackClock,
+    onSoundsIntent: (SoundsIntent) -> Unit,
     onOpenCreate: () -> Unit,
     onStartVideoMeme: () -> Unit,
     onStartPhotoMeme: () -> Unit,
@@ -387,9 +409,7 @@ private fun TabsNavHost(
         }
         composable<TemplatesRoute> { TemplatesScreen() }
         composable<SoundsRoute> {
-            val viewModel = koinViewModel<SoundsViewModel>()
-            val state by viewModel.state.collectAsStateWithLifecycle()
-            SoundsScreen(state = state, onIntent = viewModel::onIntent)
+            SoundsScreen(state = sounds.value, onIntent = onSoundsIntent, clock = soundsClock)
         }
         composable<DraftsRoute> {
             DraftsScreen(drafts.value, onDraftsIntent, onMakeMeme = onOpenCreate, onOpenDraft = onOpenDraft)
