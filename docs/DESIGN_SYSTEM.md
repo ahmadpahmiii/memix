@@ -160,6 +160,10 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
   - The brush-size tiles (a filled dot at the relative size), the Censor mode tiles (Blur reuses `blur`; Pixelate, Black bar) and the shape tiles (Rectangle, Ellipse) are **drawn from data** like the ratio shapes, not icon files.
 - Background removal (P2-07, to draw with the ticket; spec `docs/ux/specs/P2-07-background-removal.md`): `cutout`: a solid head circle (7px, the core) over a stroked shoulders arc (an 18 × 8px half-ellipse), 2px clear of the head. The Remove BG tool. The cut-out screen shows the result on a checkerboard (cells 12 dp in `canvas` and `surface-raised`), and its status cards use `surface-raised`.
 - Stickers (P2-14, to draw with the ticket; spec `docs/ux/specs/P2-14-sticker-picker.md`): `sticker`: a stroked 18px square with its bottom-right corner folded (a short diagonal cut), and a solid 6 × 6px square (the core) at the center, 1.4px clear of the outline. The Stickers tool and the empty state.
+- Sounds library (P3-02, P3-10, to draw with the tickets; specs `docs/ux/specs/P3-02-sounds-library.md`, `P3-10-report-a-sound.md`; the engineer draws, the designer approves in the review):
+  - `search`: a stroked 14px ring (the lens) and a 2px handle running from its lower right to the 22px corner; no core, like `close` (a magnifier has no natural mass). The search field's leading icon, at 20 dp in `text-secondary`.
+  - `flag`: a 2px pole from the bottom left up to the top, and a solid pennant (10 × 7px, the core) joined to the pole's top and pointing right. The Report row in the sound details sheet.
+  - Retry reuses `rotate_right`; "saved on this phone" reuses `check` in `success`; clear search reuses `close`; the row's Use button reuses `create`.
 - Drawn shapes (P2-02): the format tiles' pictures (Classic, Caption bar, Panels, Demotivational, Bubbles), the Panels layout and count tiles and the bubble shape tiles are **drawn from data** like the ratio shapes (solid, 1px corners, long side 20px), not icon files. The bubble's tail handle reuses `position` at `icon-small`; the pick tile in an empty cell reuses `create`.
 
 Source files are Android vector drawables in `:core:designsystem` `composeResources/drawable/` (`ic_<name>.xml`), path-only so Compose Multiplatform renders them the same on Android and iOS. There is no Memix logo yet: until one exists, write the name "Memix" in Anton; the launcher icon is a plain placeholder built from that wordmark, not a logo.
@@ -385,6 +389,10 @@ Fixed sizes used across screens (dp on Android).
 | `nav-row-height` | `MemixSize.navRowHeight` | `56px` | A one-tap navigation row inside a sheet (the Stickers sheet's WhatsApp packs row): `surface-raised`, `radius-md`. |
 | `sheet-max-height-fraction` | `MemixSize.sheetMaxHeightFraction` (Float) | `0.7` | Share of the window height a content sheet may use before it scrolls (P2-14, P2-09). |
 | `pinned-bar-max-fraction` | `MemixSize.pinnedBarMaxFraction` (Float) | `0.4` | Share of the window height the pack builder's pinned bottom area may take at large font before only the buttons stay pinned (P2-09). |
+| `waveform-bar-width` | `MemixSize.waveformBarWidth` | `2px` | Width of one waveform bar (P3-03), `radius-full` ends. Bars are resampled from the sound's peaks to fill the width. |
+| `waveform-bar-gap` | `MemixSize.waveformBarGap` | `2px` | Gap between waveform bars (P3-03). |
+| `waveform-height` | `MemixSize.waveformHeight` | `24px` | Waveform height inside a SoundRow (P3-03), centered on its midline; a bar is never shorter than `waveform-bar-width`. Played bars `primary` (7.3:1 on `surface`), the rest `text-muted` (4.6:1 or more on `canvas`, `surface`, `surface-raised`). |
+| `waveform-height-large` | `MemixSize.waveformHeightLarge` | `56px` | Waveform height in the sound details sheet (P3-03). Same bars and colors; not a scrub control. |
 | `filter-tile-size` | `MemixSize.filterTileSize` | `72px` | Side of a filter tile's square picture in the Edit photo panel's Filters strip (P2-04): `radius-md`, the user's photo with that filter on, the name in `caption` under it; at least `touch-target` each way. |
 
 ### Motion
