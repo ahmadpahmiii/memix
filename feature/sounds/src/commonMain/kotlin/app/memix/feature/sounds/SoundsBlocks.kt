@@ -20,6 +20,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -128,6 +129,32 @@ internal fun RegionLine(regionName: String, modifier: Modifier = Modifier) {
         Icon(MemixIcons.Globe, contentDescription = null, tint = MemixColors.textSecondary)
         Text(stringResource(Res.string.sounds_region_line, regionName), MemixTheme.type.label, color = MemixColors.textSecondary)
     }
+}
+
+/** A Favorites tab section title: `label` in `text-secondary`, `space-6` above (not on the first), `space-2` below. */
+@Composable
+internal fun SectionHeading(title: StringResource, isFirst: Boolean, modifier: Modifier = Modifier) {
+    Text(
+        stringResource(title),
+        MemixTheme.type.label,
+        modifier
+            .fillMaxWidth()
+            .padding(top = if (isFirst) MemixSpacing.space2 else MemixSpacing.space6)
+            .padding(start = MemixSpacing.space4, end = MemixSpacing.space4, bottom = MemixSpacing.space2)
+            .semantics { heading() },
+        color = MemixColors.textSecondary,
+    )
+}
+
+/** The line under an empty Favorites section while Recently used has rows. */
+@Composable
+internal fun SectionHint(text: StringResource, modifier: Modifier = Modifier) {
+    Text(
+        stringResource(text),
+        MemixTheme.type.body,
+        modifier.fillMaxWidth().padding(horizontal = MemixSpacing.space4),
+        color = MemixColors.textSecondary,
+    )
 }
 
 /** Six static rows while the first load has nothing saved: no shimmer and no spinner (spec P3-02 → States). */

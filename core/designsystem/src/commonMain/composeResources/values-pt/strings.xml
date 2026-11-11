@@ -4,6 +4,8 @@
     <string name="sound_play">Reproduzir %1$s</string>
     <string name="sound_pause">Pausar %1$s</string>
     <string name="sound_favorite">Favoritar %1$s</string>
+    <string name="sound_action_favorite">Adicionar aos favoritos</string>
+    <string name="sound_action_unfavorite">Remover dos favoritos</string>
     <string name="sound_add">Adicionar %1$s ao vídeo</string>
     <string name="setting_expanded">Expandido</string>
     <string name="setting_collapsed">Recolhido</string>

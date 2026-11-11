@@ -102,6 +102,7 @@ internal class EditorSoundTools(private val sounds: EditorSounds, private val ho
         val clipId = host.newId()
         if (!host.commit(VideoEdit.ADD_SOUND) { it.addSound(file, clipId, atUs, newTrackId = host.newId()) }) return
         sounds.logEvents.added(sound.id, ProjectType.VIDEO)
+        host.scope.launch { sounds.recordRecent(sound.id) }
         // Selected with its tools ready; it bonks and the phone ticks (spec P1-06 → Meme sounds → Landing).
         val landed = host.newLanding(persistentSetOf(clipId), isSound = true)
         host.updateUiState { it.withSelection(clipId, host.currentProject()).copy(landed = landed) }

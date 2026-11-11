@@ -15,7 +15,7 @@ Full detail: `docs/TECHNICAL_DESIGN.md`. This is the working summary.
 | `:composeApp` | App | `App()`, NavHost, Koin graph, iOS entry; builds the `ComposeApp` framework for `iosApp/` | everything |
 | `:core:model` | Domain | `Project`, `Track`, `TimelineItem`, `PhotoScene`, `Layer`, effect/filter/transition specs, catalog entities | nothing |
 | `:core:domain` | Domain | use cases; repository + engine interfaces (`VideoEngine`, `PreviewSession`, `PhotoRenderer`, `Segmenter`, `MediaFiles`, `MediaInspector`, `LocalCalendar`, `Sharer`, `Ads`, `Analytics`) | `:core:model` |
-| `:core:data` | Data | repositories, supabase-kt remote, SQLDelight local, file cache, settings; `catalog/` (P3-01): `SoundCatalogRepository` reads only SQLDelight, refresh calls go to Supabase on the 24 h / 6 h rules (TECHNICAL_DESIGN → Sound catalog) | `:core:domain` |
+| `:core:data` | Data | repositories, supabase-kt remote, SQLDelight local, file cache, settings; `catalog/` (P3-01): `SoundCatalogRepository` reads only SQLDelight, `SoundCollectionsRepository` (P3-06) keeps favorites and recents as ids in SQLDelight (`SoundCollections.sq`, database version 3), refresh calls go to Supabase on the 24 h / 6 h rules (TECHNICAL_DESIGN → Sound catalog) | `:core:domain` |
 | `:core:designsystem` | UI | `MemixTheme`, tokens, base components | — |
 | `:core:ui` | UI | shared composables with more than one user: time formatting, layer gestures and selection frame, Position and Canvas panel rows, editor frame pieces (`editor/`), the one photo-scene drawing function `drawPhotoScene`, the `SceneImageSource` decoder interface and the `SceneCaptions` caption-drawing interface (`scene/`), the typing bar, `TextEntryUi` and Style panel both editors use (`text/`); public `Res` with the strings both editors share (the video timeline is in `:feature:video-editor`) | designsystem, model |
 | `:engine:video` | Platform | `VideoEngine`: Media3 (androidMain), AVFoundation (iosMain); `VideoPreviewSurface`, which the composition root passes to the editor screen; `AndroidSceneCaptions`, the caption renderer bound to `SceneCaptions` so the photo scene draws text like video (P2-03) | domain, ui |
@@ -23,7 +23,7 @@ Full detail: `docs/TECHNICAL_DESIGN.md`. This is the working summary.
 | `:engine:segmentation` | Platform | `Segmenter`: ML Kit (MediaPipe with P4-13) / Vision | domain |
 | `:platform:services` | Platform | AdMob+UMP, Firebase, share intents, gallery picker | domain |
 | `:feature:onboarding/home/templates/sounds/drafts/video-editor/photo-editor/export` | UI | screens + ViewModels | domain, ui |
-| `:feature:sounds` | UI | P3-02 Sounds screen: `SoundsViewModel` (tabs, chips, debounced search, previews), one lazy list; strings `sound_meta` and `soundLengthText` live in `:core:ui` | domain, ui |
+| `:feature:sounds` | UI | P3-02 Sounds screen: `SoundsViewModel` (tabs, chips, debounced search, previews, P3-06 hearts and the Favorites tab), one lazy list; strings `sound_meta` and `soundLengthText` live in `:core:ui` | domain, ui |
 | `:feature:sticker-pack` | UI | P2-09 WhatsApp packs: Packs list, builder, Emojis sheet, Added; pack files live in `files/stickerpacks/` (`StickerPackStore`), the provider WhatsApp reads is in `:platform:services` | domain, ui |
 | `:feature:media-import` | UI | the import flow (`MediaImportFlow`, the sheet, `ProjectPickImport<R>` for a pick into an open project) and its strings; used by both editors and the app root | domain, ui |
 

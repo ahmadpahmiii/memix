@@ -14,9 +14,13 @@ import app.memix.core.domain.catalog.SearchSoundsUseCase
 import app.memix.core.domain.catalog.SoundSearchPage
 import app.memix.core.domain.sound.GetSavedSoundIdsUseCase
 import app.memix.core.domain.sound.LogSoundEventsUseCase
+import app.memix.core.domain.sound.ObserveFavoriteSoundIdsUseCase
+import app.memix.core.domain.sound.ObserveFavoriteSoundsUseCase
+import app.memix.core.domain.sound.ObserveRecentSoundsUseCase
 import app.memix.core.domain.sound.OpenSoundPlayerUseCase
 import app.memix.core.domain.sound.PrepareSoundUseCase
 import app.memix.core.domain.sound.SoundPlayer
+import app.memix.core.domain.sound.ToggleFavoriteSoundUseCase
 import app.memix.core.model.Region
 import app.memix.core.model.catalog.LibrarySound
 import app.memix.core.model.catalog.SoundFeed
@@ -25,6 +29,7 @@ import app.memix.core.model.project.MediaOrigin
 import app.memix.core.ui.MemixViewModel
 import app.memix.core.ui.soundLengthText
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -34,7 +39,8 @@ import kotlinx.coroutines.launch
  * phone's copy of the catalog and show at once; the network only refreshes them. Tab and chip survive a trip to
  * another bottom-nav item; the search text and a playing preview do not ([SoundsIntent.LeftScreen]).
  *
- * Favorites and My sounds have no storage yet (P3-06, P3-07), so they list nothing and show their empty states.
+ * Favorites and Recently used are kept on the phone (P3-06) and fill the Favorites tab; My sounds has no storage yet
+ * (P3-07), so it shows its empty state.
  */
 class SoundsViewModel(
     observeCategories: ObserveSoundCategoriesUseCase,
@@ -44,6 +50,10 @@ class SoundsViewModel(
     private val searchSounds: SearchSoundsUseCase,
     getPhoneRegion: GetPhoneRegionUseCase,
     private val getSavedSoundIds: GetSavedSoundIdsUseCase,
+    observeFavoriteIds: ObserveFavoriteSoundIdsUseCase,
+    observeFavorites: ObserveFavoriteSoundsUseCase,
+    observeRecents: ObserveRecentSoundsUseCase,
+    private val toggleFavorite: ToggleFavoriteSoundUseCase,
     private val prepareSound: PrepareSoundUseCase,
     private val openSoundPlayer: OpenSoundPlayerUseCase,
     private val logEvents: LogSoundEventsUseCase,
@@ -62,6 +72,10 @@ class SoundsViewModel(
     private var loadingMore = false
     private var moreFailed = false
     private var refreshFailureToasted = false
+    // The Favorites tab: the latest recents, and the favorites as drawn (an un-hearted row stays until the user leaves).
+    private var recentSounds: List<LibrarySound> = emptyList()
+    private var latestFavorites: List<LibrarySound> = emptyList()
+    private var favoritesOnScreen: List<LibrarySound> = emptyList()
 
     private var feedJob: Job? = null
     private var moreJob: Job? = null
@@ -84,9 +98,34 @@ class SoundsViewModel(
             }
         }
         viewModelScope.launch { refreshCategories(force = false) }
+        observeCollections(observeFavoriteIds, observeFavorites, observeRecents)
         // Rotation keeps the search and the preview; only a real move to another bottom-nav item ends them.
         viewModelScope.launch { tabExit.left.collect { leaveScreen() } }
         showFeed()
+    }
+
+    private fun observeCollections(
+        observeFavoriteIds: ObserveFavoriteSoundIdsUseCase,
+        observeFavorites: ObserveFavoriteSoundsUseCase,
+        observeRecents: ObserveRecentSoundsUseCase,
+    ) {
+        viewModelScope.launch {
+            observeFavoriteIds().collect { ids -> updateState { it.copy(favoriteIds = ids.toImmutableSet()) } }
+        }
+        viewModelScope.launch {
+            observeFavorites().collect { favorites ->
+                latestFavorites = favorites
+                val onFavorites = state.value.tab == SoundsTab.FAVORITES
+                favoritesOnScreen = if (onFavorites) keepUnfavoritedRows(favorites, favoritesOnScreen) else favorites
+                if (onFavorites) render()
+            }
+        }
+        viewModelScope.launch {
+            observeRecents().collect { recents ->
+                recentSounds = recents
+                if (state.value.tab == SoundsTab.FAVORITES) render()
+            }
+        }
     }
 
     override fun onIntent(intent: SoundsIntent) {
@@ -95,7 +134,8 @@ class SoundsViewModel(
             is SoundsIntent.SelectCategory -> selectCategory(intent.categoryId)
             is SoundsIntent.QueryChanged -> changeQuery(intent.text)
             SoundsIntent.ClearQuery -> changeQuery("")
-            is SoundsIntent.TogglePlay -> togglePreview(intent.soundId)
+            is SoundsIntent.TogglePlay -> togglePreview(intent.soundId, intent.fromRecent)
+            is SoundsIntent.ToggleFavorite -> viewModelScope.launch { toggleFavorite(intent.soundId) }
             SoundsIntent.LoadMore -> loadMore()
             SoundsIntent.TryAgain -> tryAgain()
             SoundsIntent.Refresh -> refresh()
@@ -107,6 +147,8 @@ class SoundsViewModel(
     private fun selectTab(tab: SoundsTab) {
         if (tab == state.value.tab) return
         updateState { it.copy(tab = tab, categoryId = null) }
+        // Coming to or leaving Favorites starts its rows afresh: no un-hearted row is kept.
+        favoritesOnScreen = latestFavorites
         showFeed()
         // The tab decides what a search covers (the whole catalog, or only this tab's own list).
         if (state.value.query.isNotEmpty()) startSearch(debounceMillis = 0, logResult = false)
@@ -126,7 +168,10 @@ class SoundsViewModel(
     private fun leaveScreen() {
         previewJob?.cancel()
         closePlayer()
+        // Leaving the screen ends the visit: an un-hearted row is gone when the user comes back (spec P3-02 → Tab contents).
+        favoritesOnScreen = latestFavorites
         if (state.value.query.isNotEmpty()) changeQuery("")
+        else if (state.value.tab == SoundsTab.FAVORITES) render()
     }
 
     // ---- Feeds ----
@@ -198,6 +243,7 @@ class SoundsViewModel(
     }
 
     private fun refresh() {
+        if (state.value.tab == SoundsTab.FAVORITES) return dropUnfavoritedRows()
         if (refreshJob?.isActive == true) return
         if (search != null || state.value.query.isNotEmpty()) {
             // One long pull can ask many times; one search at a time.
@@ -209,6 +255,12 @@ class SoundsViewModel(
             refreshCategories(force = true)
             reloadFirstPage(feed, force = true)
         }
+    }
+
+    // A pull on Favorites has nothing to fetch: it is the moment the un-hearted rows go.
+    private fun dropUnfavoritedRows() {
+        favoritesOnScreen = latestFavorites
+        render()
     }
 
     private fun tryAgain() {
@@ -342,13 +394,27 @@ class SoundsViewModel(
         else -> SoundsContent.Rows(result.sounds.map { it.toRow() }.toImmutableList(), footer(result.endReached))
     }
 
-    // Favorites (TODO(P3-06)) and My sounds (TODO(P3-07)) have no storage yet: their lists are empty, and a search
-    // over an empty list finds nothing.
+    // My sounds (TODO(P3-07)) has no storage yet: its list is empty, and a search over an empty list finds nothing.
     private fun ownListContent(ui: SoundsUiState): SoundsContent = when {
+        ui.tab == SoundsTab.FAVORITES -> favoritesContent(ui.query)
         ui.query.isNotBlank() -> SoundsContent.Empty(EmptyReason.SEARCH_NONE)
-        ui.tab == SoundsTab.FAVORITES -> SoundsContent.Empty(EmptyReason.FAVORITES)
         else -> SoundsContent.Empty(EmptyReason.MINE)
     }
+
+    // On Favorites a search filters this tab's own two lists, on the phone (spec P3-02 → Search → Scope).
+    private fun favoritesContent(query: String): SoundsContent {
+        val needle = query.trim().lowercase()
+        val recent = recentSounds.filter { it.titleContains(needle) }
+        val favorites = favoritesOnScreen.filter { it.titleContains(needle) }
+        return when {
+            recent.isEmpty() && favorites.isEmpty() ->
+                SoundsContent.Empty(if (needle.isEmpty()) EmptyReason.FAVORITES else EmptyReason.SEARCH_NONE)
+            else -> SoundsContent.Favorites(recent.map { it.toRow() }.toImmutableList(), favorites.map { it.toRow() }.toImmutableList())
+        }
+    }
+
+    private fun LibrarySound.titleContains(needle: String): Boolean =
+        needle.isEmpty() || title.byLanguage.values.any { it.lowercase().contains(needle) }
 
     private fun emptyFeedReason(ui: SoundsUiState): EmptyReason = when {
         ui.categoryId != null -> EmptyReason.CATEGORY
@@ -375,14 +441,14 @@ class SoundsViewModel(
 
     // ---- Previews ----
 
-    private fun togglePreview(soundId: String) {
+    private fun togglePreview(soundId: String, fromRecent: Boolean) {
         if (state.value.playingId == soundId) {
             // TODO(P3-03): pause and resume plug in here once the player reports its position.
             player?.stop()
             return
         }
         val sound = shownSounds().firstOrNull { it.id == soundId } ?: return
-        val tab = analyticsTab()
+        val tab = if (fromRecent) SoundTab.RECENT else analyticsTab()
         previewJob?.cancel()
         previewJob = viewModelScope.launch {
             // TODO(P3-04): a sound that is not on the phone downloads here first; until then only the starter pack plays.
@@ -396,7 +462,11 @@ class SoundsViewModel(
         }
     }
 
-    private fun shownSounds(): List<LibrarySound> = search?.sounds ?: if (state.value.tab.listsCatalog) feedSaved.sounds else emptyList()
+    private fun shownSounds(): List<LibrarySound> = search?.sounds ?: when {
+        state.value.tab.listsCatalog -> feedSaved.sounds
+        state.value.tab == SoundsTab.FAVORITES -> recentSounds + favoritesOnScreen
+        else -> emptyList()
+    }
 
     private fun analyticsTab(): SoundTab = when {
         search != null -> SoundTab.SEARCH

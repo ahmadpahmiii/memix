@@ -3,7 +3,9 @@ package app.memix.feature.sounds
 import androidx.compose.runtime.Immutable
 import app.memix.core.model.catalog.LocalizedText
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 
 /** The five tabs, in the order they are drawn (spec P3-02 → Layout). */
 enum class SoundsTab {
@@ -43,6 +45,12 @@ sealed interface SoundsContent {
     data class Empty(val reason: EmptyReason) : SoundsContent
 
     data class Rows(val rows: ImmutableList<SoundItemUi>, val footer: ListFooter) : SoundsContent
+
+    /**
+     * The Favorites tab (spec P3-02 → Tab contents): up to five recently used sounds, then every favorite. A sound
+     * can be in both. An empty section is not drawn, except that [favorites] empty under a filled [recent] shows its hint.
+     */
+    data class Favorites(val recent: ImmutableList<SoundItemUi>, val favorites: ImmutableList<SoundItemUi>) : SoundsContent
 }
 
 enum class EmptyReason {
@@ -80,6 +88,8 @@ data class SoundsUiState(
     val content: SoundsContent = SoundsContent.Loading(showPlaceholders = false),
     val notice: SoundsNotice? = null,
     val playingId: String? = null,
+    /** The sounds with a filled heart, on every tab. */
+    val favoriteIds: ImmutableSet<String> = persistentSetOf(),
     /** How many sounds the last settled search found; read out as a status message, never drawn. */
     val spokenResultCount: Int? = null,
     val toast: SoundsToast? = null,
@@ -93,7 +103,11 @@ sealed interface SoundsIntent {
     data class SelectCategory(val categoryId: String?) : SoundsIntent
     data class QueryChanged(val text: String) : SoundsIntent
     data object ClearQuery : SoundsIntent
-    data class TogglePlay(val soundId: String) : SoundsIntent
+    /** [fromRecent]: the tap was in the Recently used section, which `sound_preview` names as its own `tab`. */
+    data class TogglePlay(val soundId: String, val fromRecent: Boolean = false) : SoundsIntent
+
+    /** The heart: favorite the sound, or take it out of the favorites. */
+    data class ToggleFavorite(val soundId: String) : SoundsIntent
 
     /** The list is near its end: bring in the next page. */
     data object LoadMore : SoundsIntent

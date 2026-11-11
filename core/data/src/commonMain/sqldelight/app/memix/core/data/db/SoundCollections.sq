@@ -1,0 +1,51 @@
+-- What the user keeps of the sound catalog on this phone (P3-06): favorites and recently used. Both store only the
+-- sound id; the sound's details come from the `sound` table, which P3-01 never prunes.
+-- Changing a table: edit it here and add migrations/<current database version>.sqm (the last is 2.sqm, which made version 3).
+
+CREATE TABLE sound_favorite (
+    sound_id TEXT NOT NULL PRIMARY KEY,
+    favorited_at_epoch_us INTEGER NOT NULL
+);
+
+-- One row per sound; using a sound again moves it to the top. The repository keeps the newest 20.
+CREATE TABLE sound_recent (
+    sound_id TEXT NOT NULL PRIMARY KEY,
+    used_at_epoch_us INTEGER NOT NULL
+);
+
+selectFavoriteIds:
+SELECT sound_id FROM sound_favorite;
+
+isFavorite:
+SELECT COUNT(*) FROM sound_favorite WHERE sound_id = :soundId;
+
+insertFavorite:
+INSERT OR REPLACE INTO sound_favorite(sound_id, favorited_at_epoch_us) VALUES (:soundId, :favoritedAtEpochUs);
+
+deleteFavorite:
+DELETE FROM sound_favorite WHERE sound_id = :soundId;
+
+-- Last favorited first. A favorite whose sound row is missing is left out by the inner join (it can't be drawn).
+selectFavoriteSounds:
+SELECT sound.id, sound.title_json, sound.category_id, sound.file_path, sound.duration_ms, sound.waveform_path,
+       sound.license_type, sound.source_url, sound.credit
+FROM sound_favorite
+JOIN sound ON sound.id = sound_favorite.sound_id
+ORDER BY sound_favorite.favorited_at_epoch_us DESC, sound_favorite.rowid DESC;
+
+-- Last used first.
+selectRecentSounds:
+SELECT sound.id, sound.title_json, sound.category_id, sound.file_path, sound.duration_ms, sound.waveform_path,
+       sound.license_type, sound.source_url, sound.credit
+FROM sound_recent
+JOIN sound ON sound.id = sound_recent.sound_id
+ORDER BY sound_recent.used_at_epoch_us DESC, sound_recent.rowid DESC
+LIMIT :limit;
+
+insertRecent:
+INSERT OR REPLACE INTO sound_recent(sound_id, used_at_epoch_us) VALUES (:soundId, :usedAtEpochUs);
+
+deleteRecentsBeyond:
+DELETE FROM sound_recent WHERE sound_id NOT IN (
+    SELECT sound_id FROM sound_recent ORDER BY used_at_epoch_us DESC, rowid DESC LIMIT :keep
+);

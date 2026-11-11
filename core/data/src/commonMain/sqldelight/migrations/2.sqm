@@ -1,0 +1,12 @@
+-- Version 2 to 3 (P3-06): the sounds the user hearted and the sounds that landed on a timeline. Same definitions as
+-- SoundCollections.sq. New tables only, so drafts and the saved catalog are untouched.
+
+CREATE TABLE sound_favorite (
+    sound_id TEXT NOT NULL PRIMARY KEY,
+    favorited_at_epoch_us INTEGER NOT NULL
+);
+
+CREATE TABLE sound_recent (
+    sound_id TEXT NOT NULL PRIMARY KEY,
+    used_at_epoch_us INTEGER NOT NULL
+);

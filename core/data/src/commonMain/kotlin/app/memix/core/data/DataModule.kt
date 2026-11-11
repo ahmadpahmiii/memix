@@ -1,6 +1,7 @@
 package app.memix.core.data
 
 import app.memix.core.data.catalog.SqlDelightSoundCatalogRepository
+import app.memix.core.data.catalog.SqlDelightSoundCollectionsRepository
 import app.memix.core.data.catalog.SupabaseConfig
 import app.memix.core.data.catalog.SupabaseSoundCatalogRemote
 import app.memix.core.data.db.MemixDatabase
@@ -17,6 +18,7 @@ import app.memix.core.domain.catalog.SoundCatalogRepository
 import app.memix.core.domain.photo.PhotoExportPreferences
 import app.memix.core.domain.photo.VideoMemeNotePreferences
 import app.memix.core.domain.project.ProjectRepository
+import app.memix.core.domain.sound.SoundCollectionsRepository
 import app.memix.core.domain.stickerpack.StickerPackRepository
 import app.memix.core.domain.video.ExportPreferences
 import app.memix.core.model.project.Project
@@ -57,5 +59,8 @@ val dataModule = module {
             ioDispatcher = Dispatchers.IO,
             logger = get(),
         )
+    }
+    single<SoundCollectionsRepository> {
+        SqlDelightSoundCollectionsRepository(database = lazy { get<MemixDatabase>() }, clock = get(), ioDispatcher = Dispatchers.IO)
     }
 }

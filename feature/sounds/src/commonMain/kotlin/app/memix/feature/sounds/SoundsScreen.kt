@@ -32,9 +32,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -62,11 +64,14 @@ import memix.core.ui.generated.resources.Res as UiRes
 import memix.core.ui.generated.resources.sound_meta
 import memix.feature.sounds.generated.resources.Res
 import memix.feature.sounds.generated.resources.sound_play_failed
+import memix.feature.sounds.generated.resources.sounds_empty_favorites_body
 import memix.feature.sounds.generated.resources.sounds_refresh_failed
 import memix.feature.sounds.generated.resources.sounds_results_a11y
 import memix.feature.sounds.generated.resources.sounds_search_hint
 import memix.feature.sounds.generated.resources.sounds_search_hint_favorites
 import memix.feature.sounds.generated.resources.sounds_search_hint_mine
+import memix.feature.sounds.generated.resources.sounds_section_favorites
+import memix.feature.sounds.generated.resources.sounds_section_recent
 import memix.feature.sounds.generated.resources.sounds_tab_favorites
 import memix.feature.sounds.generated.resources.sounds_tab_global
 import memix.feature.sounds.generated.resources.sounds_tab_local
@@ -194,23 +199,62 @@ private fun androidx.compose.foundation.lazy.LazyListScope.contentItems(
         }
         is SoundsContent.Rows -> {
             items(content.rows, key = { it.id }, contentType = { "sound" }) { row ->
-                LibrarySoundRow(row, isPlaying = row.id == state.playingId, language = language, fade = fade, onIntent = onIntent)
+                LibrarySoundRow(row, row.id == state.playingId, row.id in state.favoriteIds, language, fade, onIntent)
             }
             item(key = "footer", contentType = "footer") { ListFooterItem(content.footer, { onIntent(SoundsIntent.TryAgain) }) }
         }
+        is SoundsContent.Favorites -> favoriteSections(content, state, language, fade, onIntent)
+    }
+}
+
+/** Recently used, then Favorites; a sound in both gets a row in each, so the keys carry the section. */
+private fun androidx.compose.foundation.lazy.LazyListScope.favoriteSections(
+    content: SoundsContent.Favorites,
+    state: SoundsUiState,
+    language: String,
+    fade: Modifier,
+    onIntent: (SoundsIntent) -> Unit,
+) {
+    if (content.recent.isNotEmpty()) {
+        item(key = "recent-heading", contentType = "section") { SectionHeading(Res.string.sounds_section_recent, isFirst = true, modifier = fade) }
+        items(content.recent, key = { "recent-${it.id}" }, contentType = { "sound" }) { row ->
+            LibrarySoundRow(row, row.id == state.playingId, row.id in state.favoriteIds, language, fade, onIntent, fromRecent = true)
+        }
+    }
+    val showsHint = content.favorites.isEmpty() && state.query.isBlank()
+    if (content.favorites.isNotEmpty() || showsHint) {
+        item(key = "favorites-heading", contentType = "section") {
+            SectionHeading(Res.string.sounds_section_favorites, isFirst = content.recent.isEmpty(), modifier = fade)
+        }
+    }
+    if (showsHint) item(key = "favorites-hint", contentType = "hint") { SectionHint(Res.string.sounds_empty_favorites_body, fade) }
+    items(content.favorites, key = { "favorite-${it.id}" }, contentType = { "sound" }) { row ->
+        LibrarySoundRow(row, row.id == state.playingId, row.id in state.favoriteIds, language, fade, onIntent)
     }
 }
 
 @Composable
-private fun LibrarySoundRow(row: SoundItemUi, isPlaying: Boolean, language: String, fade: Modifier, onIntent: (SoundsIntent) -> Unit) {
+private fun LibrarySoundRow(
+    row: SoundItemUi,
+    isPlaying: Boolean,
+    isFavorite: Boolean,
+    language: String,
+    fade: Modifier,
+    onIntent: (SoundsIntent) -> Unit,
+    fromRecent: Boolean = false,
+) {
+    val haptics = LocalHapticFeedback.current
     SoundRow(
         name = row.title.inLanguage(language),
         meta = stringResource(UiRes.string.sound_meta, row.length, row.credit),
         isPlaying = isPlaying,
-        isFavorite = false,
-        onPlayToggle = { onIntent(SoundsIntent.TogglePlay(row.id)) },
-        // TODO(P3-06): the heart appears with the Favorites list.
-        onFavoriteChange = null,
+        isFavorite = isFavorite,
+        onPlayToggle = { onIntent(SoundsIntent.TogglePlay(row.id, fromRecent)) },
+        onFavoriteChange = { on ->
+            // One tick when the heart fills; taking it out is quiet (spec P3-02 → Interactions).
+            if (on) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+            onIntent(SoundsIntent.ToggleFavorite(row.id))
+        },
         // TODO(P3-15): the blue Use block appears once the Use flow exists.
         onAdd = null,
         modifier = fade.padding(horizontal = MemixSpacing.space2, vertical = MemixSpacing.space2),

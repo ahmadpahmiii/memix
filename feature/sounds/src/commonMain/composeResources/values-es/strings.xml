@@ -13,6 +13,8 @@
     <string name="sounds_tab_local">Local</string>
     <string name="sounds_tab_global">Global</string>
     <string name="sounds_tab_favorites">Favoritos</string>
+    <string name="sounds_section_recent">Usados hace poco</string>
+    <string name="sounds_section_favorites">Favoritos</string>
     <string name="sounds_tab_mine">Mis sonidos</string>
     <string name="sounds_chip_all">Todos</string>
     <string name="sounds_region_line">Sonidos para %1$s</string>

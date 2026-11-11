@@ -43,8 +43,13 @@ import app.memix.core.domain.share.ShareVideoUseCase
 import app.memix.core.domain.sound.GetSavedSoundIdsUseCase
 import app.memix.core.domain.sound.LoadStarterSoundsUseCase
 import app.memix.core.domain.sound.LogSoundEventsUseCase
+import app.memix.core.domain.sound.ObserveFavoriteSoundIdsUseCase
+import app.memix.core.domain.sound.ObserveFavoriteSoundsUseCase
+import app.memix.core.domain.sound.ObserveRecentSoundsUseCase
 import app.memix.core.domain.sound.OpenSoundPlayerUseCase
 import app.memix.core.domain.sound.PrepareSoundUseCase
+import app.memix.core.domain.sound.RecordRecentSoundUseCase
+import app.memix.core.domain.sound.ToggleFavoriteSoundUseCase
 import app.memix.core.domain.text.CaptionFontSource
 import app.memix.core.domain.text.MeasureCaptionUseCase
 import app.memix.core.domain.text.PrepareCaptionsUseCase
@@ -151,6 +156,12 @@ private val appModule = module {
     factoryOf(::LoadSoundFeedPageUseCase)
     factoryOf(::SearchSoundsUseCase)
     factoryOf(::GetSavedSoundIdsUseCase)
+    // Favorites and recently used (P3-06): the Sounds screen shows and toggles them, the editor records a landing.
+    factoryOf(::ObserveFavoriteSoundIdsUseCase)
+    factoryOf(::ObserveFavoriteSoundsUseCase)
+    factoryOf(::ObserveRecentSoundsUseCase)
+    factoryOf(::ToggleFavoriteSoundUseCase)
+    factoryOf(::RecordRecentSoundUseCase)
     factoryOf(::LoadWaveformUseCase)
     factoryOf(::EditorSounds)
     // The caption fonts live with the interface fonts in the design system; the engine's renderer reads them (P1-10).

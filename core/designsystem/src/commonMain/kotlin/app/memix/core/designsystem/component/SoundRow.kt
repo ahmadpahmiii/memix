@@ -18,8 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -34,6 +36,8 @@ import app.memix.core.designsystem.Text
 import app.memix.core.designsystem.focusRing
 import app.memix.core.designsystem.pressedColor
 import memix.core.designsystem.generated.resources.Res
+import memix.core.designsystem.generated.resources.sound_action_favorite
+import memix.core.designsystem.generated.resources.sound_action_unfavorite
 import memix.core.designsystem.generated.resources.sound_add
 import memix.core.designsystem.generated.resources.sound_favorite
 import memix.core.designsystem.generated.resources.sound_pause
@@ -43,8 +47,9 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * One meme sound. Sound controls are Memix blue everywhere, so this row may carry blue next to a screen's main action.
  * The title takes up to two lines; the meta line is never cut, because it can hold a license's credit. Without
- * [onFavoriteChange] the favorite heart isn't shown (the editor's sounds sheet has no Favorites list, P1-08), and without
- * [onAdd] the blue block isn't shown (the Sounds screen draws it only once the Use flow exists, P3-15).
+ * [onFavoriteChange] the favorite heart isn't shown (the editor's sounds sheet has no Favorites list, P1-08); the heart
+ * is a switch, so screen readers say "on" or "off" (P3-06). Without [onAdd] the blue block isn't shown (the Sounds
+ * screen draws it only once the Use flow exists, P3-15).
  *
  * While playing, the row sits one value step above its container: `surface` on `canvas`, or `surface-raised` when
  * it's [onSurface] (inside a sheet), where a `surface` band wouldn't show.
@@ -72,12 +77,27 @@ fun SoundRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         PlayDisc(isPlaying, stringResource(if (isPlaying) Res.string.sound_pause else Res.string.sound_play, name), onPlayToggle)
-        Column(Modifier.weight(1f).padding(vertical = MemixSpacing.space2)) {
+        Column(
+            Modifier.weight(1f).padding(vertical = MemixSpacing.space2).nameBlockSemantics(isFavorite, onFavoriteChange),
+        ) {
             Text(name, MemixTheme.type.bodyStrong, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(meta, MemixTheme.type.label, color = MemixColors.textSecondary)
         }
         if (onFavoriteChange != null) FavoriteToggle(isFavorite, stringResource(Res.string.sound_favorite, name), onFavoriteChange)
         if (onAdd != null) AddSoundButton(stringResource(Res.string.sound_add, name), onAdd)
+    }
+}
+
+/**
+ * On a row with a heart, the name and meta read as one stop ("{name}, {meta}") that also offers the heart as a screen
+ * reader action, so favoriting never depends on finding the small control (spec P3-02 → Accessibility → Row actions).
+ */
+@Composable
+private fun Modifier.nameBlockSemantics(isFavorite: Boolean, onFavoriteChange: ((Boolean) -> Unit)?): Modifier {
+    if (onFavoriteChange == null) return this
+    val label = stringResource(if (isFavorite) Res.string.sound_action_unfavorite else Res.string.sound_action_favorite)
+    return semantics(mergeDescendants = true) {
+        customActions = listOf(CustomAccessibilityAction(label) { onFavoriteChange(!isFavorite); true })
     }
 }
 
@@ -118,7 +138,7 @@ private fun FavoriteToggle(isFavorite: Boolean, description: String, onFavoriteC
         Modifier
             .size(MemixSize.touchTarget)
             .focusRing(interactionSource, MemixShapes.radiusFull)
-            .toggleable(isFavorite, interactionSource, indication = null, role = Role.Checkbox, onValueChange = onFavoriteChange)
+            .toggleable(isFavorite, interactionSource, indication = null, role = Role.Switch, onValueChange = onFavoriteChange)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {

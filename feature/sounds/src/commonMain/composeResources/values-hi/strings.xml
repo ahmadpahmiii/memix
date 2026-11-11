@@ -13,6 +13,8 @@
     <string name="sounds_tab_local">स्थानीय</string>
     <string name="sounds_tab_global">ग्लोबल</string>
     <string name="sounds_tab_favorites">पसंदीदा</string>
+    <string name="sounds_section_recent">हाल में इस्तेमाल किए</string>
+    <string name="sounds_section_favorites">पसंदीदा</string>
     <string name="sounds_tab_mine">मेरे साउंड</string>
     <string name="sounds_chip_all">सभी</string>
     <string name="sounds_region_line">%1$s के साउंड</string>
@@ -36,7 +38,7 @@
     <string name="sounds_empty_category_body">दूसरी श्रेणी आज़माएं, या सभी साउंड देखें।</string>
     <string name="sounds_show_all">सभी दिखाएं</string>
     <string name="sounds_empty_favorites_title">अभी कोई पसंदीदा नहीं</string>
-    <string name="sounds_empty_favorites_body">किसी साउंड के हार्ट पर टैप करें, वह यहाँ सेव रहेगा।</string>
+    <string name="sounds_empty_favorites_body">किसी साउंड के हार्ट पर टैप करें, वह यहां सेव रहेगा।</string>
     <string name="sounds_browse_trending">ट्रेंडिंग देखें</string>
     <string name="sounds_empty_mine_title">अभी कोई इम्पोर्ट साउंड नहीं</string>
     <string name="sounds_empty_mine_body">फ़ाइलों या वीडियो से इम्पोर्ट किए साउंड यहाँ दिखते हैं। वे आपके फ़ोन में ही रहते हैं।</string>

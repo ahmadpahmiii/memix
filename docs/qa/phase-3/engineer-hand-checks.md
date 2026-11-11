@@ -122,7 +122,7 @@ Needs P3-01's migration applied and `memix.supabase.*` in `local.properties`. Us
 3. One character does nothing. A nonsense word shows "No sounds for ...". Hindi: type a Devanagari title word.
 4. Airplane mode, then pull down: offline strip. Search "bruh": strip says saved sounds, only starter sounds match; "bruhh" finds nothing offline (expected: contains-match).
 5. Play a starter sound (disc), tap again: stops. Play another: first stops. Tap a non-starter sound: "That sound won't play" toast (downloads arrive with P3-04). Leave the tab and return: preview stopped, search cleared, tab and chip kept.
-6. Favorites and My sounds show their empty states; no heart, no Use block, name is not a button yet (P3-06, P3-15, P3-03, P3-07).
+6. My sounds shows its empty state; no Use block, name is not a button yet (P3-15, P3-03, P3-07). Favorites and the heart: see P3-06 below.
 7. Scroll the list with 100+ sounds (after P3-12b): `adb shell dumpsys gfxinfo app.memix framestats` janky frames under 5 percent; page 2 loads near the end.
 8. TalkBack: tabs read as tabs, discs "Play {name}", result count is spoken after a search (live region on a zero-size node: not verified, report if silent). 200% font and Hindi: nothing cut.
 9. Rotate the phone with text in the search and a sound playing: both stay. Switch to Home and back: search cleared, preview stopped. (Review fixes.)
@@ -131,4 +131,26 @@ Needs P3-01's migration applied and `memix.supabase.*` in `local.properties`. Us
 12. Not built from the spec: pause/resume (the player only stops), "turn up your volume" toast, long-press and TalkBack row actions (details sheet is P3-03), focus return after Show all and Clear search.
 
 Desktop proof of the search path (not a phone): the ViewModel, `SearchSoundsUseCase`, the SQLDelight repository and the repo's real `search_sounds` SQL on a local Postgres 16: 34 checks, 0 failed (types "bruhh" at 50 ms per key: one server call 302 ms after the last key, result exactly "Bruh"). The HTTP layer (PostgREST), the live project and the phone are not covered.
+
+## P3-06 · Favorites and recently used
+
+Needs P3-01's catalog rows on the phone (open Trending once online). Use `installBenchmark` for the restart checks so the database file is the real one.
+
+1. Heart: on Trending tap a heart. It fills at once (white heart), one short tick; tap again: it empties, no tick, no toast. The same sound shows the same heart on Local, Global and in search results.
+2. Favorites tab, empty: the heart, "No favorites yet", "Browse trending" (goes to Trending). No Recently used heading.
+3. Heart three sounds in order A, B, C. Favorites tab: "Favorites" heading, then C, B, A (last favorited first). No "Recently used" heading yet.
+4. Restart (the Done when): swipe the app away, open it again, Sounds, Favorites: the same three, same order. Do the same after the app is force-stopped from settings.
+5. Un-heart B inside the Favorites tab: the heart empties and the row stays where it is. Tap it again: it fills, the row has not moved. Un-heart B, change tab and come back: B is gone. Un-heart B, pull down on the tab: B goes. Un-heart B, go to Home and back to Sounds: B is gone.
+6. Recently used: open a video project, add sounds from the Meme sounds sheet one by one (use five different ones, then a sixth). Favorites tab: "Recently used" first with the last five added, newest first; add the oldest of them again: it moves to the top. Previewing a sound in the sheet or on the Sounds tab adds nothing. Restart the app: the same five.
+7. A sound in both lists shows in both sections with its heart filled. Heart a Recently used row: it also appears at the top of Favorites. Only recents and no favorites: under "Favorites" the hint "Tap the heart on a sound to keep it here." shows.
+8. Search on Favorites: the placeholder says "Search your favorites"; typing filters both sections by title (any language); no match shows "No sounds for ..."; clearing returns the lists. Back clears the search first.
+9. Play from both sections: the disc plays; tapping a Recently used row's disc while the same sound is in Favorites highlights both rows (same sound). Analytics debug log: `sound_preview` tab is `recent` for the first section and `favorites` for the second; no `sound_favorite` event exists.
+10. Upgrade check (database v2 to v3): install the P3-02 build with a draft and some sounds browsed, then install this build over it: the draft opens and Trending still shows at once offline. Then favorite a sound, update again by reinstalling: it is still a favorite.
+11. TalkBack: the heart reads "Favorite {name}, switch, off" (and "on" after a tap), not "checkbox, checked". On a row, the name and meta read as one stop "{name}, {meta}" and its actions list has "Add to favorites" or "Remove from favorites"; running it flips the heart. Tab, chips and the other rows are unchanged. The two section headings read as headings.
+12. Heart speed: the fill must be visible within 100 ms of the tap (the write is local and the heart follows the database; if it ever lags, say so and the ViewModel gets an optimistic copy).
+13. Hindi and 200% font: the headings, the hint and the row wrap and nothing is cut.
+14. Storage failure (optional, if you can fill the phone): a heart tap or an added sound that can't be written is logged and dropped; the app doesn't crash.
+15. Known limit to confirm: a starter sound used in the editor on a phone that never loaded the catalog is a recent that is not drawn until Trending has loaded once.
+
+Desktop proof (not a phone): a JVM script on a real SQLite file, 29 checks, 0 failed: favorites and recents written, the connection closed, a new repository opened on the same file and both lists are there in order; the cap of 20 stored recents; a repeat moves to the top; a version 2 file (draft, saved sound, feed entry) migrates to 3 with all intact and the new tables take rows that survive another restart. `:core:data:verifySqlDelightMigration` passes.
 

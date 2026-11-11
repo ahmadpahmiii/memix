@@ -4,6 +4,7 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import app.memix.core.data.db.MemixDatabase
 import app.memix.core.data.db.SelectFeedPages
+import app.memix.core.data.nowEpochUs
 import app.memix.core.domain.AppConfig
 import app.memix.core.domain.AppError
 import app.memix.core.domain.Logger
@@ -30,9 +31,7 @@ import kotlinx.coroutines.withContext
 
 private const val TAG = "SoundCatalog"
 private const val CATEGORIES_STAMP = "sound_categories"
-private const val MICROS_PER_SECOND = 1_000_000L
 private const val MICROS_PER_MILLI = 1_000L
-private const val NANOS_PER_MICRO = 1_000
 private const val MAX_TRENDING_SOUNDS = 50
 
 // SQLite allows 999 variables in one statement; the pattern takes one of them.
@@ -77,7 +76,7 @@ internal class SqlDelightSoundCatalogRepository(
         db.transaction {
             queries.deleteCategories()
             categories.forEach { queries.insertCategory(it.id, it.name.toJson(), it.sort.toLong()) }
-            queries.insertStamp(CATEGORIES_STAMP, nowEpochUs())
+            queries.insertStamp(CATEGORIES_STAMP, clock.nowEpochUs())
         }
         Outcome.Success(Unit)
     }
@@ -193,7 +192,7 @@ internal class SqlDelightSoundCatalogRepository(
             queries.deleteFeedEntriesFrom(key, firstPosition.toLong())
             queries.deleteFeedPagesFrom(key, pageIndex.toLong())
             sounds.forEachIndexed { index, sound -> queries.insertFeedEntry(key, (firstPosition + index).toLong(), sound.sound.id) }
-            queries.insertFeedPage(key, pageIndex.toLong(), nowEpochUs(), if (isLast) 1L else 0L)
+            queries.insertFeedPage(key, pageIndex.toLong(), clock.nowEpochUs(), if (isLast) 1L else 0L)
         }
     }
 
@@ -223,14 +222,9 @@ internal class SqlDelightSoundCatalogRepository(
 
     private fun isFresh(fetchedAtEpochUs: Long?, maxAge: Duration): Boolean {
         if (fetchedAtEpochUs == null) return false
-        val ageUs = nowEpochUs() - fetchedAtEpochUs
+        val ageUs = clock.nowEpochUs() - fetchedAtEpochUs
         // A negative age means the clock moved back; refresh rather than trust a copy of unknown age.
         return ageUs in 0 until maxAge.inWholeMicroseconds
-    }
-
-    private fun nowEpochUs(): Long {
-        val now = clock.now()
-        return now.epochSeconds * MICROS_PER_SECOND + now.nanosecondsOfSecond / NANOS_PER_MICRO
     }
 
     private fun titleMatchPosition(sound: LibrarySound, needle: String): Int =

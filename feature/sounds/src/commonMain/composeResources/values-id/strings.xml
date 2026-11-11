@@ -13,6 +13,8 @@
     <string name="sounds_tab_local">Lokal</string>
     <string name="sounds_tab_global">Global</string>
     <string name="sounds_tab_favorites">Favorit</string>
+    <string name="sounds_section_recent">Baru dipakai</string>
+    <string name="sounds_section_favorites">Favorit</string>
     <string name="sounds_tab_mine">Suaraku</string>
     <string name="sounds_chip_all">Semua</string>
     <string name="sounds_region_line">Suara untuk %1$s</string>
