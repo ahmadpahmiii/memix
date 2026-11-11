@@ -31,3 +31,5 @@ Lessons for this project only, newest first. Keep under ~150 lines; prune stale 
 - 2026-10-08 · P0 · Planned 1 week, built in 2 days except P0-07 (moved out by the owner). Owner prefers one PR per phase and decides fast when given 2–3 options with a recommendation; values token and time efficiency.
 
 <!-- - 2026-10-xx · P0-01 · lesson … -->
+
+- 11 Nov 2026: owner answered "1A, 2A, 3A" on Phase 3 kickoff. Phase 3 delegated like Phase 2. Added P3-14 (S) and P3-15 (S, watch M); split P3-12 into 12a (M) and 12b (L). Sound license rule (CC0, CC-BY with credit, own/recreated; no standalone-redistribution bars) now in PRD. Owner pattern: answers in short form, accepts PM recommendations.

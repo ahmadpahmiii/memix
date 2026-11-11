@@ -126,7 +126,7 @@ The sound library is the main reason to choose Memix: **500 licensed sounds at l
 - **Categories:** Reactions, Impacts and hits, Fails, Suspense, Cartoon, Voice lines (recreated), Animals, Gaming, Local, Trending.
 - **Search:** by name, tag and category, tolerant of typos.
 - **Preview:** tap to play, with waveform and duration. Sound details show the source credit.
-- **Add:** tap + to place the sound at the playhead on the meme sound track; then drag, trim, set volume and apply audio effects.
+- **Add:** tap + to place the sound at the playhead on the meme sound track; then drag, trim, set volume and apply audio effects. In the library, a row's blue Use block starts a new video meme with that sound at 0:00 (photo picker, then the editor; P3-15, owner 11 Nov 2026).
 - **Favorites and recently used:** stored on the phone.
 - **My sounds:** import an audio file or extract audio from a gallery video. These stay on the phone and are never uploaded.
 - **Offline:** a starter pack of 50 sounds ships inside the app; every other sound is cached after its first download.
@@ -194,6 +194,7 @@ Only content with a recorded license enters the catalog. Platforms fingerprint a
 | Our own recordings and recreations |  |
 | Packs licensed in writing |  |
 
+- **Sound intake rule (owner, 11 Nov 2026):** the sound intake script (P3-12a) accepts only three sources: CC0 or public domain, CC-BY with an in-app credit, and our own or recreated sounds. A license that bars standalone redistribution (for example "free to use in videos" terms) does not qualify, because a catalog sound is a file the app redistributes on its own. The owner approves the rule once and reviews a table of about 50 sounds per batch (title, source URL, license, proof, credit); the script refuses any row with a missing field. The other rows of the table above (royalty-free for apps, packs licensed in writing) need the owner's separate approval before a sound of that kind is loaded. Applies to P3-12a and P3-12b.
 - **Every catalog item records:** source URL, license type, license proof (link or screenshot), credit text, who added it, and when.
 - **Takedowns:** a Report button in the app plus a support email. Setting `is_active = false` in the CMS hides the item on the next catalog refresh. Each request is logged, with a 72-hour response target.
 - **User imports:** stay on the user's phone, are never uploaded, and need no moderation.
@@ -229,7 +230,7 @@ The north-star metric is **DAU, with a target of 5,000 by month 3 after the Andr
 
 | Event | Fires when | Parameters |
 | --- | --- | --- |
-| `onboarding_complete` | Language and region confirmed | language, region |
+| `onboarding_complete` | Language and region confirmed: the first confirm of the Region sheet at first launch (P3-11, owner 11 Nov 2026) | language, region |
 | `project_create` | A project starts | editor (video, photo), source (blank, template, gallery); `gallery` for picked media, `blank` only for the photo editor's blank layout. Duplicating a draft doesn't fire it (PM, 20 Oct 2026) |
 | `template_open` | A template opens | template\_id, type |
 | `sound_preview` | A sound plays in the library | sound\_id, tab |
@@ -242,7 +243,8 @@ The north-star metric is **DAU, with a target of 5,000 by month 3 after the Andr
 | `export_cancel` | The user cancels a running export (owner, 21 Oct 2026) | editor, progress (percent done, 0–100) |
 | `watermark_removed` | A rewarded ad completes | editor |
 | `share_target` | A share target is chosen | target |
-| `sound_report` | A sound is reported | sound\_id |
+| `sound_report` | A sound is reported (once, on a successful insert) | sound\_id, reason (`rights`, `offensive`, `broken`, `other`; never the note) (PM, 11 Nov 2026) |
+| `sound_search` | A sound search completes, after the 300 ms pause and for two characters or more | results (count), offline (true when it searched saved sounds only); never the query text (PM, 11 Nov 2026) |
 
 Events carry no personal data, and analytics follow the user's consent choice.
 
