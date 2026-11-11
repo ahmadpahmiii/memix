@@ -21,6 +21,7 @@ import app.memix.core.domain.media.MediaInspector
 import app.memix.core.domain.photo.PictureClipboard
 import app.memix.core.domain.share.Sharer
 import app.memix.core.domain.sound.MediaVolume
+import app.memix.core.domain.sound.NetworkStatus
 import app.memix.core.domain.sound.SoundLibrary
 import app.memix.core.domain.stickerpack.WhatsAppStickers
 import app.memix.core.domain.video.AppExitReasons
@@ -53,6 +54,7 @@ actual val platformServicesModule = module {
     single<AppExitReasons> { AndroidAppExitReasons(androidContext(), Dispatchers.IO) }
     single<LocalCalendar> { AndroidLocalCalendar() }
     single<MediaVolume> { AndroidMediaVolume(androidContext()) }
+    single<NetworkStatus> { AndroidNetworkStatus(androidContext()) }
     single<WhatsAppStickers> { AndroidWhatsAppStickers(androidContext(), Dispatchers.IO, get()) }
 }
 

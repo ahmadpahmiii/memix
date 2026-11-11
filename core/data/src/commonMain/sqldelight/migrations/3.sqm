@@ -1,0 +1,16 @@
+-- Version 3 to 4 (P3-04): the downloaded sounds and the saved sounds the catalog dropped. Same definitions as
+-- SoundFiles.sq. New tables only, so drafts, the saved catalog, favorites and recents are untouched.
+
+CREATE TABLE sound_file (
+    sound_id TEXT NOT NULL PRIMARY KEY,
+    path TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    last_used_epoch_us INTEGER NOT NULL
+);
+
+CREATE INDEX sound_file_last_used ON sound_file(last_used_epoch_us);
+
+CREATE TABLE sound_removed (
+    sound_id TEXT NOT NULL PRIMARY KEY,
+    checked_at_epoch_us INTEGER NOT NULL
+);

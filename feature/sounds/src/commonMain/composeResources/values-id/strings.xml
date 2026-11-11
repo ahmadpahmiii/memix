@@ -68,4 +68,11 @@
     <string name="sound_detail_source_failed">Tidak bisa membuka halaman.</string>
     <string name="sound_detail_source_a11y">Buka %1$s di browser kamu</string>
     <string name="sound_volume_low">Naikkan volume untuk mendengarnya.</string>
+    <string name="sound_dl_storage_toast">Ponselmu penuh, jadi suara ini tidak bisa disimpan.</string>
+    <string name="sound_dl_free_up_space">Kosongkan ruang</string>
+    <string name="sound_dl_toast_dismiss">Tutup</string>
+    <string name="sound_detail_offline_note">Kamu sedang offline. Sambungkan internet untuk memutar atau memakai suara ini.</string>
+    <string name="sound_detail_unavailable_note">Suara ini sudah dihapus dari pustaka.</string>
+    <string name="sounds_starter_heading">Suara bawaan</string>
+    <string name="sound_detail_not_saved_now">Tidak tersimpan di ponsel ini</string>
 </resources>

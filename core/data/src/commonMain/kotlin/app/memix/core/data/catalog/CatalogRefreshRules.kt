@@ -7,4 +7,5 @@ internal object CatalogRefreshRules {
     val categories = 24.hours
     val soundPage = 6.hours
     val trending = 6.hours
+    val removedCheck = 24.hours
 }

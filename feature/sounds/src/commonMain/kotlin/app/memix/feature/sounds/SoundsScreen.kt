@@ -58,13 +58,12 @@ import app.memix.core.designsystem.MemixTheme
 import app.memix.core.designsystem.component.FadingToast
 import app.memix.core.designsystem.component.SoundProgress
 import app.memix.core.designsystem.component.SoundRow
+import app.memix.core.designsystem.component.SoundRowLook
 import app.memix.core.designsystem.component.Tabs
 import app.memix.core.designsystem.component.Toast
 import app.memix.core.ui.ScreenTitle
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
-import memix.core.ui.generated.resources.Res as UiRes
-import memix.core.ui.generated.resources.sound_meta
 import memix.feature.sounds.generated.resources.Res
 import memix.feature.sounds.generated.resources.sounds_empty_favorites_body
 import memix.feature.sounds.generated.resources.sounds_results_a11y
@@ -73,6 +72,7 @@ import memix.feature.sounds.generated.resources.sounds_search_hint_favorites
 import memix.feature.sounds.generated.resources.sounds_search_hint_mine
 import memix.feature.sounds.generated.resources.sounds_section_favorites
 import memix.feature.sounds.generated.resources.sounds_section_recent
+import memix.feature.sounds.generated.resources.sounds_starter_heading
 import memix.feature.sounds.generated.resources.sounds_tab_favorites
 import memix.feature.sounds.generated.resources.sounds_tab_global
 import memix.feature.sounds.generated.resources.sounds_tab_local
@@ -87,9 +87,16 @@ import org.jetbrains.compose.resources.stringResource
  * strip and the rows, all in one lazy list so they scroll together. Stateless: the ViewModel one level up owns the
  * state; only the search text, the scroll and a few animations live here. The details sheet is [SoundDetailsSheet], which
  * the app places over the bottom nav; [clock] says where the playing sound is, read in draw code for the row's waveform.
+ * [onFreeUpSpace] opens the phone's storage screen from the phone-is-full toast (P3-04); the app says when there is none.
  */
 @Composable
-fun SoundsScreen(state: SoundsUiState, onIntent: (SoundsIntent) -> Unit, clock: PlaybackClock, modifier: Modifier = Modifier) {
+fun SoundsScreen(
+    state: SoundsUiState,
+    onIntent: (SoundsIntent) -> Unit,
+    clock: PlaybackClock,
+    onFreeUpSpace: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     // Back clears the search first (the keyboard, when open, takes the first back itself); then the app's own back runs.
     NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None), isBackEnabled = state.query.isNotEmpty()) {
         onIntent(SoundsIntent.ClearQuery)
@@ -137,6 +144,14 @@ fun SoundsScreen(state: SoundsUiState, onIntent: (SoundsIntent) -> Unit, clock: 
         // While the details sheet is open it shows the toasts itself, above its scrim.
         FadingToast(state.toast.takeIf { state.details == null }, Modifier.align(Alignment.BottomCenter).padding(MemixSpacing.space4)) { toast ->
             Toast(soundsToastText(toast))
+        }
+        if (state.storageFullNote && state.details == null) {
+            StorageFullToast(
+                canFreeUpSpace = state.canFreeUpSpace,
+                onFreeUpSpace = onFreeUpSpace,
+                onDismiss = { onIntent(SoundsIntent.DismissStorageNote) },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(MemixSpacing.space4),
+            )
         }
     }
 }
@@ -211,9 +226,15 @@ private fun androidx.compose.foundation.lazy.LazyListScope.contentItems(
         }
         is SoundsContent.Rows -> {
             items(content.rows, key = { it.id }, contentType = { "sound" }) { row ->
-                LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = false), language, fade, position, onIntent)
+                LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = false), state.lookOf(row.id), state.downloadProgressOf(row.id), language, fade, position, onIntent)
             }
             item(key = "footer", contentType = "footer") { ListFooterItem(content.footer, { onIntent(SoundsIntent.TryAgain) }) }
+        }
+        is SoundsContent.Starters -> {
+            item(key = "starters-heading", contentType = "section") { SectionHeading(Res.string.sounds_starter_heading, isFirst = true, modifier = fade) }
+            items(content.rows, key = { it.id }, contentType = { "sound" }) { row ->
+                LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = false), state.lookOf(row.id), state.downloadProgressOf(row.id), language, fade, position, onIntent)
+            }
         }
         is SoundsContent.Favorites -> favoriteSections(content, state, language, fade, position, onIntent)
     }
@@ -231,7 +252,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.favoriteSections(
     if (content.recent.isNotEmpty()) {
         item(key = "recent-heading", contentType = "section") { SectionHeading(Res.string.sounds_section_recent, isFirst = true, modifier = fade) }
         items(content.recent, key = { "recent-${it.id}" }, contentType = { "sound" }) { row ->
-            LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = true), language, fade, position, onIntent, fromRecent = true)
+            LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = true), state.lookOf(row.id), state.downloadProgressOf(row.id), language, fade, position, onIntent, fromRecent = true)
         }
     }
     val showsHint = content.favorites.isEmpty() && state.query.isBlank()
@@ -242,7 +263,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.favoriteSections(
     }
     if (showsHint) item(key = "favorites-hint", contentType = "hint") { SectionHint(Res.string.sounds_empty_favorites_body, fade) }
     items(content.favorites, key = { "favorite-${it.id}" }, contentType = { "sound" }) { row ->
-        LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = false), language, fade, position, onIntent)
+        LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = false), state.lookOf(row.id), state.downloadProgressOf(row.id), language, fade, position, onIntent)
     }
 }
 
@@ -253,6 +274,8 @@ private fun LibrarySoundRow(
     isFavorite: Boolean,
     peaks: List<Float>?,
     returnsFocus: Boolean,
+    look: SoundRowLook,
+    downloadProgress: Float?,
     language: String,
     fade: Modifier,
     position: State<Long>,
@@ -260,8 +283,13 @@ private fun LibrarySoundRow(
     fromRecent: Boolean = false,
 ) {
     val haptics = LocalHapticFeedback.current
-    val progress = remember(playback == RowPlayback.IDLE, peaks, position, row.durationUs) {
-        if (playback == RowPlayback.IDLE) null else SoundProgress(peaks) { playedFraction(position.value, row.durationUs) }
+    val progress = remember(playback == RowPlayback.IDLE, peaks, position, row.durationUs, look == SoundRowLook.DOWNLOADING, downloadProgress) {
+        when {
+            // The download's rail: determinate, in the place the playing waveform takes.
+            look == SoundRowLook.DOWNLOADING -> SoundProgress(null) { downloadProgress ?: 0f }
+            playback == RowPlayback.IDLE -> null
+            else -> SoundProgress(peaks) { playedFraction(position.value, row.durationUs) }
+        }
     }
     // After the details sheet closes, the row that opened it takes focus back (spec P3-02 → Accessibility → Focus).
     val detailsFocus = remember { FocusRequester() }
@@ -273,7 +301,7 @@ private fun LibrarySoundRow(
     }
     SoundRow(
         name = row.title.inLanguage(language),
-        meta = stringResource(UiRes.string.sound_meta, row.length, row.credit),
+        meta = soundMetaText(row, look),
         isPlaying = playback == RowPlayback.PLAYING,
         isFavorite = isFavorite,
         onPlayToggle = { onIntent(SoundsIntent.TogglePlay(row.id, fromRecent)) },
@@ -289,6 +317,7 @@ private fun LibrarySoundRow(
         progress = progress,
         onShowDetails = { onIntent(SoundsIntent.OpenDetails(row.id, fromRecent)) },
         detailsFocus = detailsFocus,
+        look = look,
     )
 }
 

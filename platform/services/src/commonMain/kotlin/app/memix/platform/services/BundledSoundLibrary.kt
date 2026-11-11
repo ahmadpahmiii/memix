@@ -6,6 +6,7 @@ import app.memix.core.domain.Outcome
 import app.memix.core.domain.media.CopyResult
 import app.memix.core.domain.media.MediaFiles
 import app.memix.core.domain.sound.SoundLibrary
+import app.memix.core.domain.sound.SoundPaths
 import app.memix.core.model.catalog.CatalogSound
 import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.project.MediaKind
@@ -44,7 +45,7 @@ internal class BundledSoundLibrary(
 
     override suspend fun fileOf(sound: CatalogSound): Outcome<MediaRef> {
         val entry = loadPack().firstOrNull { it.sound.id == sound.id } ?: return Outcome.Failure(AppError.NotFound)
-        val path = "$SOUNDS_FOLDER/${entry.sound.id}.${entry.extension}"
+        val path = "${SoundPaths.FOLDER}/${entry.sound.id}.${entry.extension}"
         mutex.withLock {
             if (entry.sound.id !in writtenThisRun) {
                 val written = writeFromBundle(entry, path)
@@ -118,8 +119,7 @@ internal class BundledSoundLibrary(
         const val TAG = "MemixSounds"
         const val PACK_FOLDER = "files/starter-sounds"
         const val MANIFEST_PATH = "$PACK_FOLDER/manifest.json"
-        const val SOUNDS_FOLDER = "sounds"
-        const val DEFAULT_EXTENSION = "m4a"
+        const val DEFAULT_EXTENSION = SoundPaths.DEFAULT_EXTENSION
         const val MICROS_PER_MILLI = 1_000L
         val json = Json { ignoreUnknownKeys = true }
     }

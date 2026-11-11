@@ -48,7 +48,7 @@ Disabled looks: the icon and text in `text-muted` (4.6:1 or more), no fill chang
 - **Browsing** shows the cached catalog. Rows whose audio is on the phone are normal; the rest are dimmed as above. They are not hidden, so the user sees the library is bigger than their phone's copy.
 - **Details sheet** for a sound that isn't saved while offline: disc disabled, Use hidden, a line explains (P3-03).
 - **Search** offline: see P3-02.
-- **Starting the app offline for the first time** (nothing cached): the load-error block (P3-02) with Try again. The 50-sound starter pack still plays from the Favorites and My sounds tabs and from the editor's picker (they are in the app).
+- **Starting the app offline for the first time** (nothing cached): corrected 11 Nov after the P3-04 review. The earlier text said the starter pack plays from the Favorites and My sounds tabs; that was wrong, because both tabs are empty on a first launch. Instead: the offline strip, then the bundled starter sounds as normal rows under a `label` heading "Starter sounds" (`sounds_starter_heading`, 20), and no load-error block. The load-error block stays for an online failure. Needs the review's follow-up ticket (see `docs/ux/reviews/P3-04.md`).
 
 ## Motion
 Row state changes use 120 ms (`duration-press`). The rail's fill moves to each value over 120 ms, at most 10 updates a second, linear; reduce motion: it jumps (ProgressBar README). Nothing loops.
@@ -65,9 +65,7 @@ Row state changes use 120 ms (`duration-press`). The rail's fill moves to each v
 | `sound_unavailable` | No longer available | 32 | Meta slot |
 | `sound_a11y_cancel_download` | Cancel download of {name} | 40 + name | Disc while downloading |
 | `sound_a11y_retry` | Try again: download {name} | 48 + name | Disc after a failure |
-| `sound_a11y_downloading` | Downloading {name} | 40 + name | Polite announcement when the Downloading look appears |
-| `sound_a11y_download_failed` | Couldn't download {name} | 40 + name | Polite announcement when Failed appears |
-| `sound_a11y_unavailable_hint` | Not available offline | 32 | Disabled-state description of the disc |
+| ~~`sound_a11y_downloading`~~, ~~`sound_a11y_download_failed`~~, ~~`sound_a11y_unavailable_hint`~~ | Dropped at the P3-04 review | | The meta line is a polite live region inside the name block, so the announcement is "{name}, {meta}"; the disabled disc's state description is the meta line |
 
 ## Accessibility
 - The disc's name changes with the state ("Play", "Cancel download of", "Try again: download"), the same pattern as Play and Pause. The visible icon changes with it, so the name still matches what is seen.
@@ -83,7 +81,7 @@ Screenshots in `docs/ux/reviews/P3-04/`:
 1. `row-downloading` (throttled network to hold the state), `row-failed`, `row-failed-storage`.
 2. `list-offline`: strip, saved rows, dimmed rows.
 3. `toast-storage-full` (a nearly full emulator image).
-4. `airplane-starter`: airplane mode, the starter pack plays from the Favorites tab and the editor.
+4. `airplane-starter`: airplane mode, the starter pack plays from the offline first-launch list (Trending, Local and Global show a "Starter sounds" section) and from the editor's picker.
 5. `row-failed-hi-200`: Hindi at 200%, the meta wrapped whole.
 
 ## Questions for the owner

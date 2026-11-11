@@ -1,0 +1,53 @@
+-- The sounds downloaded from the library (P3-04) and the saved sounds the catalog has dropped.
+-- Changing a table: edit it here and add migrations/<current database version>.sqm (the last is 3.sqm, which made version 4).
+
+-- One row per downloaded file under files/sounds/. The row is written after the file is in place, so a row always has a
+-- complete file behind it. The least recently used rows are deleted first when the cache is over its limit.
+CREATE TABLE sound_file (
+    sound_id TEXT NOT NULL PRIMARY KEY,
+    path TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    last_used_epoch_us INTEGER NOT NULL
+);
+
+CREATE INDEX sound_file_last_used ON sound_file(last_used_epoch_us);
+
+-- A saved sound (a favorite or a recent) that the catalog no longer lists. Cleared when a check finds it listed again.
+CREATE TABLE sound_removed (
+    sound_id TEXT NOT NULL PRIMARY KEY,
+    checked_at_epoch_us INTEGER NOT NULL
+);
+
+selectFileIds:
+SELECT sound_id FROM sound_file;
+
+selectFile:
+SELECT path, size_bytes FROM sound_file WHERE sound_id = :soundId;
+
+-- Least recently used first; ties by insertion order.
+selectFilesOldestFirst:
+SELECT sound_id, path, size_bytes FROM sound_file ORDER BY last_used_epoch_us ASC, rowid ASC;
+
+selectAllFiles:
+SELECT sound_id, path FROM sound_file;
+
+selectTotalBytes:
+SELECT COALESCE(SUM(size_bytes), 0) FROM sound_file;
+
+insertFile:
+INSERT OR REPLACE INTO sound_file(sound_id, path, size_bytes, last_used_epoch_us) VALUES (:soundId, :path, :sizeBytes, :lastUsedEpochUs);
+
+touchFile:
+UPDATE sound_file SET last_used_epoch_us = :usedAtEpochUs WHERE sound_id = :soundId;
+
+deleteFile:
+DELETE FROM sound_file WHERE sound_id = :soundId;
+
+selectRemovedIds:
+SELECT sound_id FROM sound_removed;
+
+insertRemoved:
+INSERT OR REPLACE INTO sound_removed(sound_id, checked_at_epoch_us) VALUES (:soundId, :checkedAtEpochUs);
+
+deleteRemoved:
+DELETE FROM sound_removed WHERE sound_id = :soundId;

@@ -10,4 +10,6 @@
     <string name="setting_expanded">Expandido</string>
     <string name="setting_collapsed">Recolhido</string>
     <string name="sound_action_details">Ver detalhes</string>
+    <string name="sound_a11y_cancel_download">Cancelar o download de %1$s</string>
+    <string name="sound_a11y_retry">Tentar de novo: baixar %1$s</string>
 </resources>

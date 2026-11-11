@@ -54,4 +54,15 @@ interface SoundCatalogRepository {
 
     /** The sound's waveform, or null when it has none, the file is missing or damaged, or it can't be fetched now. */
     suspend fun waveformOf(sound: LibrarySound): Waveform?
+
+    /** The ids of saved sounds the catalog no longer lists (P3-04). Emits again whenever a check changes the set. */
+    fun observeRemovedSoundIds(): Flow<Set<String>>
+
+    /**
+     * Asks the catalog which of [soundIds] it still lists and remembers the answer, so a favorite or recent that was
+     * switched off shows "No longer available" and one that came back stops showing it. Returns the removed ids among
+     * them. Skipped (answering from the saved flags) when the last check is under 24 hours old, unless [force]. An answer that
+     * lists none of several requested ids is taken for a hiccup and marks nothing. Fails with [app.memix.core.domain.AppError.Offline] when the catalog can't be reached; nothing changes then.
+     */
+    suspend fun checkStillListed(soundIds: Set<String>, force: Boolean = false): Outcome<Set<String>>
 }

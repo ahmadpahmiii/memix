@@ -1,18 +1,22 @@
 package app.memix.feature.sounds
 
 import androidx.lifecycle.viewModelScope
+import app.memix.core.designsystem.component.SoundRowLook
 import app.memix.core.domain.AppError
 import app.memix.core.domain.GetPhoneRegionUseCase
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.SoundTab
+import app.memix.core.domain.catalog.CheckRemovedSoundsUseCase
 import app.memix.core.domain.catalog.LoadSoundFeedPageUseCase
 import app.memix.core.domain.catalog.LoadWaveformUseCase
 import app.memix.core.domain.catalog.MIN_SEARCH_LENGTH
+import app.memix.core.domain.catalog.ObserveRemovedSoundIdsUseCase
 import app.memix.core.domain.catalog.ObserveSoundCategoriesUseCase
 import app.memix.core.domain.catalog.ObserveSoundFeedUseCase
 import app.memix.core.domain.catalog.RefreshSoundCategoriesUseCase
 import app.memix.core.domain.catalog.SearchSoundsUseCase
 import app.memix.core.domain.catalog.SoundSearchPage
+import app.memix.core.domain.sound.DownloadFailure
 import app.memix.core.domain.sound.GetSavedSoundIdsUseCase
 import app.memix.core.domain.sound.LogSoundEventsUseCase
 import app.memix.core.domain.sound.LowVolumeWarningUseCase
@@ -22,8 +26,10 @@ import app.memix.core.domain.sound.ObserveRecentSoundsUseCase
 import app.memix.core.domain.sound.OpenSoundPlayerUseCase
 import app.memix.core.domain.sound.PrepareSoundUseCase
 import app.memix.core.domain.sound.SoundPlayer
+import app.memix.core.domain.sound.SoundsOnPhone
 import app.memix.core.domain.sound.ToggleFavoriteSoundUseCase
 import app.memix.core.model.Region
+import app.memix.core.model.catalog.CatalogSound
 import app.memix.core.model.catalog.LibrarySound
 import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.catalog.SoundFeed
@@ -32,6 +38,7 @@ import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.MediaRef
 import app.memix.core.ui.MemixViewModel
 import app.memix.core.ui.soundLengthText
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.collections.immutable.toImmutableSet
@@ -50,6 +57,10 @@ import kotlinx.coroutines.launch
  * Previews (P3-03): a second tap on the playing disc pauses and the next resumes; the details sheet plays through the
  * same player, so one sound plays at a time. The app places the sheet over the bottom nav, so this ViewModel lives with
  * the tabs, and the catalog is not touched until the tab first shows ([SoundsIntent.ScreenShown]).
+ *
+ * Downloads and offline (P3-04): a sound that is not on the phone downloads when its disc is tapped, then plays; the
+ * rows show the Downloading, Failed, offline and removed looks ([SoundsUiState.lookOf]). The starter pack and downloaded
+ * sounds play with no network at all.
  */
 class SoundsViewModel(
     private val observeCategories: ObserveSoundCategoriesUseCase,
@@ -68,6 +79,9 @@ class SoundsViewModel(
     private val waveformOf: LoadWaveformUseCase,
     private val lowVolumeWarning: LowVolumeWarningUseCase,
     private val logEvents: LogSoundEventsUseCase,
+    private val onPhone: SoundsOnPhone,
+    private val observeRemovedIds: ObserveRemovedSoundIdsUseCase,
+    private val checkRemoved: CheckRemovedSoundsUseCase,
     tabExit: SoundsTabExit,
 ) : MemixViewModel<SoundsUiState, SoundsIntent>(SoundsUiState()) {
     private val regionCode: String?
@@ -91,6 +105,9 @@ class SoundsViewModel(
     private var latestFavorites: List<LibrarySound> = emptyList()
     private var favoritesOnScreen: List<LibrarySound> = emptyList()
     private var started = false
+    private var removedChecked = false
+    // The bundled pack, which the lists fall back to when the catalog has never loaded and the phone is offline.
+    private var starterSounds: List<CatalogSound> = emptyList()
     private var categoryNames: Map<String, LocalizedText> = emptyMap()
     // The open details sheet: its sound, and the `tab` a play from it is logged with (the screen that opened it).
     private var detailsSound: LibrarySound? = null
@@ -99,6 +116,9 @@ class SoundsViewModel(
     // A sound's file once it has been checked, so the next tap starts without measuring it again (300 ms budget).
     private val preparedSounds = HashMap<String, MediaRef>()
     private val waveformRequests = HashSet<String>()
+    // The sound whose file is kept out of the cache cleanup because it plays (or is paused).
+    private var heldSoundId: String? = null
+    private val downloader = SoundDownloadRunner(onPhone::download) { soundId, look -> showDownload(soundId, look) }
     // A sound played again right after it ended or stopped is a replay: `sound_preview` counts only a new sound (spec P3-03 → Analytics).
     private var lastPreviewedId: String? = null
 
@@ -133,8 +153,43 @@ class SoundsViewModel(
             }
         }
         observeCollections()
+        observeOnPhone()
         viewModelScope.launch { refreshCategories(force = false) }
         showFeed()
+    }
+
+    // What is on the phone, whether the phone is online, and what the catalog dropped: the inputs of every row's look.
+    private fun observeOnPhone() {
+        viewModelScope.launch {
+            starterSounds = onPhone.starters()
+            updateState { it.copy(starterIds = starterSounds.map { starter -> starter.id }.toImmutableSet()) }
+            // The offline first launch lists the pack once it is known.
+            render()
+        }
+        viewModelScope.launch {
+            onPhone.observeDownloadedIds().collect { ids ->
+                // A file the cleanup removed must not be trusted from the prepared cache.
+                preparedSounds.keys.retainAll { it in ids || it in state.value.starterIds }
+                updateState { it.copy(downloadedIds = ids.toImmutableSet()) }
+            }
+        }
+        viewModelScope.launch {
+            onPhone.observeOnline().collect { online ->
+                updateState { it.copy(online = online) }
+                render()
+            }
+        }
+        viewModelScope.launch { observeRemovedIds().collect { ids -> updateState { it.copy(removedIds = ids.toImmutableSet()) } } }
+    }
+
+    // Asks the catalog whether the favorites and recents are still listed, so dropped ones say so. Once per ViewModel, when
+    // the first non-empty list arrives (the repository adds its own 24 h rule); best effort, online only.
+    private fun checkRemovedSoundsOnce() {
+        if (removedChecked || !state.value.online) return
+        val ids = (latestFavorites + recentSounds).mapTo(HashSet()) { it.id }
+        if (ids.isEmpty()) return
+        removedChecked = true
+        viewModelScope.launch { checkRemoved(ids) }
     }
 
     private fun observeCollections() {
@@ -144,6 +199,7 @@ class SoundsViewModel(
         viewModelScope.launch {
             observeFavorites().collect { favorites ->
                 latestFavorites = favorites
+                checkRemovedSoundsOnce()
                 val onFavorites = state.value.tab == SoundsTab.FAVORITES
                 favoritesOnScreen = if (onFavorites) keepUnfavoritedRows(favorites, favoritesOnScreen) else favorites
                 if (onFavorites) render()
@@ -152,6 +208,7 @@ class SoundsViewModel(
         viewModelScope.launch {
             observeRecents().collect { recents ->
                 recentSounds = recents
+                checkRemovedSoundsOnce()
                 if (state.value.tab == SoundsTab.FAVORITES) render()
             }
         }
@@ -174,6 +231,8 @@ class SoundsViewModel(
             SoundsIntent.LoadMore -> loadMore()
             SoundsIntent.TryAgain -> tryAgain()
             SoundsIntent.Refresh -> refresh()
+            SoundsIntent.DismissStorageNote -> updateState { it.copy(storageFullNote = false) }
+            SoundsIntent.FreeUpSpaceUnavailable -> updateState { it.copy(canFreeUpSpace = false) }
             SoundsIntent.AppStopped -> backgrounded()
             SoundsIntent.LeftScreen -> leaveScreen()
         }
@@ -212,7 +271,8 @@ class SoundsViewModel(
         player?.stop()
         lastPreviewedId = null
         detailsSound = null
-        updateState { it.copy(details = null, focusReturn = null) }
+        // A failed look is about the visit that ended; a download still running was cancelled above.
+        updateState { it.copy(details = null, focusReturn = null, downloads = persistentMapOf()) }
         // Leaving the screen ends the visit: an un-hearted row is gone when the user comes back (spec P3-02 → Tab contents).
         favoritesOnScreen = latestFavorites
         if (state.value.query.isNotEmpty()) changeQuery("")
@@ -425,12 +485,17 @@ class SoundsViewModel(
         if (ui.tab == SoundsTab.LOCAL && regionCode == null) return SoundsContent.Empty(EmptyReason.LOCAL_UNKNOWN)
         val saved = feedSaved
         return when {
+            // Offline with nothing saved: the bundled pack instead of an error, so the app still has sounds to play.
+            saved.loadedPages == 0 && offlineNow() && starterSounds.isNotEmpty() ->
+                SoundsContent.Starters(starterSounds.map { it.toRow() }.toImmutableList())
             saved.loadedPages == 0 ->
                 if (feedError != null) SoundsContent.LoadError else SoundsContent.Loading(showPlaceholders = placeholdersDue)
             saved.sounds.isEmpty() -> SoundsContent.Empty(emptyFeedReason(ui))
             else -> SoundsContent.Rows(saved.sounds.map { it.toRow() }.toImmutableList(), footer(saved.endReached))
         }
     }
+
+    private fun offlineNow(): Boolean = !state.value.online || feedError == AppError.Offline
 
     private fun searchContent(result: SearchState): SoundsContent = when {
         result.failed -> SoundsContent.LoadError
@@ -478,9 +543,11 @@ class SoundsViewModel(
     private fun noticeFor(content: SoundsContent): SoundsNotice? = when {
         searchWaiting -> SoundsNotice.SEARCHING
         search?.offline == true -> SoundsNotice.SEARCH_OFFLINE
-        feedOffline && content !is SoundsContent.LoadError -> SoundsNotice.OFFLINE
+        (feedOffline || !state.value.online) && content !is SoundsContent.LoadError -> SoundsNotice.OFFLINE
         else -> null
     }
+
+    private fun CatalogSound.toRow() = SoundItemUi(id, title, soundLengthText(durationUs), credit, durationUs)
 
     private fun LibrarySound.toRow() = SoundItemUi(id, title, soundLengthText(durationUs), creditLine, durationUs)
 
@@ -488,6 +555,13 @@ class SoundsViewModel(
 
     // The disc: pause what plays, carry on what is paused, otherwise start this sound.
     private fun togglePreview(soundId: String, tab: SoundTab) {
+        when (state.value.lookOf(soundId)) {
+            // The disc is Cancel while it downloads: stop, keep nothing, no toast (spec P3-04).
+            SoundRowLook.DOWNLOADING -> return cancelDownload()
+            // Nothing to play right now; the row says why.
+            SoundRowLook.OFFLINE_NOT_SAVED, SoundRowLook.UNAVAILABLE -> return
+            SoundRowLook.NORMAL, SoundRowLook.FAILED, SoundRowLook.FAILED_STORAGE -> Unit
+        }
         when (state.value.playbackOf(soundId)) {
             RowPlayback.PLAYING -> player?.pause()
             RowPlayback.PAUSED -> player?.resume()
@@ -495,13 +569,17 @@ class SoundsViewModel(
         }
     }
 
+    private fun cancelDownload() {
+        previewJob?.cancel()
+    }
+
     private fun startPreview(soundId: String, tab: SoundTab) {
         val sound = shownSounds().firstOrNull { it.id == soundId } ?: detailsSound?.takeIf { it.id == soundId } ?: return
         loadWaveform(sound)
+        // One sound at a time: another row's download stops here, and this tap on a Failed row is a fresh attempt.
         previewJob?.cancel()
         previewJob = viewModelScope.launch {
-            // TODO(P3-04): a sound that is not on the phone downloads here first; until then only the starter pack plays.
-            val file = preparedFile(sound) ?: return@launch showToast(SoundsToast.PLAY_FAILED)
+            val file = fileOnPhone(sound) ?: return@launch
             // The sound plays anyway; the toast is a hint that a silent phone is not a broken app.
             if (lowVolumeWarning.isDue()) showToast(SoundsToast.VOLUME_LOW)
             openedPlayer().play(file)
@@ -510,8 +588,36 @@ class SoundsViewModel(
         }
     }
 
+    // The sound's file, downloaded first when it is not on the phone. Null when there is nothing to play: the look or a
+    // toast already says why.
+    private suspend fun fileOnPhone(sound: LibrarySound): MediaRef? {
+        preparedFile(sound)?.let { return it }
+        if (state.value.onPhoneOf(sound.id) != SoundOnPhone.NOT_SAVED) return playFailed()
+        val failure = downloader.download(sound)
+        if (failure == DownloadFailure.STORAGE_FULL) updateState { it.copy(storageFullNote = true) }
+        if (failure != null) return null
+        updateState { it.copy(storageFullNote = false) }
+        return preparedFile(sound) ?: playFailed()
+    }
+
+    private fun playFailed(): MediaRef? {
+        showToast(SoundsToast.PLAY_FAILED)
+        return null
+    }
+
+    private fun showDownload(soundId: String, look: SoundDownloadUi?) {
+        updateState { ui ->
+            val downloads = if (look == null) ui.downloads - soundId else ui.downloads + (soundId to look)
+            ui.copy(downloads = downloads.toImmutableMap())
+        }
+    }
+
     private suspend fun preparedFile(sound: LibrarySound): MediaRef? {
-        preparedSounds[sound.id]?.let { return it }
+        preparedSounds[sound.id]?.let {
+            // A repeat play counts as a use; a first one is counted when the file is read.
+            viewModelScope.launch { onPhone.markUsed(sound.id) }
+            return it
+        }
         return when (val prepared = prepareSound(sound.toCatalogSound())) {
             is Outcome.Success -> prepared.value.also {
                 if (preparedSounds.size >= MAX_PREPARED_SOUNDS) preparedSounds.clear()
@@ -541,12 +647,7 @@ class SoundsViewModel(
         detailsFromRecent = fromRecent
         detailsTab = tabOf(fromRecent)
         loadWaveform(sound)
-        viewModelScope.launch {
-            val onPhone = if (sound.id in getSavedSoundIds()) SoundOnPhone.INCLUDED else SoundOnPhone.NOT_SAVED
-            // Closed (or another sound opened) while the saved ids were read: nothing to show.
-            if (detailsSound?.id != sound.id) return@launch
-            updateState { it.copy(details = sound.toDetails(onPhone)) }
-        }
+        updateState { it.copy(details = sound.toDetails()) }
     }
 
     private fun closeDetails() {
@@ -555,7 +656,7 @@ class SoundsViewModel(
         updateState { it.copy(details = null, focusReturn = RowFocusTarget(sound.id, detailsFromRecent)) }
     }
 
-    private fun LibrarySound.toDetails(onPhone: SoundOnPhone): SoundDetailsUi {
+    private fun LibrarySound.toDetails(): SoundDetailsUi {
         val host = sourceHostOf(sourceUrl)
         return SoundDetailsUi(
             id = id,
@@ -567,15 +668,21 @@ class SoundsViewModel(
             licenseType = licenseType,
             sourceUrl = sourceUrl.takeIf { host != null },
             sourceHost = host,
-            onPhone = onPhone,
         )
     }
 
     private fun shownSounds(): List<LibrarySound> = search?.sounds ?: when {
+        state.value.content is SoundsContent.Starters -> starterSounds.map { it.toLibrarySound() }
         state.value.tab.listsCatalog -> feedSaved.sounds
         state.value.tab == SoundsTab.FAVORITES -> recentSounds + favoritesOnScreen
         else -> emptyList()
     }
+
+    // The pack has no catalog row on a phone that never loaded the catalog: the bundled sound's own facts fill one in.
+    private fun CatalogSound.toLibrarySound() = LibrarySound(
+        id = id, title = title, categoryId = "", filePath = "", durationUs = durationUs, waveformPath = null,
+        licenseType = credit, sourceUrl = "", credit = credit,
+    )
 
     private fun tabOf(fromRecent: Boolean): SoundTab = if (fromRecent) SoundTab.RECENT else analyticsTab()
 
@@ -593,11 +700,23 @@ class SoundsViewModel(
     private fun openedPlayer(): SoundPlayer = player ?: openSoundPlayer().also { opened ->
         player = opened
         playerJobs = listOf(
-            viewModelScope.launch { opened.playing.collect { media -> updateState { it.copy(playingId = media?.catalogId()) } } },
-            viewModelScope.launch { opened.paused.collect { media -> updateState { it.copy(pausedId = media?.catalogId()) } } },
+            viewModelScope.launch {
+                opened.playing.collect { media ->
+                    updateState { it.copy(playingId = media?.catalogId()) }
+                    holdPlayingSound()
+                }
+            },
+            viewModelScope.launch {
+                opened.paused.collect { media ->
+                    updateState { it.copy(pausedId = media?.catalogId()) }
+                    holdPlayingSound()
+                }
+            },
             // A file that would not play (deleted, damaged) is checked again on the next tap instead of being trusted.
             viewModelScope.launch {
                 opened.failures.collect { media ->
+                    // Not deleted here: a drafts' sound may be fine and the fault the player's. The next tap checks the file
+                    // (PrepareSoundUseCase deletes one that will not decode, unless a draft uses it).
                     media.catalogId()?.let { preparedSounds.remove(it) }
                     showToast(SoundsToast.PLAY_FAILED)
                 }
@@ -614,6 +733,16 @@ class SoundsViewModel(
         player?.close()
         player = null
         updateState { it.copy(playingId = null, pausedId = null) }
+        holdPlayingSound()
+    }
+
+    // The playing (or paused) sound's file is out of the cache cleanup until it stops.
+    private fun holdPlayingSound() {
+        val active = state.value.activeId
+        if (active == heldSoundId) return
+        heldSoundId?.let(onPhone::release)
+        active?.let(onPhone::hold)
+        heldSoundId = active
     }
 
     private fun showToast(toast: SoundsToast) {
@@ -626,6 +755,7 @@ class SoundsViewModel(
     }
 
     override fun onCleared() {
+        heldSoundId?.let(onPhone::release)
         player?.close()
         super.onCleared()
     }

@@ -1,6 +1,7 @@
 package app.memix.feature.sounds
 
 import androidx.compose.runtime.Immutable
+import app.memix.core.designsystem.component.SoundRowLook
 import app.memix.core.model.catalog.LocalizedText
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
@@ -35,8 +36,17 @@ data class SoundItemUi(
     val durationUs: Long,
 )
 
-/** Where a sound's audio is (spec P3-03 → Facts, "On this phone"). Downloads arrive with P3-04, which adds a saved state. */
-enum class SoundOnPhone { INCLUDED, NOT_SAVED }
+/** Where a sound's audio is (spec P3-03 → Facts, "On this phone"): in the app, downloaded, or not on the phone yet. */
+enum class SoundOnPhone { INCLUDED, SAVED, NOT_SAVED }
+
+/** A download the user can see (spec P3-04): running past 300 ms, or failed. A quick one never gets an entry. */
+sealed interface SoundDownloadUi {
+    /** [progress] is 0 to 1, or null while the server has not said how big the file is (the rail shows empty). */
+    data class Downloading(val progress: Float?) : SoundDownloadUi
+
+    /** [storageFull]: the phone has no room, so the row says that instead of "try again". */
+    data class Failed(val storageFull: Boolean) : SoundDownloadUi
+}
 
 /** What the details sheet shows about one sound; the facts the catalog has, ready to draw (spec P3-03 → Layout). */
 @Immutable
@@ -55,7 +65,6 @@ data class SoundDetailsUi(
     /** The page of the work, only when it is a web address; the host is what the link shows. */
     val sourceUrl: String?,
     val sourceHost: String?,
-    val onPhone: SoundOnPhone,
 )
 
 /** The row that opened the details sheet, so closing it can send focus back (a sound can be in two sections). */
@@ -78,6 +87,12 @@ sealed interface SoundsContent {
     data object LoadError : SoundsContent
 
     data class Empty(val reason: EmptyReason) : SoundsContent
+
+    /**
+     * Offline with no saved catalog (first launch): the bundled starter pack as normal rows under a "Starter sounds"
+     * heading (spec P3-04 → Offline). Rows are the same as [Rows]; they play, open details and take a heart.
+     */
+    data class Starters(val rows: ImmutableList<SoundItemUi>) : SoundsContent
 
     data class Rows(val rows: ImmutableList<SoundItemUi>, val footer: ListFooter) : SoundsContent
 
@@ -137,12 +152,48 @@ data class SoundsUiState(
     /** How many sounds the last settled search found; read out as a status message, never drawn. */
     val spokenResultCount: Int? = null,
     val toast: SoundsToast? = null,
+    /** The bundled starter pack: always on the phone. */
+    val starterIds: ImmutableSet<String> = persistentSetOf(),
+    /** The sounds downloaded from the library (P3-04). */
+    val downloadedIds: ImmutableSet<String> = persistentSetOf(),
+    /** Favorites and recents the catalog no longer lists; they show "No longer available". */
+    val removedIds: ImmutableSet<String> = persistentSetOf(),
+    /** Whether the phone has a connection. Without one, sounds that are not on the phone are dimmed. */
+    val online: Boolean = true,
+    /** Downloads past 300 ms and failed ones, by sound id. */
+    val downloads: ImmutableMap<String, SoundDownloadUi> = persistentMapOf(),
+    /** The phone-is-full toast with "Free up space" (spec P3-04): shown after a download hit a full phone, until dismissed. */
+    val storageFullNote: Boolean = false,
+    /** False once the phone showed it has no storage screen; the toast then has no action (as P1-02). */
+    val canFreeUpSpace: Boolean = true,
 ) {
     /** The chips show on the catalog tabs while the search box is empty (spec P3-02 → Layout 4). */
     val showsChips: Boolean get() = tab.listsCatalog && query.isEmpty() && categories.isNotEmpty()
 
     /** The playing or paused sound, which is the one that shows a waveform. */
     val activeId: String? get() = playingId ?: pausedId
+
+    fun onPhoneOf(soundId: String): SoundOnPhone = when (soundId) {
+        in starterIds -> SoundOnPhone.INCLUDED
+        in downloadedIds -> SoundOnPhone.SAVED
+        else -> SoundOnPhone.NOT_SAVED
+    }
+
+    /** What a row (or the sheet's player) looks like for [soundId]; the order is the spec's (P3-04 → Row states). */
+    fun lookOf(soundId: String): SoundRowLook {
+        val download = downloads[soundId]
+        return when {
+            soundId in removedIds -> SoundRowLook.UNAVAILABLE
+            download is SoundDownloadUi.Downloading -> SoundRowLook.DOWNLOADING
+            // A failure while the connection is gone is just "offline": there is nothing to retry until it returns.
+            !online && onPhoneOf(soundId) == SoundOnPhone.NOT_SAVED -> SoundRowLook.OFFLINE_NOT_SAVED
+            download is SoundDownloadUi.Failed -> if (download.storageFull) SoundRowLook.FAILED_STORAGE else SoundRowLook.FAILED
+            else -> SoundRowLook.NORMAL
+        }
+    }
+
+    /** The download's progress for [soundId] while it shows as Downloading, else null. */
+    fun downloadProgressOf(soundId: String): Float? = (downloads[soundId] as? SoundDownloadUi.Downloading)?.progress
 
     fun playbackOf(soundId: String): RowPlayback = when (soundId) {
         playingId -> RowPlayback.PLAYING
@@ -192,6 +243,12 @@ sealed interface SoundsIntent {
 
     /** The app went to the background: a preview would keep playing. */
     data object AppStopped : SoundsIntent
+
+    /** The × on the phone-is-full toast. */
+    data object DismissStorageNote : SoundsIntent
+
+    /** The phone has no storage screen to open: the toast loses its action. */
+    data object FreeUpSpaceUnavailable : SoundsIntent
 
     /** The user moved to another bottom-nav item: the search text clears and the preview stops (tab and chip are kept). */
     data object LeftScreen : SoundsIntent

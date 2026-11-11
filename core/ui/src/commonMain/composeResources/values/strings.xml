@@ -181,4 +181,9 @@
     <string name="export_stopped_toast">Export stopped.</string>
     <string name="export_watermark_title">Memix watermark</string>
     <string name="sound_meta">%1$s · %2$s</string>
+    <string name="sound_dl_downloading">Downloading…</string>
+    <string name="sound_dl_failed">Couldn't download. Tap to try again.</string>
+    <string name="sound_dl_failed_storage">Not enough space on your phone.</string>
+    <string name="sound_not_saved_offline">Not saved for offline</string>
+    <string name="sound_unavailable">No longer available</string>
 </resources>

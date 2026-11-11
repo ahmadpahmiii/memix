@@ -2,6 +2,7 @@ package app.memix.core.domain.catalog
 
 import app.memix.core.domain.AppError
 import app.memix.core.domain.Outcome
+import app.memix.core.domain.sound.SoundDownloads
 import app.memix.core.model.catalog.LibrarySound
 import app.memix.core.model.catalog.SoundCategory
 import app.memix.core.model.catalog.SoundFeed
@@ -33,6 +34,24 @@ class LoadSoundFeedPageUseCase(private val repository: SoundCatalogRepository) {
 /** The waveform for a playing row or the details sheet; null means draw the rail. */
 class LoadWaveformUseCase(private val repository: SoundCatalogRepository) {
     suspend operator fun invoke(sound: LibrarySound): Waveform? = repository.waveformOf(sound)
+}
+
+/** The sounds the catalog has dropped, for the "No longer available" row look (P3-04). */
+class ObserveRemovedSoundIdsUseCase(private val repository: SoundCatalogRepository) {
+    operator fun invoke(): Flow<Set<String>> = repository.observeRemovedSoundIds()
+}
+
+/**
+ * Asks the catalog whether these saved sounds (favorites, recents) are still listed. A sound that is not gets its
+ * downloaded copy deleted, unless a saved draft uses it or it is playing: the copy is no longer ours to keep. The
+ * check is best effort and says nothing when the catalog can't be reached.
+ */
+class CheckRemovedSoundsUseCase(private val repository: SoundCatalogRepository, private val downloads: SoundDownloads) {
+    suspend operator fun invoke(soundIds: Set<String>, force: Boolean = false) {
+        if (soundIds.isEmpty()) return
+        val removed = (repository.checkStillListed(soundIds, force) as? Outcome.Success)?.value ?: return
+        if (removed.isNotEmpty()) downloads.discardUnused(removed)
+    }
 }
 
 /** Fewest characters that start a search; one character would match nearly everything. */

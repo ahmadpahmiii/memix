@@ -178,4 +178,9 @@
     <string name="export_stopped_toast">एक्सपोर्ट रोका गया।</string>
     <string name="export_watermark_title">Memix वॉटरमार्क</string>
     <string name="sound_meta">%1$s · %2$s</string>
+    <string name="sound_dl_downloading">डाउनलोड हो रहा है…</string>
+    <string name="sound_dl_failed">डाउनलोड नहीं हो सका। फिर से कोशिश करने के लिए टैप करें।</string>
+    <string name="sound_dl_failed_storage">आपके फ़ोन में पर्याप्त जगह नहीं है।</string>
+    <string name="sound_not_saved_offline">ऑफ़लाइन के लिए सेव नहीं है</string>
+    <string name="sound_unavailable">अब उपलब्ध नहीं है</string>
 </resources>

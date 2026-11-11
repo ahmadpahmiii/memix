@@ -12,6 +12,7 @@ import app.memix.core.domain.media.MediaInspector
 import app.memix.core.domain.photo.PictureClipboard
 import app.memix.core.domain.share.Sharer
 import app.memix.core.domain.sound.MediaVolume
+import app.memix.core.domain.sound.NetworkStatus
 import app.memix.core.domain.sound.SoundLibrary
 import app.memix.core.domain.stickerpack.WhatsAppStickers
 import app.memix.core.domain.video.AppExitReasons
@@ -19,6 +20,8 @@ import app.memix.core.domain.video.ExportControls
 import app.memix.core.domain.video.ExportForeground
 import app.memix.core.domain.video.ExportNotice
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import org.koin.dsl.module
 import platform.Foundation.NSLocale
 import platform.Foundation.NSLocaleCountryCode
@@ -38,6 +41,7 @@ actual val platformServicesModule = module {
     single<AppExitReasons> { NoAppExitReasons() }
     single<LocalCalendar> { IosLocalCalendar() }
     single<MediaVolume> { NoMediaVolume() }
+    single<NetworkStatus> { NoNetworkStatus() }
     single<WhatsAppStickers> { NoWhatsAppStickers() }
 }
 
@@ -105,4 +109,9 @@ private class NoAppExitReasons : AppExitReasons {
 // TODO(P7-08): AVAudioSession.outputVolume. Until then iOS never warns; nothing on iOS plays previews before P7-03.
 private class NoMediaVolume : MediaVolume {
     override fun isSilent(): Boolean = false
+}
+
+// TODO(P7-08): NWPathMonitor. Until then iOS always counts as online and a failed download shows its own Failed look.
+private class NoNetworkStatus : NetworkStatus {
+    override fun observeOnline(): Flow<Boolean> = flowOf(true)
 }

@@ -35,9 +35,23 @@ import app.memix.core.designsystem.MemixTheme
 import app.memix.core.designsystem.Text
 import app.memix.core.designsystem.component.Button
 import app.memix.core.designsystem.component.Chip
+import app.memix.core.designsystem.component.SoundRowLook
+import app.memix.core.designsystem.component.Toast
+import app.memix.core.designsystem.component.ToastAction
+import app.memix.core.designsystem.component.ToastDismiss
 import app.memix.core.ui.EmptyState
 import kotlinx.collections.immutable.ImmutableList
+import memix.core.ui.generated.resources.Res as UiRes
+import memix.core.ui.generated.resources.sound_dl_downloading
+import memix.core.ui.generated.resources.sound_dl_failed
+import memix.core.ui.generated.resources.sound_dl_failed_storage
+import memix.core.ui.generated.resources.sound_meta
+import memix.core.ui.generated.resources.sound_not_saved_offline
+import memix.core.ui.generated.resources.sound_unavailable
 import memix.feature.sounds.generated.resources.Res
+import memix.feature.sounds.generated.resources.sound_dl_free_up_space
+import memix.feature.sounds.generated.resources.sound_dl_storage_toast
+import memix.feature.sounds.generated.resources.sound_dl_toast_dismiss
 import memix.feature.sounds.generated.resources.sound_detail_source_failed
 import memix.feature.sounds.generated.resources.sound_play_failed
 import memix.feature.sounds.generated.resources.sound_volume_low
@@ -132,6 +146,31 @@ internal fun soundsToastText(toast: SoundsToast): String = stringResource(
         SoundsToast.SOURCE_FAILED -> Res.string.sound_detail_source_failed
     },
 )
+
+/** A row's meta line: "0:02 · CC0" normally, else what is going on with the file (spec P3-04 → Row states). */
+@Composable
+internal fun soundMetaText(row: SoundItemUi, look: SoundRowLook): String = when (look) {
+    SoundRowLook.NORMAL -> stringResource(UiRes.string.sound_meta, row.length, row.credit)
+    SoundRowLook.DOWNLOADING -> stringResource(UiRes.string.sound_dl_downloading)
+    SoundRowLook.FAILED -> stringResource(UiRes.string.sound_dl_failed)
+    SoundRowLook.FAILED_STORAGE -> stringResource(UiRes.string.sound_dl_failed_storage)
+    SoundRowLook.OFFLINE_NOT_SAVED -> stringResource(UiRes.string.sound_not_saved_offline)
+    SoundRowLook.UNAVAILABLE -> stringResource(UiRes.string.sound_unavailable)
+}
+
+/**
+ * The persistent toast for a full phone (spec P3-04): what happened, a × and, when the phone has a storage screen, the one
+ * action "Free up space". It stays until the user dismisses it or a later download works.
+ */
+@Composable
+internal fun StorageFullToast(canFreeUpSpace: Boolean, onFreeUpSpace: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    Toast(
+        message = stringResource(Res.string.sound_dl_storage_toast),
+        modifier = modifier,
+        action = if (canFreeUpSpace) ToastAction(stringResource(Res.string.sound_dl_free_up_space), onFreeUpSpace) else null,
+        dismiss = ToastDismiss(stringResource(Res.string.sound_dl_toast_dismiss), onDismiss),
+    )
+}
 
 /** The Local tab's first line. A label until P3-11 turns it into the Region sheet's opener. */
 @Composable

@@ -178,4 +178,9 @@
     <string name="export_stopped_toast">Exportación detenida.</string>
     <string name="export_watermark_title">Marca de agua de Memix</string>
     <string name="sound_meta">%1$s · %2$s</string>
+    <string name="sound_dl_downloading">Descargando…</string>
+    <string name="sound_dl_failed">No se pudo descargar. Toca para reintentar.</string>
+    <string name="sound_dl_failed_storage">No hay espacio suficiente en tu teléfono.</string>
+    <string name="sound_not_saved_offline">No guardado sin conexión</string>
+    <string name="sound_unavailable">Ya no está disponible</string>
 </resources>

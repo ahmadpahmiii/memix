@@ -316,6 +316,9 @@ private fun MainShell(
                     sounds = soundsState,
                     soundsClock = sounds.clock,
                     onSoundsIntent = sounds::onIntent,
+                    onFreeUpSpace = {
+                        if (!freeUpSpace.launch(SOUND_SPACE_REQUEST_BYTES)) sounds.onIntent(SoundsIntent.FreeUpSpaceUnavailable)
+                    },
                     onOpenCreate = { onCreateSheetOpenChange(true) },
                     onStartVideoMeme = { videoMemeImport.start(fromCreateSheet = false) },
                     onStartPhotoMeme = { photoMemeImport.start(fromCreateSheet = false) },
@@ -385,6 +388,7 @@ private fun TabsNavHost(
     sounds: State<SoundsUiState>,
     soundsClock: PlaybackClock,
     onSoundsIntent: (SoundsIntent) -> Unit,
+    onFreeUpSpace: () -> Unit,
     onOpenCreate: () -> Unit,
     onStartVideoMeme: () -> Unit,
     onStartPhotoMeme: () -> Unit,
@@ -409,7 +413,7 @@ private fun TabsNavHost(
         }
         composable<TemplatesRoute> { TemplatesScreen() }
         composable<SoundsRoute> {
-            SoundsScreen(state = sounds.value, onIntent = onSoundsIntent, clock = soundsClock)
+            SoundsScreen(state = sounds.value, onIntent = onSoundsIntent, clock = soundsClock, onFreeUpSpace = onFreeUpSpace)
         }
         composable<DraftsRoute> {
             DraftsScreen(drafts.value, onDraftsIntent, onMakeMeme = onOpenCreate, onOpenDraft = onOpenDraft)
@@ -661,6 +665,10 @@ private fun NavHostController.leaveExport(exit: ExportExit) {
 
 /** Logcat tag of the editor-open timing: the drafts list's tap here, the engine's "Preview opened" (P1-14 must-know 11). */
 private const val OPEN_TIMING_TAG = "MemixPreview"
+
+// How much room "Free up space" asks the phone's storage screen for after a sound could not be saved (P3-04): a sound is
+// about 46 KB, so a few megabytes is room for plenty.
+private const val SOUND_SPACE_REQUEST_BYTES = 16L * 1024 * 1024
 
 /** The saved-state key the packs screen sets on the editor's entry to ask for Remove background or Add photo (P2-09). */
 private const val PACKS_EMPTY_ACTION_KEY = "stickerPacksEmptyAction"

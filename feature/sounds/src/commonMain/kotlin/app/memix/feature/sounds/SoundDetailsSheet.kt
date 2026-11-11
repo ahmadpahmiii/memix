@@ -30,7 +30,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import app.memix.core.designsystem.Icon
 import app.memix.core.designsystem.MemixColors
@@ -46,11 +48,20 @@ import app.memix.core.designsystem.component.FadingToast
 import app.memix.core.designsystem.component.Sheet
 import app.memix.core.designsystem.component.SoundFavoriteHeart
 import app.memix.core.designsystem.component.SoundPlayDisc
+import app.memix.core.designsystem.component.SoundRowLook
 import app.memix.core.designsystem.component.SoundRail
 import app.memix.core.designsystem.component.SoundWaveform
 import app.memix.core.designsystem.component.Toast
 import app.memix.core.ui.soundPositionText
+import memix.core.ui.generated.resources.Res as UiRes
+import memix.core.ui.generated.resources.sound_dl_downloading
+import memix.core.ui.generated.resources.sound_dl_failed
+import memix.core.ui.generated.resources.sound_dl_failed_storage
 import memix.feature.sounds.generated.resources.Res
+import memix.feature.sounds.generated.resources.sound_detail_offline_note
+import memix.feature.sounds.generated.resources.sound_detail_not_saved_now
+import memix.feature.sounds.generated.resources.sound_detail_saved
+import memix.feature.sounds.generated.resources.sound_detail_unavailable_note
 import memix.feature.sounds.generated.resources.sound_detail_category
 import memix.feature.sounds.generated.resources.sound_detail_credit
 import memix.feature.sounds.generated.resources.sound_detail_device
@@ -87,6 +98,9 @@ fun SoundDetailsSheet(state: State<SoundsUiState>, clock: PlaybackClock, onInten
     val isFavorite by remember(state, soundId) { derivedStateOf { soundId != null && soundId in state.value.favoriteIds } }
     val playback by remember(state, soundId) { derivedStateOf { soundId?.let { state.value.playbackOf(it) } ?: RowPlayback.IDLE } }
     val peaks by remember(state, soundId) { derivedStateOf { soundId?.let { state.value.waveforms[it] } } }
+    val look by remember(state, soundId) { derivedStateOf { soundId?.let { state.value.lookOf(it) } ?: SoundRowLook.NORMAL } }
+    val downloadProgress by remember(state, soundId) { derivedStateOf { soundId?.let { state.value.downloadProgressOf(it) } } }
+    val onPhone by remember(state, soundId) { derivedStateOf { soundId?.let { state.value.onPhoneOf(it) } ?: SoundOnPhone.NOT_SAVED } }
     val activeId by remember(state) { derivedStateOf { state.value.activeId } }
     val isPlaying by remember(state) { derivedStateOf { state.value.playingId != null } }
     val toast by remember(state) { derivedStateOf { state.value.toast.takeIf { open } } }
@@ -110,7 +124,7 @@ fun SoundDetailsSheet(state: State<SoundsUiState>, clock: PlaybackClock, onInten
                 }
             },
         ) {
-            if (details != null) DetailsBody(details, name, playback, peaks, position, language, onIntent)
+            if (details != null) DetailsBody(details, name, playback, peaks, look, downloadProgress, onPhone, position, language, onIntent)
         }
         FadingToast(toast, Modifier.align(Alignment.BottomCenter).padding(MemixSpacing.space4)) { shown ->
             Toast(soundsToastText(shown))
@@ -134,6 +148,9 @@ private fun ColumnScope.DetailsBody(
     name: String,
     playback: RowPlayback,
     peaks: List<Float>?,
+    look: SoundRowLook,
+    downloadProgress: Float?,
+    onPhone: SoundOnPhone,
     position: State<Long>,
     language: String,
     onIntent: (SoundsIntent) -> Unit,
@@ -143,14 +160,30 @@ private fun ColumnScope.DetailsBody(
         { if (isActive) playedFraction(position.value, details.durationUs) else 0f }
     }
     val timeBelow = LocalDensity.current.fontScale > TIME_BELOW_FONT_SCALE
+    // A download, a failure or a missing connection replaces the time with a line of words under the player (spec P3-04).
+    val status = playerStatusText(look)
+    val statusColor = if (look == SoundRowLook.FAILED || look == SoundRowLook.FAILED_STORAGE) MemixColors.danger else MemixColors.textSecondary
     Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(MemixSpacing.space3), Alignment.CenterVertically) {
-        SoundPlayDisc(name, playback == RowPlayback.PLAYING, { onIntent(SoundsIntent.ToggleDetailsPlay) })
+        SoundPlayDisc(name, playback == RowPlayback.PLAYING, { onIntent(SoundsIntent.ToggleDetailsPlay) }, look = look, disabledReason = status)
         Box(Modifier.weight(1f)) {
-            if (peaks.isNullOrEmpty()) SoundRail(played, Modifier.align(Alignment.Center)) else SoundWaveform(peaks, played, large = true)
+            when {
+                // The rail under the player row is the download's progress.
+                look == SoundRowLook.DOWNLOADING -> SoundRail({ downloadProgress ?: 0f }, Modifier.align(Alignment.Center))
+                peaks.isNullOrEmpty() -> SoundRail(played, Modifier.align(Alignment.Center))
+                else -> SoundWaveform(peaks, played, large = true)
+            }
         }
-        if (!timeBelow) ElapsedTime(position, isActive, details.length)
+        if (!timeBelow && status == null) ElapsedTime(position, isActive, details.length)
     }
-    if (timeBelow) ElapsedTime(position, isActive, details.length, Modifier.align(Alignment.End))
+    when {
+        status != null -> Text(
+            status,
+            MemixTheme.type.label,
+            Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+            color = statusColor,
+        )
+        timeBelow -> ElapsedTime(position, isActive, details.length, Modifier.align(Alignment.End))
+    }
     Column(
         Modifier.weight(1f, fill = false).padding(top = MemixSpacing.space2).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(MemixSpacing.space3),
@@ -161,7 +194,7 @@ private fun ColumnScope.DetailsBody(
         if (details.sourceUrl != null && details.sourceHost != null) {
             SourceFact(details.sourceUrl, details.sourceHost) { onIntent(SoundsIntent.SourceOpenFailed) }
         }
-        Fact(Res.string.sound_detail_device) { OnPhone(details.onPhone) }
+        Fact(Res.string.sound_detail_device) { OnPhone(onPhone, look) }
     }
 }
 
@@ -206,16 +239,31 @@ private fun SourceFact(url: String, host: String, onOpenFailed: () -> Unit) {
     }
 }
 
+/** The words that replace the time while the sound can't just play; null when it plays as normal. */
 @Composable
-private fun OnPhone(onPhone: SoundOnPhone) {
-    val included = onPhone == SoundOnPhone.INCLUDED
+private fun playerStatusText(look: SoundRowLook): String? = when (look) {
+    SoundRowLook.NORMAL -> null
+    SoundRowLook.DOWNLOADING -> stringResource(UiRes.string.sound_dl_downloading)
+    SoundRowLook.FAILED -> stringResource(UiRes.string.sound_dl_failed)
+    SoundRowLook.FAILED_STORAGE -> stringResource(UiRes.string.sound_dl_failed_storage)
+    SoundRowLook.OFFLINE_NOT_SAVED -> stringResource(Res.string.sound_detail_offline_note)
+    SoundRowLook.UNAVAILABLE -> stringResource(Res.string.sound_detail_unavailable_note)
+}
+
+@Composable
+private fun OnPhone(onPhone: SoundOnPhone, look: SoundRowLook) {
+    val saved = onPhone != SoundOnPhone.NOT_SAVED
+    val words = when {
+        onPhone == SoundOnPhone.INCLUDED -> stringResource(Res.string.sound_detail_included)
+        onPhone == SoundOnPhone.SAVED -> stringResource(Res.string.sound_detail_saved)
+        // "Saves when you play or add it" would be untrue here: say what is in the way.
+        look == SoundRowLook.FAILED_STORAGE -> stringResource(UiRes.string.sound_dl_failed_storage)
+        look == SoundRowLook.OFFLINE_NOT_SAVED || look == SoundRowLook.UNAVAILABLE -> stringResource(Res.string.sound_detail_not_saved_now)
+        else -> stringResource(Res.string.sound_detail_not_saved)
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space2), verticalAlignment = Alignment.CenterVertically) {
-        if (included) Icon(MemixIcons.Check, contentDescription = null, tint = MemixColors.success, size = MemixSize.iconSmall)
-        Text(
-            stringResource(if (included) Res.string.sound_detail_included else Res.string.sound_detail_not_saved),
-            MemixTheme.type.body,
-            color = if (included) MemixColors.text else MemixColors.textSecondary,
-        )
+        if (saved) Icon(MemixIcons.Check, contentDescription = null, tint = MemixColors.success, size = MemixSize.iconSmall)
+        Text(words, MemixTheme.type.body, color = if (saved) MemixColors.text else MemixColors.textSecondary)
     }
 }
 

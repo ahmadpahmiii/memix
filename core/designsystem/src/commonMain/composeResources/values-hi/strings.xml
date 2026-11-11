@@ -10,4 +10,6 @@
     <string name="setting_expanded">खुला है</string>
     <string name="setting_collapsed">बंद है</string>
     <string name="sound_action_details">विवरण दिखाएं</string>
+    <string name="sound_a11y_cancel_download">%1$s का डाउनलोड रद्द करें</string>
+    <string name="sound_a11y_retry">फिर से कोशिश करें: %1$s डाउनलोड करें</string>
 </resources>

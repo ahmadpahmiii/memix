@@ -68,4 +68,11 @@
     <string name="sound_detail_source_failed">पेज नहीं खुल सका।</string>
     <string name="sound_detail_source_a11y">%1$s को अपने ब्राउज़र में खोलें</string>
     <string name="sound_volume_low">सुनने के लिए वॉल्यूम बढ़ाएं।</string>
+    <string name="sound_dl_storage_toast">आपका फ़ोन भरा है, इसलिए यह साउंड सेव नहीं हो सकता।</string>
+    <string name="sound_dl_free_up_space">जगह खाली करें</string>
+    <string name="sound_dl_toast_dismiss">बंद करें</string>
+    <string name="sound_detail_offline_note">आप ऑफ़लाइन हैं। इस साउंड को चलाने या इस्तेमाल करने के लिए कनेक्ट करें।</string>
+    <string name="sound_detail_unavailable_note">यह साउंड लाइब्रेरी से हटा दिया गया है।</string>
+    <string name="sounds_starter_heading">शामिल साउंड</string>
+    <string name="sound_detail_not_saved_now">इस फ़ोन में सेव नहीं है</string>
 </resources>

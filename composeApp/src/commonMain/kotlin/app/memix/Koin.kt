@@ -4,8 +4,10 @@ import app.memix.core.data.dataModule
 import app.memix.core.designsystem.readCaptionFontFile
 import app.memix.core.domain.GetPhoneRegionUseCase
 import app.memix.core.domain.RefreshAppConfigUseCase
+import app.memix.core.domain.catalog.CheckRemovedSoundsUseCase
 import app.memix.core.domain.catalog.LoadSoundFeedPageUseCase
 import app.memix.core.domain.catalog.LoadWaveformUseCase
+import app.memix.core.domain.catalog.ObserveRemovedSoundIdsUseCase
 import app.memix.core.domain.catalog.ObserveSoundCategoriesUseCase
 import app.memix.core.domain.catalog.ObserveSoundFeedUseCase
 import app.memix.core.domain.catalog.RefreshSoundCategoriesUseCase
@@ -48,6 +50,7 @@ import app.memix.core.domain.sound.ObserveFavoriteSoundIdsUseCase
 import app.memix.core.domain.sound.ObserveFavoriteSoundsUseCase
 import app.memix.core.domain.sound.ObserveRecentSoundsUseCase
 import app.memix.core.domain.sound.OpenSoundPlayerUseCase
+import app.memix.core.domain.sound.SoundsOnPhone
 import app.memix.core.domain.sound.PrepareSoundUseCase
 import app.memix.core.domain.sound.RecordRecentSoundUseCase
 import app.memix.core.domain.sound.ToggleFavoriteSoundUseCase
@@ -166,6 +169,10 @@ private val appModule = module {
     factoryOf(::ToggleFavoriteSoundUseCase)
     factoryOf(::RecordRecentSoundUseCase)
     factoryOf(::LoadWaveformUseCase)
+    // Downloads, the offline look and the removed-sound check (P3-04).
+    factoryOf(::SoundsOnPhone)
+    factoryOf(::ObserveRemovedSoundIdsUseCase)
+    factoryOf(::CheckRemovedSoundsUseCase)
     factoryOf(::EditorSounds)
     // The caption fonts live with the interface fonts in the design system; the engine's renderer reads them (P1-10).
     single<CaptionFontSource> { CaptionFontSource(::readCaptionFontFile) }

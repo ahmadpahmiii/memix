@@ -177,4 +177,9 @@
     <string name="export_stopped_toast">Ekspor dihentikan.</string>
     <string name="export_watermark_title">Watermark Memix</string>
     <string name="sound_meta">%1$s · %2$s</string>
+    <string name="sound_dl_downloading">Mengunduh…</string>
+    <string name="sound_dl_failed">Gagal mengunduh. Ketuk untuk coba lagi.</string>
+    <string name="sound_dl_failed_storage">Ruang di ponselmu tidak cukup.</string>
+    <string name="sound_not_saved_offline">Tidak tersimpan untuk offline</string>
+    <string name="sound_unavailable">Sudah tidak tersedia</string>
 </resources>

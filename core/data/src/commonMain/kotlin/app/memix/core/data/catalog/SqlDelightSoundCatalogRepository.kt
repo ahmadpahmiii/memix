@@ -31,11 +31,15 @@ import kotlinx.coroutines.withContext
 
 private const val TAG = "SoundCatalog"
 private const val CATEGORIES_STAMP = "sound_categories"
+private const val REMOVED_CHECK_STAMP = "sound_removed_check"
 private const val MICROS_PER_MILLI = 1_000L
 private const val MAX_TRENDING_SOUNDS = 50
 
 // SQLite allows 999 variables in one statement; the pattern takes one of them.
 private const val SAVED_IDS_PER_QUERY = 500
+
+// One request asks for this many ids; the ids travel in the URL, so a favorites list stays under its length limit.
+private const val STILL_LISTED_PER_REQUEST = 50
 
 /**
  * The sound catalog in the SQLDelight tables of Catalog.sq, filled from [remote]. Reads come only from the tables;
@@ -146,6 +150,42 @@ internal class SqlDelightSoundCatalogRepository(
             logger.debug(TAG, "No waveform for ${sound.id}: ${e.message}")
             null
         }
+    }
+
+    override fun observeRemovedSoundIds(): Flow<Set<String>> =
+        flow {
+            emitAll(db.soundFilesQueries.selectRemovedIds().asFlow().mapToList(ioDispatcher).map { it.toSet() })
+        }.distinctUntilChanged().flowOn(ioDispatcher)
+
+    override suspend fun checkStillListed(soundIds: Set<String>, force: Boolean): Outcome<Set<String>> = runOnIo("check removed sounds") {
+        fun savedRemoved(): Set<String> = db.soundFilesQueries.selectRemovedIds().executeAsList().filterTo(HashSet()) { it in soundIds }
+        if (!force && isFresh(queries.selectStamp(REMOVED_CHECK_STAMP).executeAsOneOrNull(), CatalogRefreshRules.removedCheck)) {
+            return@runOnIo Outcome.Success(savedRemoved())
+        }
+        // Fetch every answer first: a failure half-way leaves the saved answers as they were.
+        val answers = soundIds.chunked(STILL_LISTED_PER_REQUEST).map { chunk ->
+            val listed = remote.soundsByIds(chunk)
+            listed to (chunk.toSet() - listed.mapTo(HashSet()) { it.sound.id })
+        }
+        // None of several listed is more likely a hiccup than a catalog emptied of every favorite: mark nothing and ask
+        // again next time (as refreshCategories does for an empty answer).
+        if (soundIds.size > 1 && answers.all { it.first.isEmpty() }) {
+            logger.error(TAG, "The catalog listed none of ${soundIds.size} saved sounds; not marking them removed")
+            return@runOnIo Outcome.Success(savedRemoved())
+        }
+        val removed = HashSet<String>()
+        db.transaction {
+            answers.forEach { (listed, missing) ->
+                listed.forEach { found ->
+                    insertSound(found)
+                    db.soundFilesQueries.deleteRemoved(found.sound.id)
+                }
+                missing.forEach { id -> db.soundFilesQueries.insertRemoved(id, clock.nowEpochUs()) }
+                removed += missing
+            }
+            queries.insertStamp(REMOVED_CHECK_STAMP, clock.nowEpochUs())
+        }
+        Outcome.Success(removed)
     }
 
     private fun savedWaveform(soundId: String, path: String): Waveform? {

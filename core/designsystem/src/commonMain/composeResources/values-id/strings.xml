@@ -10,4 +10,6 @@
     <string name="setting_expanded">Diperluas</string>
     <string name="setting_collapsed">Diciutkan</string>
     <string name="sound_action_details">Lihat detail</string>
+    <string name="sound_a11y_cancel_download">Batalkan unduhan %1$s</string>
+    <string name="sound_a11y_retry">Coba lagi: unduh %1$s</string>
 </resources>

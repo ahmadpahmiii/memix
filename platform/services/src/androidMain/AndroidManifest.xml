@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROCESSING" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Whether the phone is online, for the offline look of the Sounds screen (P3-04). A normal permission: no prompt. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <!-- WhatsApp's own check of whether a pack is added (P2-09) lives in these two packages; Android 11+ hides them unless named here
          (WhatsApp's Android sample does the same). -->
     <queries>
