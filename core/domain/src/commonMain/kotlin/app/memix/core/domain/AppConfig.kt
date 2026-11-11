@@ -11,4 +11,10 @@ interface AppConfig {
      * a build-time fallback (docs/TECHNICAL_DESIGN.md); empty when neither is set.
      */
     val mediaBaseUrl: String
+
+    /** The Supabase project URL of the sound catalog (P3-01), from the build; empty when the build has none. */
+    val supabaseUrl: String
+
+    /** The Supabase publishable key, the only key the app ships (docs/CREDENTIALS.md); empty when the build has none. */
+    val supabasePublishableKey: String
 }

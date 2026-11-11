@@ -1,0 +1,119 @@
+-- The phone's copy of the online sound catalog (P3-01), so the Sounds screen opens at once and works offline.
+-- Changing a table: edit it here and add migrations/<current database version>.sqm (the first is 1.sqm, which made
+-- version 2). Rows are replaced as a whole, so there is no per-column migration to write for content changes.
+
+CREATE TABLE sound_category (
+    id TEXT NOT NULL PRIMARY KEY,
+    -- {"en": "Reactions", "id": ...}
+    name_json TEXT NOT NULL,
+    sort INTEGER NOT NULL
+);
+
+-- One row per sound the phone has seen. Rows are kept, not pruned: favorites and recents (P3-06) look sounds up by id.
+CREATE TABLE sound (
+    id TEXT NOT NULL PRIMARY KEY,
+    title_json TEXT NOT NULL,
+    category_id TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    duration_ms INTEGER NOT NULL,
+    waveform_path TEXT,
+    license_type TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    credit TEXT,
+    -- Lower-cased titles in every language and the tags, for the offline contains-match.
+    search_text TEXT NOT NULL
+);
+
+-- The sounds of one list in order, 30 per page. feed_key names the list ("global:all", "trending:ID").
+CREATE TABLE sound_feed_entry (
+    feed_key TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    sound_id TEXT NOT NULL,
+    PRIMARY KEY (feed_key, position)
+);
+
+-- One row per page that arrived: when, and whether it was the last. Pages are the unit of the 6 hour refresh rule.
+CREATE TABLE sound_feed_page (
+    feed_key TEXT NOT NULL,
+    page_index INTEGER NOT NULL,
+    fetched_at_epoch_us INTEGER NOT NULL,
+    is_last INTEGER NOT NULL,
+    PRIMARY KEY (feed_key, page_index)
+);
+
+-- A waveform file as fetched, saved once it decoded. A key never changes its file, so a row stays good while the path matches.
+CREATE TABLE sound_waveform (
+    sound_id TEXT NOT NULL PRIMARY KEY,
+    waveform_path TEXT NOT NULL,
+    waveform_json TEXT NOT NULL
+);
+
+-- When a whole-list refresh last succeeded ("sound_categories"); other catalog lists join it with their tickets.
+CREATE TABLE catalog_stamp (
+    name TEXT NOT NULL PRIMARY KEY,
+    fetched_at_epoch_us INTEGER NOT NULL
+);
+
+selectCategories:
+SELECT id, name_json, sort FROM sound_category ORDER BY sort, id;
+
+deleteCategories:
+DELETE FROM sound_category;
+
+insertCategory:
+INSERT OR REPLACE INTO sound_category(id, name_json, sort) VALUES (:id, :nameJson, :sort);
+
+selectStamp:
+SELECT fetched_at_epoch_us FROM catalog_stamp WHERE name = :name;
+
+insertStamp:
+INSERT OR REPLACE INTO catalog_stamp(name, fetched_at_epoch_us) VALUES (:name, :fetchedAtEpochUs);
+
+insertSound:
+INSERT OR REPLACE INTO sound(
+    id, title_json, category_id, file_path, duration_ms, waveform_path, license_type, source_url, credit, search_text
+)
+VALUES (
+    :id, :titleJson, :categoryId, :filePath, :durationMs, :waveformPath, :licenseType, :sourceUrl, :credit, :searchText
+);
+
+-- The list in feed order. A sound that left the table is simply missing (the inner join), never a crash.
+selectFeedSounds:
+SELECT sound.id, sound.title_json, sound.category_id, sound.file_path, sound.duration_ms, sound.waveform_path,
+       sound.license_type, sound.source_url, sound.credit
+FROM sound_feed_entry
+JOIN sound ON sound.id = sound_feed_entry.sound_id
+WHERE sound_feed_entry.feed_key = :feedKey
+ORDER BY sound_feed_entry.position;
+
+selectFeedPages:
+SELECT page_index, fetched_at_epoch_us, is_last FROM sound_feed_page WHERE feed_key = :feedKey ORDER BY page_index;
+
+selectFeedPage:
+SELECT fetched_at_epoch_us FROM sound_feed_page WHERE feed_key = :feedKey AND page_index = :pageIndex;
+
+deleteFeedEntriesFrom:
+DELETE FROM sound_feed_entry WHERE feed_key = :feedKey AND position >= :fromPosition;
+
+deleteFeedPagesFrom:
+DELETE FROM sound_feed_page WHERE feed_key = :feedKey AND page_index >= :fromPageIndex;
+
+insertFeedEntry:
+INSERT OR REPLACE INTO sound_feed_entry(feed_key, position, sound_id) VALUES (:feedKey, :position, :soundId);
+
+insertFeedPage:
+INSERT OR REPLACE INTO sound_feed_page(feed_key, page_index, fetched_at_epoch_us, is_last)
+VALUES (:feedKey, :pageIndex, :fetchedAtEpochUs, :isLast);
+
+-- Offline search among the saved sounds: contains-match on the lower-cased text. :pattern is built by the caller with %
+-- and an escaped query; :ids stays under SQLite's 999 variables because the caller sends them in chunks.
+selectSavedSoundsMatching:
+SELECT id, title_json, category_id, file_path, duration_ms, waveform_path, license_type, source_url, credit
+FROM sound
+WHERE id IN :ids AND search_text LIKE :pattern ESCAPE '\';
+
+selectWaveform:
+SELECT waveform_path, waveform_json FROM sound_waveform WHERE sound_id = :soundId;
+
+insertWaveform:
+INSERT OR REPLACE INTO sound_waveform(sound_id, waveform_path, waveform_json) VALUES (:soundId, :waveformPath, :waveformJson);

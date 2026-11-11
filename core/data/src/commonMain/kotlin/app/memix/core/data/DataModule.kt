@@ -1,5 +1,8 @@
 package app.memix.core.data
 
+import app.memix.core.data.catalog.SqlDelightSoundCatalogRepository
+import app.memix.core.data.catalog.SupabaseConfig
+import app.memix.core.data.catalog.SupabaseSoundCatalogRemote
 import app.memix.core.data.db.MemixDatabase
 import app.memix.core.data.project.ProjectJsonCodec
 import app.memix.core.data.project.ProjectJsonMigrator
@@ -9,6 +12,8 @@ import app.memix.core.data.settings.SettingsExportPreferences
 import app.memix.core.data.stickerpack.FileStickerPackRepository
 import app.memix.core.data.settings.SettingsPhotoExportPreferences
 import app.memix.core.data.settings.SettingsVideoMemeNotePreferences
+import app.memix.core.domain.AppConfig
+import app.memix.core.domain.catalog.SoundCatalogRepository
 import app.memix.core.domain.photo.PhotoExportPreferences
 import app.memix.core.domain.photo.VideoMemeNotePreferences
 import app.memix.core.domain.project.ProjectRepository
@@ -24,7 +29,8 @@ const val MEMIX_DATABASE_FILE = "memix.db"
 
 /**
  * Binds the domain's repository interfaces. Needs a `SqlDriver` for [MEMIX_DATABASE_FILE] and the app's key-value
- * `Settings` in the graph (the composition root creates both with its platform's storage).
+ * `Settings` in the graph (the composition root creates both with its platform's storage), plus the platform's
+ * `AppConfig`, `Logger` and a `Clock`.
  */
 val dataModule = module {
     single<ExportPreferences> { SettingsExportPreferences(get(), Dispatchers.IO) }
@@ -36,6 +42,18 @@ val dataModule = module {
         SqlDelightProjectRepository(
             database = lazy { get<MemixDatabase>() },
             codec = ProjectJsonCodec(ProjectJsonMigrator(projectMigrations, Project.CURRENT_SCHEMA_VERSION)),
+            ioDispatcher = Dispatchers.IO,
+            logger = get(),
+        )
+    }
+    single<SoundCatalogRepository> {
+        val appConfig = get<AppConfig>()
+        SqlDelightSoundCatalogRepository(
+            database = lazy { get<MemixDatabase>() },
+            // Read when the first request is made, not at start-up.
+            remote = SupabaseSoundCatalogRemote(lazy { SupabaseConfig(appConfig.supabaseUrl, appConfig.supabasePublishableKey) }, logger = get()),
+            appConfig = appConfig,
+            clock = get(),
             ioDispatcher = Dispatchers.IO,
             logger = get(),
         )

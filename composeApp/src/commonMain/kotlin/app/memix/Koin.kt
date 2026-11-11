@@ -4,6 +4,12 @@ import app.memix.core.data.dataModule
 import app.memix.core.designsystem.readCaptionFontFile
 import app.memix.core.domain.GetPhoneRegionUseCase
 import app.memix.core.domain.RefreshAppConfigUseCase
+import app.memix.core.domain.catalog.LoadSoundFeedPageUseCase
+import app.memix.core.domain.catalog.LoadWaveformUseCase
+import app.memix.core.domain.catalog.ObserveSoundCategoriesUseCase
+import app.memix.core.domain.catalog.ObserveSoundFeedUseCase
+import app.memix.core.domain.catalog.RefreshSoundCategoriesUseCase
+import app.memix.core.domain.catalog.SearchSoundsUseCase
 import app.memix.core.domain.drafts.DeleteDraftUseCase
 import app.memix.core.domain.drafts.DescribeEditTimeUseCase
 import app.memix.core.domain.drafts.DuplicateDraftUseCase
@@ -134,6 +140,13 @@ private val appModule = module {
     factoryOf(::PrepareSoundUseCase)
     factoryOf(::OpenSoundPlayerUseCase)
     factoryOf(::LogSoundEventsUseCase)
+    // The online sound catalog (P3-01); the Sounds screen (P3-02) and the picker (P3-05) use these.
+    factoryOf(::ObserveSoundCategoriesUseCase)
+    factoryOf(::RefreshSoundCategoriesUseCase)
+    factoryOf(::ObserveSoundFeedUseCase)
+    factoryOf(::LoadSoundFeedPageUseCase)
+    factoryOf(::SearchSoundsUseCase)
+    factoryOf(::LoadWaveformUseCase)
     factoryOf(::EditorSounds)
     // The caption fonts live with the interface fonts in the design system; the engine's renderer reads them (P1-10).
     single<CaptionFontSource> { CaptionFontSource(::readCaptionFontFile) }

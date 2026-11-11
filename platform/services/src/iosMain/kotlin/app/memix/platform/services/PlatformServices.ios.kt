@@ -62,6 +62,10 @@ private class IosLogger : Logger {
 private class DefaultAppConfig : AppConfig {
     override suspend fun refresh(): Outcome<Unit> = Outcome.Success(Unit)
     override val mediaBaseUrl: String = ""
+
+    // TODO(P7-08): read the Supabase settings from the iOS build configuration; until then the catalog serves from the phone only.
+    override val supabaseUrl: String = ""
+    override val supabasePublishableKey: String = ""
 }
 
 // TODO(P7-08): Firebase Analytics on iOS; until then nothing is logged.

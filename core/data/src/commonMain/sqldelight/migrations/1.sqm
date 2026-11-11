@@ -1,0 +1,46 @@
+-- Version 1 to 2 (P3-01): the phone's copy of the online sound catalog. Same definitions as Catalog.sq.
+
+CREATE TABLE sound_category (
+    id TEXT NOT NULL PRIMARY KEY,
+    name_json TEXT NOT NULL,
+    sort INTEGER NOT NULL
+);
+
+CREATE TABLE sound (
+    id TEXT NOT NULL PRIMARY KEY,
+    title_json TEXT NOT NULL,
+    category_id TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    duration_ms INTEGER NOT NULL,
+    waveform_path TEXT,
+    license_type TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    credit TEXT,
+    search_text TEXT NOT NULL
+);
+
+CREATE TABLE sound_feed_entry (
+    feed_key TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    sound_id TEXT NOT NULL,
+    PRIMARY KEY (feed_key, position)
+);
+
+CREATE TABLE sound_feed_page (
+    feed_key TEXT NOT NULL,
+    page_index INTEGER NOT NULL,
+    fetched_at_epoch_us INTEGER NOT NULL,
+    is_last INTEGER NOT NULL,
+    PRIMARY KEY (feed_key, page_index)
+);
+
+CREATE TABLE sound_waveform (
+    sound_id TEXT NOT NULL PRIMARY KEY,
+    waveform_path TEXT NOT NULL,
+    waveform_json TEXT NOT NULL
+);
+
+CREATE TABLE catalog_stamp (
+    name TEXT NOT NULL PRIMARY KEY,
+    fetched_at_epoch_us INTEGER NOT NULL
+);

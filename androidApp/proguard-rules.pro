@@ -22,6 +22,10 @@
 #   guard); the subject-segmentation AAR has none. R8 kept SubjectSegmentationRegistrar under its own name (read from
 #   mapping.txt of a `bundleRelease` run, 7 Nov 2026), which is what ML Kit's component discovery looks up from the
 #   manifest. Nothing is added. If the benchmark build ever fails with "component registrar" errors, start there.
+# - Ktor 3.6.0, OkHttp 5.5.0 and supabase-kt 3.8.0 (P3-01): ktor-utils' consumer rules keep the engine containers that
+#   Ktor finds with ServiceLoader (seen in configuration.txt of a bundleRelease run) and OkHttp carries its own; supabase-kt
+#   has no rules and installs its plugins in code. The private @Serializable row classes of the catalog remote are covered
+#   by the kotlinx.serialization rules above (decodeList uses the generated serializer, no reflection). Nothing is added.
 # - Koin 4: definitions are lambdas and constructor references written in Kotlin, nothing is looked up by name.
 #   (Read from the code, not from Koin's rules.)
 # - Compose, Navigation, Lifecycle, Activity, coroutines, Firebase Analytics and Remote Config: nothing added until a

@@ -1,5 +1,6 @@
 import java.time.Duration
 import java.time.Instant
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -73,15 +74,69 @@ android {
     }
 }
 
-// The fallback for Remote Config's media_base_url (P3-13): memix.media.baseUrl in local.properties (not committed), or
-// empty. Read as a file provider so the configuration cache notices when it changes.
-val mediaBaseUrl: Provider<String> = providers.fileContents(rootProject.layout.projectDirectory.file("local.properties"))
-    .asText
-    .map { text -> Properties().apply { load(text.reader()) }.getProperty("memix.media.baseUrl").orEmpty().trim() }
-    .orElse("")
+// Build-time values from local.properties (not committed), or empty. Read as a file provider so the configuration cache
+// notices when the file changes. memix.media.baseUrl is the fallback for Remote Config's media_base_url (P3-13);
+// memix.supabase.url and memix.supabase.publishableKey say where the catalog lives (P3-01, docs/CREDENTIALS.md).
+fun localProperty(name: String): Provider<String> =
+    providers.fileContents(rootProject.layout.projectDirectory.file("local.properties"))
+        .asText
+        .map { text -> Properties().apply { load(text.reader()) }.getProperty(name).orEmpty().trim() }
+        .orElse("")
+
+// The catalog settings are checked at build time (P3-01), because a build that lacks them runs but shows only the saved
+// catalog, and a build that holds a secret key would ship it.
+//   - Every variant: memix.supabase.publishableKey must be a publishable key ("sb_publishable_...") or a JWT whose role is
+//     "anon". A "sb_secret_..." key or a "service_role" JWT fails the build.
+//   - The release variant also needs memix.supabase.url and the key to be set, unless -Pmemix.catalogConfig=none is passed
+//     (CI's setting: it only checks R8 and uploads nothing). The owner's Play bundle is built without the flag.
+val supabaseUrlSetting = localProperty("memix.supabase.url")
+val supabaseKeySetting = localProperty("memix.supabase.publishableKey")
+val catalogConfigNone = providers.gradleProperty("memix.catalogConfig").map { choice ->
+    if (choice != "none") throw GradleException("memix.catalogConfig must be none, not '$choice'.")
+    true
+}.orElse(false)
+
+val checkSupabaseKeyIsPublic = tasks.register("checkSupabaseKeyIsPublic") {
+    val key = supabaseKeySetting
+    doLast {
+        val value = key.get()
+        // A JWT key carries its role in the payload (the middle part, base64url JSON).
+        val jwtRole = value.split('.').getOrNull(1)
+            ?.let { payload -> runCatching { String(Base64.getUrlDecoder().decode(payload)) }.getOrNull() }
+            ?.let { json -> Regex("\"role\"\\s*:\\s*\"([^\"]*)\"").find(json)?.groupValues?.get(1) }
+        val isPublishable = value.startsWith("sb_publishable_") || (value.startsWith("eyJ") && jwtRole == "anon")
+        if (value.isNotEmpty() && !isPublishable) {
+            throw GradleException(
+                "memix.supabase.publishableKey in local.properties is not a publishable key (sb_publishable_... or an anon JWT). " +
+                    "A secret or service_role key must never go into the app. See docs/CREDENTIALS.md.",
+            )
+        }
+    }
+}
+val checkCatalogConfigIsSet = tasks.register("checkCatalogConfigIsSet") {
+    val url = supabaseUrlSetting
+    val key = supabaseKeySetting
+    val skip = catalogConfigNone
+    doLast {
+        if (!skip.get() && (url.get().isEmpty() || key.get().isEmpty())) {
+            throw GradleException(
+                "The release build has no catalog settings: set memix.supabase.url and memix.supabase.publishableKey in " +
+                    "local.properties, or pass -Pmemix.catalogConfig=none for a build that is never uploaded (CI).",
+            )
+        }
+    }
+}
+tasks.configureEach {
+    if (name == "preBuild") dependsOn(checkSupabaseKeyIsPublic)
+    if (name == "preReleaseBuild") dependsOn(checkCatalogConfigIsSet)
+}
 
 androidComponents {
-    onVariants { variant -> variant.manifestPlaceholders.put("mediaBaseUrl", mediaBaseUrl) }
+    onVariants { variant ->
+        variant.manifestPlaceholders.put("mediaBaseUrl", localProperty("memix.media.baseUrl"))
+        variant.manifestPlaceholders.put("supabaseUrl", localProperty("memix.supabase.url"))
+        variant.manifestPlaceholders.put("supabasePublishableKey", localProperty("memix.supabase.publishableKey"))
+    }
     onVariants(selector().withBuildType("release")) { variant ->
         variant.outputs.forEach { output -> output.versionCode.set(releaseVersionCode) }
     }

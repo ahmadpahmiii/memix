@@ -132,8 +132,14 @@ private class FirebaseAppConfig(private val context: Context) : AppConfig {
     override val mediaBaseUrl: String
         get() = remoteConfig.getString(MEDIA_BASE_URL).trim().ifEmpty { buildTimeMediaBaseUrl }
 
-    // Read once: the manifest value is fixed for the build, and a PackageManager call per sound row would be a binder hop.
-    private val buildTimeMediaBaseUrl: String by lazy {
+    override val supabaseUrl: String get() = buildTimeValue(SUPABASE_URL_META_DATA)
+
+    override val supabasePublishableKey: String get() = buildTimeValue(SUPABASE_PUBLISHABLE_KEY_META_DATA)
+
+    private val buildTimeMediaBaseUrl: String get() = buildTimeValue(MEDIA_BASE_URL_META_DATA)
+
+    // Read once: the manifest values are fixed for the build, and a PackageManager call per sound row would be a binder hop.
+    private val manifestMetaData: Bundle? by lazy {
         val packageManager = context.packageManager
         val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             packageManager.getApplicationInfo(context.packageName, PackageManager.ApplicationInfoFlags.of(PackageManager.GET_META_DATA.toLong()))
@@ -141,12 +147,16 @@ private class FirebaseAppConfig(private val context: Context) : AppConfig {
             @Suppress("DEPRECATION")
             packageManager.getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
         }
-        info.metaData?.getString(MEDIA_BASE_URL_META_DATA).orEmpty().trim()
+        info.metaData
     }
+
+    private fun buildTimeValue(metaDataName: String): String = manifestMetaData?.getString(metaDataName).orEmpty().trim()
 
     private companion object {
         const val MEDIA_BASE_URL = "media_base_url"
         const val MEDIA_BASE_URL_META_DATA = "app.memix.media_base_url"
+        const val SUPABASE_URL_META_DATA = "app.memix.supabase_url"
+        const val SUPABASE_PUBLISHABLE_KEY_META_DATA = "app.memix.supabase_publishable_key"
     }
 }
 

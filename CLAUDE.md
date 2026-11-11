@@ -104,7 +104,7 @@ Run from the repo root. The Gradle daemon runs on JDK 21 (`gradle/gradle-daemon-
 ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 # iOS framework compiles (needs macOS)
 ./gradlew :androidApp:installDebug                        # install on the running emulator/phone for hand checks
 ./gradlew :androidApp:installBenchmark                    # release code (R8-minified) signed with the debug key, for fps, cold-start and device checks (never uploaded)
-./gradlew :androidApp:bundleRelease -Pmemix.mappingUpload=none  # unsigned release bundle: runs R8 as CI does; the owner signs and uploads from Android Studio (see the play-release skill)
+./gradlew :androidApp:bundleRelease -Pmemix.mappingUpload=none -Pmemix.catalogConfig=none  # unsigned release bundle: runs R8 as CI does (the catalog flag skips the release check for memix.supabase.* in local.properties); the owner signs and uploads from Android Studio (see the play-release skill)
 xcodebuild -project iosApp/iosApp.xcodeproj -target iosApp -sdk iphonesimulator -arch arm64 SYMROOT="$PWD/iosApp/build" build  # iOS app for the simulator
 ```
 
@@ -114,7 +114,7 @@ The first iOS link after adding a library takes up to 15 minutes while Kotlin/Na
 
 ## Current phase
 
-P2 · Photo editor: kicked off 27 Oct 2026 (planned 16 Nov), before Phase 1's QA (owner decision, decision log). All Phase 2 tickets (P2-01 to P2-14) are built and committed (9 Nov), each a provisional accept with its hand check on a device still owed; owner-review decisions are in `docs/pm/STATUS.md`. Phase 2 is built on `claude/friendly-brown-km8lwu` only, with **no CI until the phase PR** (owner, 27 Oct, option C), so rule 7 and "CI green" are met locally per ticket: `:androidApp:assembleDebug`, `lint` and `compileCommonMainKotlinMetadata` ("local build green"); the iOS framework link and the R8 `bundleRelease` first run in CI at the phase PR. Still owed for Phase 1 (17 tickets, merged to `main` on 27 Oct before QA): the QA pass on the owner's Mac (emulator) and phone, now covering Phase 1 and Phase 2 together (`docs/qa/phase-1/engineer-hand-checks.md`), fixes, the P1 gate report and /retro. Keep this line updated as phases advance.
+P3 · Sounds and audio: kicked off 10 Nov 2026 (planned 7 Dec), in parallel with the combined Phase 1 + Phase 2 QA, which the owner runs in a separate session on `main` (Phase 2 merged 10 Nov, PR #9). Phase 3 is built on `claude/friendly-brown-km8lwu` (restarted from `main`) with the Phase 2 working mode (owner, 10 and 11 Nov): no CI until the phase PR, local build green per ticket (`:androidApp:assembleDebug`, `lint`, `compileCommonMainKotlinMetadata`), device hand checks deferred to the phase-end QA (each ticket a provisional accept), and delegated decisions taken as recommended and logged for owner review in `docs/pm/STATUS.md`. Owner-only steps (Supabase migrations and uploads with the secret key, Freesound sourcing, Remote Config) are listed in `docs/qa/phase-3/engineer-hand-checks.md`. Keep this line updated as phases advance.
 
 ## Open items that affect code
 

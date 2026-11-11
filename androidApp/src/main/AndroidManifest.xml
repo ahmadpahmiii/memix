@@ -48,6 +48,11 @@
         <!-- Fallback for Remote Config's media_base_url (P3-13): memix.media.baseUrl from local.properties, filled in by
              androidApp/build.gradle.kts; empty when the property is not set. -->
         <meta-data android:name="app.memix.media_base_url" android:value="${mediaBaseUrl}" />
+        <!-- Where the sound catalog lives (P3-01): memix.supabase.url and memix.supabase.publishableKey from
+             local.properties. The publishable key is public by design (row level security limits it to reading active rows
+             and filing reports); empty when the properties are not set, and the catalog then serves from the phone only. -->
+        <meta-data android:name="app.memix.supabase_url" android:value="${supabaseUrl}" />
+        <meta-data android:name="app.memix.supabase_publishable_key" android:value="${supabasePublishableKey}" />
         <!-- Analytics stays off until the consent flow turns it on (P5-01, P5-04). -->
         <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />
         <meta-data android:name="google_analytics_adid_collection_enabled" android:value="false" />

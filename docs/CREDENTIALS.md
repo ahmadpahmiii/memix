@@ -27,8 +27,8 @@ Keep the keystore outside the repo folder (for example `~/keys/memix-upload.jks`
 
 | Credential | Kind | Ticket | Local | CI (GitHub Actions secret) | In the app? |
 | --- | --- | --- | --- | --- | --- |
-| Supabase project URL (`https://<project-ref>.supabase.co`) | Public | P0-06, P3-01 | `local.properties` → `memix.supabase.url` | `SUPABASE_URL` | Yes |
-| Supabase publishable key (`sb_publishable_…`, formerly "anon") | Public; RLS lets it only read active rows and insert reports | P0-06, P3-01 | `local.properties` → `memix.supabase.publishableKey` | `SUPABASE_PUBLISHABLE_KEY` | Yes |
+| Supabase project URL (`https://<project-ref>.supabase.co`) | Public | P0-06, P3-01 | `local.properties` → `memix.supabase.url` | `SUPABASE_URL` | Not in CI: CI builds cache-only on purpose (`-Pmemix.catalogConfig=none`) |
+| Supabase publishable key (`sb_publishable_…`, formerly "anon") | Public; RLS lets it only read active rows and insert reports | P0-06, P3-01 | `local.properties` → `memix.supabase.publishableKey` | `SUPABASE_PUBLISHABLE_KEY` | Not in CI: as above. The build refuses a key that is not `sb_publishable_…` (or an anon JWT), so a secret or `service_role` key cannot be built into the app; the release variant refuses to build with the URL or key empty unless `-Pmemix.catalogConfig=none` |
 | Supabase project URL, for scripts | Public | P3-13 | `.env` → `SUPABASE_URL` (same value as above) | Not in CI | n/a |
 | Supabase secret key (`sb_secret_…`, formerly "service_role") | **Secret**; bypasses RLS. **Owner only:** this checkout and cloud sessions never hold it; the owner puts it in `.env` on the Mac and runs the uploads | P3-13 upload script, P3-12 intake script (`load`) | `.env` → `SUPABASE_SECRET_KEY` | Not in CI | **Never** |
 | Supabase database password | **Secret** | Migrations via CLI, if used | `.env` → `SUPABASE_DB_PASSWORD` | Not in CI | **Never** |

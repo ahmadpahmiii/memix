@@ -1,6 +1,7 @@
 plugins {
     id("memix.kmp.library")
     alias(libs.plugins.sqldelight)
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 kotlin {
@@ -11,6 +12,17 @@ kotlin {
         api(libs.multiplatform.settings)
         implementation(project.dependencies.platform(libs.koin.bom))
         implementation(libs.koin.core)
+        // The catalog's remote side (P3-01): supabase-kt reads the tables, Ktor fetches the waveform files.
+        implementation(project.dependencies.platform(libs.supabase.bom))
+        implementation(libs.supabase.postgrest)
+        implementation(libs.ktor.client.core)
+    }
+    // Ktor needs an engine per platform; supabase-kt and the waveform client both pick it up from the classpath.
+    sourceSets.androidMain.dependencies {
+        implementation(libs.ktor.client.okhttp)
+    }
+    sourceSets.iosMain.dependencies {
+        implementation(libs.ktor.client.darwin)
     }
 }
 

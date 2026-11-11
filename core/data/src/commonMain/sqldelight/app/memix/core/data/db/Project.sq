@@ -1,7 +1,8 @@
 -- One row per draft. project_json is the whole Project and the source of truth. name, type,
 -- schema_version and the times are copied out of it on every save, so the drafts list can sort
 -- and show rows without decoding every project.
--- Changing a table: edit it here and add migrations/<current database version>.sqm (the first is 1.sqm);
+-- Changing a table: edit it here and add migrations/<current database version>.sqm (1.sqm made version 2, the catalog
+-- tables in Catalog.sq; the next is 2.sqm);
 -- verifySqlDelightMigration checks the result against databases/1.db. Changes to the Project JSON
 -- itself are migrated in code instead (ProjectMigrations.kt).
 CREATE TABLE project (
