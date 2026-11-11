@@ -14,7 +14,6 @@ import app.memix.core.domain.sound.DownloadState
 import app.memix.core.domain.sound.SOUND_CACHE_LIMIT_BYTES
 import app.memix.core.domain.sound.SoundDownloads
 import app.memix.core.domain.sound.SoundPaths
-import app.memix.core.domain.sound.SoundsInUse
 import app.memix.core.model.catalog.LibrarySound
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
@@ -47,9 +46,6 @@ private const val TAG = "SoundDownloads"
 private const val MAX_FILE_BYTES = 8L * 1024 * 1024
 private const val SPACE_RESERVE_BYTES = 1L * 1024 * 1024
 
-/** Past this many times the limit the cache is trimmed whatever drafts use (never a playing sound). */
-private const val CEILING_FACTOR = 2
-
 /** The numbers behind the download rules; the app uses the defaults, the hand checks shorten the times. */
 internal class DownloadRules(
     val cacheLimitBytes: Long = SOUND_CACHE_LIMIT_BYTES,
@@ -75,7 +71,6 @@ internal class FileSoundDownloads(
     private val source: SoundFileSource,
     private val mediaFiles: MediaFiles,
     private val appConfig: AppConfig,
-    private val inUse: SoundsInUse,
     private val clock: Clock,
     private val logger: Logger,
     private val ioDispatcher: CoroutineDispatcher,
@@ -129,17 +124,13 @@ internal class FileSoundDownloads(
     }
 
     override suspend fun discard(soundId: String) {
-        guarded("discard $soundId") {
-            // A draft that uses the file keeps it (it may be a player fault, not a damaged file); null means unknown, so keep it.
-            if (inUse.ids()?.contains(soundId) != false) return@guarded
-            deleteFileAndRow(soundId)
-        }
+        guarded("discard $soundId") { deleteFileAndRow(soundId) }
     }
 
     override suspend fun discardUnused(soundIds: Set<String>) {
         guarded("discard removed sounds") {
-            val protected = protectedIds() ?: return@guarded
-            soundIds.filter { it !in protected }.forEach { deleteFileAndRow(it) }
+            val pinned = pins.value.keys
+            soundIds.filter { it !in pinned }.forEach { deleteFileAndRow(it) }
         }
     }
 
@@ -271,30 +262,18 @@ internal class FileSoundDownloads(
 
     // ---- The 500 MB cache ----
 
-    // Removes the least recently used files until the cache fits its limit. Skips the sound just downloaded, what a draft
-    // uses and what is pinned; when a newer app's draft can't be read nothing is removed (a later download tries again),
-    // unless the cache is past twice its limit.
+    // Removes the least recently used files until the cache fits its limit. Skips the sound just downloaded and what is
+    // pinned (playing, or being added to a project): projects keep their own copies, so nothing else needs the files.
     private suspend fun trimCache(justDownloaded: String) = trimMutex.withLock {
         var total = queries.selectTotalBytes().executeAsOne()
         if (total <= rules.cacheLimitBytes) return@withLock
-        // Far over the limit (drafts or pins hold too much, or one can't be read): the cap wins over drafts, never over what plays.
-        val overCeiling = total > rules.cacheLimitBytes * CEILING_FACTOR
-        val protected = (if (overCeiling) pins.value.keys else protectedIds() ?: return@withLock) + justDownloaded
+        val protected = pins.value.keys + justDownloaded
         for (row in queries.selectFilesOldestFirst().executeAsList()) {
             if (total <= rules.cacheLimitBytes) break
             if (row.sound_id in protected) continue
             deleteFileAndRow(row.sound_id)
             total -= row.size_bytes
         }
-    }
-
-    private suspend fun protectedIds(): Set<String>? {
-        val usedByDrafts = inUse.ids()
-        if (usedByDrafts == null) {
-            logger.debug(TAG, "A draft can't be read, so no sound file is removed")
-            return null
-        }
-        return usedByDrafts + pins.value.keys
     }
 
     private suspend fun deleteFileAndRow(soundId: String) {

@@ -9,6 +9,7 @@ import app.memix.core.domain.video.ExportChoice
 import app.memix.core.domain.video.ExportEstimate
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.domain.video.VideoCodec
+import app.memix.core.domain.sound.PickedSound
 import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.CaptionBox
@@ -228,19 +229,11 @@ enum class ClipTools {
 }
 
 /**
- * The Meme sounds sheet: whether it's open, the starter pack's sounds in the pack's order (empty until they've loaded,
- * or when the build bundles none), and the one playing in the sheet, if any.
+ * Whether the Meme sounds sheet is open (spec P3-05). What it shows, plays and downloads is the picker's own state
+ * in `:feature:sounds`; the editor only opens it and lands the sound it hands over.
  */
 @Immutable
-data class SoundsSheetUi(
-    val isOpen: Boolean = false,
-    val sounds: ImmutableList<SoundRowUi> = persistentListOf(),
-    val playingId: String? = null,
-)
-
-/** One sound of the sheet: its catalog id, its title in every app language, its length (µs) and its credit text. */
-@Immutable
-data class SoundRowUi(val id: String, val title: LocalizedText, val durationUs: Long, val credit: String)
+data class SoundsSheetUi(val isOpen: Boolean = false)
 
 /**
  * The Volume panel of item [itemId]: [volume] follows the slider while it moves (1 = 100%). [isVideoClip]: a main video
@@ -338,6 +331,9 @@ enum class Explanation {
     ALREADY_FIRST,
     ALREADY_LAST,
     SOUND_UNREADABLE,
+
+    /** The phone has no room to copy a library sound into the project (P3-05; the Sounds screen's full-phone line). */
+    SOUND_NO_SPACE,
     REPLACE_DETACHED,
 
     /** Volume or Detach audio on a video with no sound track (P1-09). */
@@ -405,6 +401,9 @@ sealed interface ToastMessage {
 
     /** After a meme sound lands, for screen readers only: "Boom added at 3.2 seconds" ([atUs] is where it starts). */
     data class SoundAdded(val title: LocalizedText, val atUs: Long) : ToastMessage
+
+    /** After a library sound landed with more than half a second past the end of the video: shown as the trim-or-move toast, spoken with the name and time (P3-05). */
+    data class SoundPastEnd(val title: LocalizedText, val atUs: Long) : ToastMessage
 
     /** After a new caption lands, for screen readers only: "Text added at 3.2 seconds" ([atUs] is where it starts). */
     data class TextAdded(val atUs: Long) : ToastMessage
@@ -579,11 +578,11 @@ sealed interface VideoEditorIntent {
     /** The sheet's close button, scrim, drag, back or Escape: nothing is added. */
     data object CloseSoundsSheet : VideoEditorIntent
 
-    /** A row's play disc: plays sound [soundId] alone, or stops it when it's the one playing. */
-    data class ToggleSoundPreview(val soundId: String) : VideoEditorIntent
+    /** The picker's sound would not play (a damaged file): the editor shows its "won't play" toast above the sheet's scrim. */
+    data object SoundUnplayable : VideoEditorIntent
 
-    /** A row's add button: sound [soundId] lands at the playhead and the sheet closes. */
-    data class AddSound(val soundId: String) : VideoEditorIntent
+    /** The picker handed over a sound with its file ready (a row's Add block, or "Add to video"): it lands at the playhead. */
+    data class AddSound(val sound: PickedSound) : VideoEditorIntent
 
     /** The Volume tool of the selected sound: opens the Volume panel. */
     data object VolumeTool : VideoEditorIntent

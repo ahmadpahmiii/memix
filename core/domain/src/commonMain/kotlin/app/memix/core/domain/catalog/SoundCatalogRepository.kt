@@ -2,6 +2,7 @@ package app.memix.core.domain.catalog
 
 import app.memix.core.domain.Outcome
 import app.memix.core.model.catalog.LibrarySound
+import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.catalog.SoundCategory
 import app.memix.core.model.catalog.SoundFeed
 import app.memix.core.model.catalog.SoundFeedContent
@@ -51,6 +52,9 @@ interface SoundCatalogRepository {
      * [savedSoundIds]: the offline search. At most [SOUND_PAGE_SIZE] results, best title match first.
      */
     suspend fun searchSaved(query: String, savedSoundIds: Set<String>): List<LibrarySound>
+
+    /** The titles of the sounds the phone's copy of the catalog has among [soundIds], by id; an id it lacks is left out. Phone only, never the network. */
+    suspend fun titlesOf(soundIds: Set<String>): Map<String, LocalizedText>
 
     /** The sound's waveform, or null when it has none, the file is missing or damaged, or it can't be fetched now. */
     suspend fun waveformOf(sound: LibrarySound): Waveform?

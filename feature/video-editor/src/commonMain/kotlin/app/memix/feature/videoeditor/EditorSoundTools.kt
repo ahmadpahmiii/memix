@@ -1,49 +1,58 @@
 package app.memix.feature.videoeditor
 
+import app.memix.core.domain.AppError
 import app.memix.core.domain.Outcome
+import app.memix.core.domain.project.OVERHANG_NOTICE_US
 import app.memix.core.domain.project.addSound
-import app.memix.core.domain.sound.SoundPlayer
-import app.memix.core.model.catalog.CatalogSound
+import app.memix.core.domain.project.unheardTailUs
+import app.memix.core.domain.project.videoLengthUs
+import app.memix.core.domain.sound.PickedSound
 import app.memix.core.model.catalog.LocalizedText
-import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.MediaRef
+import app.memix.core.model.project.Project
 import app.memix.core.model.project.ProjectType
 import kotlinx.collections.immutable.persistentSetOf
-import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 
 /**
- * Meme sounds in the editor (spec P1-06 → Meme sounds sheet, Meme sounds): the starter pack, the sheet and its
- * previews, and a sound landing at the playhead. The sheet's player opens on the first play and closes with the
- * editor ([close]).
+ * Meme sounds in the editor (spec P1-06 → Meme sounds, P3-05): the starter pack's titles, which label sounds on the
+ * timeline, the sheet's open state, and a picked sound landing at the playhead. Choosing, previewing and downloading
+ * happen in the picker (`:feature:sounds`); it hands over a [PickedSound] with its file ready.
  */
-internal class EditorSoundTools(private val sounds: EditorSounds, private val host: EditorHost) : AutoCloseable {
-    // The starter pack (P1-08), loaded once.
-    private var starterSounds: List<CatalogSound> = emptyList()
-
-    /** The pack's titles by catalog id; they label the sounds on the timeline. */
+internal class EditorSoundTools(private val sounds: EditorSounds, private val host: EditorHost) {
+    /** Titles of the sounds on the timeline by catalog id: the starter pack, then each library sound landed in this session. */
     var titles: Map<String, LocalizedText> = emptyMap()
         private set
-
-    // Each sound's file once it's been checked, so a second play or add doesn't measure it again.
-    private val preparedSounds = HashMap<String, MediaRef>()
-    private var player: SoundPlayer? = null
 
     // What opened the sheet, so closing it without adding sends focus back there.
     private var sheetOpener = FocusTarget.MEME_SOUNDS_TOOL
 
-    /** Loads the pack into the sheet's rows and [titles]. */
+    // Where the playhead was when the sheet opened: nothing can move it behind the sheet, and a download that takes
+    // a while must still land where the user was (spec P3-05 → Entry and exit).
+    private var playheadAtOpenUs = 0L
+
+    /** Loads the starter pack's titles. */
     suspend fun load() {
-        starterSounds = sounds.loadStarterSounds()
-        titles = starterSounds.associate { it.id to it.title }
-        val rows = starterSounds.map { SoundRowUi(it.id, it.title, it.durationUs, it.credit) }.toImmutableList()
-        host.updateUiState { it.copy(sounds = it.sounds.copy(sounds = rows)) }
+        titles = sounds.loadStarterSounds().associate { it.id to it.title } + titles
+    }
+
+    /**
+     * Labels for the library sounds [project] already uses: a project keeps only the catalog id, so the titles come from
+     * the phone's copy of the catalog. Returns true when it found any, so the timeline needs redrawing.
+     */
+    suspend fun loadLibraryTitles(project: Project): Boolean {
+        val found = sounds.loadTitles(project, known = titles.keys)
+        if (found.isEmpty()) return false
+        titles = titles + found
+        return true
     }
 
     /** The editor stays paused while sounds play in the sheet. */
     fun openSheet(opener: FocusTarget) {
         sheetOpener = opener
+        // Paused first, so the playhead read is where the picture stopped.
         host.preview?.pause()
+        playheadAtOpenUs = host.currentPositionUs()
         host.updateUiState { it.copy(sounds = it.sounds.copy(isOpen = true)) }
     }
 
@@ -53,80 +62,56 @@ internal class EditorSoundTools(private val sounds: EditorSounds, private val ho
         host.returnFocusTo(sheetOpener)
     }
 
-    fun togglePreview(soundId: String) {
-        if (host.uiState.sounds.playingId == soundId) {
-            player?.stop()
-            return
-        }
-        val sound = starterSounds.firstOrNull { it.id == soundId } ?: return
+    /**
+     * A row's Add block or "Add to video": the sound gets its file in this project, lands at the playhead and the sheet
+     * closes. The sheet stays up until then, so a user who closes it first cancels the landing.
+     */
+    fun add(picked: PickedSound) {
+        val project = host.currentProject() ?: return closeSheet()
         host.scope.launch {
-            val file = preparedSound(sound) ?: return@launch host.showToast(ToastMessage.Explain(Explanation.SOUND_UNREADABLE))
-            // Closed while the file was being prepared: nothing plays.
-            if (!host.uiState.sounds.isOpen) return@launch
-            openedPlayer().play(file)
-            sounds.logEvents.previewed(sound.id)
-        }
-    }
-
-    /** A row's add button: the sheet closes and the sound lands at the playhead. */
-    fun add(soundId: String) {
-        val sound = starterSounds.firstOrNull { it.id == soundId } ?: return
-        val atUs = host.currentPositionUs()
-        closeSheet()
-        host.preview?.pause()
-        host.scope.launch {
-            val file = preparedSound(sound)
-            if (file == null) {
-                host.showToast(ToastMessage.Explain(Explanation.SOUND_UNREADABLE))
-                return@launch host.returnFocusTo(sheetOpener)
+            val file = when (val placed = sounds.placeInProject(project.id, picked)) {
+                is Outcome.Success -> placed.value
+                is Outcome.Failure -> return@launch cannotAdd(placed.error)
             }
-            land(sound, file, atUs)
+            // Closed while the file was being copied: the user walked away, so nothing lands.
+            if (!host.uiState.sounds.isOpen) return@launch
+            land(picked, file)
         }
     }
 
-    /** The app went to the background: a preview would keep playing. */
-    fun stopPreview() {
-        player?.stop()
-    }
-
-    override fun close() {
-        player?.close()
+    // The file could not be copied: no room (the phone-is-full line) or the cache file is gone (the "won't play" line).
+    private fun cannotAdd(error: AppError) {
+        host.showToast(ToastMessage.Explain(if (error == AppError.StorageFull) Explanation.SOUND_NO_SPACE else Explanation.SOUND_UNREADABLE))
+        dismissSheet()
     }
 
     private fun closeSheet() {
-        player?.stop()
         host.updateUiState { it.copy(sounds = it.sounds.copy(isOpen = false)) }
     }
 
-    private fun land(sound: CatalogSound, file: MediaRef, atUs: Long) {
+    private fun land(picked: PickedSound, file: MediaRef) {
         val clipId = host.newId()
-        if (!host.commit(VideoEdit.ADD_SOUND) { it.addSound(file, clipId, atUs, newTrackId = host.newId()) }) return
-        sounds.logEvents.added(sound.id, ProjectType.VIDEO)
-        host.scope.launch { sounds.recordRecent(sound.id) }
+        titles = titles + (picked.soundId to picked.title)
+        closeSheet()
+        host.preview?.pause()
+        if (!host.commit(VideoEdit.ADD_SOUND) { it.addSound(file, clipId, playheadAtOpenUs, newTrackId = host.newId()) }) return
+        sounds.logEvents.added(picked.soundId, picked.tab, ProjectType.VIDEO)
+        host.scope.launch { sounds.recordRecent(picked.soundId) }
         // Selected with its tools ready; it bonks and the phone ticks (spec P1-06 → Meme sounds → Landing).
         val landed = host.newLanding(persistentSetOf(clipId), isSound = true)
         host.updateUiState { it.withSelection(clipId, host.currentProject()).copy(landed = landed) }
-        val startUs = host.uiState.timeline.item(clipId)?.startUs ?: atUs
-        host.showToast(ToastMessage.SoundAdded(sound.title, startUs), spokenOnly = true)
+        val startUs = host.uiState.timeline.item(clipId)?.startUs ?: playheadAtOpenUs
+        announceLanding(picked, startUs, file.durationUs ?: 0L)
         // The new sound's tools are up; focus goes to its Volume tool (spec P1-06 → Accessibility).
         host.returnFocusTo(FocusTarget.VOLUME_TOOL)
     }
 
-    private suspend fun preparedSound(sound: CatalogSound): MediaRef? {
-        preparedSounds[sound.id]?.let { return it }
-        return when (val prepared = sounds.prepareSound(sound)) {
-            is Outcome.Success -> prepared.value.also { preparedSounds[sound.id] = it }
-            is Outcome.Failure -> null
-        }
-    }
-
-    private fun openedPlayer(): SoundPlayer = player ?: sounds.openSoundPlayer().also { opened ->
-        player = opened
-        host.scope.launch {
-            opened.playing.collect { media ->
-                val playingId = (media?.origin as? MediaOrigin.CatalogItem)?.itemId
-                host.updateUiState { it.copy(sounds = it.sounds.copy(playingId = playingId)) }
-            }
-        }
+    // A sound that runs past the end of the video lands where the user chose; more than half a second that nobody hears gets a
+    // toast with the two fixes (spec P3-05 → Where it lands). That toast also speaks "{name} added at {time}", so a screen
+    // reader hears both in one message; otherwise the landing is only spoken.
+    private fun announceLanding(picked: PickedSound, startUs: Long, lengthUs: Long) {
+        val videoLengthUs = host.currentProject()?.videoLengthUs() ?: 0L
+        val pastEnd = unheardTailUs(startUs, lengthUs, videoLengthUs) > OVERHANG_NOTICE_US
+        host.showToast(if (pastEnd) ToastMessage.SoundPastEnd(picked.title, startUs) else ToastMessage.SoundAdded(picked.title, startUs), spokenOnly = !pastEnd)
     }
 }

@@ -33,6 +33,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -170,39 +171,60 @@ private fun SoundsList(
     modifier: Modifier = Modifier,
 ) {
     val language = LocalLocale.current.language
-    val content = state.content
-    LoadMoreWhenNearEnd(listState, content, onIntent)
+    LoadMoreWhenNearEnd(listState, state.content, onIntent)
     LazyColumn(modifier, state = listState, contentPadding = PaddingValues(bottom = MemixSpacing.space4)) {
         item(key = "title", contentType = "title") { ScreenTitle(stringResource(Res.string.sounds_title)) }
         stickyHeader(key = "search-and-tabs", contentType = "search-and-tabs") {
             SearchAndTabs(state.tab, field, searchFocus, onSearchFocusChange, onIntent)
         }
-        state.spokenResultCount?.let { count ->
-            item(key = "result-count", contentType = "spoken") {
-                val spoken = pluralStringResource(Res.plurals.sounds_results_a11y, count, count)
-                // Real bounds, nothing drawn: TalkBack ignores live regions on a node with no size.
-                Box(Modifier.fillMaxWidth().height(MemixStroke.strokeHairline).semantics { liveRegion = LiveRegionMode.Polite; contentDescription = spoken })
-            }
-        }
-        if (state.showsChips) {
-            item(key = "chips", contentType = "chips") {
-                CategoryChips(state.categories, state.categoryId, language, { onIntent(SoundsIntent.SelectCategory(it)) }, allChipFocus, fade)
-            }
-        }
-        state.notice?.let { notice -> item(key = "notice", contentType = "notice") { StatusStrip(notice) } }
-        if (state.tab == SoundsTab.LOCAL && state.query.isEmpty() && state.regionName != null) {
-            item(key = "region", contentType = "region") { RegionLine(state.regionName, fade) }
-        }
-        // After "Clear search" focus goes to the search box, after "Show all" to the "All" chip (spec P3-02 → Accessibility).
-        val onBlockIntent = { intent: SoundsIntent ->
-            when {
-                intent == SoundsIntent.ClearQuery -> searchFocus.requestFocus()
-                intent is SoundsIntent.SelectCategory && intent.categoryId == null -> allChipFocus.requestFocus()
-            }
-            onIntent(intent)
-        }
-        contentItems(state, content, language, fade, position, onBlockIntent)
+        soundsBody(state, language, searchFocus, allChipFocus, fade, position, onIntent)
     }
+}
+
+/**
+ * Everything under the pinned search and tabs, shared by the Sounds tab and the editor's picker (P3-05): the spoken result
+ * count, the chips (not in the picker), the status strips, the Local tab's region line and the rows. In the picker
+ * ([picker]) the rows carry the Add block and sit on `surface`, and a full phone shows a strip with its action.
+ */
+internal fun androidx.compose.foundation.lazy.LazyListScope.soundsBody(
+    state: SoundsUiState,
+    language: String,
+    searchFocus: FocusRequester,
+    allChipFocus: FocusRequester,
+    fade: Modifier,
+    position: State<Long>,
+    onIntent: (SoundsIntent) -> Unit,
+    picker: Boolean = false,
+    onFreeUpSpace: () -> Unit = {},
+) {
+    state.spokenResultCount?.let { count ->
+        item(key = "result-count", contentType = "spoken") {
+            val spoken = pluralStringResource(Res.plurals.sounds_results_a11y, count, count)
+            // Real bounds, nothing drawn: TalkBack ignores live regions on a node with no size.
+            Box(Modifier.fillMaxWidth().height(MemixStroke.strokeHairline).semantics { liveRegion = LiveRegionMode.Polite; contentDescription = spoken })
+        }
+    }
+    if (state.showsChips && !picker) {
+        item(key = "chips", contentType = "chips") {
+            CategoryChips(state.categories, state.categoryId, language, { onIntent(SoundsIntent.SelectCategory(it)) }, allChipFocus, fade)
+        }
+    }
+    state.notice?.let { notice -> item(key = "notice", contentType = "notice") { StatusStrip(notice) } }
+    if (picker && state.storageFullNote) {
+        item(key = "storage-full", contentType = "notice") { StorageFullStrip(state.canFreeUpSpace, onFreeUpSpace, fade) }
+    }
+    if (state.tab == SoundsTab.LOCAL && state.query.isEmpty() && state.regionName != null) {
+        item(key = "region", contentType = "region") { RegionLine(state.regionName, fade) }
+    }
+    // After "Clear search" focus goes to the search box, after "Show all" to the "All" chip (spec P3-02 → Accessibility).
+    val onBlockIntent = { intent: SoundsIntent ->
+        when {
+            intent == SoundsIntent.ClearQuery -> searchFocus.requestFocusIfShown()
+            intent is SoundsIntent.SelectCategory && intent.categoryId == null -> allChipFocus.requestFocusIfShown()
+        }
+        onIntent(intent)
+    }
+    contentItems(state, state.content, language, fade, position, onBlockIntent, picker)
 }
 
 private fun androidx.compose.foundation.lazy.LazyListScope.contentItems(
@@ -212,6 +234,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.contentItems(
     fade: Modifier,
     position: State<Long>,
     onIntent: (SoundsIntent) -> Unit,
+    picker: Boolean,
 ) {
     when (content) {
         is SoundsContent.Loading -> if (content.showPlaceholders) {
@@ -226,17 +249,17 @@ private fun androidx.compose.foundation.lazy.LazyListScope.contentItems(
         }
         is SoundsContent.Rows -> {
             items(content.rows, key = { it.id }, contentType = { "sound" }) { row ->
-                LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = false), state.lookOf(row.id), state.downloadProgressOf(row.id), language, fade, position, onIntent)
+                LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = false), state.lookOf(row.id), state.downloadProgressOf(row.id), language, fade, position, onIntent, picker = picker, adding = state.addingId == row.id)
             }
             item(key = "footer", contentType = "footer") { ListFooterItem(content.footer, { onIntent(SoundsIntent.TryAgain) }) }
         }
         is SoundsContent.Starters -> {
             item(key = "starters-heading", contentType = "section") { SectionHeading(Res.string.sounds_starter_heading, isFirst = true, modifier = fade) }
             items(content.rows, key = { it.id }, contentType = { "sound" }) { row ->
-                LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = false), state.lookOf(row.id), state.downloadProgressOf(row.id), language, fade, position, onIntent)
+                LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = false), state.lookOf(row.id), state.downloadProgressOf(row.id), language, fade, position, onIntent, picker = picker, adding = state.addingId == row.id)
             }
         }
-        is SoundsContent.Favorites -> favoriteSections(content, state, language, fade, position, onIntent)
+        is SoundsContent.Favorites -> favoriteSections(content, state, language, fade, position, onIntent, picker)
     }
 }
 
@@ -248,11 +271,12 @@ private fun androidx.compose.foundation.lazy.LazyListScope.favoriteSections(
     fade: Modifier,
     position: State<Long>,
     onIntent: (SoundsIntent) -> Unit,
+    picker: Boolean,
 ) {
     if (content.recent.isNotEmpty()) {
         item(key = "recent-heading", contentType = "section") { SectionHeading(Res.string.sounds_section_recent, isFirst = true, modifier = fade) }
         items(content.recent, key = { "recent-${it.id}" }, contentType = { "sound" }) { row ->
-            LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = true), state.lookOf(row.id), state.downloadProgressOf(row.id), language, fade, position, onIntent, fromRecent = true)
+            LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = true), state.lookOf(row.id), state.downloadProgressOf(row.id), language, fade, position, onIntent, fromRecent = true, picker = picker, adding = state.addingId == row.id)
         }
     }
     val showsHint = content.favorites.isEmpty() && state.query.isBlank()
@@ -263,7 +287,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.favoriteSections(
     }
     if (showsHint) item(key = "favorites-hint", contentType = "hint") { SectionHint(Res.string.sounds_empty_favorites_body, fade) }
     items(content.favorites, key = { "favorite-${it.id}" }, contentType = { "sound" }) { row ->
-        LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = false), state.lookOf(row.id), state.downloadProgressOf(row.id), language, fade, position, onIntent)
+        LibrarySoundRow(row, state.playbackOf(row.id), state.isFavorite(row.id), state.peaksFor(row.id), state.returnsFocusTo(row.id, fromRecent = false), state.lookOf(row.id), state.downloadProgressOf(row.id), language, fade, position, onIntent, picker = picker, adding = state.addingId == row.id)
     }
 }
 
@@ -281,6 +305,8 @@ private fun LibrarySoundRow(
     position: State<Long>,
     onIntent: (SoundsIntent) -> Unit,
     fromRecent: Boolean = false,
+    picker: Boolean = false,
+    adding: Boolean = false,
 ) {
     val haptics = LocalHapticFeedback.current
     val progress = remember(playback == RowPlayback.IDLE, peaks, position, row.durationUs, look == SoundRowLook.DOWNLOADING, downloadProgress) {
@@ -310,30 +336,58 @@ private fun LibrarySoundRow(
             if (on) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
             onIntent(SoundsIntent.ToggleFavorite(row.id))
         },
-        // TODO(P3-15): the blue Use block appears once the Use flow exists.
-        onAdd = null,
+        // The picker's blue Add block lands the sound at the playhead. TODO(P3-15): the Sounds tab's Use block, once the Use flow exists.
+        onAdd = if (picker) ({ onIntent(SoundsIntent.Add(row.id, fromRecent)) }) else null,
         modifier = fade.padding(horizontal = MemixSpacing.space2, vertical = MemixSpacing.space2),
+        // The picker is a sheet on `surface`, where the playing band must be one step up.
+        onSurface = picker,
         isPaused = playback == RowPlayback.PAUSED,
         progress = progress,
         onShowDetails = { onIntent(SoundsIntent.OpenDetails(row.id, fromRecent)) },
         detailsFocus = detailsFocus,
         look = look,
+        addInProgress = adding,
     )
 }
 
 // What a row needs from the state, as plain values, so a row whose own values are unchanged is skipped.
-private fun SoundsUiState.isFavorite(soundId: String) = soundId in favoriteIds
+internal fun SoundsUiState.isFavorite(soundId: String) = soundId in favoriteIds
 private fun SoundsUiState.peaksFor(soundId: String): List<Float>? = if (playbackOf(soundId) == RowPlayback.IDLE) null else waveforms[soundId]
 private fun SoundsUiState.returnsFocusTo(soundId: String, fromRecent: Boolean) = focusReturn == RowFocusTarget(soundId, fromRecent)
 
-/** The pinned pair under the title: the search box, then the five tabs. */
+/** The search box with the placeholder of [tab] (spec P3-02 → Layout 2); also the picker's, which may scroll it with the list. */
 @Composable
-private fun SearchAndTabs(
+internal fun SearchField(tab: SoundsTab, field: TextFieldState, searchFocus: FocusRequester, onSearchFocusChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+    val hint = stringResource(
+        when (tab) {
+            SoundsTab.FAVORITES -> Res.string.sounds_search_hint_favorites
+            SoundsTab.MINE -> Res.string.sounds_search_hint_mine
+            else -> Res.string.sounds_search_hint
+        },
+    )
+    SoundsSearchField(
+        field = field,
+        hint = hint,
+        focusRequester = searchFocus,
+        onFocusChange = onSearchFocusChange,
+        onClear = {
+            field.clearText()
+            searchFocus.requestFocusIfShown()
+        },
+        modifier = modifier.padding(top = MemixSpacing.space2),
+    )
+}
+
+/** The pinned pair under the title: the search box, then the five tabs. [background] is the container's color; [showSearch] false leaves the search box to the list (the picker at large font). */
+@Composable
+internal fun SearchAndTabs(
     tab: SoundsTab,
     field: TextFieldState,
     searchFocus: FocusRequester,
     onSearchFocusChange: (Boolean) -> Unit,
     onIntent: (SoundsIntent) -> Unit,
+    background: Color = MemixColors.canvas,
+    showSearch: Boolean = true,
 ) {
     val labels = listOf(
         stringResource(Res.string.sounds_tab_trending),
@@ -342,25 +396,8 @@ private fun SearchAndTabs(
         stringResource(Res.string.sounds_tab_favorites),
         stringResource(Res.string.sounds_tab_mine),
     )
-    val hint = stringResource(
-        when (tab) {
-            SoundsTab.FAVORITES -> Res.string.sounds_search_hint_favorites
-            SoundsTab.MINE -> Res.string.sounds_search_hint_mine
-            else -> Res.string.sounds_search_hint
-        },
-    )
-    Column(Modifier.fillMaxWidth().background(MemixColors.canvas)) {
-        SoundsSearchField(
-            field = field,
-            hint = hint,
-            focusRequester = searchFocus,
-            onFocusChange = onSearchFocusChange,
-            onClear = {
-                field.clearText()
-                searchFocus.requestFocus()
-            },
-            modifier = Modifier.padding(top = MemixSpacing.space2),
-        )
+    Column(Modifier.fillMaxWidth().background(background)) {
+        if (showSearch) SearchField(tab, field, searchFocus, onSearchFocusChange)
         Tabs(
             labels,
             selectedIndex = tab.ordinal,
@@ -376,7 +413,7 @@ private fun SearchAndTabs(
  * results and restored when the search ends (spec P3-02 → Search).
  */
 @Composable
-private fun SearchTextSync(field: TextFieldState, query: String, listState: LazyListState, onIntent: (SoundsIntent) -> Unit) {
+internal fun SearchTextSync(field: TextFieldState, query: String, listState: LazyListState, onIntent: (SoundsIntent) -> Unit) {
     var scrollBeforeSearch by remember { mutableStateOf<ScrollSpot?>(null) }
     LaunchedEffect(field) {
         var previous = field.text.toString()
@@ -403,7 +440,7 @@ private data class ScrollSpot(val index: Int, val offset: Int)
 
 /** Asks for the next page when the last rows come into view. */
 @Composable
-private fun LoadMoreWhenNearEnd(listState: LazyListState, content: SoundsContent, onIntent: (SoundsIntent) -> Unit) {
+internal fun LoadMoreWhenNearEnd(listState: LazyListState, content: SoundsContent, onIntent: (SoundsIntent) -> Unit) {
     val nearEnd by remember(listState) {
         derivedStateOf {
             val info = listState.layoutInfo
@@ -419,7 +456,7 @@ private fun LoadMoreWhenNearEnd(listState: LazyListState, content: SoundsContent
 
 /** A tab change cross-fades the list in over `duration-sheet` (120 ms with reduce motion, which reads as a swap). */
 @Composable
-private fun rememberTabFade(tab: SoundsTab): Modifier {
+internal fun rememberTabFade(tab: SoundsTab): Modifier {
     val alpha = remember { Animatable(1f) }
     val millis = if (MemixTheme.reduceMotion) MemixMotion.durationPress else MemixMotion.durationSheet
     var shownTab by remember { mutableStateOf(tab) }
@@ -434,3 +471,11 @@ private fun rememberTabFade(tab: SoundsTab): Modifier {
 
 private const val PLACEHOLDER_COUNT = 6
 private const val LOAD_MORE_MARGIN = 6
+
+/** Asks for focus unless the target is not on screen (the picker's search box scrolled away at a large font). */
+internal fun FocusRequester.requestFocusIfShown() {
+    runCatching { requestFocus() }
+}
+
+/** A font scale from which two layouts change: the picker's search box scrolls with the list, and the details' time moves under the player (spec P3-03, P3-05). */
+internal const val LARGE_FONT_SCALE = 1.5f

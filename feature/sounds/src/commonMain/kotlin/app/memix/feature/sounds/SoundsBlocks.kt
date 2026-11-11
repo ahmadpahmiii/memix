@@ -34,6 +34,7 @@ import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.MemixTheme
 import app.memix.core.designsystem.Text
 import app.memix.core.designsystem.component.Button
+import app.memix.core.designsystem.component.ButtonVariant
 import app.memix.core.designsystem.component.Chip
 import app.memix.core.designsystem.component.SoundRowLook
 import app.memix.core.designsystem.component.Toast
@@ -45,12 +46,12 @@ import memix.core.ui.generated.resources.Res as UiRes
 import memix.core.ui.generated.resources.sound_dl_downloading
 import memix.core.ui.generated.resources.sound_dl_failed
 import memix.core.ui.generated.resources.sound_dl_failed_storage
+import memix.core.ui.generated.resources.sound_dl_storage_toast
 import memix.core.ui.generated.resources.sound_meta
 import memix.core.ui.generated.resources.sound_not_saved_offline
 import memix.core.ui.generated.resources.sound_unavailable
 import memix.feature.sounds.generated.resources.Res
 import memix.feature.sounds.generated.resources.sound_dl_free_up_space
-import memix.feature.sounds.generated.resources.sound_dl_storage_toast
 import memix.feature.sounds.generated.resources.sound_dl_toast_dismiss
 import memix.feature.sounds.generated.resources.sound_detail_source_failed
 import memix.feature.sounds.generated.resources.sound_play_failed
@@ -165,11 +166,32 @@ internal fun soundMetaText(row: SoundItemUi, look: SoundRowLook): String = when 
 @Composable
 internal fun StorageFullToast(canFreeUpSpace: Boolean, onFreeUpSpace: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     Toast(
-        message = stringResource(Res.string.sound_dl_storage_toast),
+        message = stringResource(UiRes.string.sound_dl_storage_toast),
         modifier = modifier,
         action = if (canFreeUpSpace) ToastAction(stringResource(Res.string.sound_dl_free_up_space), onFreeUpSpace) else null,
         dismiss = ToastDismiss(stringResource(Res.string.sound_dl_toast_dismiss), onDismiss),
     )
+}
+
+/**
+ * The picker's full-phone note (spec P3-05 → Download fails mid-add): a strip at the top of the list with its one Quiet
+ * action on its own row. A toast would sit under the sheet's scrim, out of reach of TalkBack and the keyboard. It goes when a
+ * download works or the sheet closes.
+ */
+@Composable
+internal fun StorageFullStrip(canFreeUpSpace: Boolean, onFreeUpSpace: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = MemixSpacing.space4, vertical = MemixSpacing.space1)
+            .clip(MemixShapes.radiusMd)
+            .background(MemixColors.surfaceRaised)
+            .padding(MemixSpacing.space3)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+    ) {
+        Text(stringResource(UiRes.string.sound_dl_storage_toast), MemixTheme.type.label)
+        if (canFreeUpSpace) Button(stringResource(Res.string.sound_dl_free_up_space), onFreeUpSpace, variant = ButtonVariant.Quiet)
+    }
 }
 
 /** The Local tab's first line. A label until P3-11 turns it into the Region sheet's opener. */

@@ -183,4 +183,5 @@
     <string name="sound_dl_failed_storage">Não há espaço suficiente no seu celular.</string>
     <string name="sound_not_saved_offline">Não salvo para uso off-line</string>
     <string name="sound_unavailable">Não está mais disponível</string>
+    <string name="sound_dl_storage_toast">Seu celular está cheio, então este som não pode ser salvo.</string>
 </resources>

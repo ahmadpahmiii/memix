@@ -4,10 +4,14 @@ import app.memix.core.domain.AppError
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.sound.SoundDownloads
 import app.memix.core.model.catalog.LibrarySound
+import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.catalog.SoundCategory
 import app.memix.core.model.catalog.SoundFeed
 import app.memix.core.model.catalog.SoundFeedContent
 import app.memix.core.model.catalog.Waveform
+import app.memix.core.model.project.AudioClip
+import app.memix.core.model.project.MediaOrigin
+import app.memix.core.model.project.Project
 import kotlinx.coroutines.flow.Flow
 
 /** The category chips from the phone's copy (P3-01). */
@@ -43,7 +47,7 @@ class ObserveRemovedSoundIdsUseCase(private val repository: SoundCatalogReposito
 
 /**
  * Asks the catalog whether these saved sounds (favorites, recents) are still listed. A sound that is not gets its
- * downloaded copy deleted, unless a saved draft uses it or it is playing: the copy is no longer ours to keep. The
+ * downloaded copy deleted, unless it is playing: the copy is no longer ours to keep (a project that added it has its own). The
  * check is best effort and says nothing when the catalog can't be reached.
  */
 class CheckRemovedSoundsUseCase(private val repository: SoundCatalogRepository, private val downloads: SoundDownloads) {
@@ -96,5 +100,19 @@ class SearchSoundsUseCase(private val repository: SoundCatalogRepository) {
     private suspend fun searchSaved(query: String, pageIndex: Int, savedSoundIds: Set<String>): Outcome<SoundSearchPage> {
         val sounds = if (pageIndex == 0) repository.searchSaved(query, savedSoundIds) else emptyList()
         return Outcome.Success(SoundSearchPage(sounds, offline = true, endReached = true))
+    }
+}
+
+/**
+ * The titles that label a project's library sounds on the timeline, which the project does not store (it keeps the catalog
+ * id). Looks up, in the phone's copy of the catalog, every catalog sound the project uses except those in [known] (the
+ * starter pack, whose titles are bundled). A sound the phone's copy lacks stays unlabelled. Phone only: works offline.
+ */
+class LoadSoundTitlesUseCase(private val repository: SoundCatalogRepository) {
+    suspend operator fun invoke(project: Project, known: Set<String>): Map<String, LocalizedText> {
+        val ids = project.video?.tracks.orEmpty().flatMap { it.items }
+            .mapNotNull { ((it as? AudioClip)?.source?.origin as? MediaOrigin.CatalogItem)?.itemId }
+            .filterNotTo(HashSet()) { it in known }
+        return if (ids.isEmpty()) emptyMap() else repository.titlesOf(ids)
     }
 }

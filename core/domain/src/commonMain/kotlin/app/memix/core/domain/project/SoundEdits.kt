@@ -33,6 +33,15 @@ fun startAtPlayhead(atUs: Long, lengthUs: Long, videoLengthUs: Long): Long =
     if (atUs >= videoLengthUs - END_TOLERANCE_US) (videoLengthUs - lengthUs).coerceAtLeast(0) else atUs.coerceAtLeast(0)
 
 /**
+ * A tail of a sound past the end of the video shorter than this is not worth a message (spec P3-05 → Where it lands). A
+ * sound that runs past the end, even one longer than the whole video, starts at the playhead: the moment the user chose.
+ */
+const val OVERHANG_NOTICE_US = 500_000L
+
+/** How much of a sound that starts at [startUs] and is [lengthUs] long is past the end of the video, which is never heard. */
+fun unheardTailUs(startUs: Long, lengthUs: Long, videoLengthUs: Long): Long = (startUs + lengthUs - videoLengthUs).coerceAtLeast(0L)
+
+/**
  * Lands [sound] at the playhead [atUs] (see [startAtPlayhead]) as a new clip [clipId]: the whole file at 100%, on the
  * first meme-sound lane that's free for its whole length, else on a new lane [newTrackId] under the last one. Needs
  * the sound's measured length; without one, nothing changes.

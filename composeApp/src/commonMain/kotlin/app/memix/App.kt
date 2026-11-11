@@ -55,6 +55,7 @@ import app.memix.core.ui.scene.ImageToolRenderer
 import app.memix.core.ui.scene.SceneImageSource
 import app.memix.core.domain.Logger
 import app.memix.core.domain.RefreshAppConfigUseCase
+import app.memix.core.domain.sound.PickedSound
 import app.memix.core.domain.text.CaptionMeasurer
 import app.memix.core.domain.video.ExportJobState
 import app.memix.core.domain.video.ExportVideoUseCase
@@ -92,6 +93,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import app.memix.feature.sounds.PlaybackClock
 import app.memix.feature.sounds.SoundDetailsSheet
+import app.memix.feature.sounds.SoundPickerSheet
 import app.memix.feature.sounds.SoundsIntent
 import app.memix.feature.sounds.SoundsScreen
 import app.memix.feature.sounds.SoundsTabExit
@@ -434,6 +436,8 @@ private fun VideoEditorDestination(projectId: String, madeFromPhoto: Boolean, on
     val imageSource = koinInject<SceneImageSource>()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val freeUpSpace = rememberFreeUpSpaceLauncher()
+    // The sound picker's lists, downloads and previews: its own instance of the Sounds tab's ViewModel (P3-05).
+    val soundPicker = koinViewModel<SoundsViewModel>(qualifier = SOUND_PICKER, key = "soundPicker")
     LockPortraitOnPhones()
     EditorMediaPickers(state.mediaPicker, viewModel::onIntent)
     val currentOnClose by rememberUpdatedState(onClose)
@@ -459,11 +463,38 @@ private fun VideoEditorDestination(projectId: String, madeFromPhoto: Boolean, on
             CaptionStandIn(captionMeasurer, text, style, transform, canvasWidthPx, canvasHeightPx, modifier)
         },
         imageSource = imageSource,
+        soundPicker = { visible, title, onDismiss, onPick, onUnplayable ->
+            EditorSoundPicker(soundPicker, visible, title, onDismiss, onPick, onUnplayable) {
+                if (!freeUpSpace.launch(SOUND_SPACE_REQUEST_BYTES)) soundPicker.onIntent(SoundsIntent.FreeUpSpaceUnavailable)
+            }
+        },
         // When no storage screen opens, the editor hides the button (spec P1-04 → Saving).
         onFreeUpSpace = { requestedBytes ->
             if (!freeUpSpace.launch(requestedBytes)) viewModel.onIntent(VideoEditorIntent.FreeUpSpaceUnavailable)
         },
     )
+}
+
+/**
+ * The Meme sounds sheet (P3-05): the picker over the video editor. A sound it hands over goes to the editor, which lands
+ * it; the state is read here, so a change redraws the sheet and not the editor.
+ */
+@Composable
+private fun EditorSoundPicker(
+    picker: SoundsViewModel,
+    visible: Boolean,
+    title: String,
+    onDismiss: () -> Unit,
+    onPick: (PickedSound) -> Unit,
+    onUnplayable: () -> Unit,
+    onFreeUpSpace: () -> Unit,
+) {
+    val state = picker.state.collectAsStateWithLifecycle()
+    val currentOnPick by rememberUpdatedState(onPick)
+    val currentOnUnplayable by rememberUpdatedState(onUnplayable)
+    LaunchedEffect(picker) { picker.picks.collect { currentOnPick(it) } }
+    LaunchedEffect(picker) { picker.unplayable.collect { currentOnUnplayable() } }
+    SoundPickerSheet(visible, title, state, picker.clock, picker::onIntent, onDismiss, onFreeUpSpace)
 }
 
 /**

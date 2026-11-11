@@ -112,6 +112,11 @@ SELECT id, title_json, category_id, file_path, duration_ms, waveform_path, licen
 FROM sound
 WHERE id IN :ids AND search_text LIKE :pattern ESCAPE '\';
 
+selectSoundsByIds:
+SELECT id, title_json, category_id, file_path, duration_ms, waveform_path, license_type, source_url, credit
+FROM sound
+WHERE id IN :ids;
+
 selectWaveform:
 SELECT waveform_path, waveform_json FROM sound_waveform WHERE sound_id = :soundId;
 

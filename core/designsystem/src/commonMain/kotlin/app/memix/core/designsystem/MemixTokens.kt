@@ -102,6 +102,9 @@ object MemixSize {
     /** SoundRow's play disc and its loading placeholder (P3-02); `sound-disc-size` in design/tokens.json. */
     val soundDiscSize = 40.dp
 
+    /** The visible side of SoundRow's blue Add block, inside a `touch-target` square (P3-05); `sound-add-size` in design/tokens.json. */
+    val soundAddSize = 36.dp
+
     /** One waveform bar's width, and the gap between bars (P3-03); `waveform-bar-width` and `waveform-bar-gap` in design/tokens.json. */
     val waveformBarWidth = 2.dp
     val waveformBarGap = 2.dp

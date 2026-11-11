@@ -146,7 +146,6 @@ class VideoEditorViewModel(
     init {
         updateState { it.copy(mediaImport = mediaImport.ui, captionMeasure = EditorCaptionMeasure(captionRendering.measure)) }
         addCloseable(AutoCloseable { preview?.close() })
-        addCloseable(soundTools)
         viewModelScope.launch { loadStarterSounds() }
         viewModelScope.launch { export.export.state.collect(::showExportEnded) }
         viewModelScope.launch {
@@ -221,9 +220,9 @@ class VideoEditorViewModel(
                 updateState { it.copy(videoMemeNote = false) }
                 viewModelScope.launch { videoMemeNote.dismissed() }
             }
-            is VideoEditorIntent.ToggleSoundPreview -> soundTools.togglePreview(intent.soundId)
+            VideoEditorIntent.SoundUnplayable -> showToast(ToastMessage.Explain(Explanation.SOUND_UNREADABLE))
             is VideoEditorIntent.AddSound -> {
-                soundTools.add(intent.soundId)
+                soundTools.add(intent.sound)
                 showVideoMemeNoteOnce()
             }
             VideoEditorIntent.VolumeTool -> volumePanel.open()
@@ -293,6 +292,7 @@ class VideoEditorViewModel(
         addCloseable(AutoCloseable { currentProject()?.takeUnless { it.hasNoClips() }?.let { updateDraftThumbnail(it) } })
         editSession = session
         draftOpened.complete(session)
+        viewModelScope.launch { labelLibrarySounds(project) }
         exportSheet.warmUp(project)
         val thumbnails = TimelineThumbnails(startThumbnails(), viewModelScope, decodeDispatcher)
         addCloseable(thumbnails)
@@ -573,6 +573,12 @@ class VideoEditorViewModel(
         shownProject?.let { project -> updateState { it.copy(timeline = timelineUiOf(project, soundTools.titles)) } }
     }
 
+    // A draft reopened later labels its library sounds from the phone's copy of the catalog; the pack's titles are bundled.
+    private suspend fun labelLibrarySounds(project: Project) {
+        if (!soundTools.loadLibraryTitles(project)) return
+        shownProject?.let { shown -> updateState { it.copy(timeline = timelineUiOf(shown, soundTools.titles)) } }
+    }
+
     // ---- Add media and Replace (spec P1-06 → Add media, Replace) -----------------------------------------------------
 
     // One pick at a time; the app opens the picker for the request.
@@ -830,8 +836,6 @@ class VideoEditorViewModel(
 
     private fun goToBackground() {
         preview?.pause()
-        // A sound previewing in the sheet would keep playing after the user leaves the app.
-        soundTools.stopPreview()
         // Android may end a background app without warning, so the newest change is written now.
         editSession?.saveNow()
         currentProject()?.takeUnless { it.hasNoClips() }?.let { updateDraftThumbnail(it) }

@@ -10,11 +10,11 @@ import app.memix.core.model.project.ProjectType
  * `tool_use` step (spec P1-06 → Analytics; a duplicate is `tool_use` `duplicate` instead).
  */
 class LogSoundEventsUseCase(private val analytics: Analytics) {
-    fun added(soundId: String, editor: ProjectType) {
-        analytics.log(AnalyticsEvent.SoundAdd(soundId, SoundTab.STARTER, editor))
+    fun added(soundId: String, tab: SoundTab, editor: ProjectType) {
+        analytics.log(AnalyticsEvent.SoundAdd(soundId, tab, editor))
     }
 
-    fun previewed(soundId: String, tab: SoundTab = SoundTab.STARTER) {
+    fun previewed(soundId: String, tab: SoundTab) {
         analytics.log(AnalyticsEvent.SoundPreview(soundId, tab))
     }
 

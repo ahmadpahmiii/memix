@@ -20,10 +20,8 @@ import app.memix.core.domain.catalog.SoundCatalogRepository
 import app.memix.core.domain.photo.PhotoExportPreferences
 import app.memix.core.domain.photo.VideoMemeNotePreferences
 import app.memix.core.domain.project.ProjectRepository
-import app.memix.core.domain.sound.DraftSoundsInUse
 import app.memix.core.domain.sound.SoundCollectionsRepository
 import app.memix.core.domain.sound.SoundDownloads
-import app.memix.core.domain.sound.SoundsInUse
 import app.memix.core.domain.stickerpack.StickerPackRepository
 import app.memix.core.domain.video.ExportPreferences
 import app.memix.core.model.project.Project
@@ -68,15 +66,13 @@ val dataModule = module {
     single<SoundCollectionsRepository> {
         SqlDelightSoundCollectionsRepository(database = lazy { get<MemixDatabase>() }, clock = get(), ioDispatcher = Dispatchers.IO)
     }
-    // The downloaded sounds and their 500 MB cache (P3-04). A saved draft's sounds are never removed.
-    single<SoundsInUse> { DraftSoundsInUse(get(), get()) }
+    // The downloaded sounds and their 500 MB cache (P3-04). Projects copy a sound when it lands (P3-05), so any file may go.
     single<SoundDownloads> {
         FileSoundDownloads(
             database = lazy { get<MemixDatabase>() },
             source = KtorSoundFileSource(),
             mediaFiles = get(),
             appConfig = get(),
-            inUse = get(),
             clock = get(),
             logger = get(),
             ioDispatcher = Dispatchers.IO,

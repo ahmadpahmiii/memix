@@ -13,6 +13,7 @@ import app.memix.core.domain.catalog.SOUND_PAGE_SIZE
 import app.memix.core.domain.catalog.SoundCatalogRepository
 import app.memix.core.domain.media.mediaUrl
 import app.memix.core.model.catalog.LibrarySound
+import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.catalog.SoundCategory
 import app.memix.core.model.catalog.SoundFeed
 import app.memix.core.model.catalog.SoundFeedContent
@@ -136,6 +137,20 @@ internal class SqlDelightSoundCatalogRepository(
         } catch (e: Exception) {
             logger.error(TAG, "Saved search failed", e)
             emptyList()
+        }
+    }
+
+    override suspend fun titlesOf(soundIds: Set<String>): Map<String, LocalizedText> = withContext(ioDispatcher) {
+        if (soundIds.isEmpty()) return@withContext emptyMap()
+        try {
+            soundIds.chunked(SAVED_IDS_PER_QUERY)
+                .flatMap { ids -> queries.selectSoundsByIds(ids, ::toLibrarySound).executeAsList() }
+                .associate { it.id to it.title }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.error(TAG, "Titles lookup failed", e)
+            emptyMap()
         }
     }
 

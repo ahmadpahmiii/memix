@@ -76,8 +76,6 @@
     <string name="edit_add_sound">साउंड जोड़ें</string>
     <string name="timeline_add_meme_sound">मीम साउंड जोड़ें</string>
     <string name="sounds_title">मीम साउंड</string>
-    <string name="sounds_empty_title">अभी कोई साउंड नहीं</string>
-    <string name="sounds_empty_body">मीम साउंड लाइब्रेरी अगले बिल्ड में आएगी।</string>
     <!-- P1-16: Add media and Replace (spec P1-06 -> Add media, Replace; P1-05 -> Trailing area) -->
     <string name="tool_add_media">मीडिया जोड़ें</string>
     <string name="edit_add_media">मीडिया जोड़ें</string>
@@ -140,4 +138,5 @@
     <!-- The one-time note after Make it a video meme (P2-10). Machine drafts until P5. -->
     <string name="make_video_note">आपकी लेयर अब एक ही तस्वीर हैं, सिर्फ़ ऊपर का टेक्स्ट छोड़कर, जो बदला जा सकता है।</string>
     <string name="make_video_note_ok">ठीक है</string>
+    <string name="picker_overhang_toast">इस आवाज़ का आखिरी हिस्सा आपके वीडियो के बाद है, इसलिए वह नहीं बजेगा। उसे ट्रिम करें या पहले खिसकाएँ।</string>
 </resources>

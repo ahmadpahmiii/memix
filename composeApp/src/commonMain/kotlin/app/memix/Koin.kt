@@ -50,6 +50,7 @@ import app.memix.core.domain.sound.ObserveFavoriteSoundIdsUseCase
 import app.memix.core.domain.sound.ObserveFavoriteSoundsUseCase
 import app.memix.core.domain.sound.ObserveRecentSoundsUseCase
 import app.memix.core.domain.sound.OpenSoundPlayerUseCase
+import app.memix.core.domain.sound.PlaceSoundInProjectUseCase
 import app.memix.core.domain.sound.SoundsOnPhone
 import app.memix.core.domain.sound.PrepareSoundUseCase
 import app.memix.core.domain.sound.RecordRecentSoundUseCase
@@ -82,6 +83,9 @@ import app.memix.engine.video.videoEngineModule
 import app.memix.feature.drafts.DraftsViewModel
 import app.memix.feature.export.ExportViewModel
 import app.memix.feature.home.HomeViewModel
+import app.memix.feature.sounds.SoundPickerMemory
+import app.memix.feature.sounds.SoundPreviewTools
+import app.memix.feature.sounds.SoundsMode
 import app.memix.feature.sounds.SoundsTabExit
 import app.memix.feature.sounds.SoundsViewModel
 import app.memix.feature.videoeditor.EditorCaptionRendering
@@ -174,6 +178,9 @@ private val appModule = module {
     factoryOf(::ObserveRemovedSoundIdsUseCase)
     factoryOf(::CheckRemovedSoundsUseCase)
     factoryOf(::EditorSounds)
+    // A landed library sound gets its own file in the project's folder (P3-05); the previews' parts come as one bundle.
+    factoryOf(::PlaceSoundInProjectUseCase)
+    factoryOf(::SoundPreviewTools)
     // The caption fonts live with the interface fonts in the design system; the engine's renderer reads them (P1-10).
     single<CaptionFontSource> { CaptionFontSource(::readCaptionFontFile) }
     factoryOf(::PrepareCaptionsUseCase)
@@ -198,7 +205,11 @@ private val appModule = module {
     factoryOf(::VideoMemeNoteUseCase)
     viewModelOf(::HomeViewModel)
     singleOf(::SoundsTabExit)
-    viewModelOf(::SoundsViewModel)
+    // The last tab the editor's sound picker showed this run (P3-05).
+    singleOf(::SoundPickerMemory)
+    viewModel { soundsViewModel(SoundsMode.LIBRARY) }
+    // The editor's picker is its own instance of the same lists (P3-05).
+    viewModel(SOUND_PICKER) { soundsViewModel(SoundsMode.PICKER) }
     viewModelOf(::ExportViewModel)
     viewModelOf(::PhotoExportedViewModel)
     viewModelOf(::StickerPackViewModel)
@@ -271,3 +282,27 @@ fun initKoin(handChecks: Boolean = false, platformSetup: KoinAppDeclaration = {}
         if (handChecks) modules(handCheckModule)
     }
 }
+
+/** Qualifier of the sound picker's [SoundsViewModel], which the editor's picker uses instead of the Sounds tab's. */
+val SOUND_PICKER = named("soundPicker")
+
+private fun org.koin.core.scope.Scope.soundsViewModel(mode: SoundsMode) = SoundsViewModel(
+    observeCategories = get(),
+    refreshCategories = get(),
+    observeFeed = get(),
+    loadFeedPage = get(),
+    searchSounds = get(),
+    getPhoneRegion = get(),
+    getSavedSoundIds = get(),
+    observeFavoriteIds = get(),
+    observeFavorites = get(),
+    observeRecents = get(),
+    toggleFavorite = get(),
+    previewTools = get(),
+    onPhone = get(),
+    observeRemovedIds = get(),
+    checkRemoved = get(),
+    tabExit = get(),
+    mode = mode,
+    pickerMemory = get(),
+)

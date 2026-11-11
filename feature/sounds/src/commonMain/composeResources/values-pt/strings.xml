@@ -69,11 +69,12 @@
     <string name="sound_detail_source_failed">Não foi possível abrir a página.</string>
     <string name="sound_detail_source_a11y">Abrir %1$s no seu navegador</string>
     <string name="sound_volume_low">Aumente o volume para ouvir.</string>
-    <string name="sound_dl_storage_toast">Seu celular está cheio, então este som não pode ser salvo.</string>
     <string name="sound_dl_free_up_space">Liberar espaço</string>
     <string name="sound_dl_toast_dismiss">Dispensar</string>
     <string name="sound_detail_offline_note">Você está off-line. Conecte-se para tocar ou usar este som.</string>
     <string name="sound_detail_unavailable_note">Este som foi removido da biblioteca.</string>
     <string name="sounds_starter_heading">Sons incluídos</string>
     <string name="sound_detail_not_saved_now">Não salvo neste celular</string>
+    <string name="picker_back_a11y">Voltar aos sons</string>
+    <string name="sound_detail_add_to_video">Adicionar ao vídeo</string>
 </resources>

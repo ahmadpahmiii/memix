@@ -186,4 +186,5 @@
     <string name="sound_dl_failed_storage">Not enough space on your phone.</string>
     <string name="sound_not_saved_offline">Not saved for offline</string>
     <string name="sound_unavailable">No longer available</string>
+    <string name="sound_dl_storage_toast">Your phone is full, so this sound can't be saved.</string>
 </resources>

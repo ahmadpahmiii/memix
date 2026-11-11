@@ -69,11 +69,12 @@
     <string name="sound_detail_source_failed">Couldn't open the page.</string>
     <string name="sound_detail_source_a11y">Open %1$s in your browser</string>
     <string name="sound_volume_low">Turn up your volume to hear it.</string>
-    <string name="sound_dl_storage_toast">Your phone is full, so this sound can't be saved.</string>
     <string name="sound_dl_free_up_space">Free up space</string>
     <string name="sound_dl_toast_dismiss">Dismiss</string>
     <string name="sound_detail_offline_note">You're offline. Connect to play or use this sound.</string>
     <string name="sound_detail_unavailable_note">This sound was removed from the library.</string>
     <string name="sounds_starter_heading">Starter sounds</string>
     <string name="sound_detail_not_saved_now">Not saved on this phone</string>
+    <string name="picker_back_a11y">Back to sounds</string>
+    <string name="sound_detail_add_to_video">Add to video</string>
 </resources>

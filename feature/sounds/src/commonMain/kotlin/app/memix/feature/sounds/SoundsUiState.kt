@@ -23,6 +23,17 @@ enum class SoundsTab {
     val listsCatalog: Boolean get() = this == TRENDING || this == LOCAL || this == GLOBAL
 }
 
+/** Which screen a [SoundsViewModel] serves: the Sounds tab, or the video editor's sound picker sheet (P3-05). */
+enum class SoundsMode { LIBRARY, PICKER }
+
+/**
+ * The tab the picker last showed during this app run (spec P3-05 → Entry and exit): the next opening starts there. A
+ * Koin single, so it outlives the editor; nothing is saved, and a new run starts on Trending.
+ */
+class SoundPickerMemory {
+    var tab: SoundsTab = SoundsTab.TRENDING
+}
+
 /** One sound row, reduced to what is drawn. The name is chosen in the screen, because the language is known there. */
 @Immutable
 data class SoundItemUi(
@@ -164,6 +175,8 @@ data class SoundsUiState(
     val downloads: ImmutableMap<String, SoundDownloadUi> = persistentMapOf(),
     /** The phone-is-full toast with "Free up space" (spec P3-04): shown after a download hit a full phone, until dismissed. */
     val storageFullNote: Boolean = false,
+    /** The picker's row whose sound is being made ready to land: its Add block is disabled until the sheet closes. */
+    val addingId: String? = null,
     /** False once the phone showed it has no storage screen; the toast then has no action (as P1-02). */
     val canFreeUpSpace: Boolean = true,
 ) {
@@ -252,4 +265,16 @@ sealed interface SoundsIntent {
 
     /** The user moved to another bottom-nav item: the search text clears and the preview stops (tab and chip are kept). */
     data object LeftScreen : SoundsIntent
+
+    /** The picker's Add block: the sound lands at the playhead. [fromRecent]: tapped in Recently used, which `sound_add` names as its own `tab`. */
+    data class Add(val soundId: String, val fromRecent: Boolean = false) : SoundsIntent
+
+    /** The picker's "Add to video" on the details pane. */
+    data object AddFromDetails : SoundsIntent
+
+    /** The picker's sheet started to close (a sound landed, or it was dismissed): stop what plays and loads. */
+    data object PickerClosed : SoundsIntent
+
+    /** The picker's sheet has slid out: the next visit starts fresh (details closed, search cleared). */
+    data object PickerExited : SoundsIntent
 }

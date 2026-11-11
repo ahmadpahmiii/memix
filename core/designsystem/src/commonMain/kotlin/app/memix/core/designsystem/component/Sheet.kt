@@ -64,6 +64,7 @@ import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.navigationevent.NavigationEventInfo
@@ -102,7 +103,10 @@ import org.jetbrains.compose.resources.stringResource
  * The sheet grows with its content until its top is `space-10` below the status bar; give the part that should
  * scroll then `Modifier.weight(1f, fill = false)` and a vertical scroll, so the title and bottom button stay put.
  * With [opensAtHalfHeight] (a long list, such as the editor's Meme sounds sheet) it opens no taller than half the
- * window, so the screen's top stays in view, and a drag up on it grows it to the full height.
+ * window, so the screen's top stays in view, and a drag up on it grows it to the full height. [minOpeningHeight] keeps
+ * it from opening lower than a pinned header plus a few rows on a short phone (the sound picker, P3-05); [grow] true
+ * grows it to the full height at once (the picker's search field has focus) and it stays grown. [onBack] is what system
+ * back and Escape do when that is not closing the sheet.
  */
 @Composable
 fun Sheet(
@@ -114,6 +118,10 @@ fun Sheet(
     blocking: Boolean = false,
     drawScrim: Boolean = true,
     opensAtHalfHeight: Boolean = false,
+    minOpeningHeight: Dp = 0.dp,
+    grow: Boolean = false,
+    /** System back and Escape; the close button, a scrim tap and a drag down always call [onDismiss]. A sheet with panes steps back a pane here (P3-05). */
+    onBack: () -> Unit = onDismiss,
     /** A control at the start of the title row (the Emojis picker's back arrow, P2-09); the title keeps the rest of the row. */
     titleLeading: (@Composable () -> Unit)? = null,
     /** A control at the end of the title row, before the close button (the sound details' heart, P3-03). */
@@ -123,7 +131,7 @@ fun Sheet(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val reduceMotion = MemixTheme.reduceMotion
-    NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None), isBackEnabled = visible, onBackCompleted = onDismiss)
+    NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None), isBackEnabled = visible, onBackCompleted = onBack)
 
     Box(modifier.fillMaxSize()) {
         if (drawScrim) Scrim(visible, onDismiss = if (blocking) null else onDismiss)
@@ -136,7 +144,7 @@ fun Sheet(
             enter = if (reduceMotion) fadeIn(tween(MemixMotion.durationPress)) else slideInVertically(tween(MemixMotion.durationSheet)) { it },
             exit = if (reduceMotion) fadeOut(tween(MemixMotion.durationPress)) else slideOutVertically(tween(MemixMotion.durationSheet)) { it },
         ) {
-            SheetSurface(visible, title, heroTitle, blocking, opensAtHalfHeight, onDismiss, titleLeading, titleTrailing, titleMaxLines, content)
+            SheetSurface(visible, title, heroTitle, blocking, opensAtHalfHeight, minOpeningHeight, grow, onDismiss, onBack, titleLeading, titleTrailing, titleMaxLines, content)
         }
     }
 }
@@ -177,7 +185,10 @@ private fun SheetSurface(
     heroTitle: Boolean,
     blocking: Boolean,
     opensAtHalfHeight: Boolean,
+    minOpeningHeight: Dp,
+    grow: Boolean,
     onDismiss: () -> Unit,
+    onBack: () -> Unit,
     titleLeading: (@Composable () -> Unit)?,
     titleTrailing: (@Composable () -> Unit)?,
     titleMaxLines: Int,
@@ -187,7 +198,9 @@ private fun SheetSurface(
     val dragOffset = remember { Animatable(0f) }
     var expanded by remember { mutableStateOf(!opensAtHalfHeight) }
     val halfWindowHeight = with(LocalDensity.current) { (LocalWindowInfo.current.containerSize.height / 2).toDp() }
-    val heightLimit = if (expanded) Modifier else Modifier.heightIn(max = halfWindowHeight)
+    LaunchedEffect(grow) { if (grow) expanded = true }
+    // Never lower than [minOpeningHeight] while it is open, expanded or not (a filtered list must not shrink it below its rows).
+    val heightLimit = Modifier.heightIn(min = minOpeningHeight).then(if (expanded) Modifier else Modifier.heightIn(max = maxOf(halfWindowHeight, minOpeningHeight)))
     val sizeSpec: FiniteAnimationSpec<IntSize> = if (MemixTheme.reduceMotion) snap() else tween(MemixMotion.durationSheet)
     val focusRequester = remember { FocusRequester() }
     // Focus moves to the sheet itself (no ring is drawn there), so Escape reaches it even after a touch open.
@@ -227,7 +240,7 @@ private fun SheetSurface(
             // The sheet holds focus, so a Back key would otherwise go to the focus system and never close it.
             .onPreviewKeyEvent { event ->
                 val closes = event.key == Key.Escape || event.key == Key.Back
-                if (closes && event.type == KeyEventType.KeyUp) onDismiss()
+                if (closes && event.type == KeyEventType.KeyUp) onBack()
                 closes
             }
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))

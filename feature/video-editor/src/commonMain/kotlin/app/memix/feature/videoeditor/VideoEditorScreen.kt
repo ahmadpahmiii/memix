@@ -211,6 +211,7 @@ import memix.feature.video_editor.generated.resources.explain_reorder_one
 import memix.feature.video_editor.generated.resources.explain_replace_detached
 import memix.feature.video_editor.generated.resources.explain_replace_too_short
 import memix.feature.video_editor.generated.resources.explain_sound_unreadable
+import memix.feature.video_editor.generated.resources.picker_overhang_toast
 import memix.feature.video_editor.generated.resources.explain_split
 import memix.feature.video_editor.generated.resources.make_video_note
 import memix.feature.video_editor.generated.resources.make_video_note_ok
@@ -220,6 +221,7 @@ import memix.core.ui.generated.resources.explain_text_smallest
 import memix.feature.video_editor.generated.resources.export_fps
 import memix.core.ui.generated.resources.export_stopped_toast
 import memix.core.ui.generated.resources.position_size_value
+import memix.core.ui.generated.resources.sound_dl_storage_toast
 import memix.feature.video_editor.generated.resources.toast_export_fps_lowered
 import memix.feature.video_editor.generated.resources.toast_export_res_lowered
 import org.jetbrains.compose.resources.pluralStringResource
@@ -232,7 +234,7 @@ import org.jetbrains.compose.resources.stringResource
  *
  * [previewSurface] draws a preview session's picture and [captionStandIn] one caption with the engine's renderer: the
  * composition root passes the engine's, which a feature can't depend on. [onFreeUpSpace] opens the phone's storage manager, asking for the given number of bytes.
- * The picker for Add media and Replace is the app's too: it opens the one in [VideoEditorUiState.mediaPicker].
+ * The picker for Add media and Replace is the app's too: it opens the one in [VideoEditorUiState.mediaPicker]. So is the sound picker ([soundPicker], P3-05).
  */
 @Composable
 fun VideoEditorScreen(
@@ -241,6 +243,7 @@ fun VideoEditorScreen(
     previewSurface: @Composable (PreviewSession, Modifier) -> Unit,
     captionStandIn: CaptionStandInSlot,
     imageSource: SceneImageSource,
+    soundPicker: SoundPickerSlot,
     onFreeUpSpace: (requestedBytes: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -327,7 +330,7 @@ fun VideoEditorScreen(
                 modifier = Modifier.weight(1f).then(if (entry != null) Modifier.windowInsetsPadding(WindowInsets.ime) else Modifier),
             )
         }
-        MemeSoundsSheet(state.sounds, onIntent)
+        MemeSoundsSheet(state.sounds, soundPicker, onIntent)
         state.mediaImport?.let { EditorImportSheet(it, state.importWording, onIntent, onFreeUpSpace) }
         UnsavedChangesSheet(
             state.unsavedSheetOpen,
@@ -768,7 +771,7 @@ private fun StageMessages(
                     onDismiss = { onIntent(VideoEditorIntent.DismissSaveBanner) },
                 )
             }
-            FadingToast(shownToast) { shown -> Toast(toastText(shown.message)) }
+            FadingToast(shownToast) { shown -> Toast(toastText(shown.message), Modifier.spokenAs(spokenText(shown.message))) }
             FadingToast((noteShown && shownToast == null).takeIf { it }) {
                 Toast(
                     stringResource(Res.string.make_video_note),
@@ -813,12 +816,23 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
             is ToastMessage.ExportShapeCantDo,
             -> EXPLANATION_TOAST_MILLIS
             // An unexpected move, so it stays as long as an explanation.
-            ToastMessage.MissingMedia, is ToastMessage.Explain, is ToastMessage.ReplaceTooShort, ToastMessage.LayersMoved, is ToastMessage.BackgroundMissing -> EXPLANATION_TOAST_MILLIS
+            ToastMessage.MissingMedia, is ToastMessage.Explain, is ToastMessage.ReplaceTooShort, ToastMessage.LayersMoved, is ToastMessage.SoundPastEnd, is ToastMessage.BackgroundMissing -> EXPLANATION_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
         onTimedOut(toast.id)
     }
 }
+
+// What a screen reader hears when it differs from the words on the toast: the landing before the trim-or-move advice.
+@Composable
+private fun spokenText(message: ToastMessage): String? = when (message) {
+    is ToastMessage.SoundPastEnd -> stringResource(
+        Res.string.a11y_sound_added, message.title.inLanguage(LocalLocale.current.language), spokenTime(message.atUs),
+    ) + " " + stringResource(Res.string.picker_overhang_toast)
+    else -> null
+}
+
+private fun Modifier.spokenAs(text: String?): Modifier = if (text == null) this else semantics { contentDescription = text }
 
 @Composable
 private fun toastText(message: ToastMessage): String = when (message) {
@@ -841,6 +855,7 @@ private fun toastText(message: ToastMessage): String = when (message) {
     // The timecode is never translated (spec P1-06 → Copy).
     is ToastMessage.ReplaceTooShort -> stringResource(Res.string.explain_replace_too_short, formatTimecode(message.clipLengthUs))
     ToastMessage.LayersMoved -> stringResource(Res.string.canvas_layers_moved)
+    is ToastMessage.SoundPastEnd -> stringResource(Res.string.picker_overhang_toast)
     is ToastMessage.BackgroundMissing -> stringResource(UiRes.string.canvas_image_missing_toast, message.ratioLabel)
     ToastMessage.BackgroundImageSet -> stringResource(UiRes.string.a11y_canvas_image_set)
     ToastMessage.BackgroundImageRemoved -> stringResource(UiRes.string.a11y_canvas_image_removed)
@@ -897,6 +912,7 @@ private fun explanationText(explanation: Explanation): String = stringResource(
         Explanation.ALREADY_FIRST -> Res.string.explain_reorder_first
         Explanation.ALREADY_LAST -> Res.string.explain_reorder_last
         Explanation.SOUND_UNREADABLE -> Res.string.explain_sound_unreadable
+        Explanation.SOUND_NO_SPACE -> UiRes.string.sound_dl_storage_toast
         Explanation.REPLACE_DETACHED -> Res.string.explain_replace_detached
         Explanation.NO_SOUND -> Res.string.explain_no_sound
         Explanation.DETACHED -> Res.string.explain_detached

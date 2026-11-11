@@ -33,7 +33,6 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import app.memix.core.designsystem.Icon
 import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixIcons
@@ -118,6 +117,8 @@ fun SoundRow(
     onShowDetails: (() -> Unit)? = null,
     detailsFocus: FocusRequester? = null,
     look: SoundRowLook = SoundRowLook.NORMAL,
+    /** The sound is being made ready to land (P3-05): the Add block looks disabled and is disabled for screen readers too. */
+    addInProgress: Boolean = false,
 ) {
     val playingBand = if (onSurface) MemixColors.surfaceRaised else MemixColors.surface
     Row(
@@ -142,7 +143,7 @@ fun SoundRow(
             if (progress != null) ProgressUnderName(progress)
         }
         if (onFavoriteChange != null) SoundFavoriteHeart(name, isFavorite, onFavoriteChange)
-        if (onAdd != null) AddSlot(name, look, onAdd)
+        if (onAdd != null) AddSlot(name, look, addInProgress, onAdd)
     }
 }
 
@@ -161,13 +162,13 @@ private fun MetaLine(meta: String, look: SoundRowLook) {
 
 /** The Add block, or an empty slot of its size when it can't be used, so names don't jump when the connection returns. */
 @Composable
-private fun AddSlot(name: String, look: SoundRowLook, onAdd: () -> Unit) {
+private fun AddSlot(name: String, look: SoundRowLook, inProgress: Boolean, onAdd: () -> Unit) {
     when {
         look.isDisabled -> Box(Modifier.size(MemixSize.touchTarget))
         else -> AddSoundButton(
             stringResource(Res.string.sound_add, name),
             onAdd,
-            enabled = look != SoundRowLook.DOWNLOADING && look != SoundRowLook.FAILED_STORAGE,
+            enabled = !inProgress && look != SoundRowLook.DOWNLOADING && look != SoundRowLook.FAILED_STORAGE,
         )
     }
 }
@@ -321,7 +322,7 @@ private fun AddSoundButton(description: String, onClick: () -> Unit, enabled: Bo
         Box(
             Modifier
                 .focusRing(interactionSource, MemixShapes.radiusMd)
-                .size(36.dp)
+                .size(MemixSize.soundAddSize)
                 .clip(MemixShapes.radiusMd)
                 .drawBehind { drawRect(block.value) },
             contentAlignment = Alignment.Center,

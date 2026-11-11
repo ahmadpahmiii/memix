@@ -32,9 +32,9 @@ enum class DownloadFailure {
  * The sounds downloaded from the library and kept on the phone (P3-04). Implemented in :core:data. The bundled starter
  * pack is not here: it ships inside the app (`SoundLibrary`).
  *
- * A downloaded sound is one shared file, `sounds/<catalog id>.<extension>`. Projects point at it (they keep no copy of
- * their own), so removing a file a draft uses would break that draft: the cleanup never removes a file a saved draft
- * uses ([SoundsInUse]) or one that is [pin]ned. Every suspend function runs its disk work off the main thread.
+ * A downloaded sound is one file, `sounds/<catalog id>.<extension>`, that only previews and the picker use. A project
+ * that adds the sound gets its own copy ([PlaceSoundInProjectUseCase], P3-05), so the cleanup may remove any file that
+ * is not [pin]ned (playing, or being added). Every suspend function runs its disk work off the main thread.
  */
 interface SoundDownloads {
     /** The ids of the downloaded sounds. Emits again after every download and removal. */
@@ -64,17 +64,11 @@ interface SoundDownloads {
     /** Undoes one [pin]. */
     fun unpin(soundId: String)
 
-    /** Deletes the downloaded file of [soundId] (a file that would not play) unless a saved draft uses it. A missing one is fine. */
+    /** Deletes the downloaded file of [soundId] (a file that would not play). A missing one is fine. */
     suspend fun discard(soundId: String)
 
-    /** Deletes the downloaded files of these sounds (removed from the catalog) unless a draft uses them or they are pinned. */
+    /** Deletes the downloaded files of these sounds (removed from the catalog) unless they are pinned. */
     suspend fun discardUnused(soundIds: Set<String>)
-}
-
-/** The sounds that saved drafts use, which the cleanup must not delete. */
-fun interface SoundsInUse {
-    /** Catalog ids used by saved drafts, or null when that can't be known (a draft saved by a newer app). */
-    suspend fun ids(): Set<String>?
 }
 
 /** Where sound files live, relative to the app's files directory. Shared by the starter pack and the downloads. */
@@ -92,11 +86,5 @@ object SoundPaths {
     fun fileOf(soundId: String, catalogKey: String): String {
         val extension = catalogKey.substringAfterLast('.', DEFAULT_EXTENSION).lowercase().takeIf { SAFE_EXTENSION.matches(it) }
         return "$FOLDER/$soundId.${extension ?: DEFAULT_EXTENSION}"
-    }
-
-    /** The catalog id in a sound file path, or null for any other path. */
-    fun soundIdOf(path: String): String? {
-        if (!path.startsWith("$FOLDER/")) return null
-        return path.removePrefix("$FOLDER/").substringBeforeLast('.').takeIf { it.isNotEmpty() && '/' !in it }
     }
 }

@@ -277,11 +277,10 @@ enum class EditorTool(val eventValue: String?) {
 }
 
 /**
- * `sound_add.tab` and `sound_preview.tab`: where in the sounds UI it happened. "starter" is the editor's P1 sheet; the
- * rest are the Sounds screen's tabs and its Recently used section and search results (PRD → analytics, P3-02).
+ * `sound_add.tab` and `sound_preview.tab`: where in the sounds UI it happened. The editor's picker (P3-05) uses the same
+ * values as the Sounds screen's tabs, its Recently used section and search results (PRD → analytics, P3-02).
  */
 enum class SoundTab(val eventValue: String) {
-    STARTER("starter"),
     TRENDING("trending"),
     LOCAL("local"),
     GLOBAL("global"),

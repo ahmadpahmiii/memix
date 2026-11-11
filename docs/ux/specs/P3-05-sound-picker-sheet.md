@@ -39,9 +39,9 @@ The sheet opens with real rows and Add blocks on screen, so tap 2 needs no scrol
 Sheet component: `surface`, `radius-lg` top corners, `shadow-sheet`, grabber, close button, over `scrim`; `Modifier.coveredByModal` on the editor behind it.
 
 ### Height
-- Opens at **half the window** (`opensAtHalfHeight`) so the top of the preview stays in view, **but never lower than the header plus three rows** (about 364 dp at 360 × 800): at half height the header (frame, search, tabs) leaves room for only 1.9 rows on a 640 dp-tall phone, and the Done when is a tap on a row. Added to the Sheet README.
+- Opens at **half the window** (`opensAtHalfHeight`) so the top of the preview stays in view, **but never lower than the header plus three rows** (**about 436 dp**; the first draft said 364 dp and counted 48 dp rows, but a row measures about 70 dp: 48 dp target, 16 dp row padding, 8 dp gap; corrected in the P3-05 review): at half height the header (frame, search, tabs) leaves room for only about 1.9 rows on a 640 dp-tall phone, and the Done when is a tap on a row. In the Sheet README. The sheet also keeps at least this height while open, so a short list or few search results do not move the tabs.
 - A drag up on the grabber or the title row grows it to the long-content height (`space-10` under the status bar). **Focusing the search field grows it at once** so the keyboard and the results both fit (200 ms; at once with reduce motion). It stays grown after the keyboard closes until the user drags it down.
-- **Large font:** if the pinned header (search plus tabs) would take more than `pinned-bar-max-fraction` (40%) of the sheet, the search field scrolls away with the list and only the title row and the tabs stay pinned. Existing token, new use (see Tokens).
+- **Large font:** from a font scale of **1.5** the search field scrolls with the list (it becomes the first list item, below the tabs) and only the title row and the tabs stay pinned. (First draft: when the header takes over 40% of the sheet. Accepted in the P3-05 review as a fixed rule: simpler, and the header would not reach 40% before 2.0 anyway, so it hides search a little early on purpose. `pinned-bar-max-fraction` is not used.)
 
 ### Content, top to bottom
 1. **Title row** (the sheet frame): "Meme sounds" in `title`, the close button at the end. In a pane, `arrow_back` (48 dp) at the start and the pane's title.
@@ -74,7 +74,7 @@ Let `end` be the video's length and `length` the sound's.
 | **Playhead at the end** (within one frame of `end`) | `max(0, end − length)`: the sound **ends** at the end of the video (P1-06 rule, kept) | Normal landing; nothing is said, because the sound is heard |
 | **Sound longer than the video left** (`playhead + length > end`) and the unheard part is **0.5 s or less** | The playhead | Normal landing; no toast (a tail of half a second is not worth a message) |
 | Unheard part **over 0.5 s** | The playhead (the user chose that moment) | The part past `end` shows the past-the-end wash (P1-05), the sound is selected, and a 4 s toast says what to do: `picker_overhang_toast` |
-| Sound longer than the **whole** video | 0:00 | Same as the row above (the playhead rule would put the start before 0:00) |
+| Sound longer than the **whole** video | **The playhead**, as every other row (P3-05 review: the first draft said 0:00 on the false ground that the playhead would put the start before 0:00; it never does, and a jump at 10.0 s of sound length is a surprise) | Overhang over 0.5 s: wash and toast, as the row above |
 - **Why the playhead wins over "shift it earlier"** (Questions 2): a hit placed at 3.2 s is meant to sound at 3.2 s. Shifting it silently would put it where the user did not ask. The toast names both fixes: trim the tail (drag its end handle, or the tool bar) or move it earlier (Move here).
 - The video never grows to fit a sound (P1-05: items may reach past the end).
 - The toast sits in the stage's message slot, which is above the scrim, so it is visible as the sheet closes. TalkBack hears "{name} added at {time}" and then the toast.
@@ -94,7 +94,7 @@ The first tap on Add starts the download; the sheet stays open until the sound l
 - After the engine's two retries (P3-04) the row shows **Failed**: disc becomes Retry (`rotate_right`), meta "Couldn't download. Tap to try again." in `danger` (on `surface`, 5.2:1). **Nothing lands and the sheet stays open**, because closing would hide the reason and the next step. The Add block is active: a tap retries and, on success, lands the sound (P3-04). A polite announcement "Couldn't download {name}" fires once.
 - The sound's partial file is deleted. A second failure shows the same look; no counter.
 - **Phone storage full:** the row shows "Not enough space on your phone." (P3-04) and the Add block is disabled. A **strip** at the top of the list says `sound_dl_storage_toast` with a Quiet **Free up space** button (P3-04's action, hidden when the phone has no storage screen). The strip is used instead of P3-04's persistent toast because a toast under a scrim cannot be reached by TalkBack or keyboard while the sheet covers the editor. It goes when a download succeeds or the sheet closes. Coming back from the system's storage screen retries nothing by itself.
-- **The file arrives but won't decode:** nothing lands; the toast `explain_sound_unreadable` ("That sound won't play. Try another one.") shows in the stage slot (P1-06), and the row goes to idle. The bad file is deleted so the next tap downloads it again (P3-04).
+- **The file arrives but won't decode:** nothing lands; the toast `explain_sound_unreadable` ("That sound won't play. Try another one.") shows in the stage slot (P1-06), and the row goes to idle. The bad file is deleted so the next tap downloads it again (P3-04). **If copying into the project fails because the phone is full**, the toast is `sound_dl_storage_toast` instead (existing string, no action, no new key); a missing file keeps `explain_sound_unreadable`.
 
 ### Offline
 - **Strip** `sounds_offline_strip` at the top of the list when the connection drops (polite). Rows with audio on the phone are normal and add as usual (no connection needed); the rest are dimmed with "Not saved for offline" and show no Add block.
@@ -105,7 +105,7 @@ The first tap on Add starts the download; the sheet stays open until the sound l
 
 ### Other states
 - **A favorite or recent removed from the catalog:** the row stays with "No longer available", no Add block; the heart still works.
-- **Add tapped twice quickly:** the second tap is ignored (one landing, one undo step). The block is disabled while a landing is in progress.
+- **Add tapped twice quickly:** the second tap is ignored (one landing, one undo step). A sound already on the phone lands in a frame or two, so the block is **not drawn disabled** (it would only flash); it is marked disabled for TalkBack while the landing runs. A landing that takes over 300 ms (a long imported file) shows the Downloading look's disabled Add block.
 - **Volume is 0 when a preview starts:** P3-02's toast once per app session. The sound still plays.
 - **A sound already used in the project:** nothing special: it can be added again.
 
@@ -222,7 +222,7 @@ Each is decided in the spec as recommended, so the build can go on.
 - **Pinned header at large font:** reuse `MemixSize.pinnedBarMaxFraction`; no new token.
 
 ## Tokens
-No new token. `pinned-bar-max-fraction` (`MemixSize.pinnedBarMaxFraction`, 0.4, exists) gains a second use, the picker's header at large font; its usage line in `design/tokens.json` and DESIGN_SYSTEM says so. No new icon.
+No new token and no new use of an existing one (the picker's large-font rule is a fixed font scale of 1.5; see Height). No new icon.
 
 ## Evidence
 | Claim | Strength | Source |

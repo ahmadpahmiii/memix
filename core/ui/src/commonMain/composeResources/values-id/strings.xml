@@ -182,4 +182,5 @@
     <string name="sound_dl_failed_storage">Ruang di ponselmu tidak cukup.</string>
     <string name="sound_not_saved_offline">Tidak tersimpan untuk offline</string>
     <string name="sound_unavailable">Sudah tidak tersedia</string>
+    <string name="sound_dl_storage_toast">Ponselmu penuh, jadi suara ini tidak bisa disimpan.</string>
 </resources>

@@ -76,8 +76,6 @@
     <string name="edit_add_sound">Tambah suara</string>
     <string name="timeline_add_meme_sound">Tambah suara meme</string>
     <string name="sounds_title">Suara meme</string>
-    <string name="sounds_empty_title">Belum ada suara</string>
-    <string name="sounds_empty_body">Koleksi suara meme hadir di build berikutnya.</string>
     <!-- P1-16: Add media and Replace (spec P1-06 -> Add media, Replace; P1-05 -> Trailing area) -->
     <string name="tool_add_media">Tambah media</string>
     <string name="edit_add_media">Tambah media</string>
@@ -140,4 +138,5 @@
     <!-- The one-time note after Make it a video meme (P2-10). Machine drafts until P5. -->
     <string name="make_video_note">Lapisanmu sekarang jadi satu gambar, kecuali teks di atas, yang tetap bisa diedit.</string>
     <string name="make_video_note_ok">Mengerti</string>
+    <string name="picker_overhang_toast">Ujung suara ini melewati akhir videomu, jadi tidak akan terdengar. Pangkas atau geser lebih awal.</string>
 </resources>

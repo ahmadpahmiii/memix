@@ -137,13 +137,10 @@ private class LastShown {
     var details: SoundDetailsUi? = null
 }
 
-private const val TITLE_MAX_LINES = 2
-
-/** Above this font scale the time moves under the player row, so the waveform keeps its width (spec P3-03 → 200% font). */
-private const val TIME_BELOW_FONT_SCALE = 1.5f
+internal const val TITLE_MAX_LINES = 2
 
 @Composable
-private fun ColumnScope.DetailsBody(
+internal fun ColumnScope.DetailsBody(
     details: SoundDetailsUi,
     name: String,
     playback: RowPlayback,
@@ -159,7 +156,7 @@ private fun ColumnScope.DetailsBody(
     val played = remember(isActive, position, details.durationUs) {
         { if (isActive) playedFraction(position.value, details.durationUs) else 0f }
     }
-    val timeBelow = LocalDensity.current.fontScale > TIME_BELOW_FONT_SCALE
+    val timeBelow = LocalDensity.current.fontScale > LARGE_FONT_SCALE
     // A download, a failure or a missing connection replaces the time with a line of words under the player (spec P3-04).
     val status = playerStatusText(look)
     val statusColor = if (look == SoundRowLook.FAILED || look == SoundRowLook.FAILED_STORAGE) MemixColors.danger else MemixColors.textSecondary
@@ -185,7 +182,7 @@ private fun ColumnScope.DetailsBody(
         timeBelow -> ElapsedTime(position, isActive, details.length, Modifier.align(Alignment.End))
     }
     Column(
-        Modifier.weight(1f, fill = false).padding(top = MemixSpacing.space2).verticalScroll(rememberScrollState()),
+        Modifier.weight(1f, fill = false).padding(top = MemixSpacing.space2).verticalScroll(rememberScrollState()).padding(bottom = MemixSpacing.space4),
         verticalArrangement = Arrangement.spacedBy(MemixSpacing.space3),
     ) {
         details.categoryName?.let { Fact(Res.string.sound_detail_category) { Text(it.inLanguage(language), MemixTheme.type.body) } }

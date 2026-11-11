@@ -15,17 +15,22 @@ import app.memix.core.model.project.MediaRef
  * sound won't play" (spec P1-06 → Meme sounds → Landing). A downloaded file that won't decode is deleted, so the next
  * play downloads it again.
  */
+/** A checked sound: its file, and whether it is the bundled starter file every project shares (not the download cache). */
+data class PreparedSound(val media: MediaRef, val bundled: Boolean)
+
 class PrepareSoundUseCase(
     private val library: SoundLibrary,
     private val downloads: SoundDownloads,
     private val inspector: MediaInspector,
 ) {
-    suspend operator fun invoke(sound: CatalogSound): Outcome<MediaRef> {
+    suspend operator fun invoke(sound: CatalogSound): Outcome<PreparedSound> {
+        var bundled = true
         val file = when (val found = library.fileOf(sound)) {
             is Outcome.Success -> found.value
             is Outcome.Failure -> {
                 // Not in the starter pack: a downloaded copy may be there. Any other failure (a full phone) is final.
                 if (found.error != AppError.NotFound) return found
+                bundled = false
                 downloadedFile(sound) ?: return found
             }
         }
@@ -36,7 +41,7 @@ class PrepareSoundUseCase(
             return Outcome.Failure(AppError.NotFound)
         }
         // The measured length, not the catalog's: trims and the end rule must match the file that plays.
-        return Outcome.Success(file.copy(durationUs = facts.durationUs, hasAudio = facts.hasAudio))
+        return Outcome.Success(PreparedSound(file.copy(durationUs = facts.durationUs, hasAudio = facts.hasAudio), bundled))
     }
 
     private suspend fun downloadedFile(sound: CatalogSound): MediaRef? {

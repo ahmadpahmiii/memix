@@ -76,8 +76,6 @@
     <string name="edit_add_sound">Adicionar som</string>
     <string name="timeline_add_meme_sound">Adicionar som de meme</string>
     <string name="sounds_title">Sons de memes</string>
-    <string name="sounds_empty_title">Nenhum som ainda</string>
-    <string name="sounds_empty_body">A biblioteca de sons chega em uma versão futura.</string>
     <!-- P1-16: Add media and Replace (spec P1-06 -> Add media, Replace; P1-05 -> Trailing area) -->
     <string name="tool_add_media">Adicionar mídia</string>
     <string name="edit_add_media">Adicionar mídia</string>
@@ -140,4 +138,5 @@
     <!-- The one-time note after Make it a video meme (P2-10). Machine drafts until P5. -->
     <string name="make_video_note">Suas camadas agora são uma só imagem, exceto o texto no topo, que continua editável.</string>
     <string name="make_video_note_ok">Entendi</string>
+    <string name="picker_overhang_toast">O final deste som passa do fim do seu vídeo, então não será ouvido. Corte-o ou mova-o para antes.</string>
 </resources>

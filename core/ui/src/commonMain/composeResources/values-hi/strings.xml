@@ -183,4 +183,5 @@
     <string name="sound_dl_failed_storage">आपके फ़ोन में पर्याप्त जगह नहीं है।</string>
     <string name="sound_not_saved_offline">ऑफ़लाइन के लिए सेव नहीं है</string>
     <string name="sound_unavailable">अब उपलब्ध नहीं है</string>
+    <string name="sound_dl_storage_toast">आपका फ़ोन भरा है, इसलिए यह साउंड सेव नहीं हो सकता।</string>
 </resources>
