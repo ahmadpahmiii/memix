@@ -1,5 +1,6 @@
 import java.time.Duration
 import java.time.Instant
+import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -72,7 +73,15 @@ android {
     }
 }
 
+// The fallback for Remote Config's media_base_url (P3-13): memix.media.baseUrl in local.properties (not committed), or
+// empty. Read as a file provider so the configuration cache notices when it changes.
+val mediaBaseUrl: Provider<String> = providers.fileContents(rootProject.layout.projectDirectory.file("local.properties"))
+    .asText
+    .map { text -> Properties().apply { load(text.reader()) }.getProperty("memix.media.baseUrl").orEmpty().trim() }
+    .orElse("")
+
 androidComponents {
+    onVariants { variant -> variant.manifestPlaceholders.put("mediaBaseUrl", mediaBaseUrl) }
     onVariants(selector().withBuildType("release")) { variant ->
         variant.outputs.forEach { output -> output.versionCode.set(releaseVersionCode) }
     }

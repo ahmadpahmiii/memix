@@ -11,7 +11,7 @@ Only content with a recorded license enters the catalog. Accepted: CC0/public do
 
 1. Source: Freesound (CC0 filter), Pixabay, or record a recreation. Save the license page URL and a screenshot as `license_proof`.
 2. Run the intake script (desktop; ffmpeg is fine here because it never ships in the app): trim silence → loudness-normalize to **−16 LUFS**, true peak **−1 dBTP** → encode **AAC 128 kbps `.m4a`** → write a waveform JSON (~64 buckets) → read `duration_ms`.
-3. Upload to R2: `sounds/<yyyy>/<mm>/<uuid>.m4a` (+ `waveforms/…json`). Keys are immutable; a changed file gets a new key.
+3. Upload with `python3 scripts/media/upload_media.py <file> <key> [--dry-run]` (P3-13): `sounds/<yyyy>/<mm>/<uuid>.m4a` (+ `waveforms/…json`). The files go to the public Supabase Storage bucket `media` until P6-07 moves them to R2 under the same keys. Keys are immutable; a changed file gets a new key. The script sends `Cache-Control: public, max-age=31536000`.
 4. Insert the `sounds` row: localized `title`, `category_id`, `regions`, `tags`, `file_path`, `duration_ms`, `waveform_path`, `source_url`, `license_type`, `license_proof`, `credit` (required for CC-BY), `added_by`.
 5. Listen to it in the app after the next catalog refresh.
 
@@ -25,4 +25,4 @@ Templates (`templates/`, `previews/`) and sticker packs (`stickers/`) follow the
 
 Report or email → set `is_active = false` → record the outcome on the `reports` row → reply within 72 h.
 
-Never commit R2 or Supabase write keys; the script reads them from `.env`.
+Never commit R2 or Supabase write keys; the scripts read them from `.env` (`SUPABASE_URL`, `SUPABASE_SECRET_KEY`). The secret key is on the owner's Mac only: cloud sessions build and dry-run, the owner runs the live upload.

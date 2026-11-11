@@ -29,13 +29,14 @@ Keep the keystore outside the repo folder (for example `~/keys/memix-upload.jks`
 | --- | --- | --- | --- | --- | --- |
 | Supabase project URL (`https://<project-ref>.supabase.co`) | Public | P0-06, P3-01 | `local.properties` → `memix.supabase.url` | `SUPABASE_URL` | Yes |
 | Supabase publishable key (`sb_publishable_…`, formerly "anon") | Public; RLS lets it only read active rows and insert reports | P0-06, P3-01 | `local.properties` → `memix.supabase.publishableKey` | `SUPABASE_PUBLISHABLE_KEY` | Yes |
-| Supabase secret key (`sb_secret_…`, formerly "service_role") | **Secret**; bypasses RLS | P3-12 intake script | `.env` → `SUPABASE_SECRET_KEY` | Not in CI | **Never** |
+| Supabase project URL, for scripts | Public | P3-13 | `.env` → `SUPABASE_URL` (same value as above) | Not in CI | n/a |
+| Supabase secret key (`sb_secret_…`, formerly "service_role") | **Secret**; bypasses RLS. **Owner only:** this checkout and cloud sessions never hold it; the owner puts it in `.env` on the Mac and runs the uploads | P3-13 upload script, P3-12 intake script | `.env` → `SUPABASE_SECRET_KEY` | Not in CI | **Never** |
 | Supabase database password | **Secret** | Migrations via CLI, if used | `.env` → `SUPABASE_DB_PASSWORD` | Not in CI | **Never** |
 | Supabase personal access token | **Secret** | Supabase CLI or MCP without OAuth | `.env` → `SUPABASE_ACCESS_TOKEN` | Not in CI | **Never** |
 | Cloudflare account ID | Identifier | P0-07 | `.env` → `R2_ACCOUNT_ID` | Not in CI | No |
 | R2 access key ID and secret access key (S3 API token, Object Read & Write on the media bucket only) | **Secret** | P0-07, P3-12 | `.env` → `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Not in CI | **Never**: the app downloads public URLs |
 | Cloudflare API token (Wrangler, Pages) | **Secret** | P6-04 website | `.env` → `CLOUDFLARE_API_TOKEN` | `CLOUDFLARE_API_TOKEN` only if CI deploys the site | **Never** |
-| Media base URL (`https://media.<domain>`, or the r2.dev URL during development) | Public | P0-07 | Firebase Remote Config → `media_base_url` | Not needed | Read at runtime |
+| Media base URL: `https://<project-ref>.supabase.co/storage/v1/object/public/media` until P6-07, then `https://media.<domain>` | Public | P3-13, P6-07 | Firebase Remote Config → `media_base_url` (wins); fallback `local.properties` → `memix.media.baseUrl` | Not needed | Read at runtime |
 | Firebase Android config (`google-services.json`) | Public; its API key is restricted to `app.memix` | P0-08 | `androidApp/google-services.json` | CI builds copy the committed placeholder `androidApp/google-services.ci.json` (fake values). Release builds are made on the owner's Mac with the real local file, so CI needs no secret for it | Yes, compiled in |
 | Firebase iOS config (`GoogleService-Info.plist`) | Public; restricted to the bundle ID | P7-08 | `iosApp/iosApp/GoogleService-Info.plist` | `GOOGLE_SERVICE_INFO_PLIST` (base64) | Yes, compiled in |
 | Android upload keystore, store password, key alias, key password | **Secret** | P1-15 | Keystore outside the repo, on the owner's Mac only | Not in CI (manual signing, owner 21 Oct 2026) | No (only the signature) |

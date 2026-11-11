@@ -15,4 +15,4 @@ description: Make a change to Memix's Supabase backend safely — SQL migration,
 8. **Seed.** Update seed data if needed (license fields filled).
 9. **Docs.** `docs/TECHNICAL_DESIGN.md` → Backend (SQL sketch, app-call table).
 10. **Secrets.** Service key and DB password only in `.env` / CI secrets. Never in code, logs or PR text.
-11. **Cost.** Free plan: 500 MB DB, 5 GB egress, 1 GB storage, pauses after 1 idle week. Media stays on R2.
+11. **Cost.** Free plan: 500 MB DB, 5 GB egress, 1 GB storage, pauses after 1 idle week. Media is in the Supabase Storage bucket `media` until P6-07 (watch the 1 GB and the 5 GB egress), then on R2.

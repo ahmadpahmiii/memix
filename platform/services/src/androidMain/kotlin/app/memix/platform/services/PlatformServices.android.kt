@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.LocaleManager
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -40,7 +41,7 @@ import org.koin.dsl.module
 actual val platformServicesModule = module {
     single<DeviceRegion> { AndroidDeviceRegion(androidContext()) }
     single<Logger> { AndroidLogger() }
-    single<AppConfig> { FirebaseAppConfig() }
+    single<AppConfig> { FirebaseAppConfig(androidContext()) }
     single<Analytics> { FirebaseAnalyticsLogger(androidContext()) }
     single<MediaFiles> { AndroidMediaFiles(androidContext(), Dispatchers.IO, get()) }
     single<MediaInspector> { AndroidMediaInspector(androidContext(), Dispatchers.IO, get()) }
@@ -110,7 +111,7 @@ private class FirebaseAnalyticsLogger(private val context: Context) : Analytics 
     }
 }
 
-private class FirebaseAppConfig : AppConfig {
+private class FirebaseAppConfig(private val context: Context) : AppConfig {
     private val remoteConfig = FirebaseRemoteConfig.getInstance().apply {
         setDefaultsAsync(mapOf(MEDIA_BASE_URL to ""))
     }
@@ -126,10 +127,26 @@ private class FirebaseAppConfig : AppConfig {
         Outcome.Failure(AppError.Unexpected(e))
     }
 
-    override val mediaBaseUrl: String get() = remoteConfig.getString(MEDIA_BASE_URL)
+    // Remote Config wins (the move to R2 is one console edit). Until the console key exists, the build's value from
+    // local.properties (memix.media.baseUrl), which androidApp's manifest carries as meta-data, keeps media loading.
+    override val mediaBaseUrl: String
+        get() = remoteConfig.getString(MEDIA_BASE_URL).trim().ifEmpty { buildTimeMediaBaseUrl }
+
+    // Read once: the manifest value is fixed for the build, and a PackageManager call per sound row would be a binder hop.
+    private val buildTimeMediaBaseUrl: String by lazy {
+        val packageManager = context.packageManager
+        val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getApplicationInfo(context.packageName, PackageManager.ApplicationInfoFlags.of(PackageManager.GET_META_DATA.toLong()))
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
+        }
+        info.metaData?.getString(MEDIA_BASE_URL_META_DATA).orEmpty().trim()
+    }
 
     private companion object {
         const val MEDIA_BASE_URL = "media_base_url"
+        const val MEDIA_BASE_URL_META_DATA = "app.memix.media_base_url"
     }
 }
 
