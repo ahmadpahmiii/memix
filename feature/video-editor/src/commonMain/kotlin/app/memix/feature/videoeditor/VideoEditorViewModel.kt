@@ -212,6 +212,8 @@ class VideoEditorViewModel(
                 noteWaitsForSheet = true
                 soundTools.openSheet(FocusTarget.MEME_SOUNDS_TOOL)
             }
+            VideoEditorIntent.ArrivedWithSound -> soundTools.showStartingSound()
+            VideoEditorIntent.ArrivedWithoutSound -> showToast(ToastMessage.Explain(Explanation.SOUND_MISSING))
             VideoEditorIntent.CloseSoundsSheet -> {
                 soundTools.dismissSheet()
                 showVideoMemeNoteOnce()

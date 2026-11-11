@@ -50,6 +50,7 @@ import app.memix.core.domain.sound.ObserveFavoriteSoundIdsUseCase
 import app.memix.core.domain.sound.ObserveFavoriteSoundsUseCase
 import app.memix.core.domain.sound.ObserveRecentSoundsUseCase
 import app.memix.core.domain.sound.OpenSoundPlayerUseCase
+import app.memix.core.domain.sound.PendingMemeSound
 import app.memix.core.domain.sound.PlaceSoundInProjectUseCase
 import app.memix.core.domain.sound.SoundsOnPhone
 import app.memix.core.domain.sound.PrepareSoundUseCase
@@ -181,6 +182,8 @@ private val appModule = module {
     // A landed library sound gets its own file in the project's folder (P3-05); the previews' parts come as one bundle.
     factoryOf(::PlaceSoundInProjectUseCase)
     factoryOf(::SoundPreviewTools)
+    // The library sound a Use is carrying to the next new video meme (P3-15); the import ViewModel owns one.
+    factoryOf(::PendingMemeSound)
     // The caption fonts live with the interface fonts in the design system; the engine's renderer reads them (P1-10).
     single<CaptionFontSource> { CaptionFontSource(::readCaptionFontFile) }
     factoryOf(::PrepareCaptionsUseCase)
@@ -266,7 +269,7 @@ private val appModule = module {
 private val handCheckModule = module {
     single<EditorDebugEdit> { DebugEdits.shortenLastClip }
     factory { RemoveBackgroundUseCase(BgRemoveFailure.around(get()), get()) }
-    factory { SaveGalleryProjectUseCase(SaveProjectUseCase(ImportSaveFailure.around(get()), get()), get(), get()) }
+    factory { SaveGalleryProjectUseCase(SaveProjectUseCase(ImportSaveFailure.around(get()), get()), get(), get(), get(), get(), get(), get()) }
     factory { StartEditSessionUseCase(SaveProjectUseCase(EditorSaveDiffLog.around(get(), get()), get()), get(), get(), get(appScope)) }
 }
 

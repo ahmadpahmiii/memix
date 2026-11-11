@@ -16,7 +16,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.memix.core.designsystem.MemixMotion
 import app.memix.core.designsystem.MemixTheme
+import app.memix.core.domain.SoundTab
 import app.memix.core.domain.media.MAX_ITEMS_PER_PICK
+import app.memix.core.model.project.MediaOrigin
+import app.memix.core.domain.sound.PendingSound
+import app.memix.core.domain.sound.PickedSound
+import app.memix.core.domain.sound.StartingSound
 import app.memix.feature.mediaimport.ImportIntent
 import app.memix.feature.mediaimport.ImportSheet
 import app.memix.feature.mediaimport.ImportUiState
@@ -24,6 +29,7 @@ import app.memix.feature.mediaimport.ImportWording
 import app.memix.feature.mediaimport.MediaImportViewModel
 import app.memix.feature.mediaimport.MemeImportViewModel
 import app.memix.feature.mediaimport.PhotoMemeImportViewModel
+import app.memix.feature.mediaimport.SoundMemeImportViewModel
 import app.memix.feature.mediaimport.isBlockingSheet
 import app.memix.feature.mediaimport.showsSheet
 import app.memix.feature.photoeditor.PhotoEditorIntent
@@ -35,6 +41,8 @@ import app.memix.platform.services.rememberFreeUpSpaceLauncher
 import app.memix.platform.services.rememberMediaPickerLauncher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -42,6 +50,9 @@ import org.koin.compose.viewmodel.koinViewModel
  * Create → Video meme (P1-02) or Photo meme (P2-01) at the app root: opens the system picker, hands what was picked to
  * the import's [MemeImportViewModel], and keeps the Create sheet's scrim up while that pick copies. The picker and the
  * storage screen are platform launchers, so the app root owns them; the feature only sees results, as intents.
+ * The Sounds tab's Use (P3-15) is the video meme only: [startWithSound]. The sound itself is the ViewModel's; this class keeps
+ * the picker, and the id and tab of the Use whose picker is open, saved with the screen so a restart behind the picker still
+ * lands the sound ([ImportIntent.Picked.restoredSound]).
  */
 @Stable
 internal class MemeImport(
@@ -53,6 +64,9 @@ internal class MemeImport(
     // Where the open picker was started from; saved, so it survives Android restarting the app behind the picker.
     private val pickStartedOnCreateSheet: MutableState<Boolean>,
     private val scrimHeld: MutableState<Boolean>,
+    // The video meme's ViewModel when it can start with a library sound (P3-15), and the id and tab of the Use whose picker is open.
+    private val soundImport: SoundMemeImportViewModel?,
+    private val savedSound: MutableState<PendingSound?>,
     // Closes the Create sheet and keeps its scrim up for the import that follows.
     private val handOverFromCreateSheet: () -> Unit,
     private val scope: CoroutineScope,
@@ -67,14 +81,40 @@ internal class MemeImport(
         if (state.showsSheet && !state.isBlockingSheet) ({ viewModel.onIntent(ImportIntent.Close) }) else null
     }
 
+    /** Each time a Use has run its course; the Sounds tab takes taps again then. Empty for a photo meme. */
+    val soundUseEnds: Flow<Unit> get() = soundImport?.soundUseEnds ?: emptyFlow()
+
     /**
      * Opens the picker, unless an import is running. From the Create sheet, the sheet stays open behind the picker
      * and closes, keeping its scrim, once something was picked.
      */
     fun start(fromCreateSheet: Boolean) {
         if (state != ImportUiState.Idle) return
+        savedSound.value = null
+        openPicker(fromCreateSheet)
+    }
+
+    /** The Sounds tab's Use: the system picker, then a new video meme with [sound] at 0:00. Ignored while an import runs. */
+    fun startWithSound(sound: PickedSound) {
+        if (soundImport?.beginWithSound(sound) != true) return
+        savedSound.value = PendingSound(sound.soundId, sound.tab)
+        openPicker(fromCreateSheet = false)
+    }
+
+    /** The picker returned: what was picked, or nothing. */
+    fun onPicked(picked: List<MediaOrigin>) {
+        if (picked.isNotEmpty() && pickStartedOnCreateSheet.value) handOverFromCreateSheet()
+        pickStartedOnCreateSheet.value = false
+        val restore = savedSound.value
+        savedSound.value = null
+        viewModel.onIntent(ImportIntent.Picked(picked, restore))
+    }
+
+    private fun openPicker(fromCreateSheet: Boolean) {
         pickStartedOnCreateSheet.value = fromCreateSheet
         if (picker.launch()) return
+        // A Use that could not open the picker leaves nothing waiting (the ViewModel drops its sound).
+        savedSound.value = null
         if (fromCreateSheet) handOverFromCreateSheet()
         viewModel.onIntent(ImportIntent.PickerUnavailable)
     }
@@ -83,10 +123,10 @@ internal class MemeImport(
 
     /** "Pick again": the sheet closes first, then the picker opens (spec P1-02 → States). */
     fun pickAgain() {
-        viewModel.onIntent(ImportIntent.Close)
+        viewModel.onIntent(ImportIntent.PickAgain)
         scope.launch {
             delay(MemixMotion.durationSheet.toLong())
-            start(fromCreateSheet = false)
+            if (state == ImportUiState.Idle) openPicker(fromCreateSheet = false)
         }
     }
 
@@ -97,13 +137,13 @@ internal class MemeImport(
 
 /** Create → Video meme: up to 35 videos and photos. */
 @Composable
-internal fun rememberVideoMemeImport(closeCreateSheet: () -> Unit, openEditor: (projectId: String) -> Unit): MemeImport =
+internal fun rememberVideoMemeImport(closeCreateSheet: () -> Unit, openEditor: (projectId: String, startingSound: StartingSound) -> Unit): MemeImport =
     rememberMemeImport(koinViewModel<MediaImportViewModel>(), ImportWording.MEDIA, MAX_ITEMS_PER_PICK, PickerMedia.IMAGES_AND_VIDEOS, closeCreateSheet, openEditor)
 
 /** Create → Photo meme: one photo from the gallery. */
 @Composable
 internal fun rememberPhotoMemeImport(closeCreateSheet: () -> Unit, openEditor: (projectId: String) -> Unit): MemeImport =
-    rememberMemeImport(koinViewModel<PhotoMemeImportViewModel>(), ImportWording.PHOTO, maxItems = 1, PickerMedia.IMAGES_ONLY, closeCreateSheet, openEditor)
+    rememberMemeImport(koinViewModel<PhotoMemeImportViewModel>(), ImportWording.PHOTO, maxItems = 1, PickerMedia.IMAGES_ONLY, closeCreateSheet) { projectId, _ -> openEditor(projectId) }
 
 /**
  * Sets up an import. Call it unconditionally at the app root: a picker result that arrives after Android restarted
@@ -116,7 +156,7 @@ private fun rememberMemeImport(
     maxItems: Int,
     media: PickerMedia,
     closeCreateSheet: () -> Unit,
-    openEditor: (projectId: String) -> Unit,
+    openEditor: (projectId: String, startingSound: StartingSound) -> Unit,
 ): MemeImport {
     val importState = viewModel.state.collectAsStateWithLifecycle()
     val pickStartedOnCreateSheet = rememberSaveable { mutableStateOf(false) }
@@ -130,13 +170,13 @@ private fun rememberMemeImport(
             scrimHeld.value = true
         }
     }
-    val picker = rememberMediaPickerLauncher(maxItems, media) { picked ->
-        if (picked.isNotEmpty() && pickStartedOnCreateSheet.value) handOverFromCreateSheet()
-        pickStartedOnCreateSheet.value = false
-        viewModel.onIntent(ImportIntent.Picked(picked))
-    }
+    val savedSound = rememberSaveable(stateSaver = PendingSoundSaver) { mutableStateOf<PendingSound?>(null) }
+    // The picker's callback runs inside MemeImport, which needs the picker: this cell closes the loop.
+    val memeImportCell = remember { arrayOfNulls<MemeImport>(1) }
+    val picker = rememberMediaPickerLauncher(maxItems, media) { picked -> memeImportCell[0]?.onPicked(picked) }
     val memeImport = remember(viewModel, picker, freeUpSpace) {
-        MemeImport(viewModel, wording, picker, freeUpSpace, importState, pickStartedOnCreateSheet, scrimHeld, handOverFromCreateSheet, scope)
+        MemeImport(viewModel, wording, picker, freeUpSpace, importState, pickStartedOnCreateSheet, scrimHeld, viewModel as? SoundMemeImportViewModel, savedSound, handOverFromCreateSheet, scope)
+            .also { memeImportCell[0] = it }
     }
 
     val editorToOpen by remember { derivedStateOf { (importState.value as? ImportUiState.Done)?.projectId } }
@@ -144,7 +184,7 @@ private fun rememberMemeImport(
     val pushMillis = if (MemixTheme.reduceMotion) MemixMotion.durationPress else MemixMotion.durationScreen
     LaunchedEffect(editorToOpen) {
         val projectId = editorToOpen ?: return@LaunchedEffect
-        currentOpenEditor(projectId)
+        currentOpenEditor(projectId, viewModel.startingSound)
         // The sheet and scrim hold still while the editor's push covers them, then go (spec P1-02 → Motion).
         delay(pushMillis.toLong())
         viewModel.onIntent(ImportIntent.Finish)
@@ -193,6 +233,15 @@ internal fun PhotoEditorPicker(request: PhotoPickRequest?, onIntent: (PhotoEdito
         }
     }
 }
+
+// A waiting sound as its id and its analytics tab.
+private val PendingSoundSaver = Saver<PendingSound?, List<String>>(
+    save = { sound -> if (sound == null) emptyList() else listOf(sound.soundId, sound.tab.eventValue) },
+    restore = { saved ->
+        val tab = SoundTab.entries.firstOrNull { it.eventValue == saved.getOrNull(1) }
+        saved.firstOrNull()?.let { id -> tab?.let { PendingSound(id, it) } }
+    },
+)
 
 // A request as a short list of plain values: its kind.
 private val PhotoPickRequestSaver = Saver<PhotoPickRequest?, List<Any>>(

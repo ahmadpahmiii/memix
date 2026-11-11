@@ -76,4 +76,5 @@
     <string name="sound_detail_not_saved_now">Tidak tersimpan di ponsel ini</string>
     <string name="picker_back_a11y">Kembali ke daftar suara</string>
     <string name="sound_detail_add_to_video">Tambahkan ke video</string>
+    <string name="sound_detail_use">Pakai di meme video</string>
 </resources>

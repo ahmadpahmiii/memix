@@ -142,4 +142,6 @@
     <string name="make_video_note">Your layers are now one picture, except text on top, which stays editable.</string>
     <string name="make_video_note_ok">Got it</string>
     <string name="picker_overhang_toast">The end of this sound is past your video, so it won't play. Trim it or move it earlier.</string>
+    <string name="use_sound_missing_toast">The sound didn't come along. Add it from Meme sounds.</string>
+    <string name="a11y_sound_added_unnamed">Sound added at %1$s</string>
 </resources>

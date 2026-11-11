@@ -1,5 +1,6 @@
 package app.memix
 
+import app.memix.core.domain.sound.StartingSound
 import kotlinx.serialization.Serializable
 
 /** The tabs, the bottom nav and the sheets over them; the app's start destination. */
@@ -13,9 +14,10 @@ import kotlinx.serialization.Serializable
 // Full screens over MainRoute.
 /**
  * A saved video draft; P1-02 opens it right after its first import. [madeFromPhoto]: the draft was just made by Make it a video
- * meme (P2-10), so the Meme sounds sheet opens once the editor has arrived.
+ * meme (P2-10), so the Meme sounds sheet opens once the editor has arrived. [startingSound]: the draft was just made by the Sounds
+ * tab's Use (P3-15); once the editor has arrived, the sound bonks (or a toast says it did not come along).
  */
-@Serializable data class VideoEditorRoute(val projectId: String, val madeFromPhoto: Boolean = false)
+@Serializable data class VideoEditorRoute(val projectId: String, val madeFromPhoto: Boolean = false, val startingSound: StartingSound = StartingSound.NONE)
 /**
  * A photo draft (P2-01). [blank] opens a blank canvas that only exists in memory: it is saved at its first committed step
  * that leaves a layer, and [projectId] is the id it is saved under.

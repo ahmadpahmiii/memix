@@ -56,6 +56,7 @@ import app.memix.core.ui.scene.SceneImageSource
 import app.memix.core.domain.Logger
 import app.memix.core.domain.RefreshAppConfigUseCase
 import app.memix.core.domain.sound.PickedSound
+import app.memix.core.domain.sound.StartingSound
 import app.memix.core.domain.text.CaptionMeasurer
 import app.memix.core.domain.video.ExportJobState
 import app.memix.core.domain.video.ExportVideoUseCase
@@ -142,7 +143,7 @@ fun App(isDebugBuild: Boolean, debugEditorProject: String? = null) {
         // Registered here, outside the navigation, so a picker result after Android restarted the app still lands.
         val videoMemeImport = rememberVideoMemeImport(
             closeCreateSheet = { createSheetOpen = false },
-            openEditor = { projectId -> navController.navigate(VideoEditorRoute(projectId)) },
+            openEditor = { projectId, startingSound -> navController.navigate(VideoEditorRoute(projectId, startingSound = startingSound)) },
         )
         val photoMemeImport = rememberPhotoMemeImport(
             closeCreateSheet = { createSheetOpen = false },
@@ -195,6 +196,7 @@ fun App(isDebugBuild: Boolean, debugEditorProject: String? = null) {
                     VideoEditorDestination(
                         route.projectId,
                         route.madeFromPhoto,
+                        route.startingSound,
                         onClose = { navController.popBackStack() },
                         onCouldntOpen = { editorCouldntOpenCount++ },
                         onOpenExport = { navController.navigate(ExportRoute) },
@@ -296,6 +298,9 @@ private fun MainShell(
     val soundDetailsUp by remember { derivedStateOf { soundsState.value.details != null } }
     val freeUpSpace = rememberFreeUpSpaceLauncher()
     val soundsExit = koinInject<SoundsTabExit>()
+    // The Sounds tab's Use (P3-15): a sound that is ready starts a new video meme, and the tab takes taps again once the system picker is gone.
+    LaunchedEffect(sounds, videoMemeImport) { sounds.picks.collect { videoMemeImport.startWithSound(it) } }
+    LaunchedEffect(sounds, videoMemeImport) { videoMemeImport.soundUseEnds.collect { sounds.onIntent(SoundsIntent.UseFinished) } }
     // Any way off the Sounds tab (a nav tap, system Back) ends its search and preview; a rotation keeps currentTab (spec P3-02).
     LaunchedEffect(currentTab) {
         if (currentTab != SoundsRoute) soundsExit.notifyLeft()
@@ -428,7 +433,7 @@ private fun TabsNavHost(
  * and Replace (P1-16) plugged in.
  */
 @Composable
-private fun VideoEditorDestination(projectId: String, madeFromPhoto: Boolean, onClose: () -> Unit, onCouldntOpen: () -> Unit, onOpenExport: () -> Unit) {
+private fun VideoEditorDestination(projectId: String, madeFromPhoto: Boolean, startingSound: StartingSound, onClose: () -> Unit, onCouldntOpen: () -> Unit, onOpenExport: () -> Unit) {
     val viewModel = koinViewModel<VideoEditorViewModel> { parametersOf(projectId) }
     // The engine's caption renderer, which its stand-in draws with (P1-10).
     val captionMeasurer = koinInject<CaptionMeasurer>()
@@ -447,7 +452,13 @@ private fun VideoEditorDestination(projectId: String, madeFromPhoto: Boolean, on
         if (state.couldntOpen) currentOnCouldntOpen()
         currentOnClose()
     }
-    if (madeFromPhoto) SoundsSheetOnArrival(state.stage != StageContent.OPENING) { viewModel.onIntent(VideoEditorIntent.ArrivedFromPhoto) }
+    if (madeFromPhoto) AfterEditorArrival(state.stage != StageContent.OPENING) { viewModel.onIntent(VideoEditorIntent.ArrivedFromPhoto) }
+    // At most one of these three runs: a draft made from a photo and one made by a Use are different arrivals, and each is once per editor.
+    when (startingSound) {
+        StartingSound.NONE -> Unit
+        StartingSound.ADDED -> AfterEditorArrival(state.stage != StageContent.OPENING) { viewModel.onIntent(VideoEditorIntent.ArrivedWithSound) }
+        StartingSound.MISSING -> AfterEditorArrival(state.stage != StageContent.OPENING) { viewModel.onIntent(VideoEditorIntent.ArrivedWithoutSound) }
+    }
     // Export video started an export: the Exporting screen covers the editor (spec P1-12 → Entry and exit).
     val currentOnOpenExport by rememberUpdatedState(onOpenExport)
     LaunchedEffect(state.openExportScreen) {
@@ -498,12 +509,12 @@ private fun EditorSoundPicker(
 }
 
 /**
- * Opens the Meme sounds sheet once, after the push into the editor (320 ms, or the 120 ms fade with reduce motion) and the first frame
- * ([firstFrameShown]), as if the user had tapped Meme sounds (spec P2-10 → Arriving). Saved across a restart, so a restored editor
- * doesn't open the sheet again.
+ * Runs [onArrived] once, after the push into the editor (320 ms, or the 120 ms fade with reduce motion) and the first frame
+ * ([firstFrameShown]): the Meme sounds sheet that opens itself (spec P2-10 → Arriving), or the bonk and toast of a project that
+ * started with a sound (spec P3-15 → Arriving). Saved across a restart, so a restored editor doesn't do it again.
  */
 @Composable
-private fun SoundsSheetOnArrival(firstFrameShown: Boolean, open: () -> Unit) {
+private fun AfterEditorArrival(firstFrameShown: Boolean, onArrived: () -> Unit) {
     var pending by rememberSaveable { mutableStateOf(true) }
     var pushDone by remember { mutableStateOf(false) }
     val arrivalMillis = if (MemixTheme.reduceMotion) MemixMotion.durationPress else MemixMotion.durationScreen
@@ -511,11 +522,11 @@ private fun SoundsSheetOnArrival(firstFrameShown: Boolean, open: () -> Unit) {
         delay(arrivalMillis.toLong())
         pushDone = true
     }
-    val currentOpen by rememberUpdatedState(open)
+    val currentOnArrived by rememberUpdatedState(onArrived)
     LaunchedEffect(pending, pushDone, firstFrameShown) {
         if (!pending || !pushDone || !firstFrameShown) return@LaunchedEffect
         pending = false
-        currentOpen()
+        currentOnArrived()
     }
 }
 

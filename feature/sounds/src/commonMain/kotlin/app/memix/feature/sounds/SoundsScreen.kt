@@ -336,8 +336,9 @@ private fun LibrarySoundRow(
             if (on) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
             onIntent(SoundsIntent.ToggleFavorite(row.id))
         },
-        // The picker's blue Add block lands the sound at the playhead. TODO(P3-15): the Sounds tab's Use block, once the Use flow exists.
-        onAdd = if (picker) ({ onIntent(SoundsIntent.Add(row.id, fromRecent)) }) else null,
+        // The picker's blue Add block lands the sound at the playhead; the Sounds tab's Use block starts a new video meme with it (P3-15).
+        onAdd = if (picker) ({ onIntent(SoundsIntent.Add(row.id, fromRecent)) }) else ({ onIntent(SoundsIntent.Use(row.id, fromRecent)) }),
+        usesInNewMeme = !picker,
         modifier = fade.padding(horizontal = MemixSpacing.space2, vertical = MemixSpacing.space2),
         // The picker is a sheet on `surface`, where the playing band must be one step up.
         onSurface = picker,

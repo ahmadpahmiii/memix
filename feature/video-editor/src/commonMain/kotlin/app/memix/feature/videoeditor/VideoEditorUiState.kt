@@ -334,6 +334,9 @@ enum class Explanation {
 
     /** The phone has no room to copy a library sound into the project (P3-05; the Sounds screen's full-phone line). */
     SOUND_NO_SPACE,
+
+    /** The editor opened from a Use flow without the sound that was meant to come along (P3-15). */
+    SOUND_MISSING,
     REPLACE_DETACHED,
 
     /** Volume or Detach audio on a video with no sound track (P1-09). */
@@ -399,11 +402,11 @@ sealed interface ToastMessage {
     /** In reorder mode, after each move, for screen readers only: "Clip 2 of 3". */
     data class ReorderPosition(val position: Int, val count: Int) : ToastMessage
 
-    /** After a meme sound lands, for screen readers only: "Boom added at 3.2 seconds" ([atUs] is where it starts). */
-    data class SoundAdded(val title: LocalizedText, val atUs: Long) : ToastMessage
+    /** After a meme sound lands, for screen readers only: "Boom added at 3.2 seconds" ([atUs] is where it starts). A sound with no known [title] is "Sound added at 3.2 seconds". */
+    data class SoundAdded(val title: LocalizedText?, val atUs: Long) : ToastMessage
 
     /** After a library sound landed with more than half a second past the end of the video: shown as the trim-or-move toast, spoken with the name and time (P3-05). */
-    data class SoundPastEnd(val title: LocalizedText, val atUs: Long) : ToastMessage
+    data class SoundPastEnd(val title: LocalizedText?, val atUs: Long) : ToastMessage
 
     /** After a new caption lands, for screen readers only: "Text added at 3.2 seconds" ([atUs] is where it starts). */
     data class TextAdded(val atUs: Long) : ToastMessage
@@ -462,6 +465,12 @@ class EditorPreview internal constructor(internal val session: PreviewSession) {
 sealed interface VideoEditorIntent {
     /** The editor made from a photo (Make it a video meme) has finished arriving: the Meme sounds sheet opens by itself. */
     data object ArrivedFromPhoto : VideoEditorIntent
+
+    /** The editor opened from the Sounds tab's Use flow (P3-15) and has arrived: its sound at 0:00 bonks once and the phone ticks. */
+    data object ArrivedWithSound : VideoEditorIntent
+
+    /** The same, but the sound did not come along: a toast says so. */
+    data object ArrivedWithoutSound : VideoEditorIntent
 
     /** Got it on the one-time note, or its time ran out. */
     data object DismissVideoMemeNote : VideoEditorIntent

@@ -2,6 +2,7 @@ package app.memix.feature.mediaimport
 
 import androidx.compose.runtime.Immutable
 import app.memix.core.domain.media.ImportFailure
+import app.memix.core.domain.sound.PendingSound
 import app.memix.core.model.project.MediaOrigin
 import kotlinx.collections.immutable.ImmutableList
 
@@ -112,8 +113,14 @@ data class NotAddedItemUi(
 )
 
 sealed interface ImportIntent {
-    /** The picker returned; an empty list means nothing was picked. */
-    data class Picked(val items: List<MediaOrigin>) : ImportIntent
+    /**
+     * The picker returned; an empty list means nothing was picked. [restoredSound] is the library sound a Use (P3-15) had
+     * saved before Android restarted the app behind the picker; null otherwise.
+     */
+    data class Picked(val items: List<MediaOrigin>, val restoredSound: PendingSound? = null) : ImportIntent
+
+    /** "Pick again" on "None went in": the sheet closes and the picker opens again, so a waiting library sound stays. */
+    data object PickAgain : ImportIntent
 
     /** The picker couldn't open: the phone has no app for it. */
     data object PickerUnavailable : ImportIntent

@@ -272,6 +272,15 @@ sealed interface SoundsIntent {
     /** The picker's "Add to video" on the details pane. */
     data object AddFromDetails : SoundsIntent
 
+    /** The Sounds tab's Use block (P3-15): a new video meme starts with the sound. [fromRecent]: as for [Add]. */
+    data class Use(val soundId: String, val fromRecent: Boolean = false) : SoundsIntent
+
+    /** The details sheet's "Use in a video meme". */
+    data object UseFromDetails : SoundsIntent
+
+    /** The system picker a Use opened is gone, with a pick or without: the row takes taps again and the sound may be cleaned up. */
+    data object UseFinished : SoundsIntent
+
     /** The picker's sheet started to close (a sound landed, or it was dismissed): stop what plays and loads. */
     data object PickerClosed : SoundsIntent
 

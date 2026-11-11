@@ -93,6 +93,7 @@ import app.memix.core.designsystem.component.Toast
 import app.memix.core.designsystem.component.ToastAction
 import app.memix.core.designsystem.component.coveredByModal
 import app.memix.core.domain.media.ImportMediaUseCase
+import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.project.Transform
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.ui.editor.CanvasFrame
@@ -145,6 +146,7 @@ import memix.core.ui.generated.resources.a11y_edit_on_item
 import memix.feature.video_editor.generated.resources.a11y_media_added
 import memix.feature.video_editor.generated.resources.a11y_reorder_position
 import memix.feature.video_editor.generated.resources.a11y_sound_added
+import memix.feature.video_editor.generated.resources.a11y_sound_added_unnamed
 import memix.feature.video_editor.generated.resources.a11y_text_added
 import memix.core.ui.generated.resources.a11y_text_position
 import memix.core.ui.generated.resources.a11y_text_transformed
@@ -224,6 +226,7 @@ import memix.core.ui.generated.resources.position_size_value
 import memix.core.ui.generated.resources.sound_dl_storage_toast
 import memix.feature.video_editor.generated.resources.toast_export_fps_lowered
 import memix.feature.video_editor.generated.resources.toast_export_res_lowered
+import memix.feature.video_editor.generated.resources.use_sound_missing_toast
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -826,10 +829,16 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
 // What a screen reader hears when it differs from the words on the toast: the landing before the trim-or-move advice.
 @Composable
 private fun spokenText(message: ToastMessage): String? = when (message) {
-    is ToastMessage.SoundPastEnd -> stringResource(
-        Res.string.a11y_sound_added, message.title.inLanguage(LocalLocale.current.language), spokenTime(message.atUs),
-    ) + " " + stringResource(Res.string.picker_overhang_toast)
+    is ToastMessage.SoundPastEnd -> soundAddedText(message.title, message.atUs) + " " + stringResource(Res.string.picker_overhang_toast)
     else -> null
+}
+
+// "{name} added at {time}", or without the name when the sound has none (a sound the catalog copy doesn't know).
+@Composable
+private fun soundAddedText(title: LocalizedText?, atUs: Long): String {
+    val name = title?.inLanguage(LocalLocale.current.language).orEmpty()
+    return if (name.isBlank()) stringResource(Res.string.a11y_sound_added_unnamed, spokenTime(atUs))
+    else stringResource(Res.string.a11y_sound_added, name, spokenTime(atUs))
 }
 
 private fun Modifier.spokenAs(text: String?): Modifier = if (text == null) this else semantics { contentDescription = text }
@@ -842,8 +851,7 @@ private fun toastText(message: ToastMessage): String = when (message) {
     is ToastMessage.Explain -> explanationText(message.explanation)
     is ToastMessage.Edited -> stringResource(UiRes.string.a11y_edit_on_item, editName(message.edit), spokenName(message.item))
     is ToastMessage.ReorderPosition -> stringResource(Res.string.a11y_reorder_position, message.position, message.count)
-    is ToastMessage.SoundAdded ->
-        stringResource(Res.string.a11y_sound_added, message.title.inLanguage(LocalLocale.current.language), spokenTime(message.atUs))
+    is ToastMessage.SoundAdded -> soundAddedText(message.title, message.atUs)
     is ToastMessage.MediaAdded -> pluralStringResource(Res.plurals.a11y_media_added, message.count, message.count)
     is ToastMessage.TextAdded -> stringResource(Res.string.a11y_text_added, spokenTime(message.atUs))
     is ToastMessage.TextPositioned -> stringResource(UiRes.string.a11y_text_position, message.acrossPercent, message.downPercent)
@@ -913,6 +921,7 @@ private fun explanationText(explanation: Explanation): String = stringResource(
         Explanation.ALREADY_LAST -> Res.string.explain_reorder_last
         Explanation.SOUND_UNREADABLE -> Res.string.explain_sound_unreadable
         Explanation.SOUND_NO_SPACE -> UiRes.string.sound_dl_storage_toast
+        Explanation.SOUND_MISSING -> Res.string.use_sound_missing_toast
         Explanation.REPLACE_DETACHED -> Res.string.explain_replace_detached
         Explanation.NO_SOUND -> Res.string.explain_no_sound
         Explanation.DETACHED -> Res.string.explain_detached

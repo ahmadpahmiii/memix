@@ -139,4 +139,6 @@
     <string name="make_video_note">Suas camadas agora são uma só imagem, exceto o texto no topo, que continua editável.</string>
     <string name="make_video_note_ok">Entendi</string>
     <string name="picker_overhang_toast">O final deste som passa do fim do seu vídeo, então não será ouvido. Corte-o ou mova-o para antes.</string>
+    <string name="use_sound_missing_toast">O som não veio junto. Adicione-o em Sons de memes.</string>
+    <string name="a11y_sound_added_unnamed">Som adicionado em %1$s</string>
 </resources>

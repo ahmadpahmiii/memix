@@ -44,6 +44,8 @@ import app.memix.core.designsystem.MemixTheme
 import app.memix.core.designsystem.Text
 import app.memix.core.designsystem.focusRing
 import app.memix.core.designsystem.pressedColor
+import app.memix.core.designsystem.component.Button
+import app.memix.core.designsystem.component.ButtonVariant
 import app.memix.core.designsystem.component.FadingToast
 import app.memix.core.designsystem.component.Sheet
 import app.memix.core.designsystem.component.SoundFavoriteHeart
@@ -59,6 +61,7 @@ import memix.core.ui.generated.resources.sound_dl_failed
 import memix.core.ui.generated.resources.sound_dl_failed_storage
 import memix.feature.sounds.generated.resources.Res
 import memix.feature.sounds.generated.resources.sound_detail_offline_note
+import memix.feature.sounds.generated.resources.sound_detail_use
 import memix.feature.sounds.generated.resources.sound_detail_not_saved_now
 import memix.feature.sounds.generated.resources.sound_detail_saved
 import memix.feature.sounds.generated.resources.sound_detail_unavailable_note
@@ -83,8 +86,8 @@ import org.jetbrains.compose.resources.stringResource
  * comes from (credit, license, source) so a CC BY credit is always one tap away. The app places it over the bottom nav,
  * as it does the other sheets. It is always composed, so opening it animates; its content is kept while it slides out.
  *
- * The Report pane (P3-10) swaps in for the body of this sheet, and "Use in a video meme" (P3-15) joins the bottom of
- * it; [DetailsBody] is the part they replace or extend.
+ * The Report pane (P3-10) swaps in for the body of this sheet; [DetailsBody] is the part it replaces. "Use in a video
+ * meme" (P3-15) is the sheet's one blue action, under the body.
  */
 @Composable
 fun SoundDetailsSheet(state: State<SoundsUiState>, clock: PlaybackClock, onIntent: (SoundsIntent) -> Unit, modifier: Modifier = Modifier) {
@@ -124,7 +127,10 @@ fun SoundDetailsSheet(state: State<SoundsUiState>, clock: PlaybackClock, onInten
                 }
             },
         ) {
-            if (details != null) DetailsBody(details, name, playback, peaks, look, downloadProgress, onPhone, position, language, onIntent)
+            if (details != null) {
+                DetailsBody(details, name, playback, peaks, look, downloadProgress, onPhone, position, language, onIntent)
+                UseInMemeButton(look, onIntent)
+            }
         }
         FadingToast(toast, Modifier.align(Alignment.BottomCenter).padding(MemixSpacing.space4)) { shown ->
             Toast(soundsToastText(shown))
@@ -234,6 +240,24 @@ private fun SourceFact(url: String, host: String, onOpenFailed: () -> Unit) {
         Text(stringResource(Res.string.sound_detail_source), MemixTheme.type.label, color = MemixColors.textSecondary)
         Text(host, MemixTheme.type.body, color = MemixColors.primary)
     }
+}
+
+/**
+ * "Use in a video meme" (spec P3-15): starts a new video meme with this sound. A sound that is not on the phone downloads
+ * first, and the label says so and ignores taps. It is one button throughout, so screen-reader focus stays on it while the
+ * label cross-fades. A sound that cannot be had offline, or was removed, has no button: the line under the player says why.
+ */
+@Composable
+private fun UseInMemeButton(look: SoundRowLook, onIntent: (SoundsIntent) -> Unit) {
+    if (look == SoundRowLook.OFFLINE_NOT_SAVED || look == SoundRowLook.UNAVAILABLE) return
+    val downloading = look == SoundRowLook.DOWNLOADING
+    Button(
+        stringResource(if (downloading) UiRes.string.sound_dl_downloading else Res.string.sound_detail_use),
+        { onIntent(SoundsIntent.UseFromDetails) },
+        Modifier.fillMaxWidth(),
+        variant = ButtonVariant.Primary,
+        busy = downloading || look == SoundRowLook.FAILED_STORAGE,
+    )
 }
 
 /** The words that replace the time while the sound can't just play; null when it plays as normal. */

@@ -139,4 +139,6 @@
     <string name="make_video_note">Tus capas ahora son una sola imagen, salvo el texto de arriba, que sigue siendo editable.</string>
     <string name="make_video_note_ok">Entendido</string>
     <string name="picker_overhang_toast">El final de este sonido pasa del final de tu video, así que no se oirá. Recórtalo o muévelo antes.</string>
+    <string name="use_sound_missing_toast">El sonido no se incluyó. Añádelo desde Sonidos de memes.</string>
+    <string name="a11y_sound_added_unnamed">Sonido añadido en %1$s</string>
 </resources>

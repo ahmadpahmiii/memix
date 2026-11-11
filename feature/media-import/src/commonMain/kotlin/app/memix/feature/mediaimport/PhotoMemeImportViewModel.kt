@@ -29,7 +29,7 @@ class PhotoMemeImportViewModel(
     override fun onIntent(intent: ImportIntent) {
         when (intent) {
             is ImportIntent.Picked -> startImport(intent.items)
-            ImportIntent.PickerUnavailable, ImportIntent.Cancel, ImportIntent.Continue, ImportIntent.Close,
+            ImportIntent.PickerUnavailable, ImportIntent.Cancel, ImportIntent.Continue, ImportIntent.Close, ImportIntent.PickAgain,
             ImportIntent.AppResumed, ImportIntent.FreeUpSpaceUnavailable, ImportIntent.Finish,
             -> flow.onIntent(intent)
         }

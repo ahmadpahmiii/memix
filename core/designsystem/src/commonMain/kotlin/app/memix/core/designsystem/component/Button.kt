@@ -1,5 +1,7 @@
 package app.memix.core.designsystem.component
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.memix.core.designsystem.Icon
 import app.memix.core.designsystem.MemixColors
+import app.memix.core.designsystem.MemixMotion
 import app.memix.core.designsystem.MemixShapes
 import app.memix.core.designsystem.MemixSize
 import app.memix.core.designsystem.MemixSpacing
@@ -63,7 +66,10 @@ fun Button(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leadingIcon != null) Icon(leadingIcon, contentDescription = null, tint = content, size = 20.dp)
-        Text(text, MemixTheme.type.bodyStrong, color = content, textAlign = TextAlign.Center)
+        // A label that changes (Use in a video meme -> Downloading...) fades in `duration-press`; the button itself stays one focusable node.
+        Crossfade(text, animationSpec = tween(MemixMotion.durationPress), label = "button-label") { label ->
+            Text(label, MemixTheme.type.bodyStrong, color = content, textAlign = TextAlign.Center)
+        }
     }
 }
 

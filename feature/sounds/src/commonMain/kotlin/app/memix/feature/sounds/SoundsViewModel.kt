@@ -97,7 +97,10 @@ class SoundsViewModel(
 
     private val _picks = Channel<PickedSound>(Channel.BUFFERED)
 
-    /** The picker only: a sound the user added, with its file ready. The editor lands it and closes the sheet. */
+    /**
+     * A sound the user added in the picker, or chose with Use on the Sounds tab, with its file ready. The editor lands it
+     * and closes the sheet; the app root starts a new video meme with it ([SoundsIntent.UseFinished] ends the Use).
+     */
     val picks: Flow<PickedSound> = _picks.receiveAsFlow()
 
     private val _notices = Channel<SoundsToast>(Channel.BUFFERED)
@@ -247,6 +250,9 @@ class SoundsViewModel(
             SoundsIntent.LeftScreen -> leaveScreen()
             is SoundsIntent.Add -> { dropFocusReturn(); add(intent.soundId, tabOf(intent.fromRecent)) }
             SoundsIntent.AddFromDetails -> detailsSound?.let { add(it.id, detailsTab) }
+            is SoundsIntent.Use -> { dropFocusReturn(); use(intent.soundId, tabOf(intent.fromRecent)) }
+            SoundsIntent.UseFromDetails -> detailsSound?.let { use(it.id, detailsTab) }
+            SoundsIntent.UseFinished -> finishUse()
             SoundsIntent.PickerClosed -> closePicker()
             SoundsIntent.PickerExited -> resetPickerVisit()
         }
@@ -620,10 +626,19 @@ class SoundsViewModel(
         updateState { it.copy(addingId = soundId) }
     }
 
-    // The Add block: the sound's file is made ready (downloaded first when needed) and handed to the editor, which lands it.
-    // A row that downloads, has no room or cannot be reached has no working block; a second tap on the same row is ignored.
+    // The picker's Add block: the sound's file is made ready (downloaded first when needed) and handed to the editor, which lands it.
     private fun add(soundId: String, tab: SoundTab) {
-        if (mode != SoundsMode.PICKER || pickSent || addingId == soundId) return
+        if (mode == SoundsMode.PICKER) handOver(soundId, tab)
+    }
+
+    // The Sounds tab's Use block (P3-15): the same, handed to the app root, which opens the system picker for the media.
+    private fun use(soundId: String, tab: SoundTab) {
+        if (mode == SoundsMode.LIBRARY) handOver(soundId, tab)
+    }
+
+    // A row that downloads, has no room or cannot be reached has no working block; a second tap on the same row is ignored.
+    private fun handOver(soundId: String, tab: SoundTab) {
+        if (pickSent || addingId == soundId) return
         when (state.value.lookOf(soundId)) {
             SoundRowLook.DOWNLOADING, SoundRowLook.FAILED_STORAGE, SoundRowLook.OFFLINE_NOT_SAVED, SoundRowLook.UNAVAILABLE -> return
             SoundRowLook.NORMAL, SoundRowLook.FAILED -> Unit
@@ -635,9 +650,19 @@ class SoundsViewModel(
             onReady = { prepared ->
                 pickSent = true
                 _picks.trySend(PickedSound(soundId, sound.title, prepared.media, tab, prepared.bundled))
+                // The details sheet closes as the system picker opens (spec P3-15 → The flow).
+                if (mode == SoundsMode.LIBRARY) closeDetails()
             },
             onAbort = { if (addingId == soundId) setAdding(null) },
         )
+    }
+
+    // The picker a Use opened has gone: the app holds the sound itself from the hand-over on, so this pin can go.
+    private fun finishUse() {
+        if (mode != SoundsMode.LIBRARY) return
+        preview.endAdd()
+        setAdding(null)
+        pickSent = false
     }
 
     // ---- Details sheet ----

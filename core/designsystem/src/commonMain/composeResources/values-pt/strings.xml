@@ -12,4 +12,5 @@
     <string name="sound_action_details">Ver detalhes</string>
     <string name="sound_a11y_cancel_download">Cancelar o download de %1$s</string>
     <string name="sound_a11y_retry">Tentar de novo: baixar %1$s</string>
+    <string name="sound_a11y_use">Usar %1$s em um novo meme de vídeo</string>
 </resources>

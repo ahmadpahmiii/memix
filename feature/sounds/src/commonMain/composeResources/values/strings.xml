@@ -77,4 +77,5 @@
     <string name="sound_detail_not_saved_now">Not saved on this phone</string>
     <string name="picker_back_a11y">Back to sounds</string>
     <string name="sound_detail_add_to_video">Add to video</string>
+    <string name="sound_detail_use">Use in a video meme</string>
 </resources>

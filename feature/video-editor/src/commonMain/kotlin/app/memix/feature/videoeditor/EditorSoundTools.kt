@@ -8,9 +8,12 @@ import app.memix.core.domain.project.unheardTailUs
 import app.memix.core.domain.project.videoLengthUs
 import app.memix.core.domain.sound.PickedSound
 import app.memix.core.model.catalog.LocalizedText
+import app.memix.core.model.project.AudioClip
+import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.ProjectType
+import app.memix.core.model.project.TrackKind
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.coroutines.launch
 
@@ -79,6 +82,24 @@ internal class EditorSoundTools(private val sounds: EditorSounds, private val ho
         }
     }
 
+    /**
+     * The editor opened from the Sounds tab's Use flow (spec P3-15 → Arriving): the project already has the sound at 0:00.
+     * It bonks once and the phone gives the Confirm haptic, as for any sound that lands, but nothing is selected, so the main tool
+     * bar stays, and no step is recorded, so Undo stays empty. A sound that runs more than half a second past the video's end
+     * gets the trim-or-move toast; otherwise the landing is only spoken.
+     */
+    fun showStartingSound() {
+        val project = host.currentProject() ?: return
+        val clip = project.firstMemeSound() ?: return
+        // The title is known by now: the draft's titles load as it opens, a push earlier. Without it the sentence has no name.
+        val title = titles[(clip.source.origin as? MediaOrigin.CatalogItem)?.itemId]
+        host.updateUiState { it.copy(landed = host.newLanding(persistentSetOf(clip.id), isSound = true)) }
+        announceLanding(title, clip.startUs, clip.durationUs)
+    }
+
+    private fun Project.firstMemeSound(): AudioClip? = video?.tracks.orEmpty()
+        .firstOrNull { it.kind == TrackKind.MEME_SOUND }?.items?.firstOrNull() as? AudioClip
+
     // The file could not be copied: no room (the phone-is-full line) or the cache file is gone (the "won't play" line).
     private fun cannotAdd(error: AppError) {
         host.showToast(ToastMessage.Explain(if (error == AppError.StorageFull) Explanation.SOUND_NO_SPACE else Explanation.SOUND_UNREADABLE))
@@ -101,7 +122,7 @@ internal class EditorSoundTools(private val sounds: EditorSounds, private val ho
         val landed = host.newLanding(persistentSetOf(clipId), isSound = true)
         host.updateUiState { it.withSelection(clipId, host.currentProject()).copy(landed = landed) }
         val startUs = host.uiState.timeline.item(clipId)?.startUs ?: playheadAtOpenUs
-        announceLanding(picked, startUs, file.durationUs ?: 0L)
+        announceLanding(picked.title, startUs, file.durationUs ?: 0L)
         // The new sound's tools are up; focus goes to its Volume tool (spec P1-06 → Accessibility).
         host.returnFocusTo(FocusTarget.VOLUME_TOOL)
     }
@@ -109,9 +130,9 @@ internal class EditorSoundTools(private val sounds: EditorSounds, private val ho
     // A sound that runs past the end of the video lands where the user chose; more than half a second that nobody hears gets a
     // toast with the two fixes (spec P3-05 → Where it lands). That toast also speaks "{name} added at {time}", so a screen
     // reader hears both in one message; otherwise the landing is only spoken.
-    private fun announceLanding(picked: PickedSound, startUs: Long, lengthUs: Long) {
+    private fun announceLanding(title: LocalizedText?, startUs: Long, lengthUs: Long) {
         val videoLengthUs = host.currentProject()?.videoLengthUs() ?: 0L
         val pastEnd = unheardTailUs(startUs, lengthUs, videoLengthUs) > OVERHANG_NOTICE_US
-        host.showToast(if (pastEnd) ToastMessage.SoundPastEnd(picked.title, startUs) else ToastMessage.SoundAdded(picked.title, startUs), spokenOnly = !pastEnd)
+        host.showToast(if (pastEnd) ToastMessage.SoundPastEnd(title, startUs) else ToastMessage.SoundAdded(title, startUs), spokenOnly = !pastEnd)
     }
 }

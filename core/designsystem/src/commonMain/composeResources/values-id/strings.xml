@@ -12,4 +12,5 @@
     <string name="sound_action_details">Lihat detail</string>
     <string name="sound_a11y_cancel_download">Batalkan unduhan %1$s</string>
     <string name="sound_a11y_retry">Coba lagi: unduh %1$s</string>
+    <string name="sound_a11y_use">Pakai %1$s di meme video baru</string>
 </resources>

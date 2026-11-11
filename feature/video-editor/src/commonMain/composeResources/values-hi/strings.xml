@@ -139,4 +139,6 @@
     <string name="make_video_note">आपकी लेयर अब एक ही तस्वीर हैं, सिर्फ़ ऊपर का टेक्स्ट छोड़कर, जो बदला जा सकता है।</string>
     <string name="make_video_note_ok">ठीक है</string>
     <string name="picker_overhang_toast">इस आवाज़ का आखिरी हिस्सा आपके वीडियो के बाद है, इसलिए वह नहीं बजेगा। उसे ट्रिम करें या पहले खिसकाएँ।</string>
+    <string name="use_sound_missing_toast">आवाज़ साथ नहीं आई। इसे मीम साउंड से जोड़ें।</string>
+    <string name="a11y_sound_added_unnamed">आवाज़ %1$s पर जोड़ी गई</string>
 </resources>

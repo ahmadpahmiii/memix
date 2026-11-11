@@ -79,7 +79,7 @@ internal class MediaImportFlow(
             ImportIntent.PickerUnavailable -> if (state.value == ImportUiState.Idle) updateState { ImportUiState.NoPicker }
             ImportIntent.Cancel -> cancelImport()
             ImportIntent.Continue -> continueAfterPartialResult()
-            ImportIntent.Close -> closeResult()
+            ImportIntent.Close, ImportIntent.PickAgain -> closeResult()
             ImportIntent.AppResumed -> retryIfSpaceWasFreed()
             ImportIntent.FreeUpSpaceUnavailable -> hideFreeUpSpace()
             ImportIntent.Finish -> if (state.value is ImportUiState.Done) reset()

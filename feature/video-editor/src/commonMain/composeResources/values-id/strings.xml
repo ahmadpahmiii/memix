@@ -139,4 +139,6 @@
     <string name="make_video_note">Lapisanmu sekarang jadi satu gambar, kecuali teks di atas, yang tetap bisa diedit.</string>
     <string name="make_video_note_ok">Mengerti</string>
     <string name="picker_overhang_toast">Ujung suara ini melewati akhir videomu, jadi tidak akan terdengar. Pangkas atau geser lebih awal.</string>
+    <string name="use_sound_missing_toast">Suaranya tidak ikut. Tambahkan dari Suara meme.</string>
+    <string name="a11y_sound_added_unnamed">Suara ditambahkan di %1$s</string>
 </resources>

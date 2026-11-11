@@ -45,6 +45,7 @@ import app.memix.core.designsystem.focusRing
 import app.memix.core.designsystem.pressedColor
 import memix.core.designsystem.generated.resources.Res
 import memix.core.designsystem.generated.resources.sound_a11y_cancel_download
+import memix.core.designsystem.generated.resources.sound_a11y_use
 import memix.core.designsystem.generated.resources.sound_a11y_retry
 import memix.core.designsystem.generated.resources.sound_action_details
 import memix.core.designsystem.generated.resources.sound_action_favorite
@@ -86,8 +87,9 @@ enum class SoundRowLook {
  * One meme sound. Sound controls are Memix blue everywhere, so this row may carry blue next to a screen's main action.
  * The title takes up to two lines; the meta line is never cut, because it can hold a license's credit. Without
  * [onFavoriteChange] the favorite heart isn't shown (the editor's sounds sheet has no Favorites list, P1-08); the heart
- * is a switch, so screen readers say "on" or "off" (P3-06). Without [onAdd] the blue block isn't shown (the Sounds
- * screen draws it only once the Use flow exists, P3-15).
+ * is a switch, so screen readers say "on" or "off" (P3-06). Without [onAdd] the blue block isn't shown. The block adds
+ * the sound to the open video, or with [usesInNewMeme] (the Sounds tab, P3-15) starts a new video meme with it; only its
+ * spoken name differs.
  *
  * While playing or paused, the row sits one value step above its container: `surface` on `canvas`, or `surface-raised`
  * when it's [onSurface] (inside a sheet), where a `surface` band wouldn't show. A playing row shows [progress] under its
@@ -119,6 +121,7 @@ fun SoundRow(
     look: SoundRowLook = SoundRowLook.NORMAL,
     /** The sound is being made ready to land (P3-05): the Add block looks disabled and is disabled for screen readers too. */
     addInProgress: Boolean = false,
+    usesInNewMeme: Boolean = false,
 ) {
     val playingBand = if (onSurface) MemixColors.surfaceRaised else MemixColors.surface
     Row(
@@ -143,7 +146,7 @@ fun SoundRow(
             if (progress != null) ProgressUnderName(progress)
         }
         if (onFavoriteChange != null) SoundFavoriteHeart(name, isFavorite, onFavoriteChange)
-        if (onAdd != null) AddSlot(name, look, addInProgress, onAdd)
+        if (onAdd != null) AddSlot(name, look, addInProgress, usesInNewMeme, onAdd)
     }
 }
 
@@ -162,11 +165,11 @@ private fun MetaLine(meta: String, look: SoundRowLook) {
 
 /** The Add block, or an empty slot of its size when it can't be used, so names don't jump when the connection returns. */
 @Composable
-private fun AddSlot(name: String, look: SoundRowLook, inProgress: Boolean, onAdd: () -> Unit) {
+private fun AddSlot(name: String, look: SoundRowLook, inProgress: Boolean, usesInNewMeme: Boolean, onAdd: () -> Unit) {
     when {
         look.isDisabled -> Box(Modifier.size(MemixSize.touchTarget))
         else -> AddSoundButton(
-            stringResource(Res.string.sound_add, name),
+            stringResource(if (usesInNewMeme) Res.string.sound_a11y_use else Res.string.sound_add, name),
             onAdd,
             enabled = !inProgress && look != SoundRowLook.DOWNLOADING && look != SoundRowLook.FAILED_STORAGE,
         )
