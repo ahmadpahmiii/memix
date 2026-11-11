@@ -87,3 +87,7 @@ intake/
 # ---- Manual QA scratch (sample media and pulled exports)
 qa-media/
 qa-out/
+
+# ---- Content intake (P3-12): downloaded sources and processed audio stay local; batch.json, proofs/, review.md and load.sql are committed
+content/intake/*/source/
+content/intake/*/out/

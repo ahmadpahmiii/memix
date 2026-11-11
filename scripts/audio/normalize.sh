@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Normalize one sound to the content-intake target: -16 LUFS integrated, true peak <= -1 dBTP,
 # AAC 128 kbps .m4a at 48 kHz.
-# Usage: normalize.sh <input> <output.m4a> [start_s] [duration_s] [fade_in_s] [fade_out_s]
+# Usage: normalize.sh <input> <output.m4a> [start_s] [duration_s] [fade_in_s] [fade_out_s] [peak_cap_dbtp]
 #   start_s/duration_s optionally cut an excerpt (e.g. 3 s of a long cricket recording).
 #   fade_in_s/fade_out_s optionally fade the excerpt's edges (0 = none).
+#   peak_cap_dbtp is the true-peak cap before encoding (default -1.5); intake_sounds.py lowers it for one retry
+#   when the encoded file still measures above -1 dBTP.
 # Method: cut + fades -> trim leading/trailing silence below (peak - 60 dB), floor -90 dBFS, so quiet
 # recordings keep their tails -> measure with ffmpeg's ebur128 meter (short clips padded to 3 s;
 # silence does not change gated loudness) -> one linear gain = min(-16 - I, -1.5 - TP) -> encode.
@@ -13,7 +15,7 @@
 # Intermediates (<out>.cut.wav, <out>.trim.wav) are kept next to the output; write the output to a
 # scratch folder and copy the .m4a into the repo.
 set -euo pipefail
-in="$1"; out="$2"; ss="${3:-0}"; dur="${4:-}"; fin="${5:-0}"; fout="${6:-0}"
+in="$1"; out="$2"; ss="${3:-0}"; dur="${4:-}"; fin="${5:-0}"; fout="${6:-0}"; cap="${7:--1.5}"
 cut=(-ss "$ss"); [[ -n "$dur" ]] && cut+=(-t "$dur")
 base="${out%.*}"; cutwav="$base.cut.wav"; trimmed="$base.trim.wav"
 
@@ -37,7 +39,7 @@ ffmpeg -nostdin -v error -y -i "$cutwav" \
 
 r="$(ffmpeg -nostdin -hide_banner -i "$trimmed" -af "apad=whole_dur=3,ebur128=peak=true" -f null - 2>&1 | sed -n '/Summary:/,$p')"
 I="$(awk '/ I:/{print $2; exit}' <<<"$r")"; TP="$(awk '/Peak:/{print $2; exit}' <<<"$r")"
-gain="$(python3 -I -c "import sys; i,tp=float(sys.argv[1]),float(sys.argv[2]); print(f'{min(-16.0-i, -1.5-tp):.2f}')" "$I" "$TP")"
+gain="$(python3 -I -c "import sys; i,tp,cap=map(float,sys.argv[1:4]); print(f'{min(-16.0-i, cap-tp):.2f}')" "$I" "$TP" "$cap")"
 ffmpeg -nostdin -v error -y -i "$trimmed" -af "volume=${gain}dB" -ar 48000 -c:a aac -b:a 128k -movflags +faststart "$out"
 len="$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$trimmed")"
 echo "peak_dB=$peak trim_thr_dB=$thr in_I=$I in_TP=$TP gain_dB=$gain trimmed_s=$len -> $out"

@@ -30,7 +30,7 @@ Keep the keystore outside the repo folder (for example `~/keys/memix-upload.jks`
 | Supabase project URL (`https://<project-ref>.supabase.co`) | Public | P0-06, P3-01 | `local.properties` → `memix.supabase.url` | `SUPABASE_URL` | Yes |
 | Supabase publishable key (`sb_publishable_…`, formerly "anon") | Public; RLS lets it only read active rows and insert reports | P0-06, P3-01 | `local.properties` → `memix.supabase.publishableKey` | `SUPABASE_PUBLISHABLE_KEY` | Yes |
 | Supabase project URL, for scripts | Public | P3-13 | `.env` → `SUPABASE_URL` (same value as above) | Not in CI | n/a |
-| Supabase secret key (`sb_secret_…`, formerly "service_role") | **Secret**; bypasses RLS. **Owner only:** this checkout and cloud sessions never hold it; the owner puts it in `.env` on the Mac and runs the uploads | P3-13 upload script, P3-12 intake script | `.env` → `SUPABASE_SECRET_KEY` | Not in CI | **Never** |
+| Supabase secret key (`sb_secret_…`, formerly "service_role") | **Secret**; bypasses RLS. **Owner only:** this checkout and cloud sessions never hold it; the owner puts it in `.env` on the Mac and runs the uploads | P3-13 upload script, P3-12 intake script (`load`) | `.env` → `SUPABASE_SECRET_KEY` | Not in CI | **Never** |
 | Supabase database password | **Secret** | Migrations via CLI, if used | `.env` → `SUPABASE_DB_PASSWORD` | Not in CI | **Never** |
 | Supabase personal access token | **Secret** | Supabase CLI or MCP without OAuth | `.env` → `SUPABASE_ACCESS_TOKEN` | Not in CI | **Never** |
 | Cloudflare account ID | Identifier | P0-07 | `.env` → `R2_ACCOUNT_ID` | Not in CI | No |
@@ -45,7 +45,7 @@ Keep the keystore outside the repo folder (for example `~/keys/memix-upload.jks`
 | Apple distribution certificate (`.p12`) and its password | **Secret** | P7-01 | Keychain on the Mac | `IOS_CERT_P12_BASE64`, `IOS_CERT_PASSWORD` | No |
 | Apple provisioning profile | **Secret** | P7-01 | `~/Library/MobileDevice/Provisioning Profiles` | `IOS_PROVISIONING_PROFILE_BASE64` | No |
 | App Store Connect API key (`AuthKey_<id>.p8`, key ID, issuer ID) | **Secret** | P7-01, P7-10 | Outside the repo | `ASC_KEY_P8_BASE64`, `ASC_KEY_ID`, `ASC_ISSUER_ID` | **Never** |
-| Freesound API key (finding CC0 sounds) | **Secret** | P3-12 | `.env` → `FREESOUND_API_KEY` | Not in CI | **Never** |
+| Freesound API key (finding CC0 and CC-BY sounds) | **Secret**; owner only, never in a cloud session. Used by `intake_sounds.py fetch` (sent in a header, never printed); the other steps and every `--dry-run` need no key | P3-12a, P3-12b | `.env` → `FREESOUND_API_KEY` | Not in CI | **Never** |
 
 ## Not stored anywhere in the project
 

@@ -476,7 +476,7 @@ create table sounds (
   id uuid primary key default gen_random_uuid(),
   file_path text not null,             -- storage key (Supabase Storage now, R2 later): sounds/<yyyy>/<mm>/<id>.m4a
   duration_ms int not null,
-  waveform_path text
+  waveform_path text                   -- waveforms/<yyyy>/<mm>/<id>.json: {"v":1,"peaks":[64 numbers 0..1]}
   -- + shared catalog columns
 );
 
@@ -534,14 +534,26 @@ create index sounds_tags on sounds using gin (tags);
 
 Until phase 4, the Supabase dashboard is the CMS and a desktop script does the file work. A small admin web page (bulk upload, waveform generation, trending editor) comes in phase 4, hosted separately from the app.
 
-**Adding a sound**
+**Adding sounds (P3-12a script, P3-12b loads them)**
 
-1. Find a candidate: Freesound with the CC0 filter, Pixabay, or record your own recreation.
-2. Save the license proof: the license page URL plus a screenshot.
-3. Run the intake script: trims silence, normalizes to −16 LUFS with −1 dBTP peaks, encodes AAC 128 kbps `.m4a`, and writes a waveform JSON. Desktop tools such as ffmpeg are fine here because they never ship inside the app.
-4. Upload the files under `sounds/<yyyy>/<mm>/<id>.m4a` with `python3 scripts/media/upload_media.py <file> <key>` (Supabase Storage until P6-07, then R2 under the same keys). Add `--dry-run` first.
-5. Add the row in the Supabase table editor with every license field filled.
-6. Check it in the app after the next catalog refresh.
+`scripts/media/intake_sounds.py` works on a **batch**: one folder `content/intake/<name>/` of about 50 sounds holding `batch.json` (one row per sound), `source/` and `out/` (audio, gitignored), `proofs/`, `review.md` and `load.sql`. Python 3.9+ standard library plus `ffmpeg` and `ffprobe` on the desktop; none of it ships in the app.
+
+1. **`init`**, then **`fetch`** (Freesound API: `FREESOUND_API_KEY` from `.env`, owner only; sends the key in a header, refuses anything that is not CC0 or CC-BY, downloads the HQ preview, writes a text proof snapshot under `proofs/`) or write the row by hand (own recordings, anything found elsewhere; save the license page URL and a screenshot or text snapshot under `proofs/`).
+2. **`prepare`** (`--dry-run` first): the license gate, then `scripts/audio/normalize.sh` (trim silence relative to the peak, one linear gain to −16 LUFS with the true peak capped at −1.5 dBTP before encoding, AAC 128 kbps 48 kHz `.m4a`; one re-encode with more headroom if AAC overshoot leaves the file above −1 dBTP), the waveform, a re-measure, and `review.md`.
+3. **`approve`** (owner): after reading the table, listening in `out/` and opening each source and proof. The approval stores a hash of every catalog field and both files, so any later edit voids it.
+4. **`load`** (`--dry-run` first; live on the owner's Mac): re-runs the gate and the hashes, uploads the `.m4a` then the waveform with `upload_media.py`'s functions (same key rules, headers and read-back), and writes `load.sql`. Apply it in the Supabase SQL editor, or copy it to `supabase/migrations/<yyyymmddhhmm>_sounds_<batch>.sql`. The SQL is `insert … on conflict (id) do nothing`.
+5. Check it in the app after the next catalog refresh.
+
+**Rules the script enforces**
+- **Accepted sources (owner, 11 Nov 2026):** `CC0`, `CC-BY` with a `credit`, and `own`. `royalty-free` and `licensed` are valid database values but are refused until the owner approves that kind of sound; any other value is refused. A `license_url` that is not CC0 or CC-BY (NC, SA, ND) or that disagrees with `license_type` is refused. `source_url` (a page URL, or `own:<where recorded>`), `license_proof` (an https URL, or a file under `content/` in this repo; the row stores that path, and the proof file's hash is part of the approval), `title.en`, a sound category from the seed migration, regions (`global` or two-letter codes), tags (at most 10) and `added_by` are required. The gate runs at prepare, approve and load.
+- **Keys:** `sounds/<yyyy>/<mm>/<id>.m4a` and `waveforms/<yyyy>/<mm>/<id>.json`. `id` (a lowercase UUID, checked) = `uuid5(source_url)`, the starter-sound rule, so the same page cannot enter twice; a changed file needs a `revision` on its row (new id, new key). The month is fixed in `batch.json` when the batch is created.
+- **Length:** 100 ms to 30 s after the silence trim. **Titles** are stored in NFC so Devanagari search sees one spelling per character.
+- **Paths and values:** a batch folder must be inside the repo (`content/intake/<name>`, letters, digits, `_`, `-`); processed files must resolve inside the batch's `out/`; `title` keys are limited to `en`, `id`, `es`, `pt`, `hi`; `trim` values are checked as numbers; a CC-BY credit must be more than the title (`fetch` writes `<title> by <user>, Freesound (CC BY <version>, edited)`). Only rows that pass every check in the current `load` run reach `load.sql`.
+- **Starter sounds:** `starters <dir>` makes a `waveform-only` batch: the waveform of each live audio file (checked against the manifest hash, no re-encode), uploaded by `load`, plus `update public.sounds set waveform_path = … where id = … and waveform_path is null` in `load.sql`.
+- **Secrets:** `.env` only, never printed; `--dry-run` needs none.
+
+**Waveform file (contract with P3-01 and P3-03):** `waveforms/<yyyy>/<mm>/<id>.json`, `{"v":1,"peaks":[...]}` with 64 numbers from 0 to 1 (three decimals): the largest absolute sample in each 1/64 of the sound (mono, 16 kHz), scaled so the loudest bucket is 1, so each sound shows its own shape rather than its loudness. `sounds.waveform_path` holds the key, or null (the app then draws the rail; the starters get theirs from the `waveform-only` batch). The app resamples the 64 values to the bars that fit (max in each bucket, P3-03 spec).
+- **Decoder rules (S5):** read the number of bars from `peaks.size`, never assume 64; ignore unknown fields; if `v` is not 1, or the file is missing or malformed, show the rail and never crash; the values are linear peak amplitude with no curve baked in (the app may apply one at decode time).
 
 Templates and sticker packs follow the same steps with their own folders (`templates/`, `stickers/`, `previews/`).
 
