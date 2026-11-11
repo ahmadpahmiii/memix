@@ -2,6 +2,13 @@
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: Design decisions and their reasons, patterns that worked or failed, recurring review issues, competitor insights.
 
+- 2026-11-11 · P3-05 picker, P3-07 My sounds, P3-15 Use flow specs. Decisions and reasons:
+  - **The picker is one Sheet with panes** (list, details, report, import), never stacked sheets; a toast under a scrim can't be reached, so a storage-full action there is a strip inside the sheet, and Delete/Rename of My sounds live only on the Sounds tab.
+  - **Half-height sheet math:** the header (frame + search + tabs) eats about 190 dp, leaving 1.9 rows at 640 dp tall; so a sheet with a pinned header gets a minimum of header + 3 rows, and chips are dropped in the picker. Do the arithmetic before promising "two taps".
+  - **Overhang rule:** a sound lands at the playhead even past the video's end (toast over 0.5 s says trim or move); silently shifting it would put it where nobody asked.
+  - **"Never uploaded" is a design requirement:** upload-looking icon rejected (`folder`), no file names in analytics, project keeps its own copy, imported sounds stay out of Favorites/Recents (dead rows).
+  - **Cross-spec drift:** P3-04 said "Use block disabled" while the PM's P3-15 row says "no Use block" offline; re-read TICKETS rows against earlier specs and fix both files in the same pass.
+  - **No permission is the answer to "permission denied" for SAF/photo pickers;** the real denial is a provider refusing the read (SecurityException), hard to hit by hand, so QA gets an off-device check.
 - 2026-11-10 · Phase 3 sound-library specs (P3-02/03/04/10 + P3-06 inside P3-02), written with the owner reviewing after the phase. Decisions and reasons:
   - **Row = disc, name block (opens details), heart, Use (blue block).** Tap name = details, disc = play: no room for a "more" button (about 170 dp of text at 360). First user test checks whether people tap the name expecting play.
   - **The Sounds tab has no playhead,** so the board's "+" needed a decision: recommended "start a new video meme with the sound" (needs a small new ticket); fallback is no block. Check a board control has a target before specifying it.

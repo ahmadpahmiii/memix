@@ -22,9 +22,9 @@ A row's disc and meta line change; the name, heart and layout stay. All fit the 
 | Downloading (> 300 ms) | **Cancel**: `close` icon in `primary` on `primary-subtle` | "Downloading…" in `text-secondary` | Determinate rail (ProgressBar look: `hairline` rail, `primary` fill) | Disabled look, still focusable |
 | Failed (network, server, stalled 15 s) | **Retry**: `rotate_right` in `primary` on `primary-subtle` | "Couldn't download. Tap to try again." in `danger` (5.2:1 or more on `canvas` and `surface`; never on `surface-raised`) | none | Active (tap retries and continues) |
 | Failed, phone storage full | **Retry**, enabled | "Not enough space on your phone." in `danger` | none | Disabled look |
-| Offline, not saved | Disabled `play` in `text-muted` | "Not saved for offline" in `text-muted` | none | Disabled |
+| Offline, not saved | Disabled `play` in `text-muted` | "Not saved for offline" in `text-muted` | none | **Not drawn**; its 48 dp slot stays empty (TICKETS P3-15; updated 11 Nov, was "Disabled") |
 | Offline, saved | Play | As saved | none | Active (needs no connection once it has its media) |
-| Removed from the catalog (a favorite or recent) | Disabled `play` | "No longer available" in `text-muted` | none | Disabled; the heart works |
+| Removed from the catalog (a favorite or recent) | Disabled `play` | "No longer available" in `text-muted` | none | **Not drawn** (slot kept empty, as above); the heart works |
 | Unreadable file on the phone | Play | After a tap: toast, row idle; the file is deleted and the next play downloads it again | none | Active |
 
 Disabled looks: the icon and text in `text-muted` (4.6:1 or more), no fill change. They stay in the focus order with a disabled state so a screen-reader user hears why (see below).

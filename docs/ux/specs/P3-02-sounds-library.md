@@ -89,7 +89,7 @@ Top to bottom, inside the P0-05 frame (status bar inset on top, bottom nav under
 | Empty, category | Title, body, Secondary "Show all" which selects All | `sounds_empty_category_title`, `sounds_empty_category_body`, `sounds_show_all` |
 | Empty, Favorites (and no recents) | Heart icon (32 dp, `text-secondary`), title, body, Secondary "Browse trending" | `sounds_empty_favorites_title`, `sounds_empty_favorites_body`, `sounds_browse_trending` |
 | Favorites hint (recents present, no favorites) | Under "Favorites" the body text in `body` `text-secondary` | `sounds_empty_favorites_body` |
-| Empty, My sounds | Title and body. P3-07 adds its two Secondary buttons here (import audio, use a video's sound); until it ships the tab shows no button | `sounds_empty_mine_title`, `sounds_empty_mine_body` |
+| Empty, My sounds | Title and body. P3-07 puts its two navigation rows (Import audio, Use a video's sound) at the top of the My sounds list, empty or not, above this block (`P3-07-my-sounds.md`; updated 11 Nov, was "two Secondary buttons here"); until it ships the tab shows no button. My sounds rows have no heart (P3-07) | `sounds_empty_mine_title`, `sounds_empty_mine_body` |
 | Searching, results | List of results, count spoken | `sounds_results_a11y` |
 | Search, no results (online) | Title with the query, body, Secondary "Clear search" | `sounds_search_none_title`, `sounds_search_none_body`, `sounds_clear_search` |
 | Search, offline | Strip, then results or the offline no-results | `sounds_search_offline_strip`, `sounds_search_none_offline_title`, `sounds_search_none_offline_body` |
@@ -211,7 +211,8 @@ Events from the PRD; no query text, no names, no personal data.
 - `sound_add {sound_id, tab, editor: "video"}` when the Use flow lands the sound at 0:00, with the same `tab` values (PM, 10 Nov: `recent` and `search` are new values of the existing parameter).
 - `project_create {editor: video, source: gallery}` when the Use flow's editor opens (P1-02 rules).
 - `sound_report` is in P3-10.
-- **Proposals for the product manager (not events yet, do not fire):** `sound_search {results, offline}` (count and a flag, never the text) so the owner can see whether typo-tolerant search finds things; `sound_favorite {sound_id, on}`. Both would be one-line additions to the PRD events table; they are optional.
+- `sound_search {results, offline}` (count and a flag, never the text) once per settled query: in the PRD since 11 Nov (PM). Updated 11 Nov: this line used to call it a proposal.
+- **Not an event:** `sound_favorite {sound_id, on}` (decided 11 Nov: not added).
 
 ## QA compares
 Screenshots at 360 dp wide, English unless noted, in `docs/ux/reviews/P3-02/`:
