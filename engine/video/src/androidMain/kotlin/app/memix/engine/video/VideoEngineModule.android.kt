@@ -1,5 +1,6 @@
 package app.memix.engine.video
 
+import app.memix.core.domain.mysound.SoundImporter
 import app.memix.core.domain.text.CaptionMeasurer
 import app.memix.core.domain.video.VideoEngine
 import app.memix.core.ui.scene.SceneCaptions
@@ -18,6 +19,8 @@ actual val videoEngineModule = module {
             measureSoundOnsets = getProperty(HAND_CHECKS_PROPERTY, false),
         )
     }
+    // My sounds' import (P3-07): converts a picked audio file, or a video's sound, to an .m4a.
+    single<SoundImporter> { Media3SoundImporter(androidContext(), ioDispatcher = Dispatchers.IO, logger = get()) }
     // One renderer for the editor's caption measures and stand-in and the engine's overlays (P1-10).
     single { AndroidCaptionRenderer(fontSource = get(), ioDispatcher = Dispatchers.IO, logger = get()) }
     single<CaptionMeasurer> { get<AndroidCaptionRenderer>() }

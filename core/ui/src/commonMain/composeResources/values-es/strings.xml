@@ -184,4 +184,11 @@
     <string name="sound_not_saved_offline">No guardado sin conexión</string>
     <string name="sound_unavailable">Ya no está disponible</string>
     <string name="sound_dl_storage_toast">Tu teléfono está lleno, así que este sonido no se puede guardar.</string>
+    <!-- Import wording shared by the media import (P1-02) and My sounds' import (P3-07). -->
+    <string name="import_percent">%1$d\u00A0%</string>
+    <string name="import_cancel">Cancelar</string>
+    <string name="import_pick_again">Elegir de nuevo</string>
+    <string name="import_reason_unreadable">No se pudo leer. Si está en la nube, revisa tu conexión.</string>
+    <string name="import_storage_title">No hay espacio suficiente</string>
+    <string name="close">Cerrar</string>
 </resources>

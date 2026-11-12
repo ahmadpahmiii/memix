@@ -55,6 +55,7 @@ internal class TimelinePainter(
     private val labelStyle: TextStyle,
     private val rulerStyle: TextStyle,
     private val originalAudioLabel: String,
+    private val unnamedMySoundLabel: String,
     private val missingFileLabel: String,
     /** The app's language, for catalog titles that come in every language. */
     private val languageCode: String,
@@ -397,6 +398,7 @@ internal class TimelinePainter(
     private fun labelOf(item: ItemUi): String? = when (val label = item.label) {
         is ItemLabel.Written -> label.text
         ItemLabel.OriginalAudio -> originalAudioLabel
+        ItemLabel.UnnamedMySound -> unnamedMySoundLabel
         is ItemLabel.SoundTitle -> label.title.inLanguage(languageCode)
         ItemLabel.None -> null
     }

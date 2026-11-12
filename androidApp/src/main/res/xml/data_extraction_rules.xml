@@ -5,10 +5,13 @@
      have no section here, so they carry everything, media included. Sound files (files/sounds: the starter
      pack, written again from the app itself, and sounds downloaded from the library, P3-04, which download again) stay out
      too. The database is backed up with its list of downloaded sounds; a row whose file is missing is forgotten the first
-     time it is read, so the sound downloads again. -->
+     time it is read, so the sound downloads again. My sounds (files/mysounds, P3-07) stay out too: one sound can be 10 MB, so
+     a few would pass the 25 MB quota and stop every backup. Their rows are backed up with the database; a restored row
+     whose file is missing shows "That sound won't play" and can be deleted (known limit). -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="file" path="media" />
         <exclude domain="file" path="sounds" />
+        <exclude domain="file" path="mysounds" />
     </cloud-backup>
 </data-extraction-rules>

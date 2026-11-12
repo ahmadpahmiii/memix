@@ -42,8 +42,8 @@ internal class MediaSourceResolver(private val filesDir: File) {
         if (copyPath != null) return File(filesDir, copyPath).takeIf { it.isFile }?.let(Uri::fromFile)
         return when (val origin = media.origin) {
             is MediaOrigin.GalleryUri -> Uri.parse(origin.uri)
-            // An iOS photo library id, or a catalog item that hasn't been downloaded yet.
-            is MediaOrigin.PhotoAsset, is MediaOrigin.CatalogItem -> null
+            // An iOS photo library id, a catalog item that hasn't been downloaded yet, or a My sound (always has its own copy).
+            is MediaOrigin.PhotoAsset, is MediaOrigin.CatalogItem, is MediaOrigin.MySound -> null
         }
     }
 }

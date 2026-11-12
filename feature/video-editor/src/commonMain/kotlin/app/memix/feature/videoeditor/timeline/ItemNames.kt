@@ -7,6 +7,7 @@ import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.project.TrackKind
 import memix.feature.video_editor.generated.resources.Res
 import memix.feature.video_editor.generated.resources.a11y_clip_label
+import memix.feature.video_editor.generated.resources.timeline_my_sound
 import memix.feature.video_editor.generated.resources.timeline_original_audio
 import memix.feature.video_editor.generated.resources.track_audio
 import memix.feature.video_editor.generated.resources.track_effect
@@ -33,6 +34,8 @@ sealed interface ItemName {
 
     data class Sound(val title: LocalizedText) : ItemName
 
+    data object UnnamedMySound : ItemName
+
     data class Unnamed(val trackKind: TrackKind) : ItemName
 }
 
@@ -52,6 +55,7 @@ internal fun nameOf(track: TrackUi, item: ItemUi): ItemName {
         is ItemLabel.Written -> ItemName.Written(label.text)
         ItemLabel.OriginalAudio -> ItemName.OriginalAudio
         is ItemLabel.SoundTitle -> ItemName.Sound(label.title)
+        ItemLabel.UnnamedMySound -> ItemName.UnnamedMySound
         ItemLabel.None -> ItemName.Unnamed(track.kind)
     }
 }
@@ -62,6 +66,7 @@ internal fun spokenName(name: ItemName): String = when (name) {
     is ItemName.Written -> name.text
     ItemName.OriginalAudio -> stringResource(Res.string.timeline_original_audio)
     is ItemName.Sound -> name.title.inLanguage(LocalLocale.current.language)
+    ItemName.UnnamedMySound -> stringResource(Res.string.timeline_my_sound)
     is ItemName.Unnamed -> stringResource(trackNameOf(name.trackKind))
 }
 

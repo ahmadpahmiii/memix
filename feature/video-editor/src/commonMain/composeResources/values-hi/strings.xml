@@ -19,6 +19,7 @@
     <string name="timeline_a11y">टाइमलाइन</string>
     <string name="timeline_zoom_menu">ज़ूम</string>
     <string name="timeline_original_audio">मूल ऑडियो</string>
+    <string name="timeline_my_sound">मेरी आवाज़</string>
     <string name="clip_missing_file">फ़ाइल नहीं मिली</string>
     <string name="timeline_zoom_in">ज़ूम इन</string>
     <string name="timeline_zoom_out">ज़ूम आउट</string>

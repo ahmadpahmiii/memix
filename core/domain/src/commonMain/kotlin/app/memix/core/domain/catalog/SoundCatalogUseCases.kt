@@ -2,6 +2,8 @@ package app.memix.core.domain.catalog
 
 import app.memix.core.domain.AppError
 import app.memix.core.domain.Outcome
+import app.memix.core.domain.mysound.MySound
+import app.memix.core.domain.mysound.SearchMySoundsUseCase
 import app.memix.core.domain.sound.SoundDownloads
 import app.memix.core.model.catalog.LibrarySound
 import app.memix.core.model.catalog.LocalizedText
@@ -68,6 +70,8 @@ data class SoundSearchPage(
     val sounds: List<LibrarySound>,
     val offline: Boolean,
     val endReached: Boolean,
+    /** The user's own sounds that match (P3-07). Only an offline search has them: My sounds are not in the catalog, so the server never sees them. */
+    val mySounds: List<MySound> = emptyList(),
 )
 
 /**
@@ -75,7 +79,7 @@ data class SoundSearchPage(
  * contains-match over the sounds saved on the phone (PM rule, 10 Nov 2026), and says so with [SoundSearchPage.offline].
  * Any other failure is returned as it is, so the screen can show its error.
  */
-class SearchSoundsUseCase(private val repository: SoundCatalogRepository) {
+class SearchSoundsUseCase(private val repository: SoundCatalogRepository, private val searchMySounds: SearchMySoundsUseCase) {
     /** [savedSoundIds] are the sounds whose audio is on the phone (starter pack, downloads, My sounds). */
     suspend operator fun invoke(
         query: String,
@@ -99,7 +103,8 @@ class SearchSoundsUseCase(private val repository: SoundCatalogRepository) {
     // The saved sounds fit one page, so a later page is empty rather than a repeat of the first.
     private suspend fun searchSaved(query: String, pageIndex: Int, savedSoundIds: Set<String>): Outcome<SoundSearchPage> {
         val sounds = if (pageIndex == 0) repository.searchSaved(query, savedSoundIds) else emptyList()
-        return Outcome.Success(SoundSearchPage(sounds, offline = true, endReached = true))
+        val mine = if (pageIndex == 0) searchMySounds(query, savedSoundIds) else emptyList()
+        return Outcome.Success(SoundSearchPage(sounds, offline = true, endReached = true, mySounds = mine))
     }
 }
 

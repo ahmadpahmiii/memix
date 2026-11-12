@@ -77,6 +77,7 @@ import kotlinx.coroutines.flow.first
 import memix.feature.video_editor.generated.resources.Res
 import memix.feature.video_editor.generated.resources.clip_missing_file
 import memix.feature.video_editor.generated.resources.timeline_a11y
+import memix.feature.video_editor.generated.resources.timeline_my_sound
 import memix.feature.video_editor.generated.resources.timeline_original_audio
 import memix.feature.video_editor.generated.resources.timeline_zoom_fit
 import memix.feature.video_editor.generated.resources.timeline_zoom_in
@@ -438,10 +439,11 @@ private fun rememberTimelinePainter(textMeasurer: TextMeasurer): TimelinePainter
     val labelStyle = MemixTheme.type.caption
     val rulerStyle = MemixTheme.type.timecode
     val originalAudio = stringResource(Res.string.timeline_original_audio)
+    val unnamedMySound = stringResource(Res.string.timeline_my_sound)
     val missingFile = stringResource(Res.string.clip_missing_file)
     val languageCode = LocalLocale.current.language
-    return remember(textMeasurer, labelStyle, rulerStyle, originalAudio, missingFile, languageCode, density) {
-        TimelinePainter(textMeasurer, labelStyle, rulerStyle, originalAudio, missingFile, languageCode, density)
+    return remember(textMeasurer, labelStyle, rulerStyle, originalAudio, unnamedMySound, missingFile, languageCode, density) {
+        TimelinePainter(textMeasurer, labelStyle, rulerStyle, originalAudio, unnamedMySound, missingFile, languageCode, density)
     }
 }
 

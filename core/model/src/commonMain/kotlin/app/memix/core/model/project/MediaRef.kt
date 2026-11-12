@@ -59,4 +59,13 @@ sealed interface MediaOrigin {
     @Serializable
     @SerialName("catalog_item")
     data class CatalogItem(val itemId: String) : MediaOrigin
+
+    /**
+     * A sound from My sounds (P3-07): imported from a file or taken from a video, then copied into the project's own folder.
+     * [name] is the name it had when it was added, so the clip keeps its label after the sound is renamed or deleted from
+     * My sounds. Nothing here identifies the sound in My sounds: the project owns its copy.
+     */
+    @Serializable
+    @SerialName("my_sound")
+    data class MySound(val name: String) : MediaOrigin
 }

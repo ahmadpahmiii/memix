@@ -22,6 +22,7 @@
     <string name="timeline_a11y">Timeline</string>
     <string name="timeline_zoom_menu">Zoom</string>
     <string name="timeline_original_audio">Original audio</string>
+    <string name="timeline_my_sound">My sound</string>
     <string name="clip_missing_file">File missing</string>
     <string name="timeline_zoom_in">Zoom in</string>
     <string name="timeline_zoom_out">Zoom out</string>

@@ -97,6 +97,9 @@ sealed interface ItemLabel {
     /** Detached original audio: "Original audio". */
     data object OriginalAudio : ItemLabel
 
+    /** A My sound that had no file name (P3-07): "My sound" in the app's language. */
+    data object UnnamedMySound : ItemLabel
+
     /** A meme sound's title from the catalog, in every app language; the timeline shows the app's language. */
     data class SoundTitle(val title: LocalizedText) : ItemLabel
 
@@ -149,11 +152,15 @@ private fun itemUiOf(item: TimelineItem, kind: TrackKind, clipNumber: Int, sound
     is EffectItem -> ItemUi(item.id, item.startUs, item.durationUs, ItemLabel.None)
 }
 
-// A video file on an audio track is a clip's detached sound (P1-09); a catalog sound shows its title.
+// A video file on an audio track is a clip's detached sound (P1-09); a catalog sound shows its title, a My sound its name.
 private fun audioLabelOf(clip: AudioClip, kind: TrackKind, soundTitles: Map<String, LocalizedText>): ItemLabel {
     if (kind == TrackKind.AUDIO && clip.source.kind == MediaKind.VIDEO) return ItemLabel.OriginalAudio
-    val catalogId = (clip.source.origin as? MediaOrigin.CatalogItem)?.itemId ?: return ItemLabel.None
-    return soundTitles[catalogId]?.let(ItemLabel::SoundTitle) ?: ItemLabel.None
+    return when (val origin = clip.source.origin) {
+        is MediaOrigin.CatalogItem -> soundTitles[origin.itemId]?.let(ItemLabel::SoundTitle) ?: ItemLabel.None
+        // A My sound keeps the name it had when it was added (P3-07), so the label survives a rename or a delete.
+        is MediaOrigin.MySound -> if (origin.name.isBlank()) ItemLabel.UnnamedMySound else ItemLabel.SoundTitle(LocalizedText(mapOf("en" to origin.name)))
+        is MediaOrigin.GalleryUri, is MediaOrigin.PhotoAsset -> ItemLabel.None
+    }
 }
 
 private fun writtenLabelOf(text: String): ItemLabel {

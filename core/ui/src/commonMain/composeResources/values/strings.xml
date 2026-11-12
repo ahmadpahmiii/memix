@@ -187,4 +187,11 @@
     <string name="sound_not_saved_offline">Not saved for offline</string>
     <string name="sound_unavailable">No longer available</string>
     <string name="sound_dl_storage_toast">Your phone is full, so this sound can't be saved.</string>
+    <!-- Import wording shared by the media import (P1-02) and My sounds' import (P3-07). -->
+    <string name="import_percent">%1$d%</string>
+    <string name="import_cancel">Cancel</string>
+    <string name="import_pick_again">Pick again</string>
+    <string name="import_reason_unreadable">Couldn't be read. If it's in the cloud, check your connection.</string>
+    <string name="import_storage_title">Not enough space</string>
+    <string name="close">Close</string>
 </resources>

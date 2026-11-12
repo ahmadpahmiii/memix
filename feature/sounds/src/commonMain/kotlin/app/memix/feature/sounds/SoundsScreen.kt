@@ -89,6 +89,7 @@ import org.jetbrains.compose.resources.stringResource
  * state; only the search text, the scroll and a few animations live here. The details sheet is [SoundDetailsSheet], which
  * the app places over the bottom nav; [clock] says where the playing sound is, read in draw code for the row's waveform.
  * [onFreeUpSpace] opens the phone's storage screen from the phone-is-full toast (P3-04); the app says when there is none.
+ * [pickers] open the system pickers of My sounds' two actions (P3-07).
  */
 @Composable
 fun SoundsScreen(
@@ -97,6 +98,7 @@ fun SoundsScreen(
     clock: PlaybackClock,
     onFreeUpSpace: () -> Unit,
     modifier: Modifier = Modifier,
+    pickers: MySoundPickers = MySoundPickers.None,
 ) {
     // Back clears the search first (the keyboard, when open, takes the first back itself); then the app's own back runs.
     NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None), isBackEnabled = state.query.isNotEmpty()) {
@@ -141,11 +143,16 @@ fun SoundsScreen(
             fade = fade,
             position = position,
             onIntent = onIntent,
+            pickers = pickers,
             modifier = Modifier.fillMaxSize().nestedScroll(scrollEffects),
         )
         // While the details sheet is open it shows the toasts itself, above its scrim.
         FadingToast(state.toast.takeIf { state.details == null }, Modifier.align(Alignment.BottomCenter).padding(MemixSpacing.space4)) { toast ->
-            Toast(soundsToastText(toast))
+            SoundsToastItem(toast, state.addedName)
+        }
+        // The Undo toast keeps its window: another toast shows for its own time, and this one returns for the rest of it (spec P3-07).
+        FadingToast(state.deletedMine.takeIf { state.toast == null && state.details == null }, Modifier.align(Alignment.BottomCenter).padding(MemixSpacing.space4)) { deleted ->
+            DeletedMineToast(deleted, onIntent)
         }
         if (state.storageFullNote && state.details == null) {
             StorageFullToast(
@@ -169,17 +176,25 @@ private fun SoundsList(
     fade: Modifier,
     position: State<Long>,
     onIntent: (SoundsIntent) -> Unit,
+    pickers: MySoundPickers,
     modifier: Modifier = Modifier,
 ) {
     val language = LocalLocale.current.language
     LoadMoreWhenNearEnd(listState, state.content, onIntent)
+    ScrollToTopOnAdded(listState, state.addedCount)
     LazyColumn(modifier, state = listState, contentPadding = PaddingValues(bottom = MemixSpacing.space4)) {
         item(key = "title", contentType = "title") { ScreenTitle(stringResource(Res.string.sounds_title)) }
         stickyHeader(key = "search-and-tabs", contentType = "search-and-tabs") {
             SearchAndTabs(state.tab, field, searchFocus, onSearchFocusChange, onIntent)
         }
-        soundsBody(state, language, searchFocus, allChipFocus, fade, position, onIntent)
+        soundsBody(state, language, searchFocus, allChipFocus, fade, position, onIntent, pickers = pickers)
     }
+}
+
+/** A sound just added to My sounds is the first row: the list scrolls up to it (spec P3-07 → Entry and exit). */
+@Composable
+internal fun ScrollToTopOnAdded(listState: LazyListState, addedCount: Int) {
+    LaunchedEffect(addedCount) { if (addedCount > 0) listState.animateScrollToItem(0) }
 }
 
 /**
@@ -197,6 +212,7 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.soundsBody(
     onIntent: (SoundsIntent) -> Unit,
     picker: Boolean = false,
     onFreeUpSpace: () -> Unit = {},
+    pickers: MySoundPickers = MySoundPickers.None,
 ) {
     state.spokenResultCount?.let { count ->
         item(key = "result-count", contentType = "spoken") {
@@ -213,6 +229,10 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.soundsBody(
     state.notice?.let { notice -> item(key = "notice", contentType = "notice") { StatusStrip(notice) } }
     if (picker && state.storageFullNote) {
         item(key = "storage-full", contentType = "notice") { StorageFullStrip(state.canFreeUpSpace, onFreeUpSpace, fade) }
+    }
+    // My sounds: the two actions come first, scrolling with the list, empty or not; a search hides them (spec P3-07 → Layout).
+    if (state.tab == SoundsTab.MINE && state.query.isEmpty()) {
+        mySoundsHeader(hasSounds = state.content is SoundsContent.Rows, pickers = pickers, onIntent = onIntent)
     }
     if (state.tab == SoundsTab.LOCAL && state.query.isEmpty() && state.regionName != null) {
         item(key = "region", contentType = "region") { RegionLine(state.regionName, fade) }
@@ -327,12 +347,13 @@ private fun LibrarySoundRow(
         onIntent(SoundsIntent.FocusReturned)
     }
     SoundRow(
-        name = row.title.inLanguage(language),
+        name = row.nameIn(language),
         meta = soundMetaText(row, look),
         isPlaying = playback == RowPlayback.PLAYING,
         isFavorite = isFavorite,
         onPlayToggle = { onIntent(SoundsIntent.TogglePlay(row.id, fromRecent)) },
-        onFavoriteChange = { on ->
+        // My sounds have no heart: they have their own tab (spec P3-07).
+        onFavoriteChange = if (row.isMine) null else { on ->
             // One tick when the heart fills; taking it out is quiet (spec P3-02 → Interactions).
             if (on) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
             onIntent(SoundsIntent.ToggleFavorite(row.id))

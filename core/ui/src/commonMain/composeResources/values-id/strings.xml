@@ -183,4 +183,11 @@
     <string name="sound_not_saved_offline">Tidak tersimpan untuk offline</string>
     <string name="sound_unavailable">Sudah tidak tersedia</string>
     <string name="sound_dl_storage_toast">Ponselmu penuh, jadi suara ini tidak bisa disimpan.</string>
+    <!-- Import wording shared by the media import (P1-02) and My sounds' import (P3-07). -->
+    <string name="import_percent">%1$d%</string>
+    <string name="import_cancel">Batal</string>
+    <string name="import_pick_again">Pilih lagi</string>
+    <string name="import_reason_unreadable">Tidak bisa dibaca. Jika ada di cloud, periksa koneksimu.</string>
+    <string name="import_storage_title">Ruang tidak cukup</string>
+    <string name="close">Tutup</string>
 </resources>

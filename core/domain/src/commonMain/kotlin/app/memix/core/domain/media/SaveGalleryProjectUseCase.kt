@@ -61,8 +61,9 @@ class SaveGalleryProjectUseCase(
             is Outcome.Success -> {
                 analytics.log(AnalyticsEvent.ProjectCreate(editor = ProjectType.VIDEO, source = ProjectSource.GALLERY))
                 if (soundAdded && sound != null) {
-                    soundEvents.added(sound.soundId, sound.tab, ProjectType.VIDEO)
-                    recordRecent(sound.soundId)
+                    soundEvents.added(sound.eventSoundId, sound.tab, ProjectType.VIDEO)
+                    // A My sound has its own tab and never joins Recently used (spec P3-07).
+                    if (!sound.isMine) recordRecent(sound.soundId)
                 }
                 updateThumbnail(project)
                 Outcome.Success(if (sound == null) StartingSound.NONE else if (soundAdded) StartingSound.ADDED else StartingSound.MISSING)

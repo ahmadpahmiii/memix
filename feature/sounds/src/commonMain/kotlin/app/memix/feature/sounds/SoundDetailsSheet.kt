@@ -66,6 +66,8 @@ import memix.core.ui.generated.resources.sound_dl_failed
 import memix.core.ui.generated.resources.sound_dl_failed_storage
 import memix.feature.sounds.generated.resources.Res
 import memix.feature.sounds.generated.resources.sound_detail_offline_note
+import memix.feature.sounds.generated.resources.mysound_rename_back_a11y
+import memix.feature.sounds.generated.resources.mysound_rename_title
 import memix.feature.sounds.generated.resources.sound_detail_report
 import memix.feature.sounds.generated.resources.sound_report_back_a11y
 import memix.feature.sounds.generated.resources.sound_detail_use
@@ -113,6 +115,8 @@ fun SoundDetailsSheet(state: State<SoundsUiState>, clock: PlaybackClock, onInten
     val downloadProgress by remember(state, soundId) { derivedStateOf { soundId?.let { state.value.downloadProgressOf(it) } } }
     val onPhone by remember(state, soundId) { derivedStateOf { soundId?.let { state.value.onPhoneOf(it) } ?: SoundOnPhone.NOT_SAVED } }
     val reportOpenNow by remember(state) { derivedStateOf { state.value.reportOpen } }
+    val renameOpenNow by remember(state) { derivedStateOf { state.value.renameOpen } }
+    val renameEmptyCount by remember(state) { derivedStateOf { state.value.renameEmptyCount } }
     val formNow by remember(state) { derivedStateOf { state.value.report } }
     val reported by remember(state, soundId) { derivedStateOf { soundId != null && soundId in state.value.reportedIds } }
     val activeId by remember(state) { derivedStateOf { state.value.activeId } }
@@ -122,13 +126,20 @@ fun SoundDetailsSheet(state: State<SoundsUiState>, clock: PlaybackClock, onInten
     SideEffect {
         if (open) {
             lastShown.reportOpen = reportOpenNow
+            lastShown.renameOpen = renameOpenNow
             lastShown.form = formNow
         }
     }
     val reportOpen = if (open) reportOpenNow else lastShown.reportOpen
+    val renameOpen = if (open) renameOpenNow else lastShown.renameOpen
+    val pane = when {
+        reportOpen -> DetailsPane.REPORT
+        renameOpen -> DetailsPane.RENAME
+        else -> DetailsPane.DETAILS
+    }
     val form = if (open) formNow else lastShown.form
     val language = LocalLocale.current.language
-    val name = details?.title?.inLanguage(language).orEmpty()
+    val name = details?.nameIn(language).orEmpty()
     // The sheet ticks only while it is up; the list behind it runs its own.
     val position = rememberPlaybackPosition(clock, activeId.takeIf { open }, isPlaying = open && isPlaying)
     val haptics = LocalHapticFeedback.current
@@ -138,17 +149,34 @@ fun SoundDetailsSheet(state: State<SoundsUiState>, clock: PlaybackClock, onInten
         Sheet(
             visible = open,
             onDismiss = { onIntent(SoundsIntent.CloseDetails) },
-            title = if (reportOpen) stringResource(Res.string.sound_detail_report) else name,
+            title = when (pane) {
+                DetailsPane.REPORT -> stringResource(Res.string.sound_detail_report)
+                DetailsPane.RENAME -> stringResource(Res.string.mysound_rename_title)
+                DetailsPane.DETAILS -> name
+            },
             titleMaxLines = TITLE_MAX_LINES,
             titleFocus = titleFocus,
             // Back from the Report pane returns to the details first; the close button, scrim and a drag down close the sheet.
-            onBack = { onIntent(if (reportOpen) SoundsIntent.CloseReport else SoundsIntent.CloseDetails) },
-            titleLeading = if (reportOpen) {
-                { IconButton(MemixIcons.ArrowBack, stringResource(Res.string.sound_report_back_a11y), { onIntent(SoundsIntent.CloseReport) }) }
-            } else {
-                null
+            onBack = {
+                onIntent(
+                    when (pane) {
+                        DetailsPane.REPORT -> SoundsIntent.CloseReport
+                        DetailsPane.RENAME -> SoundsIntent.CloseRename
+                        DetailsPane.DETAILS -> SoundsIntent.CloseDetails
+                    },
+                )
             },
-            titleTrailing = details?.takeUnless { reportOpen }?.let { shown ->
+            titleLeading = when (pane) {
+                DetailsPane.REPORT -> {
+                    { IconButton(MemixIcons.ArrowBack, stringResource(Res.string.sound_report_back_a11y), { onIntent(SoundsIntent.CloseReport) }) }
+                }
+                DetailsPane.RENAME -> {
+                    { IconButton(MemixIcons.ArrowBack, stringResource(Res.string.mysound_rename_back_a11y), { onIntent(SoundsIntent.CloseRename) }) }
+                }
+                DetailsPane.DETAILS -> null
+            },
+            // A My sound has no heart: it has its own tab (spec P3-07).
+            titleTrailing = details?.takeIf { pane == DetailsPane.DETAILS && it.mine == null }?.let { shown ->
                 {
                     SoundFavoriteHeart(name, isFavorite, { on ->
                         if (on) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
@@ -160,27 +188,30 @@ fun SoundDetailsSheet(state: State<SoundsUiState>, clock: PlaybackClock, onInten
             if (details != null) {
                 val reportRow = remember { FocusRequester() }
                 ReportFocusReturn(reportOpen, reported, reportRow)
-                val reportEntry = reportEntryOf(look, reported, reportRow, onIntent)
+                // A My sound has nothing to report: it is the user's own file.
+                val reportEntry = if (details.mine != null) ({}) else reportEntryOf(look, reported, reportRow, onIntent)
                 Crossfade(
-                    reportOpen,
+                    pane,
                     Modifier.weight(1f, fill = false),
                     animationSpec = tween(if (MemixTheme.reduceMotion) MemixMotion.durationPress else MemixMotion.durationSheet),
                     label = "details-pane",
-                ) { showsReport ->
+                ) { shown ->
                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4)) {
-                        if (showsReport) {
-                            ReportPane(name, form, onIntent)
-                        } else {
-                            DetailsBody(details, name, playback, peaks, look, downloadProgress, onPhone, position, language, onIntent, reportEntry)
-                            UseInMemeButton(look, onIntent)
-                            if (!reportScrollsWithContent()) reportEntry()
+                        when (shown) {
+                            DetailsPane.REPORT -> ReportPane(name, form, onIntent)
+                            DetailsPane.RENAME -> RenamePane(name, renameEmptyCount) { typed -> onIntent(SoundsIntent.SaveRename(typed)) }
+                            DetailsPane.DETAILS -> {
+                                DetailsBody(details, name, playback, peaks, look, downloadProgress, onPhone, position, language, onIntent, reportEntry)
+                                UseInMemeButton(look, onIntent)
+                                if (details.mine != null) MineActions(onIntent) else if (!reportScrollsWithContent()) reportEntry()
+                            }
                         }
                     }
                 }
             }
         }
         FadingToast(toast, Modifier.align(Alignment.BottomCenter).padding(MemixSpacing.space4)) { shown ->
-            Toast(soundsToastText(shown))
+            SoundsToastItem(shown, state.value.addedName)
         }
     }
 }
@@ -189,10 +220,14 @@ fun SoundDetailsSheet(state: State<SoundsUiState>, clock: PlaybackClock, onInten
 private class LastShown {
     var details: SoundDetailsUi? = null
     var reportOpen = false
+    var renameOpen = false
     var form = SoundReportUi()
 }
 
 internal const val TITLE_MAX_LINES = 2
+
+/** What the details sheet's body shows: the sound's facts, the Report pane (P3-10) or the Rename pane of a My sound (P3-07). */
+private enum class DetailsPane { DETAILS, REPORT, RENAME }
 
 @Composable
 internal fun ColumnScope.DetailsBody(
@@ -242,6 +277,11 @@ internal fun ColumnScope.DetailsBody(
         Modifier.weight(1f, fill = false).padding(top = MemixSpacing.space2).verticalScroll(rememberScrollState()).padding(bottom = MemixSpacing.space4),
         verticalArrangement = Arrangement.spacedBy(MemixSpacing.space3),
     ) {
+        if (details.mine != null) {
+            // No category, license, source or Report: the user's own file (spec P3-07).
+            Fact(Res.string.sound_detail_credit) { Text(mineOrigin(details.mine), MemixTheme.type.body) }
+            return@Column
+        }
         details.categoryName?.let { Fact(Res.string.sound_detail_category) { Text(it.inLanguage(language), MemixTheme.type.body) } }
         details.credit?.let { Fact(Res.string.sound_detail_credit) { Text(it, MemixTheme.type.body) } }
         Fact(Res.string.sound_detail_license) { Text(licenseText(details.licenseType), MemixTheme.type.body) }

@@ -184,4 +184,11 @@
     <string name="sound_not_saved_offline">ऑफ़लाइन के लिए सेव नहीं है</string>
     <string name="sound_unavailable">अब उपलब्ध नहीं है</string>
     <string name="sound_dl_storage_toast">आपका फ़ोन भरा है, इसलिए यह साउंड सेव नहीं हो सकता।</string>
+    <!-- Import wording shared by the media import (P1-02) and My sounds' import (P3-07). -->
+    <string name="import_percent">%1$d%</string>
+    <string name="import_cancel">रद्द करें</string>
+    <string name="import_pick_again">फिर से चुनें</string>
+    <string name="import_reason_unreadable">पढ़ी नहीं जा सकी। अगर यह क्लाउड में है, तो अपना कनेक्शन जांचें।</string>
+    <string name="import_storage_title">पर्याप्त जगह नहीं है</string>
+    <string name="close">बंद करें</string>
 </resources>

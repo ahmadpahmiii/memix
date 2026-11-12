@@ -10,6 +10,7 @@ import app.memix.core.data.project.ProjectJsonCodec
 import app.memix.core.data.project.ProjectJsonMigrator
 import app.memix.core.data.project.SqlDelightProjectRepository
 import app.memix.core.data.project.projectMigrations
+import app.memix.core.data.mysound.SqlDelightMySounds
 import app.memix.core.data.report.SqlDelightSoundReports
 import app.memix.core.data.report.SupabaseSoundReportRemote
 import app.memix.core.data.settings.SettingsExportPreferences
@@ -20,6 +21,7 @@ import app.memix.core.data.settings.SettingsPhotoExportPreferences
 import app.memix.core.data.settings.SettingsVideoMemeNotePreferences
 import app.memix.core.domain.AppConfig
 import app.memix.core.domain.catalog.SoundCatalogRepository
+import app.memix.core.domain.mysound.MySoundsRepository
 import app.memix.core.domain.photo.PhotoExportPreferences
 import app.memix.core.domain.photo.VideoMemeNotePreferences
 import app.memix.core.domain.project.ProjectRepository
@@ -83,6 +85,8 @@ val dataModule = module {
     single<SoundCollectionsRepository> {
         SqlDelightSoundCollectionsRepository(database = lazy { get<MemixDatabase>() }, clock = get(), ioDispatcher = Dispatchers.IO)
     }
+    // The user's own sounds (P3-07): a list on this phone, never synced.
+    single<MySoundsRepository> { SqlDelightMySounds(database = lazy { get<MemixDatabase>() }, ioDispatcher = Dispatchers.IO) }
     // The downloaded sounds and their 500 MB cache (P3-04). Projects copy a sound when it lands (P3-05), so any file may go.
     single<SoundDownloads> {
         FileSoundDownloads(

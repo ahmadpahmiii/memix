@@ -53,8 +53,8 @@ import app.memix.core.ui.fileSizeText
 import kotlinx.collections.immutable.ImmutableList
 import memix.feature.media_import.generated.resources.Res
 import memix.core.ui.generated.resources.Res as UiRes
-import memix.feature.media_import.generated.resources.close
-import memix.feature.media_import.generated.resources.import_cancel
+import memix.core.ui.generated.resources.close
+import memix.core.ui.generated.resources.import_cancel
 import memix.feature.media_import.generated.resources.import_cap_note
 import memix.feature.media_import.generated.resources.import_continue
 import memix.feature.media_import.generated.resources.import_copied
@@ -70,14 +70,14 @@ import memix.feature.media_import.generated.resources.import_none_title
 import memix.feature.media_import.generated.resources.import_none_title_photo
 import memix.feature.media_import.generated.resources.import_partial_body
 import memix.feature.media_import.generated.resources.import_partial_title
-import memix.feature.media_import.generated.resources.import_percent
-import memix.feature.media_import.generated.resources.import_pick_again
-import memix.feature.media_import.generated.resources.import_reason_unreadable
+import memix.core.ui.generated.resources.import_percent
+import memix.core.ui.generated.resources.import_pick_again
+import memix.core.ui.generated.resources.import_reason_unreadable
 import memix.feature.media_import.generated.resources.import_reason_unsupported
 import memix.feature.media_import.generated.resources.import_row_a11y
 import memix.feature.media_import.generated.resources.import_row_a11y_no_name
 import memix.feature.media_import.generated.resources.import_storage_body
-import memix.feature.media_import.generated.resources.import_storage_title
+import memix.core.ui.generated.resources.import_storage_title
 import memix.feature.media_import.generated.resources.import_time_left_minutes
 import memix.feature.media_import.generated.resources.import_time_left_seconds
 import memix.feature.media_import.generated.resources.import_title
@@ -157,7 +157,7 @@ private fun SheetContent(
             body = stringResource(if (wording == ImportWording.PHOTO) Res.string.import_none_body_photo else Res.string.import_none_body),
             notAdded = state.notAdded,
             note = null,
-            buttonLabel = stringResource(Res.string.import_pick_again),
+            buttonLabel = stringResource(UiRes.string.import_pick_again),
             onButtonClick = onPickAgain,
         )
         is ImportUiState.NotEnoughSpace -> NotEnoughSpaceContent(state, onFreeUpSpace)
@@ -170,7 +170,7 @@ private fun SheetContent(
 @Composable
 private fun CopyingContent(state: ImportUiState.Copying, wording: ImportWording, onCancel: () -> Unit) {
     val progress = state.progress
-    val percentText = stringResource(Res.string.import_percent, progress.percent)
+    val percentText = stringResource(UiRes.string.import_percent, progress.percent)
     Column {
         // The percent wraps under the count when both don't fit (large font sizes).
         FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -198,7 +198,7 @@ private fun CopyingContent(state: ImportUiState.Copying, wording: ImportWording,
             Text(stringResource(Res.string.import_cap_note, state.limit), MemixTheme.type.label, color = MemixColors.textSecondary)
         }
         Spacer(Modifier.height(MemixSpacing.space6))
-        Button(stringResource(Res.string.import_cancel), onCancel, Modifier.fillMaxWidth())
+        Button(stringResource(UiRes.string.import_cancel), onCancel, Modifier.fillMaxWidth())
     }
 }
 
@@ -261,7 +261,7 @@ private fun NotAddedRow(item: NotAddedItemUi) {
     val kindLabel = stringResource(if (item.isVideo) UiRes.string.import_item_video else UiRes.string.import_item_photo)
     val reason = stringResource(
         when (item.reason) {
-            ImportFailure.UNREADABLE -> Res.string.import_reason_unreadable
+            ImportFailure.UNREADABLE -> UiRes.string.import_reason_unreadable
             ImportFailure.UNSUPPORTED -> Res.string.import_reason_unsupported
         },
     )
@@ -308,7 +308,7 @@ private fun NoPickerContent(onClose: () -> Unit) {
     Column {
         Text(stringResource(Res.string.import_no_picker_body), MemixTheme.type.body, color = MemixColors.textSecondary)
         Spacer(Modifier.height(MemixSpacing.space6))
-        Button(stringResource(Res.string.close), onClose, Modifier.fillMaxWidth())
+        Button(stringResource(UiRes.string.close), onClose, Modifier.fillMaxWidth())
     }
 }
 
@@ -317,7 +317,7 @@ private fun titleFor(state: ImportUiState, wording: ImportWording): String = whe
     is ImportUiState.Copying -> stringResource(if (wording == ImportWording.PHOTO) Res.string.import_title_photo else Res.string.import_title)
     is ImportUiState.SomeNotAdded -> stringResource(Res.string.import_partial_title, state.addedCount, state.pickedCount)
     is ImportUiState.NoneAdded -> stringResource(if (wording == ImportWording.PHOTO) Res.string.import_none_title_photo else Res.string.import_none_title)
-    is ImportUiState.NotEnoughSpace -> stringResource(Res.string.import_storage_title)
+    is ImportUiState.NotEnoughSpace -> stringResource(UiRes.string.import_storage_title)
     ImportUiState.NoPicker -> stringResource(Res.string.import_no_picker_title)
     ImportUiState.Idle, is ImportUiState.Done -> ""
 }

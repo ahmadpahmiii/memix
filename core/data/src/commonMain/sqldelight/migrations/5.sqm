@@ -1,0 +1,11 @@
+-- Version 5 to 6 (P3-07): the user's own sounds. Same definition as MySounds.sq. A new table only, so drafts, the saved
+-- catalog, favorites, recents, downloaded sounds and reports are untouched.
+
+CREATE TABLE my_sound (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    duration_us INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    path TEXT NOT NULL,
+    created_at_epoch_us INTEGER NOT NULL
+);

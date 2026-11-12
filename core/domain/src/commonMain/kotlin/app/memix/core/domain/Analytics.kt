@@ -1,5 +1,7 @@
 package app.memix.core.domain
 
+import app.memix.core.domain.mysound.MySoundFailure
+import app.memix.core.domain.mysound.MySoundSource
 import app.memix.core.domain.photo.PhotoExportAction
 import app.memix.core.domain.sound.SoundReportReason
 import app.memix.core.model.project.PhotoExportFormat
@@ -80,6 +82,19 @@ sealed interface AnalyticsEvent {
     data class SoundReported(val soundId: String, val reason: SoundReportReason) : AnalyticsEvent {
         override val name = "sound_report"
         override val params = mapOf("sound_id" to soundId, "reason" to reason.code)
+    }
+
+    /**
+     * An import to My sounds ended (P3-07, PM 11 Nov 2026): [source] `file` or `video`, [reason] only on failure. Never a file
+     * name, path, length or size.
+     */
+    data class SoundImport(val source: MySoundSource, val success: Boolean, val reason: MySoundFailure?) : AnalyticsEvent {
+        override val name = "sound_import"
+        override val params = buildMap {
+            put("source", source.code)
+            put("success", success.toString())
+            if (reason != null) put("reason", reason.code)
+        }
     }
 
     /** Export video was tapped and the export started (PM, 20 Oct 2026). [resolution] as named ("1080p"). */

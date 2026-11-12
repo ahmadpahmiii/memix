@@ -19,6 +19,7 @@
     <string name="timeline_a11y">Linimasa</string>
     <string name="timeline_zoom_menu">Zoom</string>
     <string name="timeline_original_audio">Audio asli</string>
+    <string name="timeline_my_sound">Suaraku</string>
     <string name="clip_missing_file">File hilang</string>
     <string name="timeline_zoom_in">Perbesar</string>
     <string name="timeline_zoom_out">Perkecil</string>

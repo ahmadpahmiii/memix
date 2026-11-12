@@ -4,4 +4,5 @@
 <full-backup-content>
     <exclude domain="file" path="media" />
     <exclude domain="file" path="sounds" />
+    <exclude domain="file" path="mysounds" />
 </full-backup-content>

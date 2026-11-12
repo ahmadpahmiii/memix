@@ -50,6 +50,13 @@ import app.memix.core.domain.sound.ObserveFavoriteSoundIdsUseCase
 import app.memix.core.domain.sound.ObserveFavoriteSoundsUseCase
 import app.memix.core.domain.sound.ObserveRecentSoundsUseCase
 import app.memix.core.domain.sound.OpenSoundPlayerUseCase
+import app.memix.core.domain.mysound.DeleteMySoundUseCase
+import app.memix.core.domain.mysound.ImportMySoundUseCase
+import app.memix.core.domain.mysound.LeftoverMySoundsCleaner
+import app.memix.core.domain.mysound.ObserveMySoundsUseCase
+import app.memix.core.domain.mysound.PrepareMySoundUseCase
+import app.memix.core.domain.mysound.RenameMySoundUseCase
+import app.memix.core.domain.mysound.SearchMySoundsUseCase
 import app.memix.core.domain.sound.PendingMemeSound
 import app.memix.core.domain.sound.PlaceSoundInProjectUseCase
 import app.memix.core.domain.sound.SoundsOnPhone
@@ -87,6 +94,7 @@ import app.memix.feature.drafts.DraftsViewModel
 import app.memix.feature.export.ExportViewModel
 import app.memix.feature.home.HomeViewModel
 import app.memix.feature.sounds.SoundPickerMemory
+import app.memix.feature.sounds.MySoundTools
 import app.memix.feature.sounds.SoundPreviewTools
 import app.memix.feature.sounds.SoundReportTools
 import app.memix.feature.sounds.SoundsMode
@@ -189,6 +197,16 @@ private val appModule = module {
     factoryOf(::ObserveReportedSoundIdsUseCase)
     factoryOf(::ReportSoundUseCase)
     factoryOf(::SoundReportTools)
+    // My sounds (P3-07): the list, the import, rename, and delete with Undo (one delete waits at a time, in the app's scope).
+    factoryOf(::ObserveMySoundsUseCase)
+    factoryOf(::ImportMySoundUseCase)
+    factoryOf(::RenameMySoundUseCase)
+    factoryOf(::PrepareMySoundUseCase)
+    factoryOf(::SearchMySoundsUseCase)
+    single { DeleteMySoundUseCase(get(), get(), get(appScope)) }
+    // Deletes unfinished conversions and the files of sounds deleted just before the app stopped; imports wait for it.
+    single(createdAtStart = true) { LeftoverMySoundsCleaner(get(), get(), get(), get(appScope)) }
+    factoryOf(::MySoundTools)
     // The library sound a Use is carrying to the next new video meme (P3-15); the import ViewModel owns one.
     factoryOf(::PendingMemeSound)
     // The caption fonts live with the interface fonts in the design system; the engine's renderer reads them (P1-10).
@@ -313,6 +331,7 @@ private fun org.koin.core.scope.Scope.soundsViewModel(mode: SoundsMode) = Sounds
     observeRemovedIds = get(),
     checkRemoved = get(),
     reportTools = get(),
+    mineTools = get(),
     tabExit = get(),
     mode = mode,
     pickerMemory = get(),

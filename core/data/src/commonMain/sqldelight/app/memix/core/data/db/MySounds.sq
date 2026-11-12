@@ -1,0 +1,36 @@
+-- The user's own sounds (P3-07): an imported audio file or the audio of a gallery video, as an AAC .m4a in mysounds/.
+-- Kept on this phone only; nothing here is ever sent anywhere. The name is what the user sees (empty: the screen draws a
+-- default). Changing a table: edit it here and add migrations/<current database version>.sqm (the last is 4.sqm, which made version 5).
+
+CREATE TABLE my_sound (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    duration_us INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    path TEXT NOT NULL,
+    created_at_epoch_us INTEGER NOT NULL
+);
+
+-- Newest first; rowid breaks a tie between two sounds added in the same microsecond.
+selectAll:
+SELECT id, name, duration_us, source, path, created_at_epoch_us FROM my_sound
+ORDER BY created_at_epoch_us DESC, rowid DESC;
+
+selectById:
+SELECT id, name, duration_us, source, path, created_at_epoch_us FROM my_sound WHERE id = :id;
+
+selectPaths:
+SELECT path FROM my_sound;
+
+insert:
+INSERT OR REPLACE INTO my_sound(id, name, duration_us, source, path, created_at_epoch_us)
+VALUES (:id, :name, :durationUs, :source, :path, :createdAtEpochUs);
+
+rename:
+UPDATE my_sound SET name = :name WHERE id = :id;
+
+delete:
+DELETE FROM my_sound WHERE id = :id;
+
+deleteByPath:
+DELETE FROM my_sound WHERE path = :path;

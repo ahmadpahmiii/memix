@@ -92,7 +92,11 @@ internal class EditorSoundTools(private val sounds: EditorSounds, private val ho
         val project = host.currentProject() ?: return
         val clip = project.firstMemeSound() ?: return
         // The title is known by now: the draft's titles load as it opens, a push earlier. Without it the sentence has no name.
-        val title = titles[(clip.source.origin as? MediaOrigin.CatalogItem)?.itemId]
+        val title = when (val origin = clip.source.origin) {
+            is MediaOrigin.CatalogItem -> titles[origin.itemId]
+            is MediaOrigin.MySound -> origin.name.takeIf { it.isNotBlank() }?.let { LocalizedText(mapOf("en" to it)) }
+            is MediaOrigin.GalleryUri, is MediaOrigin.PhotoAsset -> null
+        }
         host.updateUiState { it.copy(landed = host.newLanding(persistentSetOf(clip.id), isSound = true)) }
         announceLanding(title, clip.startUs, clip.durationUs)
     }
@@ -116,13 +120,14 @@ internal class EditorSoundTools(private val sounds: EditorSounds, private val ho
         closeSheet()
         host.preview?.pause()
         if (!host.commit(VideoEdit.ADD_SOUND) { it.addSound(file, clipId, playheadAtOpenUs, newTrackId = host.newId()) }) return
-        sounds.logEvents.added(picked.soundId, picked.tab, ProjectType.VIDEO)
-        host.scope.launch { sounds.recordRecent(picked.soundId) }
+        sounds.logEvents.added(picked.eventSoundId, picked.tab, ProjectType.VIDEO)
+        // A My sound has its own tab and never joins Recently used (spec P3-07).
+        if (!picked.isMine) host.scope.launch { sounds.recordRecent(picked.soundId) }
         // Selected with its tools ready; it bonks and the phone ticks (spec P1-06 → Meme sounds → Landing).
         val landed = host.newLanding(persistentSetOf(clipId), isSound = true)
         host.updateUiState { it.withSelection(clipId, host.currentProject()).copy(landed = landed) }
         val startUs = host.uiState.timeline.item(clipId)?.startUs ?: playheadAtOpenUs
-        announceLanding(picked.title, startUs, file.durationUs ?: 0L)
+        announceLanding(picked.title.takeIf { it.byLanguage.values.any(String::isNotBlank) }, startUs, file.durationUs ?: 0L)
         // The new sound's tools are up; focus goes to its Volume tool (spec P1-06 → Accessibility).
         host.returnFocusTo(FocusTarget.VOLUME_TOOL)
     }

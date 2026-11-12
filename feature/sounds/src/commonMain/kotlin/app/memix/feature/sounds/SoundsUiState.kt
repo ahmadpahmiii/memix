@@ -2,8 +2,10 @@ package app.memix.feature.sounds
 
 import androidx.compose.runtime.Immutable
 import app.memix.core.designsystem.component.SoundRowLook
+import app.memix.core.domain.mysound.MySoundSource
 import app.memix.core.domain.sound.SoundReportReason
 import app.memix.core.model.catalog.LocalizedText
+import app.memix.core.model.project.MediaOrigin
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.ImmutableSet
@@ -46,6 +48,8 @@ data class SoundItemUi(
     val credit: String,
     /** The whole sound's length, for the playhead of a playing row. */
     val durationUs: Long,
+    /** Set for a My sound (P3-07): no heart, its meta says where it came from, and a blank title is drawn as a default name. */
+    val mine: MySoundSource? = null,
 )
 
 /** Where a sound's audio is (spec P3-03 → Facts, "On this phone"): in the app, downloaded, or not on the phone yet. */
@@ -77,7 +81,12 @@ data class SoundDetailsUi(
     /** The page of the work, only when it is a web address; the host is what the link shows. */
     val sourceUrl: String?,
     val sourceHost: String?,
+    /** Set for a My sound: the sheet shows its origin as the credit and has Rename and Delete instead of the catalog facts and Report. */
+    val mine: MySoundSource? = null,
 )
+
+/** Whether this row is a My sound. */
+val SoundItemUi.isMine: Boolean get() = mine != null
 
 /** The row that opened the details sheet, so closing it can send focus back (a sound can be in two sections). */
 @Immutable
@@ -135,7 +144,7 @@ enum class ListFooter { NONE, LOADING_MORE, MORE_FAILED }
 /** The one status strip above the rows. Searching beats the offline notes, and the search note beats the plain one. */
 enum class SoundsNotice { OFFLINE, SEARCH_OFFLINE, SEARCHING }
 
-enum class SoundsToast { PLAY_FAILED, REFRESH_FAILED, VOLUME_LOW, SOURCE_FAILED, REPORT_SENT }
+enum class SoundsToast { PLAY_FAILED, REFRESH_FAILED, VOLUME_LOW, SOURCE_FAILED, REPORT_SENT, MY_SOUND_ADDED, MY_SOUND_SAVE_FAILED }
 
 @Immutable
 data class SoundsUiState(
@@ -185,6 +194,20 @@ data class SoundsUiState(
     /** The details sheet shows the Report pane (spec P3-10) instead of the sound's details. */
     val reportOpen: Boolean = false,
     val report: SoundReportUi = SoundReportUi(),
+    /** The ids of My sounds (P3-07): audio on the phone, no heart, no download. */
+    val mineIds: ImmutableSet<String> = persistentSetOf(),
+    /** The My sounds import sheet, or null. In the picker it is a pane of the sheet. */
+    val myImport: MyImportUi? = null,
+    /** The sound just deleted, while its Undo toast is up (8 s). */
+    val deletedMine: DeletedMineUi? = null,
+    /** The details sheet shows the Rename pane. */
+    val renameOpen: Boolean = false,
+    /** Save was tapped on an empty name: the field says so under itself. Counts the taps so a repeat moves focus again. */
+    val renameEmptyCount: Int = 0,
+    /** The name of the sound just added (empty when it had none), for the toast's spoken text. */
+    val addedName: String = "",
+    /** Counts each added sound: the list scrolls to the top and the new row takes focus. */
+    val addedCount: Int = 0,
 ) {
     /** The chips show on the catalog tabs while the search box is empty (spec P3-02 → Layout 4). */
     val showsChips: Boolean get() = tab.listsCatalog && query.isEmpty() && categories.isNotEmpty()
@@ -193,6 +216,7 @@ data class SoundsUiState(
     val activeId: String? get() = playingId ?: pausedId
 
     fun onPhoneOf(soundId: String): SoundOnPhone = when (soundId) {
+        in mineIds -> SoundOnPhone.SAVED
         in starterIds -> SoundOnPhone.INCLUDED
         in downloadedIds -> SoundOnPhone.SAVED
         else -> SoundOnPhone.NOT_SAVED
@@ -285,6 +309,36 @@ sealed interface SoundsIntent {
 
     /** The picker's Add block: the sound lands at the playhead. [fromRecent]: tapped in Recently used, which `sound_add` names as its own `tab`. */
     data class Add(val soundId: String, val fromRecent: Boolean = false) : SoundsIntent
+
+    /** The picker returned for My sounds' [source]: [origin] is the file or video, null when nothing was picked. */
+    data class MySoundPicked(val source: MySoundSource, val origin: MediaOrigin?) : SoundsIntent
+
+    /** The phone has no app that can open the picker for [source]. */
+    data class MySoundPickerUnavailable(val source: MySoundSource) : SoundsIntent
+
+    /** Cancel, system back or Escape while converting. */
+    data object CancelMySoundImport : SoundsIntent
+
+    /** Close, scrim, drag or back on a result sheet (or "Pick again", which the screen follows with the picker). */
+    data object CloseMySoundImport : SoundsIntent
+
+    /** The app is in the foreground again: a waiting import checks the space. */
+    data object MySoundImportResumed : SoundsIntent
+
+    /** The Rename row in the details sheet. */
+    data object OpenRename : SoundsIntent
+
+    /** The Rename pane's back arrow, system back or Escape: back to the details, nothing saved. */
+    data object CloseRename : SoundsIntent
+
+    /** Save in the Rename pane, with the name as typed. */
+    data class SaveRename(val typed: String) : SoundsIntent
+
+    /** Delete in the details sheet: the row goes now and the toast offers Undo. */
+    data object DeleteMine : SoundsIntent
+
+    /** The toast's Undo. */
+    data object UndoDeleteMine : SoundsIntent
 
     /** The picker's "Add to video" on the details pane. */
     data object AddFromDetails : SoundsIntent

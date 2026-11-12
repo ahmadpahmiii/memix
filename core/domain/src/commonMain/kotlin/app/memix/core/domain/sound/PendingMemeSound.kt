@@ -3,6 +3,7 @@ package app.memix.core.domain.sound
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.SoundTab
 import app.memix.core.domain.catalog.SoundCatalogRepository
+import app.memix.core.domain.mysound.PrepareMySoundUseCase
 import app.memix.core.model.catalog.CatalogSound
 
 /** How a new video meme's starting sound went, which decides what the editor does when it opens (spec P3-15 → Arriving). */
@@ -34,6 +35,7 @@ class PendingMemeSound(
     private val library: SoundLibrary,
     private val catalog: SoundCatalogRepository,
     private val prepareSound: PrepareSoundUseCase,
+    private val prepareMySound: PrepareMySoundUseCase,
 ) {
     private var sound: PickedSound? = null
     private var restored: PendingSound? = null
@@ -85,6 +87,8 @@ class PendingMemeSound(
     }
 
     private suspend fun findOnPhone(saved: PendingSound): PickedSound? {
+        // A My sound (P3-07) is the user's own file: no catalog, no download.
+        if (saved.tab == SoundTab.MY_SOUNDS) return (prepareMySound(saved.soundId) as? Outcome.Success)?.value
         val starter = library.starterSounds().firstOrNull { it.id == saved.soundId }
         val title = starter?.title ?: catalog.titlesOf(setOf(saved.soundId))[saved.soundId] ?: return null
         // Only the id matters to the lookup: the file's own length is measured, not the catalog's.

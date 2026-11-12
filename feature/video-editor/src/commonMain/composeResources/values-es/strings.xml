@@ -19,6 +19,7 @@
     <string name="timeline_a11y">Línea de tiempo</string>
     <string name="timeline_zoom_menu">Zoom</string>
     <string name="timeline_original_audio">Audio original</string>
+    <string name="timeline_my_sound">Mi sonido</string>
     <string name="clip_missing_file">Falta el archivo</string>
     <string name="timeline_zoom_in">Acercar</string>
     <string name="timeline_zoom_out">Alejar</string>

@@ -58,6 +58,9 @@ import memix.feature.sounds.generated.resources.sound_dl_free_up_space
 import memix.feature.sounds.generated.resources.sound_dl_toast_dismiss
 import memix.feature.sounds.generated.resources.sound_detail_source_failed
 import memix.feature.sounds.generated.resources.sound_report_thanks
+import memix.feature.sounds.generated.resources.mysound_a11y_added
+import memix.feature.sounds.generated.resources.mysound_added_toast
+import memix.feature.sounds.generated.resources.mysound_save_failed
 import memix.feature.sounds.generated.resources.sound_play_failed
 import memix.feature.sounds.generated.resources.sound_volume_low
 import memix.feature.sounds.generated.resources.sounds_browse_global
@@ -150,13 +153,22 @@ internal fun soundsToastText(toast: SoundsToast): String = stringResource(
         SoundsToast.VOLUME_LOW -> Res.string.sound_volume_low
         SoundsToast.SOURCE_FAILED -> Res.string.sound_detail_source_failed
         SoundsToast.REPORT_SENT -> Res.string.sound_report_thanks
+        SoundsToast.MY_SOUND_ADDED -> Res.string.mysound_added_toast
+        SoundsToast.MY_SOUND_SAVE_FAILED -> Res.string.mysound_save_failed
     },
 )
+
+/** A toast of the Sounds screen. A sound just added to My sounds is spoken with its name ([addedName], empty when it has none). */
+@Composable
+internal fun SoundsToastItem(toast: SoundsToast, addedName: String, modifier: Modifier = Modifier) {
+    val spoken = if (toast == SoundsToast.MY_SOUND_ADDED && addedName.isNotBlank()) stringResource(Res.string.mysound_a11y_added, addedName) else null
+    Toast(soundsToastText(toast), if (spoken != null) modifier.semantics { contentDescription = spoken } else modifier)
+}
 
 /** A row's meta line: "0:02 · CC0" normally, else what is going on with the file (spec P3-04 → Row states). */
 @Composable
 internal fun soundMetaText(row: SoundItemUi, look: SoundRowLook): String = when (look) {
-    SoundRowLook.NORMAL -> stringResource(UiRes.string.sound_meta, row.length, row.credit)
+    SoundRowLook.NORMAL -> if (row.mine != null) mineMetaText(row.length, row.mine) else stringResource(UiRes.string.sound_meta, row.length, row.credit)
     SoundRowLook.DOWNLOADING -> stringResource(UiRes.string.sound_dl_downloading)
     SoundRowLook.FAILED -> stringResource(UiRes.string.sound_dl_failed)
     SoundRowLook.FAILED_STORAGE -> stringResource(UiRes.string.sound_dl_failed_storage)

@@ -3,10 +3,13 @@ package app.memix.feature.sounds
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.SoundTab
 import app.memix.core.domain.catalog.LoadWaveformUseCase
+import app.memix.core.domain.mysound.MY_SOUND_EVENT_ID
+import app.memix.core.domain.mysound.PrepareMySoundUseCase
 import app.memix.core.domain.sound.DownloadFailure
 import app.memix.core.domain.sound.LogSoundEventsUseCase
 import app.memix.core.domain.sound.LowVolumeWarningUseCase
 import app.memix.core.domain.sound.OpenSoundPlayerUseCase
+import app.memix.core.domain.sound.PickedSound
 import app.memix.core.domain.sound.PrepareSoundUseCase
 import app.memix.core.domain.sound.PreparedSound
 import app.memix.core.domain.sound.SoundPlayer
@@ -29,6 +32,7 @@ class SoundPreviewTools(
     val lowVolumeWarning: LowVolumeWarningUseCase,
     val logEvents: LogSoundEventsUseCase,
     val onPhone: SoundsOnPhone,
+    val prepareMySound: PrepareMySoundUseCase,
 )
 
 /** What a screen draws from its previews: who plays, who is paused, the downloads people can see, the peaks and the full-phone note. */
@@ -75,6 +79,9 @@ internal class SoundPreviewController(
     private var addHeldId: String? = null
     private val downloader = SoundDownloadRunner(tools.onPhone::download) { soundId, look -> showDownload(soundId, look) }
 
+    // The row id of a My sound that plays, by its file: the player reports the media, which carries no row id (P3-07).
+    private val mineIdByPath = HashMap<String, String>()
+
     // A sound played again right after it ended or stopped is a replay: `sound_preview` counts only a new sound (spec P3-03 → Analytics).
     private var lastPreviewedId: String? = null
 
@@ -116,6 +123,26 @@ internal class SoundPreviewController(
             openedPlayer().play(file)
             if (sound.id != lastPreviewedId) tools.logEvents.previewed(sound.id, tab)
             lastPreviewedId = sound.id
+        }
+    }
+
+    /**
+     * Starts the My sound [soundId] from the beginning (spec P3-07): its file is on the phone, so there is no download. Logs
+     * `sound_preview` with the constant `my_sound` for a new sound only.
+     */
+    fun playMine(soundId: String) {
+        previewJob?.cancel()
+        previewJob = scope.launch {
+            val picked = (tools.prepareMySound(soundId) as? Outcome.Success)?.value
+            if (picked == null) {
+                onNotice(SoundsToast.PLAY_FAILED)
+                return@launch
+            }
+            picked.media.cachedCopyPath?.let { mineIdByPath[it] = soundId }
+            if (tools.lowVolumeWarning.isDue()) onNotice(SoundsToast.VOLUME_LOW)
+            openedPlayer().play(picked.media)
+            if (soundId != lastPreviewedId) tools.logEvents.previewed(MY_SOUND_EVENT_ID, SoundTab.MY_SOUNDS)
+            lastPreviewedId = soundId
         }
     }
 
@@ -172,6 +199,26 @@ internal class SoundPreviewController(
                     onAbort()
                 }
             }
+        }
+    }
+
+    /**
+     * Gets the My sound [soundId] ready to land without playing it (the picker's Add, the Sounds tab's Use). Its file needs no
+     * download and no cache pin, so [onReady] gets the checked sound at once; [onAbort] runs when the file would not play.
+     */
+    fun prepareMineForAdd(soundId: String, onReady: (PickedSound) -> Unit, onAbort: () -> Unit) {
+        player?.stop()
+        previewJob?.cancel()
+        previewJob = scope.launch {
+            val picked = (tools.prepareMySound(soundId) as? Outcome.Success)?.value
+            if (picked == null) {
+                onNotice(SoundsToast.PLAY_FAILED)
+                onAbort()
+                return@launch
+            }
+            // An earlier add that was ready but never landed lets go.
+            endAdd()
+            onReady(picked)
         }
     }
 
@@ -250,13 +297,13 @@ internal class SoundPreviewController(
         playerJobs = listOf(
             scope.launch {
                 opened.playing.collect { media ->
-                    update { it.copy(playingId = media?.catalogId()) }
+                    update { it.copy(playingId = media?.rowId()) }
                     holdPlayingSound()
                 }
             },
             scope.launch {
                 opened.paused.collect { media ->
-                    update { it.copy(pausedId = media?.catalogId()) }
+                    update { it.copy(pausedId = media?.rowId()) }
                     holdPlayingSound()
                 }
             },
@@ -265,14 +312,19 @@ internal class SoundPreviewController(
                 opened.failures.collect { media ->
                     // Not deleted here: the fault may be the player's. The next tap checks the file
                     // (PrepareSoundUseCase deletes one that will not decode).
-                    media.catalogId()?.let { preparedSounds.remove(it) }
+                    media.rowId()?.let { preparedSounds.remove(it) }
                     onNotice(SoundsToast.PLAY_FAILED)
                 }
             },
         )
     }
 
-    private fun MediaRef.catalogId(): String? = (origin as? MediaOrigin.CatalogItem)?.itemId
+    // The row a playing file belongs to: a catalog sound by its id, a My sound by the file it was started from.
+    private fun MediaRef.rowId(): String? = when (val origin = origin) {
+        is MediaOrigin.CatalogItem -> origin.itemId
+        is MediaOrigin.MySound -> cachedCopyPath?.let(mineIdByPath::get)
+        is MediaOrigin.GalleryUri, is MediaOrigin.PhotoAsset -> null
+    }
 
     // The player is opened on the first tap and lives only while the user is on the screen.
     private fun closePlayer() {

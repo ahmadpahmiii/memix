@@ -29,6 +29,7 @@ import memix.core.designsystem.generated.resources.ic_drafts
 import memix.core.designsystem.generated.resources.ic_duplicate
 import memix.core.designsystem.generated.resources.ic_edit
 import memix.core.designsystem.generated.resources.ic_flag
+import memix.core.designsystem.generated.resources.ic_folder
 import memix.core.designsystem.generated.resources.ic_edit_text
 import memix.core.designsystem.generated.resources.ic_fill
 import memix.core.designsystem.generated.resources.ic_fit
@@ -97,6 +98,7 @@ object MemixIcons {
     val Edit = Res.drawable.ic_edit
     val Fill = Res.drawable.ic_fill
     val Flag = Res.drawable.ic_flag
+    val Folder = Res.drawable.ic_folder
     val Fit = Res.drawable.ic_fit
     val Flip = Res.drawable.ic_flip
     val Formats = Res.drawable.ic_formats

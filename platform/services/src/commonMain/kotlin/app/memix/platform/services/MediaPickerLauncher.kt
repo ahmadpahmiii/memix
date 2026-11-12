@@ -10,6 +10,9 @@ enum class PickerMedia {
 
     /** Photos only (the photo meme start, spec P2-01 → Starting a photo meme); the file chooser fallback filters the same way. */
     IMAGES_ONLY,
+
+    /** Videos only (My sounds' "Use a video's sound", P3-07): a photo has no sound; the file chooser fallback filters the same way. */
+    VIDEOS_ONLY,
 }
 
 /** Opens the system photo picker for videos and photos, or photos only. */

@@ -44,4 +44,7 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     // 9 → 10 (P2-07): ImageLayer gained the nullable "cutOut" (mask file, refine strokes, softness). Version-9 JSON has none, which
     // decodes as null (the whole picture), so a draft saved before opens as saved and the step only moves the version on.
     ProjectMigration(fromVersion = 9) { json -> json },
+    // 10 → 11 (P3-07): MediaOrigin gained the "my_sound" subtype (a sound from My sounds, with the name it had when it was added). A new
+    // subtype leaves every saved origin as it was, so version-10 JSON decodes as it is and the step only moves the version on.
+    ProjectMigration(fromVersion = 10) { json -> json },
 )

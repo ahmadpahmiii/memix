@@ -15,6 +15,11 @@ import app.memix.core.domain.catalog.ObserveSoundFeedUseCase
 import app.memix.core.domain.catalog.RefreshSoundCategoriesUseCase
 import app.memix.core.domain.catalog.SearchSoundsUseCase
 import app.memix.core.domain.catalog.SoundSearchPage
+import app.memix.core.domain.mysound.MY_SOUND_EVENT_ID
+import app.memix.core.domain.mysound.MySound
+import app.memix.core.domain.mysound.MySoundSource
+import app.memix.core.domain.mysound.RenameOutcome
+import app.memix.core.domain.mysound.matching
 import app.memix.core.domain.sound.GetSavedSoundIdsUseCase
 import app.memix.core.domain.sound.ObserveFavoriteSoundIdsUseCase
 import app.memix.core.domain.sound.ObserveFavoriteSoundsUseCase
@@ -45,8 +50,9 @@ import kotlinx.coroutines.launch
  * phone's copy of the catalog and show at once; the network only refreshes them. Tab and chip survive a trip to
  * another bottom-nav item; the search text and a playing preview do not ([SoundsIntent.LeftScreen]).
  *
- * Favorites and Recently used are kept on the phone (P3-06) and fill the Favorites tab; My sounds has no storage yet
- * (P3-07), so it shows its empty state.
+ * Favorites and Recently used are kept on the phone (P3-06) and fill the Favorites tab. My sounds (P3-07) is the user's own
+ * list, owned by [MySoundsController]: its rows have no heart, an offline search finds them too, and its details sheet
+ * renames and deletes (on the Sounds tab only).
  *
  * Previews (P3-03): a second tap on the playing disc pauses and the next resumes; the details sheet plays through the
  * same player, so one sound plays at a time. The app places the sheet over the bottom nav, so this ViewModel lives with
@@ -78,6 +84,7 @@ class SoundsViewModel(
     private val observeRemovedIds: ObserveRemovedSoundIdsUseCase,
     private val checkRemoved: CheckRemovedSoundsUseCase,
     reportTools: SoundReportTools,
+    mineTools: MySoundTools,
     tabExit: SoundsTabExit,
     private val mode: SoundsMode,
     private val pickerMemory: SoundPickerMemory,
@@ -101,6 +108,16 @@ class SoundsViewModel(
         onSent = ::reportSent,
     )
     private val observeReported = reportTools.observeReported
+
+    // My sounds (P3-07): the list, one import at a time, rename, and delete with Undo.
+    private val mine = MySoundsController(
+        scope = viewModelScope,
+        tools = mineTools,
+        onChanged = ::showMine,
+        onAdded = ::mineAdded,
+        onSaveFailed = { showToast(SoundsToast.MY_SOUND_SAVE_FAILED) },
+    )
+    private var shownMineSounds: List<MySound>? = null
 
     /** Where the playing sound is; the screen reads it in draw code, 30 times a second at most. */
     val clock = PlaybackClock { preview.positionUs() }
@@ -146,6 +163,8 @@ class SoundsViewModel(
     // The open details sheet: its sound, and the `tab` a play from it is logged with (the screen that opened it).
     private var detailsSound: LibrarySound? = null
     private var detailsFromRecent = false
+    // The sound the open sheet is about, a library sound or a My sound.
+    private var detailsId: String? = null
     private var detailsTab = SoundTab.TRENDING
     private var feedJob: Job? = null
     private var moreJob: Job? = null
@@ -177,6 +196,7 @@ class SoundsViewModel(
         }
         observeCollections()
         observeOnPhone()
+        mine.start()
         viewModelScope.launch { refreshCategories(force = false) }
         showFeed()
     }
@@ -249,7 +269,7 @@ class SoundsViewModel(
             is SoundsIntent.TogglePlay -> togglePreview(intent.soundId, tabOf(intent.fromRecent))
             is SoundsIntent.OpenDetails -> { dropFocusReturn(); openDetails(intent.soundId, intent.fromRecent) }
             SoundsIntent.CloseDetails -> closeDetails()
-            SoundsIntent.ToggleDetailsPlay -> detailsSound?.let { togglePreview(it.id, detailsTab) }
+            SoundsIntent.ToggleDetailsPlay -> detailsId?.let { togglePreview(it, detailsTab) }
             SoundsIntent.OpenReport -> openReport()
             SoundsIntent.CloseReport -> updateState { it.copy(reportOpen = false) }
             is SoundsIntent.ReportReasonChosen -> report.chooseReason(intent.reason)
@@ -263,16 +283,29 @@ class SoundsViewModel(
             SoundsIntent.TryAgain -> tryAgain()
             SoundsIntent.Refresh -> refresh()
             SoundsIntent.DismissStorageNote -> preview.dismissStorageNote()
-            SoundsIntent.FreeUpSpaceUnavailable -> updateState { it.copy(canFreeUpSpace = false) }
+            SoundsIntent.FreeUpSpaceUnavailable -> {
+                updateState { it.copy(canFreeUpSpace = false) }
+                mine.freeUpSpaceUnavailable()
+            }
             SoundsIntent.AppStopped -> backgrounded()
             SoundsIntent.LeftScreen -> leaveScreen()
             is SoundsIntent.Add -> { dropFocusReturn(); add(intent.soundId, tabOf(intent.fromRecent)) }
-            SoundsIntent.AddFromDetails -> detailsSound?.let { add(it.id, detailsTab) }
+            SoundsIntent.AddFromDetails -> detailsId?.let { add(it, detailsTab) }
             is SoundsIntent.Use -> { dropFocusReturn(); use(intent.soundId, tabOf(intent.fromRecent)) }
-            SoundsIntent.UseFromDetails -> detailsSound?.let { use(it.id, detailsTab) }
+            SoundsIntent.UseFromDetails -> detailsId?.let { use(it, detailsTab) }
             SoundsIntent.UseFinished -> finishUse()
             SoundsIntent.PickerClosed -> closePicker()
             SoundsIntent.PickerExited -> resetPickerVisit()
+            is SoundsIntent.MySoundPicked -> intent.origin?.let { mine.import(it, intent.source) } ?: mine.nothingPicked()
+            is SoundsIntent.MySoundPickerUnavailable -> mine.pickerUnavailable(intent.source)
+            SoundsIntent.CancelMySoundImport -> mine.cancelImport()
+            SoundsIntent.CloseMySoundImport -> mine.closeResult()
+            SoundsIntent.MySoundImportResumed -> mine.resumed()
+            SoundsIntent.OpenRename -> if (detailsMine() != null) updateState { it.copy(renameOpen = true, renameEmptyCount = 0) }
+            SoundsIntent.CloseRename -> updateState { it.copy(renameOpen = false) }
+            is SoundsIntent.SaveRename -> saveRename(intent.typed)
+            SoundsIntent.DeleteMine -> deleteMine()
+            SoundsIntent.UndoDeleteMine -> mine.undoDelete()
         }
     }
 
@@ -304,9 +337,12 @@ class SoundsViewModel(
     // The player stays for the next visit (building an ExoPlayer on every tab entry is main-thread work); a sound stops.
     private fun leaveScreen() {
         preview.stop()
+        // A result left over from an earlier visit must not greet the next one (spec P3-07 → Entry and exit).
+        mine.closeResult()
         detailsSound = null
+        detailsId = null
         clearReport()
-        updateState { it.copy(details = null, focusReturn = null) }
+        updateState { it.copy(details = null, focusReturn = null, renameOpen = false) }
         // Leaving the screen ends the visit: an un-hearted row is gone when the user comes back (spec P3-02 → Tab contents).
         favoritesOnScreen = latestFavorites
         if (state.value.query.isNotEmpty()) changeQuery("")
@@ -319,6 +355,7 @@ class SoundsViewModel(
     // keeps just its own.
     private fun closePicker() {
         preview.stop()
+        mine.closeResult()
         preview.endAdd()
         preview.release()
         searchJob?.cancel()
@@ -501,9 +538,10 @@ class SoundsViewModel(
     }
 
     private fun onSearchSettled(page: SoundSearchPage, logResult: Boolean) {
-        search = SearchState(page.sounds, page.offline, page.endReached, nextPage = 1, failed = false)
-        if (logResult) logEvents.searched(results = page.sounds.size, offline = page.offline)
-        updateState { it.copy(spokenResultCount = page.sounds.size) }
+        search = SearchState(page.sounds, page.offline, page.endReached, nextPage = 1, failed = false, mine = page.mySounds)
+        val found = page.sounds.size + page.mySounds.size
+        if (logResult) logEvents.searched(results = found, offline = page.offline)
+        updateState { it.copy(spokenResultCount = found) }
     }
 
     private fun loadMoreSearch(current: SearchState) {
@@ -553,16 +591,28 @@ class SoundsViewModel(
 
     private fun searchContent(result: SearchState): SoundsContent = when {
         result.failed -> SoundsContent.LoadError
-        result.sounds.isEmpty() ->
+        result.sounds.isEmpty() && result.mine.isEmpty() ->
             SoundsContent.Empty(if (result.offline) EmptyReason.SEARCH_NONE_OFFLINE else EmptyReason.SEARCH_NONE)
-        else -> SoundsContent.Rows(result.sounds.map { it.toRow() }.toImmutableList(), footer(result.endReached))
+        else -> SoundsContent.Rows(
+            // The user's own sounds that matched come first; only an offline search has them (P3-07).
+            (result.mine.map { it.toRow() } + result.sounds.map { it.toRow() }).toImmutableList(),
+            footer(result.endReached),
+        )
     }
 
-    // My sounds (TODO(P3-07)) has no storage yet: its list is empty, and a search over an empty list finds nothing.
-    private fun ownListContent(ui: SoundsUiState): SoundsContent = when {
-        ui.tab == SoundsTab.FAVORITES -> favoritesContent(ui.query)
-        ui.query.isNotBlank() -> SoundsContent.Empty(EmptyReason.SEARCH_NONE)
-        else -> SoundsContent.Empty(EmptyReason.MINE)
+    private fun ownListContent(ui: SoundsUiState): SoundsContent = when (ui.tab) {
+        SoundsTab.FAVORITES -> favoritesContent(ui.query)
+        else -> mineContent(ui.query)
+    }
+
+    // On My sounds a search filters this list on the phone (spec P3-07 → Layout), newest first as stored.
+    private fun mineContent(query: String): SoundsContent {
+        val matches = mine.snapshot.sounds.matching(query)
+        return when {
+            matches.isNotEmpty() -> SoundsContent.Rows(matches.map { it.toRow() }.toImmutableList(), ListFooter.NONE)
+            query.isNotBlank() -> SoundsContent.Empty(EmptyReason.SEARCH_NONE)
+            else -> SoundsContent.Empty(EmptyReason.MINE)
+        }
     }
 
     // On Favorites a search filters this tab's own two lists, on the phone (spec P3-02 → Search → Scope).
@@ -605,6 +655,8 @@ class SoundsViewModel(
 
     private fun LibrarySound.toRow() = SoundItemUi(id, title, soundLengthText(durationUs), creditLine, durationUs)
 
+    private fun MySound.toRow() = SoundItemUi(id, LocalizedText(mapOf("en" to name)), soundLengthText(durationUs), credit = "", durationUs = durationUs, mine = source)
+
     // ---- Previews ----
 
     // The disc: pause what plays, carry on what is paused, otherwise start this sound.
@@ -619,7 +671,7 @@ class SoundsViewModel(
         when (state.value.playbackOf(soundId)) {
             RowPlayback.PLAYING -> preview.pause()
             RowPlayback.PAUSED -> preview.resume()
-            RowPlayback.IDLE -> soundById(soundId)?.let { preview.play(it, tab) }
+            RowPlayback.IDLE -> if (soundId in state.value.mineIds) preview.playMine(soundId) else soundById(soundId)?.let { preview.play(it, tab) }
         }
     }
 
@@ -662,6 +714,7 @@ class SoundsViewModel(
             SoundRowLook.DOWNLOADING, SoundRowLook.FAILED_STORAGE, SoundRowLook.OFFLINE_NOT_SAVED, SoundRowLook.UNAVAILABLE -> return
             SoundRowLook.NORMAL, SoundRowLook.FAILED -> Unit
         }
+        if (soundId in state.value.mineIds) return handOverMine(soundId)
         val sound = soundById(soundId) ?: return
         setAdding(soundId)
         preview.prepareForAdd(
@@ -670,6 +723,21 @@ class SoundsViewModel(
                 pickSent = true
                 _picks.trySend(PickedSound(soundId, sound.title, prepared.media, tab, prepared.bundled))
                 // The details sheet closes as the system picker opens (spec P3-15 → The flow).
+                if (mode == SoundsMode.LIBRARY) closeDetails()
+            },
+            onAbort = { if (addingId == soundId) setAdding(null) },
+        )
+    }
+
+    // A My sound needs no download: its checked file goes to the editor or the app root at once, tagged `my_sounds` whatever
+    // list it was chosen from, which is also how a Use that Android restarted finds it again (P3-15 restore).
+    private fun handOverMine(soundId: String) {
+        setAdding(soundId)
+        preview.prepareMineForAdd(
+            soundId,
+            onReady = { picked ->
+                pickSent = true
+                _picks.trySend(picked)
                 if (mode == SoundsMode.LIBRARY) closeDetails()
             },
             onAbort = { if (addingId == soundId) setAdding(null) },
@@ -687,7 +755,9 @@ class SoundsViewModel(
     // ---- Details sheet ----
 
     private fun openDetails(soundId: String, fromRecent: Boolean) {
+        mine.byId(soundId)?.let { return openMineDetails(it) }
         val sound = shownSounds().firstOrNull { it.id == soundId } ?: return
+        detailsId = soundId
         detailsSound = sound
         detailsFromRecent = fromRecent
         detailsTab = tabOf(fromRecent)
@@ -696,10 +766,75 @@ class SoundsViewModel(
     }
 
     private fun closeDetails() {
-        val sound = detailsSound ?: return
+        val soundId = detailsId ?: return
+        detailsId = null
         detailsSound = null
         clearReport()
-        updateState { it.copy(details = null, focusReturn = RowFocusTarget(sound.id, detailsFromRecent)) }
+        updateState { it.copy(details = null, renameOpen = false, focusReturn = RowFocusTarget(soundId, detailsFromRecent)) }
+    }
+
+    // ---- My sounds (P3-07) ----
+
+    // A My sound's details have no waveform to fetch, no category, license, source or Report.
+    private fun openMineDetails(sound: MySound) {
+        detailsId = sound.id
+        detailsSound = null
+        detailsFromRecent = false
+        detailsTab = SoundTab.MY_SOUNDS
+        updateState { it.copy(details = sound.toDetails(), renameOpen = false) }
+    }
+
+    private fun detailsMine(): MySound? = detailsId?.let(mine::byId)
+
+    private fun MySound.toDetails() = SoundDetailsUi(
+        id = id,
+        title = LocalizedText(mapOf("en" to name)),
+        durationUs = durationUs,
+        length = soundLengthText(durationUs),
+        categoryName = null,
+        credit = null,
+        licenseType = "",
+        sourceUrl = null,
+        sourceHost = null,
+        mine = source,
+    )
+
+    // The list changed or an import moved on: the screen state follows. The rows are redrawn only when the list itself changed.
+    private fun showMine(snapshot: MineSnapshot) {
+        // The id set is rebuilt only when the list changed, not on each progress tick (up to 10 a second).
+        val listChanged = snapshot.sounds != shownMineSounds
+        val ids = if (listChanged) snapshot.sounds.mapTo(HashSet()) { sound -> sound.id }.toImmutableSet() else null
+        updateState { it.copy(mineIds = ids ?: it.mineIds, myImport = snapshot.importUi, deletedMine = snapshot.deleted) }
+        if (listChanged) {
+            shownMineSounds = snapshot.sounds
+            render()
+        }
+    }
+
+    // The new sound is the first row: the toast says so, the list scrolls to the top and the row takes focus. It is neither played nor placed.
+    private fun mineAdded(sound: MySound) {
+        showToast(SoundsToast.MY_SOUND_ADDED)
+        updateState { it.copy(addedName = sound.name, addedCount = it.addedCount + 1, focusReturn = RowFocusTarget(sound.id, fromRecent = false)) }
+    }
+
+    private fun saveRename(typed: String) {
+        val sound = detailsMine() ?: return
+        mine.rename(sound.id, typed) { outcome ->
+            when (outcome) {
+                is RenameOutcome.Renamed -> {
+                    // The sheet goes back to the details with the new name; the list follows the repository.
+                    updateState { it.copy(renameOpen = false, details = it.details?.takeIf { d -> d.id == sound.id }?.copy(title = LocalizedText(mapOf("en" to outcome.name))) ?: it.details) }
+                }
+                RenameOutcome.Empty -> updateState { it.copy(renameEmptyCount = it.renameEmptyCount + 1) }
+                RenameOutcome.Missing -> updateState { it.copy(renameOpen = false) }
+            }
+        }
+    }
+
+    private fun deleteMine() {
+        val sound = detailsMine() ?: return
+        if (state.value.playbackOf(sound.id) != RowPlayback.IDLE) preview.stop()
+        mine.delete(sound.id) { closeDetails() }
     }
 
     // ---- Report pane (P3-10) ----
@@ -791,6 +926,8 @@ class SoundsViewModel(
         val endReached: Boolean,
         val nextPage: Int,
         val failed: Boolean,
+        /** My sounds that matched an offline search (P3-07). */
+        val mine: List<MySound> = emptyList(),
     )
 
     private companion object {

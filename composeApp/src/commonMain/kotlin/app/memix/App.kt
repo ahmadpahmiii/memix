@@ -94,7 +94,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import app.memix.feature.sounds.PlaybackClock
 import app.memix.feature.sounds.SoundDetailsSheet
+import app.memix.feature.sounds.MySoundImportSheet
+import app.memix.feature.sounds.MySoundPickers
 import app.memix.feature.sounds.SoundPickerSheet
+import app.memix.feature.sounds.showsSheet
 import app.memix.feature.sounds.SoundsIntent
 import app.memix.feature.sounds.SoundsScreen
 import app.memix.feature.sounds.SoundsTabExit
@@ -295,8 +298,10 @@ private fun MainShell(
     // nothing until the Sounds tab first shows.
     val sounds = koinViewModel<SoundsViewModel>()
     val soundsState = sounds.state.collectAsStateWithLifecycle()
-    val soundDetailsUp by remember { derivedStateOf { soundsState.value.details != null } }
+    val soundDetailsUp by remember { derivedStateOf { soundsState.value.details != null || soundsState.value.myImport.showsSheet } }
     val freeUpSpace = rememberFreeUpSpaceLauncher()
+    // My sounds' two pickers (P3-07): the document picker for an audio file, the photo picker for one video.
+    val mySoundPickers = rememberMySoundPickers { source, origin -> sounds.onIntent(SoundsIntent.MySoundPicked(source, origin)) }
     val soundsExit = koinInject<SoundsTabExit>()
     // The Sounds tab's Use (P3-15): a sound that is ready starts a new video meme, and the tab takes taps again once the system picker is gone.
     LaunchedEffect(sounds, videoMemeImport) { sounds.picks.collect { videoMemeImport.startWithSound(it) } }
@@ -323,6 +328,7 @@ private fun MainShell(
                     sounds = soundsState,
                     soundsClock = sounds.clock,
                     onSoundsIntent = sounds::onIntent,
+                    mySoundPickers = mySoundPickers,
                     onFreeUpSpace = {
                         if (!freeUpSpace.launch(SOUND_SPACE_REQUEST_BYTES)) sounds.onIntent(SoundsIntent.FreeUpSpaceUnavailable)
                     },
@@ -370,6 +376,9 @@ private fun MainShell(
             if (!freeUpSpace.launch(requestedBytes)) drafts.onIntent(DraftsIntent.FreeUpSpaceUnavailable)
         })
         SoundDetailsOver(soundsState, sounds.clock, sounds::onIntent)
+        MySoundImportSheet(soundsState, sounds::onIntent, mySoundPickers, onFreeUpSpace = { requestedBytes ->
+            if (!freeUpSpace.launch(requestedBytes)) sounds.onIntent(SoundsIntent.FreeUpSpaceUnavailable)
+        })
     }
 }
 
@@ -395,6 +404,7 @@ private fun TabsNavHost(
     sounds: State<SoundsUiState>,
     soundsClock: PlaybackClock,
     onSoundsIntent: (SoundsIntent) -> Unit,
+    mySoundPickers: MySoundPickers,
     onFreeUpSpace: () -> Unit,
     onOpenCreate: () -> Unit,
     onStartVideoMeme: () -> Unit,
@@ -420,7 +430,7 @@ private fun TabsNavHost(
         }
         composable<TemplatesRoute> { TemplatesScreen() }
         composable<SoundsRoute> {
-            SoundsScreen(state = sounds.value, onIntent = onSoundsIntent, clock = soundsClock, onFreeUpSpace = onFreeUpSpace)
+            SoundsScreen(state = sounds.value, onIntent = onSoundsIntent, clock = soundsClock, onFreeUpSpace = onFreeUpSpace, pickers = mySoundPickers)
         }
         composable<DraftsRoute> {
             DraftsScreen(drafts.value, onDraftsIntent, onMakeMeme = onOpenCreate, onOpenDraft = onOpenDraft)
@@ -443,6 +453,8 @@ private fun VideoEditorDestination(projectId: String, madeFromPhoto: Boolean, st
     val freeUpSpace = rememberFreeUpSpaceLauncher()
     // The sound picker's lists, downloads and previews: its own instance of the Sounds tab's ViewModel (P3-05).
     val soundPicker = koinViewModel<SoundsViewModel>(qualifier = SOUND_PICKER, key = "soundPicker")
+    // The picker's My sounds actions open the system pickers from here, because platform code stays out of the feature.
+    val mySoundPickers = rememberMySoundPickers { source, origin -> soundPicker.onIntent(SoundsIntent.MySoundPicked(source, origin)) }
     LockPortraitOnPhones()
     EditorMediaPickers(state.mediaPicker, viewModel::onIntent)
     val currentOnClose by rememberUpdatedState(onClose)
@@ -475,7 +487,7 @@ private fun VideoEditorDestination(projectId: String, madeFromPhoto: Boolean, st
         },
         imageSource = imageSource,
         soundPicker = { visible, title, onDismiss, onPick, onUnplayable ->
-            EditorSoundPicker(soundPicker, visible, title, onDismiss, onPick, onUnplayable) {
+            EditorSoundPicker(soundPicker, visible, title, mySoundPickers, onDismiss, onPick, onUnplayable) {
                 if (!freeUpSpace.launch(SOUND_SPACE_REQUEST_BYTES)) soundPicker.onIntent(SoundsIntent.FreeUpSpaceUnavailable)
             }
         },
@@ -495,6 +507,7 @@ private fun EditorSoundPicker(
     picker: SoundsViewModel,
     visible: Boolean,
     title: String,
+    pickers: MySoundPickers,
     onDismiss: () -> Unit,
     onPick: (PickedSound) -> Unit,
     onUnplayable: () -> Unit,
@@ -505,7 +518,7 @@ private fun EditorSoundPicker(
     val currentOnUnplayable by rememberUpdatedState(onUnplayable)
     LaunchedEffect(picker) { picker.picks.collect { currentOnPick(it) } }
     LaunchedEffect(picker) { picker.unplayable.collect { currentOnUnplayable() } }
-    SoundPickerSheet(visible, title, state, picker.clock, picker::onIntent, onDismiss, onFreeUpSpace)
+    SoundPickerSheet(visible, title, state, picker.clock, picker::onIntent, onDismiss, onFreeUpSpace, pickers = pickers)
 }
 
 /**

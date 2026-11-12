@@ -2,6 +2,11 @@ package app.memix.engine.video
 
 import app.memix.core.domain.AppError
 import app.memix.core.domain.Outcome
+import app.memix.core.domain.mysound.MySoundFailure
+import app.memix.core.domain.mysound.MySoundSource
+import app.memix.core.domain.mysound.SoundConversion
+import app.memix.core.domain.mysound.SoundImporter
+import app.memix.core.domain.mysound.SoundProbe
 import app.memix.core.domain.sound.SoundPlayer
 import app.memix.core.domain.text.CaptionBlockSize
 import app.memix.core.domain.text.CaptionMeasurer
@@ -20,6 +25,7 @@ import app.memix.core.model.project.CaptionCatalog
 import app.memix.core.model.project.CaptionLook
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.MediaClip
+import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
@@ -35,8 +41,17 @@ import org.koin.dsl.module
 actual val videoEngineModule = module {
     single<VideoEngine> { IosVideoEngine() }
     single<CaptionMeasurer> { EstimatedCaptionMeasurer }
+    single<SoundImporter> { UnavailableSoundImporter }
     // TODO(P7-04): draw photo text layers with the same Core Text layout; nothing draws captions on iOS until then.
     single<SceneCaptions> { NoSceneCaptions }
+}
+
+// TODO(P7-05): AVAssetExportSession with the Apple M4A preset reads the pick and writes the .m4a (P3-07). Until then every import says the file is not supported.
+private object UnavailableSoundImporter : SoundImporter {
+    override suspend fun probe(origin: MediaOrigin, source: MySoundSource) = SoundProbe(null, null, null, MySoundFailure.UNSUPPORTED)
+
+    override suspend fun convert(origin: MediaOrigin, destination: String, onProgress: (Float) -> Unit) =
+        SoundConversion.Failed(MySoundFailure.UNSUPPORTED)
 }
 
 // TODO(P7-04): measure with Core Text and the bundled fonts, the same rules as Android's AndroidCaptionRenderer. Until

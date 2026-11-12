@@ -75,9 +75,15 @@ private class AndroidMediaPickerLauncher(
     }
 }
 
-// Images and videos or images only; several items come back in the order the user tapped them where the picker supports it.
+// Images and videos, images only or videos only; several items come back in the order the user tapped them where the picker supports it.
 private fun pickRequest(media: PickerMedia, ordered: Boolean): PickVisualMediaRequest = PickVisualMediaRequest.Builder()
-    .setMediaType(if (media == PickerMedia.IMAGES_ONLY) PickVisualMedia.ImageOnly else PickVisualMedia.ImageAndVideo)
+    .setMediaType(
+        when (media) {
+            PickerMedia.IMAGES_ONLY -> PickVisualMedia.ImageOnly
+            PickerMedia.VIDEOS_ONLY -> PickVisualMedia.VideoOnly
+            PickerMedia.IMAGES_AND_VIDEOS -> PickVisualMedia.ImageAndVideo
+        },
+    )
     .setOrderedSelection(ordered)
     .build()
 
