@@ -55,6 +55,8 @@ import kotlinx.coroutines.delay
 import memix.feature.sounds.generated.resources.Res
 import memix.feature.sounds.generated.resources.picker_back_a11y
 import memix.feature.sounds.generated.resources.sound_detail_add_to_video
+import memix.feature.sounds.generated.resources.sound_detail_report
+import memix.feature.sounds.generated.resources.sound_report_back_a11y
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -91,14 +93,17 @@ fun SoundPickerSheet(
         currentOnIntent(SoundsIntent.PickerExited)
     }
     val details by remember(state) { derivedStateOf { state.value.details } }
+    val reportOpen by remember(state) { derivedStateOf { state.value.reportOpen } }
     val language = LocalLocale.current.language
     val haptics = LocalHapticFeedback.current
+    val titleFocus = remember { FocusRequester() }
+    ReportTitleFocus(reportOpen, titleFocus)
     val name = details?.title?.inLanguage(language)
     Box(modifier.fillMaxSize()) {
         Sheet(
             visible = visible,
             onDismiss = onDismiss,
-            title = name ?: title,
+            title = if (reportOpen) stringResource(Res.string.sound_detail_report) else name ?: title,
             opensAtHalfHeight = true,
             minOpeningHeight = PickerMinHeight,
             grow = searchFocused,
@@ -106,15 +111,21 @@ fun SoundPickerSheet(
                 when {
                     // Escape or back with the search box focused only puts the keyboard away.
                     searchFocused -> focusManager.clearFocus()
+                    reportOpen -> onIntent(SoundsIntent.CloseReport)
                     details != null -> onIntent(SoundsIntent.CloseDetails)
                     else -> onDismiss()
                 }
             },
             titleLeading = details?.let {
-                { IconButton(MemixIcons.ArrowBack, stringResource(Res.string.picker_back_a11y), { onIntent(SoundsIntent.CloseDetails) }) }
+                if (reportOpen) {
+                    { IconButton(MemixIcons.ArrowBack, stringResource(Res.string.sound_report_back_a11y), { onIntent(SoundsIntent.CloseReport) }) }
+                } else {
+                    { IconButton(MemixIcons.ArrowBack, stringResource(Res.string.picker_back_a11y), { onIntent(SoundsIntent.CloseDetails) }) }
+                }
             },
             titleMaxLines = TITLE_MAX_LINES,
-            titleTrailing = details?.let { shown ->
+            titleFocus = titleFocus,
+            titleTrailing = details?.takeUnless { reportOpen }?.let { shown ->
                 {
                     val isFavorite by remember(state, shown.id) { derivedStateOf { shown.id in state.value.favoriteIds } }
                     SoundFavoriteHeart(name.orEmpty(), isFavorite, { on ->
@@ -127,6 +138,7 @@ fun SoundPickerSheet(
             PickerPanes(state, clock, onIntent, onFreeUpSpace) { searchFocused = it }
         }
         val toast by remember(state) { derivedStateOf { state.value.toast.takeIf { visible } } }
+        ReportSentHaptic(toast)
         FadingToast(toast, Modifier.align(Alignment.BottomCenter).padding(MemixSpacing.space4)) { shown ->
             Toast(soundsToastText(shown))
         }
@@ -150,14 +162,40 @@ private fun ColumnScope.PickerPanes(
     // Kept above the panes, so the list comes back where it was after a visit to the details.
     val listState = rememberLazyListState()
     val field = remember { TextFieldState(state.value.query) }
-    val showsDetails by remember(state) { derivedStateOf { state.value.details != null } }
-    val millis = if (MemixTheme.reduceMotion) MemixMotion.durationPress else MemixMotion.durationSheet
-    Crossfade(showsDetails, Modifier.weight(1f, fill = false), animationSpec = tween(millis), label = "picker-pane") { details ->
-        if (details) {
-            DetailsPane(state, clock, onIntent)
-        } else {
-            ListPane(state, clock, listState, field, onIntent, onFreeUpSpace, onSearchFocusChange)
+    val pane by remember(state) {
+        derivedStateOf {
+            when {
+                state.value.details == null -> PickerPane.LIST
+                state.value.reportOpen -> PickerPane.REPORT
+                else -> PickerPane.DETAILS
+            }
         }
+    }
+    // Held above the panes: the details pane leaves composition while the Report pane is up, and focus returns to its row.
+    val reportRow = remember { FocusRequester() }
+    val shownDetails by remember(state) { derivedStateOf { state.value.details?.id } }
+    val reported by remember(state) { derivedStateOf { shownDetails != null && shownDetails in state.value.reportedIds } }
+    ReportFocusReturn(pane == PickerPane.REPORT, reported, reportRow)
+    val millis = if (MemixTheme.reduceMotion) MemixMotion.durationPress else MemixMotion.durationSheet
+    Crossfade(pane, Modifier.weight(1f, fill = false), animationSpec = tween(millis), label = "picker-pane") { shown ->
+        when (shown) {
+            PickerPane.LIST -> ListPane(state, clock, listState, field, onIntent, onFreeUpSpace, onSearchFocusChange)
+            PickerPane.DETAILS -> DetailsPane(state, clock, reportRow, onIntent)
+            PickerPane.REPORT -> ReportHost(state, onIntent)
+        }
+    }
+}
+
+/** The picker's panes (spec P3-05): the list, a sound's details, and the Report pane (P3-10) that opens from the details. */
+private enum class PickerPane { LIST, DETAILS, REPORT }
+
+@Composable
+private fun ReportHost(stateHolder: State<SoundsUiState>, onIntent: (SoundsIntent) -> Unit) {
+    val state by stateHolder
+    val details = state.details ?: return
+    val name = details.title.inLanguage(LocalLocale.current.language)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4)) {
+        ReportPane(name, state.report, onIntent)
     }
 }
 
@@ -203,13 +241,14 @@ private fun ListPane(
 }
 
 @Composable
-private fun DetailsPane(stateHolder: State<SoundsUiState>, clock: PlaybackClock, onIntent: (SoundsIntent) -> Unit) {
+private fun DetailsPane(stateHolder: State<SoundsUiState>, clock: PlaybackClock, reportRow: FocusRequester, onIntent: (SoundsIntent) -> Unit) {
     val state by stateHolder
     val details = state.details ?: return
     val language = LocalLocale.current.language
     val position = rememberPlaybackPosition(clock, state.activeId, isPlaying = state.playingId != null)
     val look = state.lookOf(details.id)
     val name = details.title.inLanguage(language)
+    val reportEntry = reportEntryOf(look, details.id in state.reportedIds, reportRow, onIntent)
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4)) {
         DetailsBody(
             details = details,
@@ -222,6 +261,7 @@ private fun DetailsPane(stateHolder: State<SoundsUiState>, clock: PlaybackClock,
             position = position,
             language = language,
             onIntent = onIntent,
+            reportEntry = reportEntry,
         )
         // A sound that is not on the phone with no way to get it, or dropped from the catalog, has nothing to add (P3-03's line says why).
         if (look != SoundRowLook.OFFLINE_NOT_SAVED && look != SoundRowLook.UNAVAILABLE) {
@@ -233,6 +273,7 @@ private fun DetailsPane(stateHolder: State<SoundsUiState>, clock: PlaybackClock,
                 busy = look == SoundRowLook.DOWNLOADING || look == SoundRowLook.FAILED_STORAGE,
             )
         }
+        if (!reportScrollsWithContent()) reportEntry()
     }
 }
 

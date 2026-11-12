@@ -13,8 +13,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -54,6 +57,7 @@ import memix.feature.sounds.generated.resources.Res
 import memix.feature.sounds.generated.resources.sound_dl_free_up_space
 import memix.feature.sounds.generated.resources.sound_dl_toast_dismiss
 import memix.feature.sounds.generated.resources.sound_detail_source_failed
+import memix.feature.sounds.generated.resources.sound_report_thanks
 import memix.feature.sounds.generated.resources.sound_play_failed
 import memix.feature.sounds.generated.resources.sound_volume_low
 import memix.feature.sounds.generated.resources.sounds_browse_global
@@ -145,6 +149,7 @@ internal fun soundsToastText(toast: SoundsToast): String = stringResource(
         SoundsToast.REFRESH_FAILED -> Res.string.sounds_refresh_failed
         SoundsToast.VOLUME_LOW -> Res.string.sound_volume_low
         SoundsToast.SOURCE_FAILED -> Res.string.sound_detail_source_failed
+        SoundsToast.REPORT_SENT -> Res.string.sound_report_thanks
     },
 )
 
@@ -354,3 +359,10 @@ private fun GoToButton(label: StringResource, onClick: () -> Unit) {
 
 private const val NAME_BAR_FRACTION = 0.6f
 private const val META_BAR_FRACTION = 0.35f
+
+/** One Confirm haptic when the thank-you toast for a report appears (spec P3-10 → Interactions). */
+@Composable
+internal fun ReportSentHaptic(toast: SoundsToast?) {
+    val haptics = LocalHapticFeedback.current
+    LaunchedEffect(toast) { if (toast == SoundsToast.REPORT_SENT) haptics.performHapticFeedback(HapticFeedbackType.Confirm) }
+}

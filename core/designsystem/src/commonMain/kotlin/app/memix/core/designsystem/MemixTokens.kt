@@ -105,6 +105,9 @@ object MemixSize {
     /** The visible side of SoundRow's blue Add block, inside a `touch-target` square (P3-05); `sound-add-size` in design/tokens.json. */
     val soundAddSize = 36.dp
 
+    /** The dot inside a selected radio mark (40% of the 20 dp disc; the Report pane, P3-10); `radio-dot-size` in design/tokens.json. */
+    val radioDotSize = 8.dp
+
     /** One waveform bar's width, and the gap between bars (P3-03); `waveform-bar-width` and `waveform-bar-gap` in design/tokens.json. */
     val waveformBarWidth = 2.dp
     val waveformBarGap = 2.dp

@@ -128,6 +128,8 @@ fun Sheet(
     titleTrailing: (@Composable () -> Unit)? = null,
     /** How many lines the title may take before an ellipsis; a screen reader still hears all of it. */
     titleMaxLines: Int = Int.MAX_VALUE,
+    /** Makes the title focusable and lets the caller move focus to it when the content changes pane (P3-10). */
+    titleFocus: FocusRequester? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val reduceMotion = MemixTheme.reduceMotion
@@ -144,7 +146,7 @@ fun Sheet(
             enter = if (reduceMotion) fadeIn(tween(MemixMotion.durationPress)) else slideInVertically(tween(MemixMotion.durationSheet)) { it },
             exit = if (reduceMotion) fadeOut(tween(MemixMotion.durationPress)) else slideOutVertically(tween(MemixMotion.durationSheet)) { it },
         ) {
-            SheetSurface(visible, title, heroTitle, blocking, opensAtHalfHeight, minOpeningHeight, grow, onDismiss, onBack, titleLeading, titleTrailing, titleMaxLines, content)
+            SheetSurface(visible, title, heroTitle, blocking, opensAtHalfHeight, minOpeningHeight, grow, onDismiss, onBack, titleLeading, titleTrailing, titleMaxLines, titleFocus, content)
         }
     }
 }
@@ -192,6 +194,7 @@ private fun SheetSurface(
     titleLeading: (@Composable () -> Unit)?,
     titleTrailing: (@Composable () -> Unit)?,
     titleMaxLines: Int,
+    titleFocus: FocusRequester?,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -250,7 +253,7 @@ private fun SheetSurface(
         if (!blocking) Grabber(Modifier.align(Alignment.CenterHorizontally))
         Row(verticalAlignment = Alignment.CenterVertically) {
             titleLeading?.invoke()
-            if (heroTitle) DisplayText(title, Modifier.weight(1f)) else Text(title, MemixTheme.type.title, Modifier.weight(1f), maxLines = titleMaxLines, overflow = TextOverflow.Ellipsis)
+            if (heroTitle) DisplayText(title, Modifier.weight(1f)) else Text(title, MemixTheme.type.title, Modifier.weight(1f).then(if (titleFocus != null) Modifier.focusRequester(titleFocus).focusable() else Modifier), maxLines = titleMaxLines, overflow = TextOverflow.Ellipsis)
             titleTrailing?.invoke()
             if (!blocking) CloseButton(onDismiss)
         }

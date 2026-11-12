@@ -128,6 +128,7 @@ fun SoundsScreen(
     }
     val fade = rememberTabFade(state.tab)
     val position = rememberPlaybackPosition(clock, state.activeId, isPlaying = state.playingId != null)
+    ReportSentHaptic(state.toast)
 
     Box(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars)) {
         SoundsList(

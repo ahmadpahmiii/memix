@@ -77,6 +77,7 @@ class SoundsViewModel(
     private val onPhone: SoundsOnPhone,
     private val observeRemovedIds: ObserveRemovedSoundIdsUseCase,
     private val checkRemoved: CheckRemovedSoundsUseCase,
+    reportTools: SoundReportTools,
     tabExit: SoundsTabExit,
     private val mode: SoundsMode,
     private val pickerMemory: SoundPickerMemory,
@@ -91,6 +92,15 @@ class SoundsViewModel(
         onNotice = ::showToast,
         onChanged = ::showPreview,
     )
+
+    // The Report pane's form (P3-10). A report the server took closes the pane, and the Sounds tab's sheet with it.
+    private val report = SoundReportController(
+        scope = viewModelScope,
+        tools = reportTools,
+        onChanged = { form -> updateState { it.copy(report = form) } },
+        onSent = ::reportSent,
+    )
+    private val observeReported = reportTools.observeReported
 
     /** Where the playing sound is; the screen reads it in draw code, 30 times a second at most. */
     val clock = PlaybackClock { preview.positionUs() }
@@ -219,6 +229,9 @@ class SoundsViewModel(
             }
         }
         viewModelScope.launch {
+            observeReported().collect { ids -> updateState { it.copy(reportedIds = ids.toImmutableSet()) } }
+        }
+        viewModelScope.launch {
             observeRecents().collect { recents ->
                 recentSounds = recents
                 checkRemovedSoundsOnce()
@@ -237,6 +250,11 @@ class SoundsViewModel(
             is SoundsIntent.OpenDetails -> { dropFocusReturn(); openDetails(intent.soundId, intent.fromRecent) }
             SoundsIntent.CloseDetails -> closeDetails()
             SoundsIntent.ToggleDetailsPlay -> detailsSound?.let { togglePreview(it.id, detailsTab) }
+            SoundsIntent.OpenReport -> openReport()
+            SoundsIntent.CloseReport -> updateState { it.copy(reportOpen = false) }
+            is SoundsIntent.ReportReasonChosen -> report.chooseReason(intent.reason)
+            is SoundsIntent.ReportNoteChanged -> report.changeNote(intent.text)
+            SoundsIntent.SendReport -> detailsSound?.let { report.send(it.id) }
             SoundsIntent.SourceOpenFailed -> showToast(SoundsToast.SOURCE_FAILED)
             SoundsIntent.FocusReturned -> dropFocusReturn()
             SoundsIntent.ScreenShown -> screenShown()
@@ -287,6 +305,7 @@ class SoundsViewModel(
     private fun leaveScreen() {
         preview.stop()
         detailsSound = null
+        clearReport()
         updateState { it.copy(details = null, focusReturn = null) }
         // Leaving the screen ends the visit: an un-hearted row is gone when the user comes back (spec P3-02 → Tab contents).
         favoritesOnScreen = latestFavorites
@@ -679,7 +698,31 @@ class SoundsViewModel(
     private fun closeDetails() {
         val sound = detailsSound ?: return
         detailsSound = null
+        clearReport()
         updateState { it.copy(details = null, focusReturn = RowFocusTarget(sound.id, detailsFromRecent)) }
+    }
+
+    // ---- Report pane (P3-10) ----
+
+    // Only a sound the catalog still lists and this phone has not reported yet has a Report row, so there is nothing to open otherwise.
+    private fun openReport() {
+        val sound = detailsSound ?: return
+        if (sound.id in state.value.reportedIds || state.value.lookOf(sound.id) == SoundRowLook.UNAVAILABLE) return
+        updateState { it.copy(reportOpen = true, report = report.current) }
+    }
+
+    // The form is for one visit of the sheet: closing the sheet, or leaving the Sounds tab, empties it and drops a send still running.
+    private fun clearReport() {
+        report.reset()
+        updateState { it.copy(reportOpen = false) }
+    }
+
+    // The server took the report. The Sounds tab's sheet closes; the picker goes back to the details, whose Report row now says
+    // "Reported. Thank you." (closing the picker would throw away a sound the person was choosing to add).
+    private fun reportSent() {
+        clearReport()
+        if (mode == SoundsMode.LIBRARY) closeDetails()
+        showToast(SoundsToast.REPORT_SENT)
     }
 
     private fun LibrarySound.toDetails(): SoundDetailsUi {

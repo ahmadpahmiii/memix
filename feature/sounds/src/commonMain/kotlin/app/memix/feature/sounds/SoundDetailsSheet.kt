@@ -1,5 +1,7 @@
 package app.memix.feature.sounds
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +23,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
@@ -37,6 +40,7 @@ import androidx.compose.ui.semantics.semantics
 import app.memix.core.designsystem.Icon
 import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixIcons
+import app.memix.core.designsystem.MemixMotion
 import app.memix.core.designsystem.MemixShapes
 import app.memix.core.designsystem.MemixSize
 import app.memix.core.designsystem.MemixSpacing
@@ -47,6 +51,7 @@ import app.memix.core.designsystem.pressedColor
 import app.memix.core.designsystem.component.Button
 import app.memix.core.designsystem.component.ButtonVariant
 import app.memix.core.designsystem.component.FadingToast
+import app.memix.core.designsystem.component.IconButton
 import app.memix.core.designsystem.component.Sheet
 import app.memix.core.designsystem.component.SoundFavoriteHeart
 import app.memix.core.designsystem.component.SoundPlayDisc
@@ -61,6 +66,8 @@ import memix.core.ui.generated.resources.sound_dl_failed
 import memix.core.ui.generated.resources.sound_dl_failed_storage
 import memix.feature.sounds.generated.resources.Res
 import memix.feature.sounds.generated.resources.sound_detail_offline_note
+import memix.feature.sounds.generated.resources.sound_detail_report
+import memix.feature.sounds.generated.resources.sound_report_back_a11y
 import memix.feature.sounds.generated.resources.sound_detail_use
 import memix.feature.sounds.generated.resources.sound_detail_not_saved_now
 import memix.feature.sounds.generated.resources.sound_detail_saved
@@ -86,8 +93,9 @@ import org.jetbrains.compose.resources.stringResource
  * comes from (credit, license, source) so a CC BY credit is always one tap away. The app places it over the bottom nav,
  * as it does the other sheets. It is always composed, so opening it animates; its content is kept while it slides out.
  *
- * The Report pane (P3-10) swaps in for the body of this sheet; [DetailsBody] is the part it replaces. "Use in a video
- * meme" (P3-15) is the sheet's one blue action, under the body.
+ * The Report pane (P3-10) swaps in for the body of this sheet over 200 ms, with a back arrow in the title row; [DetailsBody]
+ * is the part it replaces. "Use in a video meme" (P3-15) is the sheet's one blue action, under the body, and the Report row
+ * sits under it.
  */
 @Composable
 fun SoundDetailsSheet(state: State<SoundsUiState>, clock: PlaybackClock, onIntent: (SoundsIntent) -> Unit, modifier: Modifier = Modifier) {
@@ -104,21 +112,43 @@ fun SoundDetailsSheet(state: State<SoundsUiState>, clock: PlaybackClock, onInten
     val look by remember(state, soundId) { derivedStateOf { soundId?.let { state.value.lookOf(it) } ?: SoundRowLook.NORMAL } }
     val downloadProgress by remember(state, soundId) { derivedStateOf { soundId?.let { state.value.downloadProgressOf(it) } } }
     val onPhone by remember(state, soundId) { derivedStateOf { soundId?.let { state.value.onPhoneOf(it) } ?: SoundOnPhone.NOT_SAVED } }
+    val reportOpenNow by remember(state) { derivedStateOf { state.value.reportOpen } }
+    val formNow by remember(state) { derivedStateOf { state.value.report } }
+    val reported by remember(state, soundId) { derivedStateOf { soundId != null && soundId in state.value.reportedIds } }
     val activeId by remember(state) { derivedStateOf { state.value.activeId } }
     val isPlaying by remember(state) { derivedStateOf { state.value.playingId != null } }
     val toast by remember(state) { derivedStateOf { state.value.toast.takeIf { open } } }
+    // Closing empties the form and shuts the pane; the sheet keeps showing what it had while it slides out.
+    SideEffect {
+        if (open) {
+            lastShown.reportOpen = reportOpenNow
+            lastShown.form = formNow
+        }
+    }
+    val reportOpen = if (open) reportOpenNow else lastShown.reportOpen
+    val form = if (open) formNow else lastShown.form
     val language = LocalLocale.current.language
     val name = details?.title?.inLanguage(language).orEmpty()
     // The sheet ticks only while it is up; the list behind it runs its own.
     val position = rememberPlaybackPosition(clock, activeId.takeIf { open }, isPlaying = open && isPlaying)
     val haptics = LocalHapticFeedback.current
+    val titleFocus = remember { FocusRequester() }
+    ReportTitleFocus(reportOpen, titleFocus)
     Box(modifier.fillMaxSize()) {
         Sheet(
             visible = open,
             onDismiss = { onIntent(SoundsIntent.CloseDetails) },
-            title = name,
+            title = if (reportOpen) stringResource(Res.string.sound_detail_report) else name,
             titleMaxLines = TITLE_MAX_LINES,
-            titleTrailing = details?.let { shown ->
+            titleFocus = titleFocus,
+            // Back from the Report pane returns to the details first; the close button, scrim and a drag down close the sheet.
+            onBack = { onIntent(if (reportOpen) SoundsIntent.CloseReport else SoundsIntent.CloseDetails) },
+            titleLeading = if (reportOpen) {
+                { IconButton(MemixIcons.ArrowBack, stringResource(Res.string.sound_report_back_a11y), { onIntent(SoundsIntent.CloseReport) }) }
+            } else {
+                null
+            },
+            titleTrailing = details?.takeUnless { reportOpen }?.let { shown ->
                 {
                     SoundFavoriteHeart(name, isFavorite, { on ->
                         if (on) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
@@ -128,8 +158,25 @@ fun SoundDetailsSheet(state: State<SoundsUiState>, clock: PlaybackClock, onInten
             },
         ) {
             if (details != null) {
-                DetailsBody(details, name, playback, peaks, look, downloadProgress, onPhone, position, language, onIntent)
-                UseInMemeButton(look, onIntent)
+                val reportRow = remember { FocusRequester() }
+                ReportFocusReturn(reportOpen, reported, reportRow)
+                val reportEntry = reportEntryOf(look, reported, reportRow, onIntent)
+                Crossfade(
+                    reportOpen,
+                    Modifier.weight(1f, fill = false),
+                    animationSpec = tween(if (MemixTheme.reduceMotion) MemixMotion.durationPress else MemixMotion.durationSheet),
+                    label = "details-pane",
+                ) { showsReport ->
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4)) {
+                        if (showsReport) {
+                            ReportPane(name, form, onIntent)
+                        } else {
+                            DetailsBody(details, name, playback, peaks, look, downloadProgress, onPhone, position, language, onIntent, reportEntry)
+                            UseInMemeButton(look, onIntent)
+                            if (!reportScrollsWithContent()) reportEntry()
+                        }
+                    }
+                }
             }
         }
         FadingToast(toast, Modifier.align(Alignment.BottomCenter).padding(MemixSpacing.space4)) { shown ->
@@ -141,6 +188,8 @@ fun SoundDetailsSheet(state: State<SoundsUiState>, clock: PlaybackClock, onInten
 // Not state: it only keeps the last details for the slide-out, and nothing reads it to draw.
 private class LastShown {
     var details: SoundDetailsUi? = null
+    var reportOpen = false
+    var form = SoundReportUi()
 }
 
 internal const val TITLE_MAX_LINES = 2
@@ -157,6 +206,8 @@ internal fun ColumnScope.DetailsBody(
     position: State<Long>,
     language: String,
     onIntent: (SoundsIntent) -> Unit,
+    /** The Report row (P3-10). At a large font it ends the scrolling facts here; otherwise the caller puts it under the Primary. */
+    reportEntry: @Composable () -> Unit,
 ) {
     val isActive = playback != RowPlayback.IDLE
     val played = remember(isActive, position, details.durationUs) {
@@ -198,7 +249,18 @@ internal fun ColumnScope.DetailsBody(
             SourceFact(details.sourceUrl, details.sourceHost) { onIntent(SoundsIntent.SourceOpenFailed) }
         }
         Fact(Res.string.sound_detail_device) { OnPhone(onPhone, look) }
+        if (reportScrollsWithContent()) reportEntry()
     }
+}
+
+/** The Report row, or "Reported. Thank you." once this phone has reported the sound; a sound the catalog dropped has nothing to report. */
+internal fun reportEntryOf(
+    look: SoundRowLook,
+    reported: Boolean,
+    focus: FocusRequester,
+    onIntent: (SoundsIntent) -> Unit,
+): @Composable () -> Unit = {
+    if (look != SoundRowLook.UNAVAILABLE) ReportEntry(reported, { onIntent(SoundsIntent.OpenReport) }, focus)
 }
 
 /** "0:01 / 0:02". Only the whole second is read in composition, so this recomposes once a second, not per tick. */

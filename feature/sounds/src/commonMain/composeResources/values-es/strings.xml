@@ -78,4 +78,23 @@
     <string name="picker_back_a11y">Volver a los sonidos</string>
     <string name="sound_detail_add_to_video">Añadir al video</string>
     <string name="sound_detail_use">Usar en un meme de video</string>
+    <string name="sound_detail_report">Reportar este sonido</string>
+    <string name="sound_detail_reported">Reportado. Gracias.</string>
+    <string name="sound_report_title">Reportar este sonido</string>
+    <string name="sound_report_prompt">¿Qué problema tiene?</string>
+    <string name="sound_report_reason_rights">Problema de derechos de autor</string>
+    <string name="sound_report_reason_offensive">Ofensivo o que incita al odio</string>
+    <string name="sound_report_reason_broken">Sonido dañado o incorrecto</string>
+    <string name="sound_report_reason_other">Otro motivo</string>
+    <string name="sound_report_note_label">Detalles (opcional)</string>
+    <string name="sound_report_count">%1$d/%2$d</string>
+    <string name="sound_report_info">No podemos responder, pero el equipo lee cada reporte.</string>
+    <string name="sound_report_send">Enviar reporte</string>
+    <string name="sound_report_sending">Enviando…</string>
+    <string name="sound_report_pick_reason">Elige un motivo para enviar tu reporte.</string>
+    <string name="sound_report_offline">Sin conexión. Conéctate y vuelve a enviar.</string>
+    <string name="sound_report_failed">No se pudo enviar tu reporte. Inténtalo de nuevo.</string>
+    <string name="sound_report_thanks">Gracias. Revisaremos este sonido.</string>
+    <string name="sound_report_back_a11y">Volver a los detalles del sonido</string>
+    <string name="sound_report_count_a11y">%1$d de %2$d caracteres</string>
 </resources>

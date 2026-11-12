@@ -2,13 +2,16 @@ package app.memix.core.data
 
 import app.memix.core.data.catalog.SqlDelightSoundCatalogRepository
 import app.memix.core.data.catalog.SqlDelightSoundCollectionsRepository
-import app.memix.core.data.catalog.SupabaseConfig
+import app.memix.core.data.supabase.SupabaseClientSource
+import app.memix.core.data.supabase.SupabaseConfig
 import app.memix.core.data.catalog.SupabaseSoundCatalogRemote
 import app.memix.core.data.db.MemixDatabase
 import app.memix.core.data.project.ProjectJsonCodec
 import app.memix.core.data.project.ProjectJsonMigrator
 import app.memix.core.data.project.SqlDelightProjectRepository
 import app.memix.core.data.project.projectMigrations
+import app.memix.core.data.report.SqlDelightSoundReports
+import app.memix.core.data.report.SupabaseSoundReportRemote
 import app.memix.core.data.settings.SettingsExportPreferences
 import app.memix.core.data.sound.FileSoundDownloads
 import app.memix.core.data.sound.KtorSoundFileSource
@@ -22,6 +25,7 @@ import app.memix.core.domain.photo.VideoMemeNotePreferences
 import app.memix.core.domain.project.ProjectRepository
 import app.memix.core.domain.sound.SoundCollectionsRepository
 import app.memix.core.domain.sound.SoundDownloads
+import app.memix.core.domain.sound.SoundReports
 import app.memix.core.domain.stickerpack.StickerPackRepository
 import app.memix.core.domain.video.ExportPreferences
 import app.memix.core.model.project.Project
@@ -51,13 +55,26 @@ val dataModule = module {
             logger = get(),
         )
     }
-    single<SoundCatalogRepository> {
+    // The one Supabase client of the catalog and the reports; the URL and key are read when the first request is made, not at start-up.
+    single {
         val appConfig = get<AppConfig>()
+        SupabaseClientSource(lazy { SupabaseConfig(appConfig.supabaseUrl, appConfig.supabasePublishableKey) })
+    }
+    single<SoundCatalogRepository> {
         SqlDelightSoundCatalogRepository(
             database = lazy { get<MemixDatabase>() },
-            // Read when the first request is made, not at start-up.
-            remote = SupabaseSoundCatalogRemote(lazy { SupabaseConfig(appConfig.supabaseUrl, appConfig.supabasePublishableKey) }, logger = get()),
-            appConfig = appConfig,
+            remote = SupabaseSoundCatalogRemote(get(), logger = get()),
+            appConfig = get(),
+            clock = get(),
+            ioDispatcher = Dispatchers.IO,
+            logger = get(),
+        )
+    }
+    // Reports of library sounds (P3-10) and the phone's memory of them.
+    single<SoundReports> {
+        SqlDelightSoundReports(
+            database = lazy { get<MemixDatabase>() },
+            remote = SupabaseSoundReportRemote(get()),
             clock = get(),
             ioDispatcher = Dispatchers.IO,
             logger = get(),

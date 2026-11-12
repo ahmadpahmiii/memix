@@ -55,6 +55,8 @@ import app.memix.core.domain.sound.PlaceSoundInProjectUseCase
 import app.memix.core.domain.sound.SoundsOnPhone
 import app.memix.core.domain.sound.PrepareSoundUseCase
 import app.memix.core.domain.sound.RecordRecentSoundUseCase
+import app.memix.core.domain.sound.ObserveReportedSoundIdsUseCase
+import app.memix.core.domain.sound.ReportSoundUseCase
 import app.memix.core.domain.sound.ToggleFavoriteSoundUseCase
 import app.memix.core.domain.text.CaptionFontSource
 import app.memix.core.domain.text.MeasureCaptionUseCase
@@ -86,6 +88,7 @@ import app.memix.feature.export.ExportViewModel
 import app.memix.feature.home.HomeViewModel
 import app.memix.feature.sounds.SoundPickerMemory
 import app.memix.feature.sounds.SoundPreviewTools
+import app.memix.feature.sounds.SoundReportTools
 import app.memix.feature.sounds.SoundsMode
 import app.memix.feature.sounds.SoundsTabExit
 import app.memix.feature.sounds.SoundsViewModel
@@ -182,6 +185,10 @@ private val appModule = module {
     // A landed library sound gets its own file in the project's folder (P3-05); the previews' parts come as one bundle.
     factoryOf(::PlaceSoundInProjectUseCase)
     factoryOf(::SoundPreviewTools)
+    // Report a sound (P3-10): the details sheet's Report pane sends through these; the reported ids come from the phone.
+    factoryOf(::ObserveReportedSoundIdsUseCase)
+    factoryOf(::ReportSoundUseCase)
+    factoryOf(::SoundReportTools)
     // The library sound a Use is carrying to the next new video meme (P3-15); the import ViewModel owns one.
     factoryOf(::PendingMemeSound)
     // The caption fonts live with the interface fonts in the design system; the engine's renderer reads them (P1-10).
@@ -305,6 +312,7 @@ private fun org.koin.core.scope.Scope.soundsViewModel(mode: SoundsMode) = Sounds
     onPhone = get(),
     observeRemovedIds = get(),
     checkRemoved = get(),
+    reportTools = get(),
     tabExit = get(),
     mode = mode,
     pickerMemory = get(),

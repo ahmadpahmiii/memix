@@ -78,4 +78,23 @@
     <string name="picker_back_a11y">Back to sounds</string>
     <string name="sound_detail_add_to_video">Add to video</string>
     <string name="sound_detail_use">Use in a video meme</string>
+    <string name="sound_detail_report">Report this sound</string>
+    <string name="sound_detail_reported">Reported. Thank you.</string>
+    <string name="sound_report_title">Report this sound</string>
+    <string name="sound_report_prompt">What's wrong with it?</string>
+    <string name="sound_report_reason_rights">Copyright problem</string>
+    <string name="sound_report_reason_offensive">Offensive or hateful</string>
+    <string name="sound_report_reason_broken">Broken or wrong sound</string>
+    <string name="sound_report_reason_other">Something else</string>
+    <string name="sound_report_note_label">Details (optional)</string>
+    <string name="sound_report_count">%1$d/%2$d</string>
+    <string name="sound_report_info">We can't reply, but the team reads every report.</string>
+    <string name="sound_report_send">Send report</string>
+    <string name="sound_report_sending">Sending…</string>
+    <string name="sound_report_pick_reason">Pick a reason to send your report.</string>
+    <string name="sound_report_offline">You're offline. Connect, then send again.</string>
+    <string name="sound_report_failed">Couldn't send your report. Try again.</string>
+    <string name="sound_report_thanks">Thanks. We'll review this sound.</string>
+    <string name="sound_report_back_a11y">Back to sound details</string>
+    <string name="sound_report_count_a11y">%1$d of %2$d characters</string>
 </resources>

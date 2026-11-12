@@ -2,6 +2,7 @@ package app.memix.feature.sounds
 
 import androidx.compose.runtime.Immutable
 import app.memix.core.designsystem.component.SoundRowLook
+import app.memix.core.domain.sound.SoundReportReason
 import app.memix.core.model.catalog.LocalizedText
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
@@ -134,7 +135,7 @@ enum class ListFooter { NONE, LOADING_MORE, MORE_FAILED }
 /** The one status strip above the rows. Searching beats the offline notes, and the search note beats the plain one. */
 enum class SoundsNotice { OFFLINE, SEARCH_OFFLINE, SEARCHING }
 
-enum class SoundsToast { PLAY_FAILED, REFRESH_FAILED, VOLUME_LOW, SOURCE_FAILED }
+enum class SoundsToast { PLAY_FAILED, REFRESH_FAILED, VOLUME_LOW, SOURCE_FAILED, REPORT_SENT }
 
 @Immutable
 data class SoundsUiState(
@@ -179,6 +180,11 @@ data class SoundsUiState(
     val addingId: String? = null,
     /** False once the phone showed it has no storage screen; the toast then has no action (as P1-02). */
     val canFreeUpSpace: Boolean = true,
+    /** The sounds this phone has reported: the details show "Reported. Thank you." instead of the Report row (P3-10). */
+    val reportedIds: ImmutableSet<String> = persistentSetOf(),
+    /** The details sheet shows the Report pane (spec P3-10) instead of the sound's details. */
+    val reportOpen: Boolean = false,
+    val report: SoundReportUi = SoundReportUi(),
 ) {
     /** The chips show on the catalog tabs while the search box is empty (spec P3-02 → Layout 4). */
     val showsChips: Boolean get() = tab.listsCatalog && query.isEmpty() && categories.isNotEmpty()
@@ -234,6 +240,17 @@ sealed interface SoundsIntent {
 
     /** The disc inside the details sheet; `sound_preview` names the tab that opened the sheet. */
     data object ToggleDetailsPlay : SoundsIntent
+
+    /** The Report row in the details: swaps the sheet's content for the Report pane. */
+    data object OpenReport : SoundsIntent
+
+    /** The Report pane's back arrow, system back or Escape: back to the details, the form kept. */
+    data object CloseReport : SoundsIntent
+    data class ReportReasonChosen(val reason: SoundReportReason) : SoundsIntent
+
+    /** The note field changed; the text is limited to 480 characters before it is kept. */
+    data class ReportNoteChanged(val text: String) : SoundsIntent
+    data object SendReport : SoundsIntent
 
     /** The source link found no browser to open it. */
     data object SourceOpenFailed : SoundsIntent

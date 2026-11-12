@@ -1,6 +1,7 @@
 package app.memix.core.domain
 
 import app.memix.core.domain.photo.PhotoExportAction
+import app.memix.core.domain.sound.SoundReportReason
 import app.memix.core.model.project.PhotoExportFormat
 import app.memix.core.model.project.ProjectType
 import kotlin.math.roundToLong
@@ -73,6 +74,12 @@ sealed interface AnalyticsEvent {
     data class SoundSearch(val results: Int, val offline: Boolean) : AnalyticsEvent {
         override val name = "sound_search"
         override val params = mapOf("results" to results.toString(), "offline" to offline.toString())
+    }
+
+    /** A report of a library sound reached the server (P3-10): the reason's code only, never the note. */
+    data class SoundReported(val soundId: String, val reason: SoundReportReason) : AnalyticsEvent {
+        override val name = "sound_report"
+        override val params = mapOf("sound_id" to soundId, "reason" to reason.code)
     }
 
     /** Export video was tapped and the export started (PM, 20 Oct 2026). [resolution] as named ("1080p"). */

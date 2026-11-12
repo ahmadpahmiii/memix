@@ -28,6 +28,7 @@ import memix.core.designsystem.generated.resources.ic_detach_audio
 import memix.core.designsystem.generated.resources.ic_drafts
 import memix.core.designsystem.generated.resources.ic_duplicate
 import memix.core.designsystem.generated.resources.ic_edit
+import memix.core.designsystem.generated.resources.ic_flag
 import memix.core.designsystem.generated.resources.ic_edit_text
 import memix.core.designsystem.generated.resources.ic_fill
 import memix.core.designsystem.generated.resources.ic_fit
@@ -95,6 +96,7 @@ object MemixIcons {
     val Duplicate = Res.drawable.ic_duplicate
     val Edit = Res.drawable.ic_edit
     val Fill = Res.drawable.ic_fill
+    val Flag = Res.drawable.ic_flag
     val Fit = Res.drawable.ic_fit
     val Flip = Res.drawable.ic_flip
     val Formats = Res.drawable.ic_formats

@@ -103,6 +103,13 @@ Screenshots in `docs/ux/reviews/P3-10/`:
 5. `details-reported`.
 Also: a real report inserted from the emulator and seen as a row in the Supabase table (the Done when), noted in the ticket's commit message.
 
+## Review amendments (12 Nov 2026, design review P3-10)
+- **Picker return:** in the editor's picker, a successful report returns to the sound's details (toast, Confirm haptic, "Reported. Thank you." in place of the Report row) instead of closing the sheet; the Sounds tab still closes the sheet back to the list. Focus lands on the "Reported" line.
+- **Sending:** Send turns busy and reads "Sending…" at once (no 300 ms wait).
+- **Reason rows:** `surface-raised` fill, pressed `hairline` (this replaces "no fill"). Selection is the white radio. Ring contrast: `text-secondary` on `surface-raised` 5.7:1, on `hairline` 4.7:1 (the earlier "5.7:1 on `surface`" is 7.0:1 there).
+- **Inline messages:** no separate "Couldn't send" label; the offline and failed lines already say it in words.
+- **Counter, spoken:** the counter has a spoken form "{n} of {max} characters" (`sound_report_count_a11y`).
+
 ## Questions for the owner
 1. **A contact for copyright owners.** A rights holder has no way to write to Memix from this form (the form is anonymous and one-way). **Recommended: none in P3-10;** the P5-07 credits and legal screen carries a "Copyright and takedowns" address and the store listing carries a support email. A takedown form is also a legal question for the lawyer review. Alternative: put the address in this pane's info line now (needs an email address and a decision about who reads it).
 2. **After you report, hide the sound for yourself?** **Recommended: no.** The reporter may be wrong, hiding it hides the evidence the team may want the reporter to re-check, and a hidden sound needs an "unhide" screen. The sound stays, marked "Reported. Thank you."

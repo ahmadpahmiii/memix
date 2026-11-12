@@ -77,4 +77,23 @@
     <string name="picker_back_a11y">Kembali ke daftar suara</string>
     <string name="sound_detail_add_to_video">Tambahkan ke video</string>
     <string name="sound_detail_use">Pakai di meme video</string>
+    <string name="sound_detail_report">Laporkan suara ini</string>
+    <string name="sound_detail_reported">Dilaporkan. Terima kasih.</string>
+    <string name="sound_report_title">Laporkan suara ini</string>
+    <string name="sound_report_prompt">Apa masalahnya?</string>
+    <string name="sound_report_reason_rights">Masalah hak cipta</string>
+    <string name="sound_report_reason_offensive">Menyinggung atau penuh kebencian</string>
+    <string name="sound_report_reason_broken">Rusak atau suara salah</string>
+    <string name="sound_report_reason_other">Lainnya</string>
+    <string name="sound_report_note_label">Detail (opsional)</string>
+    <string name="sound_report_count">%1$d/%2$d</string>
+    <string name="sound_report_info">Kami tidak bisa membalas, tapi tim membaca setiap laporan.</string>
+    <string name="sound_report_send">Kirim laporan</string>
+    <string name="sound_report_sending">Mengirim…</string>
+    <string name="sound_report_pick_reason">Pilih alasan untuk mengirim laporanmu.</string>
+    <string name="sound_report_offline">Kamu sedang offline. Sambungkan, lalu kirim lagi.</string>
+    <string name="sound_report_failed">Laporan tidak terkirim. Coba lagi.</string>
+    <string name="sound_report_thanks">Terima kasih. Kami akan meninjau suara ini.</string>
+    <string name="sound_report_back_a11y">Kembali ke detail suara</string>
+    <string name="sound_report_count_a11y">%1$d dari %2$d karakter</string>
 </resources>

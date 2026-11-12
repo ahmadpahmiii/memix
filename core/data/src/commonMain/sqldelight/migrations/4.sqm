@@ -1,0 +1,7 @@
+-- Version 4 to 5 (P3-10): the sounds this phone has reported. Same definition as SoundReports.sq. A new table only, so
+-- drafts, the saved catalog, favorites, recents and downloaded sounds are untouched.
+
+CREATE TABLE sound_reported (
+    sound_id TEXT NOT NULL PRIMARY KEY,
+    reported_at_epoch_us INTEGER NOT NULL
+);

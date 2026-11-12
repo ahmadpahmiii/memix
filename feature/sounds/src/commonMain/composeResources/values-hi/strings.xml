@@ -77,4 +77,23 @@
     <string name="picker_back_a11y">आवाज़ों पर वापस जाएँ</string>
     <string name="sound_detail_add_to_video">वीडियो में जोड़ें</string>
     <string name="sound_detail_use">वीडियो मीम में इस्तेमाल करें</string>
+    <string name="sound_detail_report">इस साउंड की रिपोर्ट करें</string>
+    <string name="sound_detail_reported">रिपोर्ट की गई। धन्यवाद।</string>
+    <string name="sound_report_title">इस साउंड की रिपोर्ट करें</string>
+    <string name="sound_report_prompt">इसमें क्या गड़बड़ है?</string>
+    <string name="sound_report_reason_rights">कॉपीराइट की समस्या</string>
+    <string name="sound_report_reason_offensive">आपत्तिजनक या नफ़रत भरा</string>
+    <string name="sound_report_reason_broken">खराब या गलत साउंड</string>
+    <string name="sound_report_reason_other">कुछ और</string>
+    <string name="sound_report_note_label">ब्योरा (वैकल्पिक)</string>
+    <string name="sound_report_count">%1$d/%2$d</string>
+    <string name="sound_report_info">हम जवाब नहीं दे सकते, लेकिन टीम हर रिपोर्ट पढ़ती है।</string>
+    <string name="sound_report_send">रिपोर्ट भेजें</string>
+    <string name="sound_report_sending">भेज रहे हैं…</string>
+    <string name="sound_report_pick_reason">रिपोर्ट भेजने के लिए कोई कारण चुनें।</string>
+    <string name="sound_report_offline">आप ऑफ़लाइन हैं। कनेक्ट करें, फिर दोबारा भेजें।</string>
+    <string name="sound_report_failed">आपकी रिपोर्ट नहीं भेजी जा सकी। फिर से कोशिश करें।</string>
+    <string name="sound_report_thanks">धन्यवाद। हम इस साउंड की समीक्षा करेंगे।</string>
+    <string name="sound_report_back_a11y">साउंड के ब्योरे पर वापस जाएँ</string>
+    <string name="sound_report_count_a11y">%1$d में से %2$d अक्षर</string>
 </resources>

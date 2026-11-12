@@ -246,3 +246,60 @@ Needs `media_base_url` and the catalog rows, like P3-04. Use `installBenchmark`.
 
 Desktop proof (not a phone): a JVM script, 75 checks, 0 failed (the real `SoundsViewModel`, `PendingMemeSound`, `MediaImportViewModel` and flow, `SaveGalleryProjectUseCase`, `StartEditSessionUseCase`; fakes and real temp files): Use on a saved sound (11 ms of view-model time), download first, slow and failed downloads and retry, offline, details Use, tab values, taps ignored while launching, pins and `UseFinished`; the first save (sound at 0:00 whole, copy in the project's folder, same bytes, `project_create` then `sound_add`, recent, Undo empty, the copy outliving cache eviction); a cancelled picker changing nothing; the 5 s sound on a 3 s photo; a lost file giving MISSING; a restart restoring the sound (library, starter, unknown id); None went in with Pick again and Close; Some didn't go in; Cancel while copying; a first save failing for space then landing once; a plain Create after an abandoned Use; Use during a running import.
 Not run: a device, the Compose screens beyond the renders, the editor's arrival (`EditorSoundTools.showStartingSound`, the bonk, haptic and toasts), `MemeImport` itself and `onCleared` (mirrored or not run in the script), TalkBack, the iOS link.
+
+## P3-10 · Report a sound
+
+The Done when is "the report appears as a row in Supabase". That needs the live project and is the owner's (A below); everything up to the request is proven on this machine (C). Nothing here ran on a device. Renders: `docs/ux/reviews/P3-10/`.
+
+### A. Owner live check (once, on the Mac; needs the publishable key and `memix.supabase.*` in `local.properties`)
+
+1. **Apply the grants migration first** (before any P3-01, P3-13 or P3-10 live check): `supabase/migrations/20261111120000_api_role_grants.sql` in the SQL editor. It is idempotent (safe on a project that already grants these) and gives anon and authenticated: select on `categories`, `sounds`, `templates`, `sticker_packs`, `stickers`, `trending`; insert on `reports`; execute on `search_sounds` and `sound_search_text`. Supabase moved to explicit grants in 2026 and no earlier migration has one, so without it every call answers `42501 permission denied`.
+2. **Catalog read and search through anon** (the publishable key; same `BASE` and `KEY` as below): `curl -s "$BASE/rest/v1/sounds?select=id,file_path&limit=20" -H "apikey: $KEY" -H "Authorization: Bearer $KEY"` lists the 10 starter sounds (inactive rows never appear), `curl -s "$BASE/rest/v1/categories?select=id&limit=3" ...` answers, and `curl -s -X POST "$BASE/rest/v1/rpc/search_sounds" -H "apikey: $KEY" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"q":"bruh","region":"global","lim":5,"off":0}'` answers with rows (or `[]`), not an error.
+3. **The request by hand** (the same request the app sends: the column list and `Prefer: return=minimal` are what supabase-kt 3.8.0 sends, read from the wire in the desktop script):
+   ```bash
+   BASE=https://<ref>.supabase.co
+   KEY=<publishable>          # the publishable key only
+   ID=f152c936-e835-5dc6-845e-072223b720b0   # a starter sound
+   # Expect 201 and an empty body; then one new row in Table editor -> reports (status open)
+   curl -s -w "\n%{http_code}\n" -X POST "$BASE/rest/v1/reports?columns=item_kind,item_id,reason" -H "apikey: $KEY" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -H "Prefer: return=minimal" -d "[{\"item_kind\":\"sound\",\"item_id\":\"$ID\",\"reason\":\"other: owner live check\"}]"
+   # Refused: status other than open (expect 401/403, "row-level security")
+   curl -s -w "\n%{http_code}\n" -X POST "$BASE/rest/v1/reports" -H "apikey: $KEY" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d "{\"item_kind\":\"sound\",\"item_id\":\"$ID\",\"reason\":\"x\",\"status\":\"actioned\"}"
+   # Refused or empty: reading reports back (expect 401/403 or [])
+   curl -s -w "\n%{http_code}\n" "$BASE/rest/v1/reports?select=id" -H "apikey: $KEY" -H "Authorization: Bearer $KEY"
+   # Refused: a reason over 500 characters (expect 400, check constraint)
+   curl -s -w "\n%{http_code}\n" -X POST "$BASE/rest/v1/reports" -H "apikey: $KEY" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d "{\"item_kind\":\"sound\",\"item_id\":\"$ID\",\"reason\":\"$(printf 'x%.0s' $(seq 1 501))\"}"
+   ```
+   Delete the test row in the dashboard.
+4. **From the app (the Done when):** open the Sounds tab, tap a sound's name block (details), tap "Report this sound", choose "Copyright problem", type a short note, tap "Send report". Pass: the sheet closes, the toast says "Thanks. We'll review this sound.", you feel one Confirm tick, and **Table editor -> reports shows a new row**: `item_kind` sound, `item_id` the sound's id, `reason` `rights: <your note>`, `status` open, `created_at` now. Put the row's `id` and time in the ticket's commit message, then delete the row.
+5. **Reopen the sound's details:** "Reported. Thank you." replaces the Report row; kill and restart the app: still there (it is the phone's memory, not the server's). Open another sound: its Report row is there.
+6. **Offline:** airplane mode, open details, Report, pick a reason, type a note, Send: after a moment "You're offline. Connect, then send again." above Send, the note and choice kept, Send enabled. Turn the network on and tap Send again: it goes through. No second row appears for the first failed try.
+7. **Slow or dead server:** with the network throttled to nothing but connected (or the project paused), Send ends in "Couldn't send your report. Try again." (or the offline line) after about 8 s, never later.
+8. **The picker:** in a video project, Meme sounds -> a sound's name block -> Report this sound -> Send: the picker stays open on that sound's details with "Reported. Thank you." and the toast; the sound can still be added.
+9. **Back and close:** back arrow, system back and Escape on the Report pane return to the details (choice and note kept); a second back closes the sheet; the close button, the scrim and a drag down close it from either pane and nothing is sent (the next visit starts empty).
+10. **No reason:** Send with no choice: "Pick a reason to send your report." and focus on the first reason (TalkBack announces it).
+11. **Limit and counter:** paste 600 characters: it stops at 480; the counter "412/480" shows from 400. Paste a run of family emoji: it stops earlier (7 characters each count against the table's 500).
+12. **Analytics (debug logger):** one `sound_report {sound_id, reason}` per successful send; none for a failed try, a back or a close; the note is nowhere in the log. Logcat tag `SoundReports` shows only a class name and a status code for a failure.
+13. **Hindi at 200% font** with the keyboard open: Send stays reachable, reasons wrap, the title row wraps (`report-hi-200.png`). TalkBack: the reasons read as a radio group ("Copyright problem, radio button, not selected"), the messages are announced politely, focus returns to the Report row after Back.
+14. **Rate limit (a decision, not a check):** RLS lets any holder of the publishable key insert any number of rows (2,000 in one statement on local Postgres). Watch the table once the app is public; if it fills with junk, put the dashboard's rate limits or an Edge Function in front. Nothing is built.
+15. **Note field, TalkBack (P4):** the note field is announced as "Details (optional)". The counter is read as "412 of 480 characters". After a failed send, "Sending…" and then the message are announced; after a report in the picker, focus lands on "Reported. Thank you.".
+16. **Weekly abuse check (S4):** once a week in the SQL editor: `select count(*), date(created_at) from reports group by 2 order by 2 desc;`. A sudden day of hundreds is junk. Nothing is built. If it happens, any of: (a) apply this optional policy (a report is accepted only for an active sound, so random ids fail; **do not apply it now**):
+    ```sql
+    drop policy "Anyone can file a report" on public.reports;
+    create policy "Anyone can file a report" on public.reports for insert to anon, authenticated
+      with check (status = 'open' and (item_kind <> 'sound' or exists (select 1 from public.sounds s where s.id = item_id and s.is_active)));
+    ```
+    (checked on local Postgres 16: an active sound id inserts, a random uuid is refused with 42501; it also makes reports of templates and sticker packs possible only for kind other than sound, so extend it when those get a Report); (b) rotate the publishable key (ships in the app, so a release is needed); (c) put an Edge Function with a limit in front.
+17. **Cleanup:** delete every test row in `reports`.
+
+### B. Not built here, by plan
+
+No support email or contact in the pane (P5-07's credits and legal screen carries "Copyright and takedowns"; owner, 11 Nov 2026). The reporter does not hide the sound. The My sounds Report (none) joins with P3-07.
+
+### C. What was checked here (repeat to confirm)
+
+- Desktop JVM script, data side, 70 checks, 0 failed: the real `SupabaseSoundReportRemote` with the real supabase-kt 3.8.0 client, Ktor serialization and timeouts, sending to a loopback HTTP server that plays PostgREST (the JDK's HTTP client replaced OkHttp): `POST /rest/v1/reports?columns=item_kind%2Citem_id%2Creason`, headers `apikey`, `Authorization: Bearer`, `Prefer: return=minimal`, body one object with exactly `item_kind`, `item_id`, `reason`; a 600-character note arrives as 480 (reason of 488 characters); a note of 500 family emoji arrives as 68 of them (reason of 483 code points); 500, 429 and a 400 that quotes the whole row come back as a failure with the note in neither the log nor the error; connection refused, an unknown host and a server that never answers (cut at 8.0 s) come back as Offline; a cancel mid-send throws and records nothing; no settings and a `sb_secret_` key fail without a request; `sound_report` carries `sound_id` and `reason` only; the reported ids survive a restart; a database file on version 4 (draft, favorite, downloaded sound) upgrades to 5 with all three intact.
+- Desktop JVM script, screen side, 45 checks, 0 failed: the real `SoundsViewModel`, `SoundReportController` and `ReportSoundUseCase` over fakes (form kept on back, emptied on close and on leaving the tab, no-reason message, sending locks the form and a second tap does nothing, success closes the Sounds tab's sheet with the toast and the picker's pane back to the details, offline and failure keep the form and retry, a close during a send cancels it, a removed or already-reported sound has no pane).
+- Local Postgres 16 (a throwaway cluster, API roles created, no default privileges, catalog migration + the grant): the four request bodies captured from the real client, inserted as the `anon` role the way PostgREST does, all pass (reason lengths 9, 483, 488, 488); status `actioned` refused (42501 RLS), 501 characters refused (23514), a bad kind (23514) or a non-uuid id (22P02) refused; select, update, delete and `insert ... returning` refused (42501); no grant at all refuses the plain insert (42501); one anon statement inserted 2,000 rows (no limit). The test rows were deleted.
+- Local Postgres 16, grants migration (API roles, no default privileges): before it anon select and `search_sounds` are refused (42501); after it, applied twice, anon reads the catalog (inactive rows hidden), runs `search_sounds`, inserts a report, and select, update, delete and `insert ... returning` on reports and any write to sounds are still refused; test rows deleted.
+- `:androidApp:assembleDebug`, `lint`, `compileCommonMainKotlinMetadata`, `:core:data:verifySqlDelightMigration`, then `bundleRelease` with R8: green after the review fixes (11 Nov and 12 Nov builds).
+- Not run: a device, the live project, OkHttp's own exceptions, the Compose sheets beyond the renders, TalkBack, the iOS link.

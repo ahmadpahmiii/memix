@@ -1,4 +1,4 @@
-package app.memix.core.data.catalog
+package app.memix.core.data.supabase
 
 private const val SECRET_KEY_PREFIX = "sb_secret_"
 

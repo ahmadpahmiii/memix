@@ -1,14 +1,14 @@
 package app.memix.core.data.catalog
 
+import app.memix.core.data.supabase.CONNECT_TIMEOUT_MILLIS
+import app.memix.core.data.supabase.REQUEST_TIMEOUT_MILLIS
+import app.memix.core.data.supabase.SupabaseClientSource
 import app.memix.core.domain.Logger
 import app.memix.core.model.catalog.LibrarySound
 import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.catalog.SoundCategory
-import io.github.jan.supabase.annotations.SupabaseInternal
-import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.exceptions.HttpRequestException
 import io.github.jan.supabase.exceptions.RestException
-import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
@@ -22,7 +22,6 @@ import io.ktor.http.contentLength
 import io.ktor.http.isSuccess
 import io.ktor.utils.io.readRemaining
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.io.IOException
 import kotlinx.io.readByteArray
 import kotlinx.serialization.SerialName
@@ -31,8 +30,6 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 private const val MICROS_PER_MILLI = 1_000L
-private const val CONNECT_TIMEOUT_MILLIS = 4_000L
-private const val REQUEST_TIMEOUT_MILLIS = 8_000L
 
 /** A waveform file is under 1 KB today; anything past this is refused unread. */
 private const val MAX_WAVEFORM_BYTES = 64 * 1024L
@@ -46,23 +43,12 @@ private const val SOUND_COLUMNS =
  * The catalog on Supabase, read with the publishable key through the auto-generated API (TECHNICAL_DESIGN → Backend,
  * app-call table). Nothing here writes. Waveform files are plain public files, fetched with Ktor.
  */
-// httpConfig is supabase-kt's escape hatch for the Ktor client; it is the only way to set a connect timeout.
-@OptIn(SupabaseInternal::class)
 internal class SupabaseSoundCatalogRemote(
-    private val config: Lazy<SupabaseConfig>,
+    private val source: SupabaseClientSource,
     private val logger: Logger,
 ) : SoundCatalogRemote {
     private var loggedIncompleteConfig = false
-
-    // Created on first use: a build without Supabase settings never builds a client, and starting the app costs nothing.
-    // The timeouts are short because search shows "Searching..." and falls back to saved sounds when the catalog is slow.
-    private val client by lazy {
-        createSupabaseClient(config.value.url, config.value.publishableKey) {
-            requestTimeout = REQUEST_TIMEOUT_MILLIS.milliseconds
-            install(Postgrest)
-            httpConfig { install(HttpTimeout) { connectTimeoutMillis = CONNECT_TIMEOUT_MILLIS } }
-        }
-    }
+    private val client get() = source.client
     private val http by lazy {
         HttpClient {
             install(HttpTimeout) {
@@ -151,7 +137,7 @@ internal class SupabaseSoundCatalogRemote(
     // Turns "no network" in all its forms into one exception the repository maps to Offline. Everything else (a bad
     // response, a server error) passes through and is reported as unexpected.
     private suspend fun <T> reachable(call: suspend () -> T): T {
-        if (!config.value.isComplete) {
+        if (!source.isConfigured) {
             if (!loggedIncompleteConfig) {
                 loggedIncompleteConfig = true
                 logger.debug(TAG, "No usable Supabase settings in this build (memix.supabase.* in local.properties): serving the saved catalog only")

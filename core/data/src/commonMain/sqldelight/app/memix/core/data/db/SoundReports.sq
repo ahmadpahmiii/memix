@@ -1,0 +1,14 @@
+-- The sounds this phone has reported (P3-10), by id only, so a reported sound shows "Reported. Thank you." instead of
+-- the Report row. A row is written after the server took the report. Nothing about the report itself is kept.
+-- Changing a table: edit it here and add migrations/<current database version>.sqm (the last is 4.sqm, which made version 5).
+
+CREATE TABLE sound_reported (
+    sound_id TEXT NOT NULL PRIMARY KEY,
+    reported_at_epoch_us INTEGER NOT NULL
+);
+
+selectReportedIds:
+SELECT sound_id FROM sound_reported;
+
+insertReported:
+INSERT OR REPLACE INTO sound_reported(sound_id, reported_at_epoch_us) VALUES (:soundId, :reportedAtEpochUs);
