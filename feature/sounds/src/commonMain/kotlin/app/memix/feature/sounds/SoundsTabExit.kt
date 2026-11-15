@@ -15,4 +15,13 @@ class SoundsTabExit {
     fun notifyLeft() {
         events.tryEmit(Unit)
     }
+
+    private val homeEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    /** The same for Home's trending row (P3-14): another tab, Create or an editor opened. A rotation sends nothing, so it keeps the preview and the details sheet. */
+    val homeLeft: SharedFlow<Unit> = homeEvents
+
+    fun notifyHomeLeft() {
+        homeEvents.tryEmit(Unit)
+    }
 }

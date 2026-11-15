@@ -742,6 +742,20 @@ Memix keeps no user data on its servers: projects, imports and favorites stay on
 - The advertising ID is used only after consent where consent is required. Analytics events carry no personal data.
 - The Play Data safety form lists: advertising ID, crash logs and app interaction analytics.
 
+### Home trending row (P3-14)
+
+Spec: `docs/ux/specs/P3-14-home-trending-sounds.md`. Home's "Trending sounds" row: the first five sounds of the Trending feed (the region's, then global, P3-01), with the Sounds tab's previews, row looks, details sheet and Use.
+
+- **A third `SoundsViewModel` in `SoundsMode.HOME`** (Koin `HOME_SOUNDS`, made in `MainShell` like the tab's), not a new ViewModel or a copy of the preview code: the preview controller, download looks, offline rule, Use flow (`PickedSound`, `PendingMemeSound`) and details sheet are all reused. HOME mode: Trending only, no chips or search, rows cut to `HOME_ROW_COUNT` (5), no bundled-starters fallback (offline with nothing cached shows the spec's message block), no refresh toast, no My sounds or Favorites lists (only the favorite and reported marks the details sheet needs), `sound_*` events with `SoundTab.HOME` (`home`).
+- **No `:feature:home` to `:feature:sounds` dependency:** `HomeScreen` takes a `trendingSounds` composable slot, filled by `App.kt` with `TrendingSoundsSection` (P3-05's pattern). `SoundPreviewController` stays internal. The details sheet and the toasts (`HomeSoundsToasts`) are placed by `App.kt` over the nav, like the Sounds tab's. See all selects Trending on the tab's ViewModel and switches tab.
+- **Nothing loads before Home's first frame:** the ViewModel's `init` only watches the region; `TrendingSoundsSection` sends `ScreenShown` after one `withFrameNanos`, which reads the saved copy first and then refreshes (24 h rule). HOME skips the categories (no chips; the details sheet then has no category line) and the My sounds and Favorites lists. The player is built only once rows are drawn (`warmHomePlayer`), never in the frames before. Catalog reads, the first SQLite open (`Lazy<MemixDatabase>`) and the Supabase client run on `ioDispatcher` (`flowOn`, `runOnIo`), not Main.
+- **Leaving Home** is driven by the app, as the Sounds tab's exit: `SoundsTabExit.homeLeft` fires when the current tab is not Home, when Create opens and when a Home card starts an import or editor. It sends `LeftScreen`: the sound stops, the details sheet closes and the player is released (`preview.release()`, HOME only). The app going to the background releases the player too. A rotation sends nothing, so it behaves exactly as on the Sounds tab (the lifecycle stop releases the player, the details sheet stays). Visiting Sounds and then Home can leave two ExoPlayers alive (the tab's is kept for the next visit); only one plays at a time because Home releases its own on leave and Use/tap stop the other.
+- **A region change** stops a playing preview, keeps the old rows on screen until the new region's list arrives (`holdingOldRows`), then cross-fades them over 200 ms (120 ms with reduce motion); a first region of the session is not a change.
+- **One Use-end collector:** `MediaImportViewModel.soundUseEnds` is one `Channel(BUFFERED).receiveAsFlow()`, so two collectors would split the events. `App.kt` collects once and sends `UseFinished` to both Use-starting ViewModels; `finishUse` does nothing unless a Use is in flight (`pickSent` or `addingId`).
+- **Home is one top-aligned scrolling column** (no centering, no 4:5 card minimum); the section is not drawn when the first load is under 300 ms or when the catalog has no trending sounds.
+- **Checked by:** a desktop JVM harness (34 checks: 5 rows and order, region-first feed key, hidden when empty, offline from cache, no refresh toast, region change reload and stop, Use and `tab: home`, stop and release on leave, nothing before ScreenShown, no player before rows, old rows kept on a region change, two Home Uses and a Sounds tab Use in a row all finish with no pin left, the Sounds tab unchanged) and 13 desktop renders in `docs/ux/reviews/P3-14/`. Not run: a device, cold start (see `docs/qa/phase-3/engineer-hand-checks.md`).
+- **Known limits:** the harness cannot separate the first frame from the next in its scene, so "after the first frame" is by code (`withFrameNanos`, as the Sounds tab); the bottom nav is not in the renders.
+
 ### My sounds (P3-07)
 
 Spec: `docs/ux/specs/P3-07-my-sounds.md`. The user's own sounds: an audio file picked with the document picker, or the audio of one gallery video picked with the photo picker (`PickerMedia.VIDEOS_ONLY`). Both stay on the phone; no network code ever reads them.
@@ -934,6 +948,13 @@ Official docs to read before the matching tickets:
 - **Heart reads ids, section reads rows:** a favorite whose details the phone lacks still shows a filled heart if it appears elsewhere, and is never lost by a refresh.
 - **Recent means landed on a timeline, not previewed** (spec P3-02). Previews would fill the list with every sound a user tried.
 - **Known limit:** a starter sound used in the editor on a phone that has never loaded the catalog is stored as a recent but not drawn until the catalog has its row.
+
+### P3-14: Home trending row (15 Nov 2026)
+- **What:** `SoundsMode.HOME`, `TrendingSoundsSection`, `HomeSoundsToasts`, `SoundTab.HOME`, the Home slot. Details: Home trending row (P3-14).
+- **Alternative rejected: move `SoundPreviewController` and the Use flow to `:core:ui`** (or a new shared module): it drags the downloads, waveform and toast types with it for one more user; a mode on the existing ViewModel reuses all of it with a few `mode == HOME` branches.
+- **Alternative rejected: reuse the Sounds tab's own ViewModel for Home.** Its tab, chip and search would change what Home shows, and a preview on one screen would show on the other.
+- **Follow-up (next mode):** extract a thin Home ViewModel over `SoundPreviewController` instead of adding a fourth `mode == X` branch set to `SoundsViewModel`.
+- **Cost:** one more `SoundsViewModel` is made at app start (allocations only; its `init` reads nothing but the region). Measure cold start on a phone (hand checks).
 
 ### P3-10: Report a sound (11 Nov 2026)
 - **What:** the Report pane, `SoundReports` and the report remote, `sound_reported` (database version 5), the `sound_report` event, the `flag` icon, the grant migration. Details: Sound catalog -> Report a sound (P3-10).

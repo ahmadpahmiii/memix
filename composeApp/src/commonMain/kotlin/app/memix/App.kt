@@ -95,6 +95,7 @@ import app.memix.feature.stickerpack.StickerPackViewModel
 import app.memix.platform.services.rememberWhatsAppPackLauncher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import app.memix.feature.sounds.HomeSoundsToasts
 import app.memix.feature.sounds.PlaybackClock
 import app.memix.feature.sounds.SoundDetailsSheet
 import app.memix.feature.sounds.MySoundImportSheet
@@ -103,6 +104,8 @@ import app.memix.feature.sounds.SoundPickerSheet
 import app.memix.feature.sounds.showsSheet
 import app.memix.feature.sounds.SoundsIntent
 import app.memix.feature.sounds.SoundsScreen
+import app.memix.feature.sounds.SoundsTab
+import app.memix.feature.sounds.TrendingSoundsSection
 import app.memix.feature.sounds.SoundsTabExit
 import app.memix.feature.sounds.SoundsUiState
 import app.memix.feature.sounds.SoundsViewModel
@@ -302,6 +305,11 @@ private fun MainShell(
     val sounds = koinViewModel<SoundsViewModel>()
     val soundsState = sounds.state.collectAsStateWithLifecycle()
     val soundDetailsUp by remember { derivedStateOf { soundsState.value.details != null || soundsState.value.myImport.showsSheet } }
+    // Home's trending row (P3-14): its own instance, so a preview on Home and one on the Sounds tab never meet. Like the Sounds tab's,
+    // it reads nothing until its screen has shown its first frame.
+    val homeSounds = koinViewModel<SoundsViewModel>(qualifier = HOME_SOUNDS, key = "homeSounds")
+    val homeSoundsState = homeSounds.state.collectAsStateWithLifecycle()
+    val homeDetailsUp by remember { derivedStateOf { homeSoundsState.value.details != null } }
     // The Region sheet (P3-11): the first-launch step, then opened from the Local tab's header and Home's region button.
     val region = koinViewModel<RegionSheetViewModel>()
     val regionState by region.state.collectAsStateWithLifecycle()
@@ -311,10 +319,23 @@ private fun MainShell(
     val soundsExit = koinInject<SoundsTabExit>()
     // The Sounds tab's Use (P3-15): a sound that is ready starts a new video meme, and the tab takes taps again once the system picker is gone.
     LaunchedEffect(sounds, videoMemeImport) { sounds.picks.collect { videoMemeImport.startWithSound(it) } }
-    LaunchedEffect(sounds, videoMemeImport) { videoMemeImport.soundUseEnds.collect { sounds.onIntent(SoundsIntent.UseFinished) } }
+    // The same for the Home row's Use (P3-14).
+    LaunchedEffect(homeSounds, videoMemeImport) { homeSounds.picks.collect { videoMemeImport.startWithSound(it) } }
+    // One collector for both: the end events are one stream, so two collectors would split them and a Use could end on the wrong ViewModel.
+    // Each ViewModel ignores an end it has no Use in flight for.
+    LaunchedEffect(sounds, homeSounds, videoMemeImport) {
+        videoMemeImport.soundUseEnds.collect {
+            sounds.onIntent(SoundsIntent.UseFinished)
+            homeSounds.onIntent(SoundsIntent.UseFinished)
+        }
+    }
     // Any way off the Sounds tab (a nav tap, system Back) ends its search and preview; a rotation keeps currentTab (spec P3-02).
     LaunchedEffect(currentTab) {
         if (currentTab != SoundsRoute) soundsExit.notifyLeft()
+    }
+    // The same for Home's row: another tab ends its preview; a rotation keeps currentTab, so it keeps the preview and the details sheet.
+    LaunchedEffect(currentTab) {
+        if (currentTab != HomeRoute) soundsExit.notifyHomeLeft()
     }
     LaunchedEffect(editorCouldntOpenCount) {
         if (editorCouldntOpenCount == 0L) return@LaunchedEffect
@@ -325,7 +346,7 @@ private fun MainShell(
     // review, F1). The scrim's own rule decides, so the hand-over from Create to the import stays covered throughout.
     val sheetUp = createSheetOpen || videoMemeImport.needsScrim || photoMemeImport.needsScrim
     Box(Modifier.fillMaxSize().background(MemixColors.canvas)) {
-        Column(Modifier.fillMaxSize().coveredByModal(sheetUp || draftsSheetUp || soundDetailsUp || regionState.visible)) {
+        Column(Modifier.fillMaxSize().coveredByModal(sheetUp || draftsSheetUp || soundDetailsUp || homeDetailsUp || regionState.visible)) {
             Box(Modifier.weight(1f)) {
                 TabsNavHost(
                     tabsController,
@@ -334,26 +355,51 @@ private fun MainShell(
                     sounds = soundsState,
                     soundsClock = sounds.clock,
                     onSoundsIntent = sounds::onIntent,
+                    homeSounds = homeSoundsState,
+                    homeSoundsClock = homeSounds.clock,
+                    onHomeSoundsIntent = homeSounds::onIntent,
+                    onSeeAllSounds = {
+                        // Trending, whatever tab the Sounds screen was left on (spec P3-14 → Interactions).
+                        sounds.onIntent(SoundsIntent.SelectTab(SoundsTab.TRENDING))
+                        tabsController.navigateToTab(SoundsRoute)
+                    },
                     onOpenRegion = { region.onIntent(RegionSheetIntent.Open) },
                     mySoundPickers = mySoundPickers,
                     onFreeUpSpace = {
                         if (!freeUpSpace.launch(SOUND_SPACE_REQUEST_BYTES)) sounds.onIntent(SoundsIntent.FreeUpSpaceUnavailable)
                     },
                     onOpenCreate = { onCreateSheetOpenChange(true) },
-                    onStartVideoMeme = { videoMemeImport.start(fromCreateSheet = false) },
-                    onStartPhotoMeme = { photoMemeImport.start(fromCreateSheet = false) },
+                    onStartVideoMeme = {
+                        soundsExit.notifyHomeLeft()
+                        videoMemeImport.start(fromCreateSheet = false)
+                    },
+                    onStartPhotoMeme = {
+                        soundsExit.notifyHomeLeft()
+                        photoMemeImport.start(fromCreateSheet = false)
+                    },
                     onOpenDraft = onOpenDraft,
                     onOpenCatalog = if (isDebugBuild) onOpenCatalog else null,
                     modifier = Modifier.fillMaxSize(),
                 )
                 // Above the bottom nav (spec P1-14 → States: Deleted).
                 DraftsToast(draftsState, drafts::onIntent, Modifier.align(Alignment.BottomCenter).padding(MemixSpacing.space4))
+                if (currentTab == HomeRoute) {
+                    HomeSoundsToasts(
+                        homeSoundsState,
+                        onFreeUpSpace = {
+                            if (!freeUpSpace.launch(SOUND_SPACE_REQUEST_BYTES)) homeSounds.onIntent(SoundsIntent.FreeUpSpaceUnavailable)
+                        },
+                        onIntent = homeSounds::onIntent,
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                }
             }
             MemixBottomNav(
                 currentTab,
                 onSelect = { tabsController.navigateToTab(it) },
                 onCreate = {
                     soundsExit.notifyLeft()
+                    soundsExit.notifyHomeLeft()
                     onCreateSheetOpenChange(true)
                 },
             )
@@ -383,6 +429,7 @@ private fun MainShell(
             if (!freeUpSpace.launch(requestedBytes)) drafts.onIntent(DraftsIntent.FreeUpSpaceUnavailable)
         })
         SoundDetailsOver(soundsState, sounds.clock, sounds::onIntent)
+        SoundDetailsOver(homeSoundsState, homeSounds.clock, homeSounds::onIntent)
         RegionSheet(regionState, region::onIntent)
         MySoundImportSheet(soundsState, sounds::onIntent, mySoundPickers, onFreeUpSpace = { requestedBytes ->
             if (!freeUpSpace.launch(requestedBytes)) sounds.onIntent(SoundsIntent.FreeUpSpaceUnavailable)
@@ -412,6 +459,10 @@ private fun TabsNavHost(
     sounds: State<SoundsUiState>,
     soundsClock: PlaybackClock,
     onSoundsIntent: (SoundsIntent) -> Unit,
+    homeSounds: State<SoundsUiState>,
+    homeSoundsClock: PlaybackClock,
+    onHomeSoundsIntent: (SoundsIntent) -> Unit,
+    onSeeAllSounds: () -> Unit,
     onOpenRegion: () -> Unit,
     mySoundPickers: MySoundPickers,
     onFreeUpSpace: () -> Unit,
@@ -435,7 +486,14 @@ private fun TabsNavHost(
         composable<HomeRoute> {
             val viewModel = koinViewModel<HomeViewModel>()
             val state by viewModel.state.collectAsStateWithLifecycle()
-            HomeScreen(state = state, onStartVideoMeme = onStartVideoMeme, onStartPhotoMeme = onStartPhotoMeme, onOpenRegion = onOpenRegion, onOpenCatalog = onOpenCatalog)
+            HomeScreen(
+                state = state,
+                onStartVideoMeme = onStartVideoMeme,
+                onStartPhotoMeme = onStartPhotoMeme,
+                onOpenRegion = onOpenRegion,
+                trendingSounds = { TrendingSoundsSection(homeSounds, homeSoundsClock, onSeeAllSounds, onHomeSoundsIntent) },
+                onOpenCatalog = onOpenCatalog,
+            )
         }
         composable<TemplatesRoute> { TemplatesScreen() }
         composable<SoundsRoute> {

@@ -139,4 +139,11 @@
     <string name="sound_detail_mine_imported">Importado</string>
     <string name="sound_detail_mine_video">De um vídeo</string>
     <string name="mysound_a11y_added">Adicionado a Meus sons: %1$s</string>
+    <!-- Home's trending row, P3-14. Spec: docs/ux/specs/P3-14-home-trending-sounds.md -> Copy. Machine drafts until P5-06. -->
+    <string name="home_sounds_title">Sons em alta</string>
+    <string name="home_sounds_see_all">Ver todos</string>
+    <string name="home_sounds_see_all_a11y">Ver todos os sons em alta</string>
+    <string name="home_sounds_loading">Carregando sons em alta</string>
+    <string name="home_sounds_error">Não foi possível carregar os sons em alta.</string>
+    <string name="home_sounds_offline">Você está offline. Os sons em alta aparecem quando a conexão voltar.</string>
 </resources>

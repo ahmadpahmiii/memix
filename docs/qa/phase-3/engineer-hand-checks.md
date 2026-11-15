@@ -346,3 +346,23 @@ On the phone (Android 13+ unless noted):
 10. **First confirm does not recreate for nothing:** on Android 13+ with a phone list such as [hi-IN, en-IN] and the sheet on Hindi, Continue must not flash or restart the screen. **Missed recreate on API 29 to 32:** choose a new language, press Home during the 200 ms close, come back: the screen is in the new language. **Backup:** restore to a new phone (or `adb shell bmgr`) keeps the language. Locale country: with the app in Hindi on an Indonesian phone, numbers and dates still format for Indonesia.
 11. **First-confirm pin:** a phone with a language list such as [French, Spanish]: the sheet selects Spanish, Continue pins it, and the app does not stay half English.
 12. **Process death** with the sheet open at first launch: relaunch shows it again (nothing was confirmed).
+
+## P3-14 · Home trending sounds row
+
+Built and checked off-device on 15 Nov 2026 (Linux, no emulator). What ran: `:androidApp:assembleDebug`, `lint`, `compileCommonMainKotlinMetadata`, `:core:data:verifySqlDelightMigration`, `bundleRelease` (R8); a desktop JVM harness (34 checks, all pass, now including two Home Uses and a Sounds tab Use finishing in a row, and the old rows staying through a region change: 5 rows, region-first feed key, empty hides, offline cache, region change, Use with `tab: home`, stop and release on leave, nothing before ScreenShown); 13 desktop renders in `docs/ux/reviews/P3-14/` (default 640 and 800, playing, downloading, loading, loading under 300 ms, error, offline nothing, offline cached, empty, Spanish, Hindi at 200%, 150% with cards stacked). **Not run:** a device, the bottom nav, real network, TalkBack.
+
+On the phone:
+1. **Cold start (release or `installBenchmark`, never debug):** `adb shell am force-stop app.memix` then `adb shell am start -W -n <pkg>/<activity>`, median of 5, TotalTime. Compare with `main` before P3-14 (same device, same build type). Target under 1.5 s and no worse than about 20 ms over the baseline. Also watch `logcat` for Choreographer "Skipped frames" during the first second. The row must appear after Home, never delay it.
+2. **Default:** Home is top-aligned; cards at their board size; up to 5 rows under "Trending sounds". At 360 x 640 three rows show, the rest scroll. Rows fade in; nothing is drawn while the load is quick.
+3. **Preview:** tap a disc: plays, waveform and band; tap another: the first stops; tap the playing one: pause. `sound_preview` with `tab: home` (DebugView or logcat). Go to another tab, open an editor via Create, or press Home: the sound stops. Back on Home it starts from idle.
+4. **Use:** Use, pick a clip, Add: the editor opens with the sound at 0:00; closing the editor returns to Home with the scroll kept. `project_create` then `sound_add` with `tab: home`. A row not on the phone: Use downloads first (Downloading look), then the picker. Cancel the picker: Home as it was.
+5. **Details:** tap the name or long-press: the sheet opens over the nav; Use in a video meme and Report work; close returns focus to the row.
+6. **Region:** change the region on Home's button: rows cross-fade to the new list; a playing preview stops. First launch: the row loads behind the Region sheet.
+7. **Offline:** airplane mode after one online visit: the strip and cached rows; unsaved rows dimmed, no Use block. Fresh install offline: heading and the offline block, no See all. Server down while online (block the host): the error block with Try again.
+8. **Empty catalog:** point the app at a catalog with no trending rows (or clear them): no section, cards at the top.
+9. **See all:** opens the Sounds tab on Trending even if another tab was left selected there.
+10. **Rotation:** with the details sheet open on Home (and a Report note typed), rotate: the sheet and the note stay, as on the Sounds tab. Open Create, a Home card, another tab: a playing preview stops. Visit Sounds, play there, return to Home, play: one sound at a time (two players may be alive).
+12. **Use end:** Use from Home, cancel the picker, Use again on the same row; then Use from the Sounds tab and back to Home: Home's rows still take Use (no stuck Downloading or disabled block).
+13. **Region change on Home:** old rows stay until the new list is there, then fade in; with reduce motion, a short fade.
+11. **200% font, Hindi and Spanish:** heading wraps with See all under it, rows grow, cards stacked; compare `home-hi-200.png`. TalkBack: heading, See all, then each row's disc, name and Use.
+

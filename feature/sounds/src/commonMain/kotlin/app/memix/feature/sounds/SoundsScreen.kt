@@ -322,7 +322,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.favoriteSections(
 }
 
 @Composable
-private fun LibrarySoundRow(
+internal fun LibrarySoundRow(
     row: SoundItemUi,
     playback: RowPlayback,
     isFavorite: Boolean,
@@ -337,6 +337,7 @@ private fun LibrarySoundRow(
     fromRecent: Boolean = false,
     picker: Boolean = false,
     adding: Boolean = false,
+    showsHeart: Boolean = true,
 ) {
     val haptics = LocalHapticFeedback.current
     val progress = remember(playback == RowPlayback.IDLE, peaks, position, row.durationUs, look == SoundRowLook.DOWNLOADING, downloadProgress) {
@@ -361,8 +362,8 @@ private fun LibrarySoundRow(
         isPlaying = playback == RowPlayback.PLAYING,
         isFavorite = isFavorite,
         onPlayToggle = { onIntent(SoundsIntent.TogglePlay(row.id, fromRecent)) },
-        // My sounds have no heart: they have their own tab (spec P3-07).
-        onFavoriteChange = if (row.isMine) null else { on ->
+        // My sounds have no heart: they have their own tab (spec P3-07). Home's row has none either (spec P3-14).
+        onFavoriteChange = if (row.isMine || !showsHeart) null else { on ->
             // One tick when the heart fills; taking it out is quiet (spec P3-02 → Interactions).
             if (on) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
             onIntent(SoundsIntent.ToggleFavorite(row.id))
@@ -384,8 +385,8 @@ private fun LibrarySoundRow(
 
 // What a row needs from the state, as plain values, so a row whose own values are unchanged is skipped.
 internal fun SoundsUiState.isFavorite(soundId: String) = soundId in favoriteIds
-private fun SoundsUiState.peaksFor(soundId: String): List<Float>? = if (playbackOf(soundId) == RowPlayback.IDLE) null else waveforms[soundId]
-private fun SoundsUiState.returnsFocusTo(soundId: String, fromRecent: Boolean) = focusReturn == RowFocusTarget(soundId, fromRecent)
+internal fun SoundsUiState.peaksFor(soundId: String): List<Float>? = if (playbackOf(soundId) == RowPlayback.IDLE) null else waveforms[soundId]
+internal fun SoundsUiState.returnsFocusTo(soundId: String, fromRecent: Boolean) = focusReturn == RowFocusTarget(soundId, fromRecent)
 
 /** The search box with the placeholder of [tab] (spec P3-02 → Layout 2); also the picker's, which may scroll it with the list. */
 @Composable

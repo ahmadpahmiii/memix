@@ -139,4 +139,11 @@
     <string name="sound_detail_mine_imported">Imported</string>
     <string name="sound_detail_mine_video">From a video</string>
     <string name="mysound_a11y_added">Added to My sounds: %1$s</string>
+    <!-- Home's trending row, P3-14. Spec: docs/ux/specs/P3-14-home-trending-sounds.md -> Copy. Machine drafts until P5-06. -->
+    <string name="home_sounds_title">Trending sounds</string>
+    <string name="home_sounds_see_all">See all</string>
+    <string name="home_sounds_see_all_a11y">See all trending sounds</string>
+    <string name="home_sounds_loading">Loading trending sounds</string>
+    <string name="home_sounds_error">Couldn't load trending sounds.</string>
+    <string name="home_sounds_offline">You're offline. Trending sounds show up when you're back online.</string>
 </resources>

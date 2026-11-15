@@ -244,6 +244,8 @@ private val appModule = module {
     viewModel { soundsViewModel(SoundsMode.LIBRARY) }
     // The editor's picker is its own instance of the same lists (P3-05).
     viewModel(SOUND_PICKER) { soundsViewModel(SoundsMode.PICKER) }
+    // Home's trending row is a third one (P3-14).
+    viewModel(HOME_SOUNDS) { soundsViewModel(SoundsMode.HOME) }
     viewModelOf(::ExportViewModel)
     viewModelOf(::PhotoExportedViewModel)
     viewModelOf(::StickerPackViewModel)
@@ -319,6 +321,9 @@ fun initKoin(handChecks: Boolean = false, platformSetup: KoinAppDeclaration = {}
 
 /** Qualifier of the sound picker's [SoundsViewModel], which the editor's picker uses instead of the Sounds tab's. */
 val SOUND_PICKER = named("soundPicker")
+
+/** Qualifier of the [SoundsViewModel] behind Home's "Trending sounds" row (P3-14). */
+val HOME_SOUNDS = named("homeSounds")
 
 private fun org.koin.core.scope.Scope.soundsViewModel(mode: SoundsMode) = SoundsViewModel(
     observeCategories = get(),

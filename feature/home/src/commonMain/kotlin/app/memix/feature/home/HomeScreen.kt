@@ -5,9 +5,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -63,8 +61,12 @@ import org.jetbrains.compose.resources.stringResource
 private const val STACK_CARDS_FONT_SCALE = 1.5f
 
 /**
- * [onStartVideoMeme] opens the gallery picker (P1-02). [onOpenRegion] opens the Region sheet (P3-11). [onOpenCatalog] is non-null only in debug builds; it opens the
+ * [onStartVideoMeme] opens the gallery picker (P1-02). [onOpenRegion] opens the Region sheet (P3-11). [trendingSounds] is the
+ * "Trending sounds" section (P3-14): the app fills it, so this module needs no dependency on the sounds feature; it is drawn under
+ * the entry cards and draws nothing when there is nothing to show. [onOpenCatalog] is non-null only in debug builds; it opens the
  * component catalog on a long-press of the wordmark.
+ *
+ * Home is one top-aligned column that scrolls, so the section never pushes the cards off the first screen.
  */
 @Composable
 fun HomeScreen(
@@ -72,52 +74,49 @@ fun HomeScreen(
     onStartVideoMeme: () -> Unit,
     onStartPhotoMeme: () -> Unit,
     onOpenRegion: () -> Unit,
+    trendingSounds: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     onOpenCatalog: (() -> Unit)? = null,
 ) {
-    Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars)) {
+    Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).verticalScroll(rememberScrollState())) {
         TopRow(state.region, onOpenRegion, onOpenCatalog, Modifier.padding(horizontal = MemixSpacing.space4).padding(top = MemixSpacing.space5))
-        // While picking an editor is Home's only job, the hero and the two doors sit in the center (spec P0-05 → Home).
-        BoxWithConstraints(Modifier.weight(1f)) {
-            val viewportHeight = maxHeight
-            val cardWidth = (maxWidth - MemixSpacing.space4 * 2 - MemixSpacing.space3) / 2
-            Column(
-                Modifier
-                    .verticalScroll(rememberScrollState())
-                    .heightIn(min = viewportHeight)
-                    .padding(horizontal = MemixSpacing.space4, vertical = MemixSpacing.space6),
-                verticalArrangement = Arrangement.spacedBy(MemixSpacing.space5, Alignment.CenterVertically),
-            ) {
-                DisplayText(stringResource(Res.string.home_hero), Modifier.semantics { heading() }, style = MemixTheme.type.displayXl)
-                // At large font the two cards stack, so a title never breaks mid-word in a half-width card (P3-11 review).
-                val stacked = LocalDensity.current.fontScale >= STACK_CARDS_FONT_SCALE
-                val cards: @Composable (Modifier) -> Unit = { cardModifier ->
-                    EntryCard(
-                        title = stringResource(Res.string.entry_video_title),
-                        description = stringResource(Res.string.entry_video_body),
-                        icon = MemixIcons.Video,
-                        emphasized = true,
-                        onClick = onStartVideoMeme,
-                        modifier = cardModifier,
-                    )
-                    EntryCard(
-                        title = stringResource(Res.string.entry_photo_title),
-                        description = stringResource(Res.string.entry_photo_body),
-                        icon = MemixIcons.Photo,
-                        emphasized = false,
-                        onClick = onStartPhotoMeme,
-                        modifier = cardModifier,
-                    )
-                }
-                if (stacked) {
-                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space3)) { cards(Modifier.fillMaxWidth()) }
-                } else {
-                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space3)) {
-                        // 4:5 is one of the meme canvas ratios; the cards grow past it when text needs more room.
-                        cards(Modifier.weight(1f).fillMaxHeight().defaultMinSize(minHeight = cardWidth * 5 / 4))
-                    }
-                }
-            }
+        DisplayText(
+            stringResource(Res.string.home_hero),
+            Modifier.padding(horizontal = MemixSpacing.space4).padding(top = MemixSpacing.space5).semantics { heading() },
+            style = MemixTheme.type.displayXl,
+        )
+        EntryCards(onStartVideoMeme, onStartPhotoMeme, Modifier.padding(horizontal = MemixSpacing.space4).padding(top = MemixSpacing.space5))
+        trendingSounds()
+    }
+}
+
+@Composable
+private fun EntryCards(onStartVideoMeme: () -> Unit, onStartPhotoMeme: () -> Unit, modifier: Modifier = Modifier) {
+    // At large font the two cards stack, so a title never breaks mid-word in a half-width card (P3-11 review).
+    val stacked = LocalDensity.current.fontScale >= STACK_CARDS_FONT_SCALE
+    val cards: @Composable (Modifier) -> Unit = { cardModifier ->
+        EntryCard(
+            title = stringResource(Res.string.entry_video_title),
+            description = stringResource(Res.string.entry_video_body),
+            icon = MemixIcons.Video,
+            emphasized = true,
+            onClick = onStartVideoMeme,
+            modifier = cardModifier,
+        )
+        EntryCard(
+            title = stringResource(Res.string.entry_photo_title),
+            description = stringResource(Res.string.entry_photo_body),
+            icon = MemixIcons.Photo,
+            emphasized = false,
+            onClick = onStartPhotoMeme,
+            modifier = cardModifier,
+        )
+    }
+    if (stacked) {
+        Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space3)) { cards(Modifier.fillMaxWidth()) }
+    } else {
+        Row(modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space3)) {
+            cards(Modifier.weight(1f).fillMaxHeight())
         }
     }
 }

@@ -26,8 +26,14 @@ enum class SoundsTab {
     val listsCatalog: Boolean get() = this == TRENDING || this == LOCAL || this == GLOBAL
 }
 
-/** Which screen a [SoundsViewModel] serves: the Sounds tab, or the video editor's sound picker sheet (P3-05). */
-enum class SoundsMode { LIBRARY, PICKER }
+/**
+ * Which screen a [SoundsViewModel] serves: the Sounds tab, the video editor's sound picker sheet (P3-05), or the Home
+ * screen's trending row (P3-14: the first [HOME_ROW_COUNT] sounds of Trending, no tabs, chips or search).
+ */
+enum class SoundsMode { LIBRARY, PICKER, HOME }
+
+/** How many sounds the Home row shows (spec P3-14, owner question 1A). */
+internal const val HOME_ROW_COUNT = 5
 
 /**
  * The tab the picker last showed during this app run (spec P3-05 → Entry and exit): the next opening starts there. A

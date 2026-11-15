@@ -138,4 +138,11 @@
     <string name="sound_detail_mine_imported">इंपोर्ट किया गया</string>
     <string name="sound_detail_mine_video">वीडियो से</string>
     <string name="mysound_a11y_added">मेरी आवाज़ें में जोड़ी गई: %1$s</string>
+    <!-- Home's trending row, P3-14. Spec: docs/ux/specs/P3-14-home-trending-sounds.md -> Copy. Machine drafts until P5-06. -->
+    <string name="home_sounds_title">ट्रेंडिंग साउंड</string>
+    <string name="home_sounds_see_all">सभी देखें</string>
+    <string name="home_sounds_see_all_a11y">सभी देखें: ट्रेंडिंग साउंड</string>
+    <string name="home_sounds_loading">ट्रेंडिंग साउंड लोड हो रहे हैं</string>
+    <string name="home_sounds_error">ट्रेंडिंग साउंड लोड नहीं हुए।</string>
+    <string name="home_sounds_offline">आप ऑफ़लाइन हैं। ऑनलाइन होने पर ट्रेंडिंग साउंड दिखेंगे।</string>
 </resources>

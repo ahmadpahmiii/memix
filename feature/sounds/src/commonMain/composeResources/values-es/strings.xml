@@ -139,4 +139,11 @@
     <string name="sound_detail_mine_imported">Importado</string>
     <string name="sound_detail_mine_video">De un video</string>
     <string name="mysound_a11y_added">Añadido a Mis sonidos: %1$s</string>
+    <!-- Home's trending row, P3-14. Spec: docs/ux/specs/P3-14-home-trending-sounds.md -> Copy. Machine drafts until P5-06. -->
+    <string name="home_sounds_title">Sonidos en tendencia</string>
+    <string name="home_sounds_see_all">Ver todos</string>
+    <string name="home_sounds_see_all_a11y">Ver todos los sonidos en tendencia</string>
+    <string name="home_sounds_loading">Cargando sonidos en tendencia</string>
+    <string name="home_sounds_error">No se pudieron cargar los sonidos en tendencia.</string>
+    <string name="home_sounds_offline">Sin conexión. Los sonidos en tendencia aparecen al volver a estar en línea.</string>
 </resources>

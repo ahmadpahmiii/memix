@@ -306,8 +306,8 @@ private fun Bar(fraction: Float) {
 
 /** Spoken only: the placeholders say nothing to a screen reader on their own. */
 @Composable
-internal fun LoadingAnnouncement(modifier: Modifier = Modifier) {
-    val text = stringResource(Res.string.sounds_loading_status)
+internal fun LoadingAnnouncement(modifier: Modifier = Modifier, message: StringResource = Res.string.sounds_loading_status) {
+    val text = stringResource(message)
     // Real bounds, nothing drawn: TalkBack ignores live regions on a node with no size.
     Box(modifier.fillMaxWidth().height(MemixStroke.strokeHairline).semantics { liveRegion = LiveRegionMode.Polite; contentDescription = text })
 }

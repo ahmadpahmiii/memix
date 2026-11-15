@@ -323,6 +323,9 @@ enum class SoundTab(val eventValue: String) {
     RECENT("recent"),
     MY_SOUNDS("my_sounds"),
     SEARCH("search"),
+
+    /** The Home screen's trending row (P3-14). */
+    HOME("home"),
 }
 
 /** Where a new project came from (`project_create.source`). */

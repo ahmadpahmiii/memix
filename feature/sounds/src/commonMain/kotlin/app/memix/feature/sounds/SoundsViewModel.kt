@@ -66,6 +66,10 @@ import kotlinx.coroutines.launch
  * The editor's picker (P3-05) is a second instance in [SoundsMode.PICKER]: the same lists, tabs and search, with an Add
  * that hands a ready sound to [picks] instead of a Use, the tab it last showed remembered ([SoundPickerMemory]), and
  * a reset when the sheet closes ([SoundsIntent.PickerClosed]) instead of when a bottom-nav item is left.
+ *
+ * The Home row (P3-14) is a third instance in [SoundsMode.HOME]: Trending's first [HOME_ROW_COUNT] sounds, with the same
+ * previews, row looks, details sheet and Use. It reads the catalog only after Home's first frame ([SoundsIntent.ScreenShown]),
+ * shows no toast for a failed refresh, and lets go of its player when Home is left.
  */
 class SoundsViewModel(
     private val observeCategories: ObserveSoundCategoriesUseCase,
@@ -93,6 +97,10 @@ class SoundsViewModel(
     private var regionCode: String? = null
     private var regionKnown = false
     private val logEvents = previewTools.logEvents
+
+    // The Sounds tab and Home start a new video meme with a sound (Use) and have their details sheet over the nav; the picker adds to the open one.
+    private val startsNewMeme = mode != SoundsMode.PICKER
+    private val rowLimit = if (mode == SoundsMode.HOME) HOME_ROW_COUNT else Int.MAX_VALUE
 
     private val preview = SoundPreviewController(
         scope = viewModelScope,
@@ -158,6 +166,10 @@ class SoundsViewModel(
     private var latestFavorites: List<LibrarySound> = emptyList()
     private var favoritesOnScreen: List<LibrarySound> = emptyList()
     private var started = false
+    // Home only: the old region's rows stay on screen until the new region's list arrives, and the player is made once rows are drawn.
+    private var holdingOldRows = false
+    private var playerWarm = false
+    private var homeShown = false
     private var removedChecked = false
     // The bundled pack, which the lists fall back to when the catalog has never loaded and the phone is offline.
     private var starterSounds: List<CatalogSound> = emptyList()
@@ -181,6 +193,7 @@ class SoundsViewModel(
         viewModelScope.launch { observeRegion().collect(::regionChanged) }
         // Rotation keeps the search and the preview; only a real move to another bottom-nav item ends them.
         if (mode == SoundsMode.LIBRARY) viewModelScope.launch { tabExit.left.collect { leaveScreen() } }
+        if (mode == SoundsMode.HOME) viewModelScope.launch { tabExit.homeLeft.collect { leaveScreen() } }
     }
 
     // The region arrived or changed (the Region sheet, P3-11). A new country starts the lists over; a new name only (the app
@@ -192,31 +205,52 @@ class SoundsViewModel(
         regionKnown = true
         if (!firstRegion && country?.code == regionCode) return
         regionCode = country?.code
+        // A sound of the old region's list must not keep playing under the new list (spec P3-14 → States).
+        if (mode == SoundsMode.HOME && !firstRegion) preview.stop()
         if (!started) return
         // The first region of the session is not a change: no cross-fade and no scroll.
-        updateState { it.copy(categoryId = null, regionChanges = if (firstRegion) it.regionChanges else it.regionChanges + 1) }
+        // Home keeps its rows until the new list is in, and cross-fades then (see showFeed).
+        holdingOldRows = mode == SoundsMode.HOME && !firstRegion && feedSaved.loadedPages > 0
+        val countsChange = !firstRegion && !holdingOldRows
+        updateState { it.copy(categoryId = null, regionChanges = if (countsChange) it.regionChanges + 1 else it.regionChanges) }
         showFeed()
         if (state.value.query.isNotEmpty()) startSearch(debounceMillis = 0, logResult = false)
     }
 
     // The first time the tab shows: nothing is read or fetched at app start, because this ViewModel is made with the tabs.
     private fun screenShown() {
-        preview.warmUp()
+        if (mode == SoundsMode.HOME) {
+            homeShown = true
+            warmHomePlayer()
+        } else {
+            preview.warmUp()
+        }
         if (started) return
         started = true
-        viewModelScope.launch {
-            observeCategories().collect { categories ->
-                categoryNames = categories.associate { it.id to it.name }
-                val chips = categories.filter { it.id !in TAB_CATEGORY_IDS }.map { CategoryChipUi(it.id, it.name) }
-                updateState { it.copy(categories = chips.toImmutableList()) }
-            }
-        }
-        observeCollections()
         observeOnPhone()
-        mine.start()
-        viewModelScope.launch { refreshCategories(force = false) }
+        if (mode == SoundsMode.HOME) {
+            observeFavoriteAndReportedIds()
+        } else {
+            viewModelScope.launch {
+                observeCategories().collect { categories ->
+                    categoryNames = categories.associate { it.id to it.name }
+                    val chips = categories.filter { it.id !in TAB_CATEGORY_IDS }.map { CategoryChipUi(it.id, it.name) }
+                    updateState { it.copy(categories = chips.toImmutableList()) }
+                }
+            }
+            observeCollections()
+            mine.start()
+            viewModelScope.launch { refreshCategories(force = false) }
+        }
         // Without the region the first list would be fetched twice; regionChanged() starts it when the region arrives.
         if (regionKnown) showFeed()
+    }
+
+    // Home: the player is built when there is something to preview, never in the frames before rows are drawn.
+    private fun warmHomePlayer() {
+        if (mode != SoundsMode.HOME || !homeShown || playerWarm || state.value.content !is SoundsContent.Rows) return
+        playerWarm = true
+        preview.warmUp()
     }
 
     // What is on the phone, whether the phone is online, and what the catalog dropped: the inputs of every row's look.
@@ -253,10 +287,18 @@ class SoundsViewModel(
         viewModelScope.launch { checkRemoved(ids) }
     }
 
-    private fun observeCollections() {
+    // The marks the details sheet shows (its heart, "Reported. Thank you."); the Home row needs no more.
+    private fun observeFavoriteAndReportedIds() {
         viewModelScope.launch {
             observeFavoriteIds().collect { ids -> updateState { it.copy(favoriteIds = ids.toImmutableSet()) } }
         }
+        viewModelScope.launch {
+            observeReported().collect { ids -> updateState { it.copy(reportedIds = ids.toImmutableSet()) } }
+        }
+    }
+
+    private fun observeCollections() {
+        observeFavoriteAndReportedIds()
         viewModelScope.launch {
             observeFavorites().collect { favorites ->
                 latestFavorites = favorites
@@ -265,9 +307,6 @@ class SoundsViewModel(
                 favoritesOnScreen = if (onFavorites) keepUnfavoritedRows(favorites, favoritesOnScreen) else favorites
                 if (onFavorites) render()
             }
-        }
-        viewModelScope.launch {
-            observeReported().collect { ids -> updateState { it.copy(reportedIds = ids.toImmutableSet()) } }
         }
         viewModelScope.launch {
             observeRecents().collect { recents ->
@@ -350,11 +389,20 @@ class SoundsViewModel(
     }
 
     // In the background the player is released; coming back sends ScreenShown, which makes it again.
-    private fun backgrounded() = preview.release()
+    private fun backgrounded() {
+        playerWarm = false
+        preview.release()
+    }
 
     // The player stays for the next visit (building an ExoPlayer on every tab entry is main-thread work); a sound stops.
     private fun leaveScreen() {
         preview.stop()
+        // Home is left for good more often than it is a short stop: its player is released and made again on the next visit.
+        if (mode == SoundsMode.HOME) {
+            homeShown = false
+            playerWarm = false
+            preview.release()
+        }
         // A result left over from an earlier visit must not greet the next one (spec P3-07 → Entry and exit).
         mine.closeResult()
         detailsSound = null
@@ -405,7 +453,7 @@ class SoundsViewModel(
         feedJob?.cancel()
         moreJob?.cancel()
         refreshJob?.cancel()
-        feedSaved = SoundFeedContent.NotLoaded
+        if (!holdingOldRows) feedSaved = SoundFeedContent.NotLoaded
         feedError = null
         loadingMore = false
         moreFailed = false
@@ -423,6 +471,12 @@ class SoundsViewModel(
             }
             launch {
                 observeFeed(feed).collect {
+                    if (holdingOldRows) {
+                        // Nothing saved for the new region yet: the old rows stay; the list that arrives cross-fades in.
+                        if (it.loadedPages == 0) return@collect
+                        holdingOldRows = false
+                        updateState { ui -> ui.copy(regionChanges = ui.regionChanges + 1) }
+                    }
                     feedSaved = it
                     if (it.loadedPages > 0) placeholderJob?.cancel()
                     render()
@@ -450,7 +504,8 @@ class SoundsViewModel(
             return
         }
         // Rows are on screen: the strip already explains being offline; any other failure gets one toast a session.
-        if (!feedOffline && !refreshFailureToasted) {
+        // Home would greet people with a complaint, so it stays quiet (spec P3-14 → States).
+        if (!feedOffline && !refreshFailureToasted && mode != SoundsMode.HOME) {
             refreshFailureToasted = true
             showToast(SoundsToast.REFRESH_FAILED)
         }
@@ -479,6 +534,7 @@ class SoundsViewModel(
 
     private fun tryAgain() {
         when {
+            mode == SoundsMode.HOME -> showFeed()
             state.value.query.isNotEmpty() && state.value.tab.listsCatalog && moreFailed -> loadMore()
             state.value.query.isNotEmpty() && state.value.tab.listsCatalog -> startSearch(debounceMillis = 0, logResult = false)
             moreFailed -> loadMore()
@@ -587,6 +643,7 @@ class SoundsViewModel(
         val content = contentFor(state.value)
         val notice = noticeFor(content)
         updateState { it.copy(content = content, notice = notice) }
+        warmHomePlayer()
     }
 
     private fun contentFor(ui: SoundsUiState): SoundsContent {
@@ -596,12 +653,12 @@ class SoundsViewModel(
         val saved = feedSaved
         return when {
             // Offline with nothing saved: the bundled pack instead of an error, so the app still has sounds to play.
-            saved.loadedPages == 0 && offlineNow() && starterSounds.isNotEmpty() ->
+            saved.loadedPages == 0 && mode != SoundsMode.HOME && offlineNow() && starterSounds.isNotEmpty() ->
                 SoundsContent.Starters(starterSounds.map { it.toRow() }.toImmutableList())
             saved.loadedPages == 0 ->
                 if (feedError != null) SoundsContent.LoadError else SoundsContent.Loading(showPlaceholders = placeholdersDue)
             saved.sounds.isEmpty() -> SoundsContent.Empty(emptyFeedReason(ui))
-            else -> SoundsContent.Rows(saved.sounds.map { it.toRow() }.toImmutableList(), footer(saved.endReached))
+            else -> SoundsContent.Rows(saved.sounds.take(rowLimit).map { it.toRow() }.toImmutableList(), footer(saved.endReached))
         }
     }
 
@@ -722,7 +779,7 @@ class SoundsViewModel(
 
     // The Sounds tab's Use block (P3-15): the same, handed to the app root, which opens the system picker for the media.
     private fun use(soundId: String, tab: SoundTab) {
-        if (mode == SoundsMode.LIBRARY) handOver(soundId, tab)
+        if (startsNewMeme) handOver(soundId, tab)
     }
 
     // A row that downloads, has no room or cannot be reached has no working block; a second tap on the same row is ignored.
@@ -741,7 +798,7 @@ class SoundsViewModel(
                 pickSent = true
                 _picks.trySend(PickedSound(soundId, sound.title, prepared.media, tab, prepared.bundled))
                 // The details sheet closes as the system picker opens (spec P3-15 → The flow).
-                if (mode == SoundsMode.LIBRARY) closeDetails()
+                if (startsNewMeme) closeDetails()
             },
             onAbort = { if (addingId == soundId) setAdding(null) },
         )
@@ -756,7 +813,7 @@ class SoundsViewModel(
             onReady = { picked ->
                 pickSent = true
                 _picks.trySend(picked)
-                if (mode == SoundsMode.LIBRARY) closeDetails()
+                if (startsNewMeme) closeDetails()
             },
             onAbort = { if (addingId == soundId) setAdding(null) },
         )
@@ -764,7 +821,8 @@ class SoundsViewModel(
 
     // The picker a Use opened has gone: the app holds the sound itself from the hand-over on, so this pin can go.
     private fun finishUse() {
-        if (mode != SoundsMode.LIBRARY) return
+        // Both Use-starting ViewModels hear every end (the app sends it to each); only the one with a Use in flight has anything to do.
+        if (!startsNewMeme || (!pickSent && addingId == null)) return
         preview.endAdd()
         setAdding(null)
         pickSent = false
@@ -874,7 +932,7 @@ class SoundsViewModel(
     // "Reported. Thank you." (closing the picker would throw away a sound the person was choosing to add).
     private fun reportSent() {
         clearReport()
-        if (mode == SoundsMode.LIBRARY) closeDetails()
+        if (startsNewMeme) closeDetails()
         showToast(SoundsToast.REPORT_SENT)
     }
 
@@ -909,6 +967,7 @@ class SoundsViewModel(
     private fun tabOf(fromRecent: Boolean): SoundTab = if (fromRecent) SoundTab.RECENT else analyticsTab()
 
     private fun analyticsTab(): SoundTab = when {
+        mode == SoundsMode.HOME -> SoundTab.HOME
         search != null -> SoundTab.SEARCH
         else -> when (state.value.tab) {
             SoundsTab.TRENDING -> SoundTab.TRENDING
