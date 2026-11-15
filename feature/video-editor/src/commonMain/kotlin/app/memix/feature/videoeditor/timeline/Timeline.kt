@@ -79,6 +79,7 @@ import memix.feature.video_editor.generated.resources.clip_missing_file
 import memix.feature.video_editor.generated.resources.timeline_a11y
 import memix.feature.video_editor.generated.resources.timeline_my_sound
 import memix.feature.video_editor.generated.resources.timeline_original_audio
+import memix.feature.video_editor.generated.resources.timeline_voiceover
 import memix.feature.video_editor.generated.resources.timeline_zoom_fit
 import memix.feature.video_editor.generated.resources.timeline_zoom_in
 import memix.feature.video_editor.generated.resources.timeline_zoom_menu
@@ -439,11 +440,12 @@ private fun rememberTimelinePainter(textMeasurer: TextMeasurer): TimelinePainter
     val labelStyle = MemixTheme.type.caption
     val rulerStyle = MemixTheme.type.timecode
     val originalAudio = stringResource(Res.string.timeline_original_audio)
+    val voiceover = stringResource(Res.string.timeline_voiceover)
     val unnamedMySound = stringResource(Res.string.timeline_my_sound)
     val missingFile = stringResource(Res.string.clip_missing_file)
     val languageCode = appLanguageCode()
-    return remember(textMeasurer, labelStyle, rulerStyle, originalAudio, unnamedMySound, missingFile, languageCode, density) {
-        TimelinePainter(textMeasurer, labelStyle, rulerStyle, originalAudio, unnamedMySound, missingFile, languageCode, density)
+    return remember(textMeasurer, labelStyle, rulerStyle, originalAudio, voiceover, unnamedMySound, missingFile, languageCode, density) {
+        TimelinePainter(textMeasurer, labelStyle, rulerStyle, originalAudio, voiceover, unnamedMySound, missingFile, languageCode, density)
     }
 }
 

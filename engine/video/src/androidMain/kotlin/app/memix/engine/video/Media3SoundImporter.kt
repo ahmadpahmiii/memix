@@ -1,5 +1,6 @@
 package app.memix.engine.video
 
+import app.memix.core.domain.media.MediaPaths
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
@@ -200,7 +201,7 @@ internal class Media3SoundImporter(
     private companion object {
         const val TAG = "MySounds"
         const val THREAD_NAME = "MemixSoundImport"
-        const val UNFINISHED_SUFFIX = ".part"
+        const val UNFINISHED_SUFFIX = MediaPaths.UNFINISHED_SUFFIX
         const val YES = "yes"
         const val AAC_BITRATE_BPS = 128_000
         const val PROGRESS_INTERVAL_MS = 100L

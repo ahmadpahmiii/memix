@@ -1,5 +1,6 @@
 package app.memix.platform.services
 
+import app.memix.core.domain.media.MediaPaths
 import android.content.ContentResolver
 import android.content.Context
 import android.database.Cursor
@@ -245,7 +246,7 @@ internal class AndroidMediaFiles(
 
     private companion object {
         const val TAG = "MediaImport"
-        const val UNFINISHED_SUFFIX = ".part"
+        const val UNFINISHED_SUFFIX = MediaPaths.UNFINISHED_SUFFIX
         // Large enough that a 1 GB video takes about 4,000 reads, small enough to check for Cancel often.
         const val COPY_BUFFER_BYTES = 256 * 1024
     }

@@ -142,4 +142,29 @@
     <string name="picker_overhang_toast">El final de este sonido pasa del final de tu video, así que no se oirá. Recórtalo o muévelo antes.</string>
     <string name="use_sound_missing_toast">El sonido no se incluyó. Añádelo desde Sonidos de memes.</string>
     <string name="a11y_sound_added_unnamed">Sonido añadido en %1$s</string>
+    <!-- P3-08 voiceover (spec docs/ux/specs/P3-08-voiceover.md → Copy). Machine-drafted until P5-06. -->
+    <string name="tool_voiceover">Voz en off</string>
+    <string name="timeline_voiceover">Voz en off</string>
+    <string name="voiceover_hint">Graba desde el cabezal mientras se reproduce tu video.</string>
+    <string name="voiceover_record">Grabar</string>
+    <string name="voiceover_stop">Detener</string>
+    <string name="voiceover_recording">Grabando</string>
+    <string name="voiceover_muted_note">Tu video se reproduce sin sonido para que el micrófono solo te oiga a ti. Usa auriculares para oírlo.</string>
+    <string name="voiceover_bluetooth_note">Se graba con el micrófono del teléfono, no con el auricular Bluetooth.</string>
+    <string name="voiceover_quiet_hint">No se oye nada. Comprueba que nada tape el micrófono.</string>
+    <string name="voiceover_saved">Voz en off añadida en %1$s. Graba otra vez para seguir.</string>
+    <string name="voiceover_denied">Memix no puede grabar sin el micrófono. Actívalo en Ajustes y vuelve.</string>
+    <string name="voiceover_open_settings">Abrir ajustes</string>
+    <string name="voiceover_at_end_explain">Mueve el cabezal antes del final del video para grabar.</string>
+    <string name="voiceover_end_toast">Llegaste al final de tu video. Tu grabación está guardada.</string>
+    <string name="voiceover_interrupted_toast">La grabación se detuvo. Lo grabado hasta ahora está guardado.</string>
+    <string name="voiceover_too_short_toast">Fue demasiado corto para guardarlo. Inténtalo de nuevo.</string>
+    <string name="voiceover_silent_toast">No se grabó nada. Comprueba que el micrófono esté activado e inténtalo de nuevo.</string>
+    <string name="voiceover_busy_toast">Otra aplicación está usando el micrófono. Ciérrala e inténtalo de nuevo.</string>
+    <string name="voiceover_no_space_toast">No hay espacio para grabar. Libera espacio e inténtalo de nuevo.</string>
+    <string name="voiceover_stop_first_toast">Detén la grabación primero.</string>
+    <string name="voiceover_countdown_a11y">La grabación empieza en 3 segundos</string>
+    <string name="voiceover_stop_a11y">Detener grabación</string>
+    <string name="a11y_voiceover_added">Voz en off añadida en %1$s, de %2$s</string>
+    <string name="edit_voiceover">Voz en off</string>
 </resources>

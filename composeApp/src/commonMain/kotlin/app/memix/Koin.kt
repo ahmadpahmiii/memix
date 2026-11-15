@@ -71,6 +71,13 @@ import app.memix.core.domain.text.CaptionFontSource
 import app.memix.core.domain.text.MeasureCaptionUseCase
 import app.memix.core.domain.text.PrepareCaptionsUseCase
 import app.memix.core.domain.video.ExportNotificationPermissionUseCase
+import app.memix.core.domain.voiceover.DiscardVoiceTakeUseCase
+import app.memix.core.domain.voiceover.MicrophoneAskedUseCase
+import app.memix.core.domain.voiceover.PlaceVoiceTakeUseCase
+import app.memix.core.domain.voiceover.StartVoiceTakeUseCase
+import app.memix.core.domain.voiceover.VoiceRouteUseCase
+import app.memix.core.domain.voiceover.VoiceoverTuning
+import app.memix.feature.videoeditor.EditorVoiceover
 import app.memix.core.domain.video.ExportSheetFactsUseCase
 import app.memix.core.domain.photo.ExportPhotoUseCase
 import app.memix.core.domain.photo.MakeVideoMemeUseCase
@@ -195,6 +202,14 @@ private val appModule = module {
     factoryOf(::ObserveRemovedSoundIdsUseCase)
     factoryOf(::CheckRemovedSoundsUseCase)
     factoryOf(::EditorSounds)
+    // The voiceover tool (P3-08): the take's file, the route note, the microphone flag and the hand-check settings.
+    factoryOf(::StartVoiceTakeUseCase)
+    factoryOf(::DiscardVoiceTakeUseCase)
+    factoryOf(::VoiceRouteUseCase)
+    factoryOf(::MicrophoneAskedUseCase)
+    factoryOf(::PlaceVoiceTakeUseCase)
+    single { VoiceoverTuning(logOffsets = getProperty(HAND_CHECKS_PROPERTY, false)) }
+    factoryOf(::EditorVoiceover)
     // A landed library sound gets its own file in the project's folder (P3-05); the previews' parts come as one bundle.
     factoryOf(::PlaceSoundInProjectUseCase)
     factoryOf(::SoundPreviewTools)
@@ -283,6 +298,7 @@ private val appModule = module {
             startPreview = get(),
             startThumbnails = get(),
             sounds = get(),
+            voiceover = get(),
             captionRendering = get(),
             export = get(),
             importMedia = get(),

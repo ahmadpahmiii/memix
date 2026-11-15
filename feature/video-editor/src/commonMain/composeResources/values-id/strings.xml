@@ -142,4 +142,29 @@
     <string name="picker_overhang_toast">Ujung suara ini melewati akhir videomu, jadi tidak akan terdengar. Pangkas atau geser lebih awal.</string>
     <string name="use_sound_missing_toast">Suaranya tidak ikut. Tambahkan dari Suara meme.</string>
     <string name="a11y_sound_added_unnamed">Suara ditambahkan di %1$s</string>
+    <!-- P3-08 voiceover (spec docs/ux/specs/P3-08-voiceover.md → Copy). Machine-drafted until P5-06. -->
+    <string name="tool_voiceover">Rekam suara</string>
+    <string name="timeline_voiceover">Rekaman suara</string>
+    <string name="voiceover_hint">Merekam dari playhead sambil videomu diputar.</string>
+    <string name="voiceover_record">Rekam</string>
+    <string name="voiceover_stop">Berhenti</string>
+    <string name="voiceover_recording">Merekam</string>
+    <string name="voiceover_muted_note">Videomu diputar tanpa suara agar mikrofon hanya mendengar kamu. Pakai headphone untuk mendengarnya.</string>
+    <string name="voiceover_bluetooth_note">Merekam memakai mikrofon ponsel, bukan headset Bluetooth.</string>
+    <string name="voiceover_quiet_hint">Tidak ada suara terdengar. Pastikan tidak ada yang menutupi mikrofon.</string>
+    <string name="voiceover_saved">Rekaman suara ditambahkan di %1$s. Rekam lagi untuk lanjut.</string>
+    <string name="voiceover_denied">Memix tidak bisa merekam tanpa mikrofon. Aktifkan di Pengaturan, lalu kembali.</string>
+    <string name="voiceover_open_settings">Buka Pengaturan</string>
+    <string name="voiceover_at_end_explain">Geser playhead ke sebelum akhir video untuk merekam.</string>
+    <string name="voiceover_end_toast">Sampai di akhir videomu. Rekamanmu tersimpan.</string>
+    <string name="voiceover_interrupted_toast">Rekaman berhenti. Hasil sejauh ini tersimpan.</string>
+    <string name="voiceover_too_short_toast">Terlalu singkat untuk disimpan. Coba lagi.</string>
+    <string name="voiceover_silent_toast">Tidak ada yang terekam. Pastikan mikrofon menyala, lalu coba lagi.</string>
+    <string name="voiceover_busy_toast">Mikrofon sedang dipakai aplikasi lain. Tutup aplikasi itu lalu coba lagi.</string>
+    <string name="voiceover_no_space_toast">Ruang tidak cukup untuk merekam. Kosongkan ruang, lalu coba lagi.</string>
+    <string name="voiceover_stop_first_toast">Hentikan rekaman dulu.</string>
+    <string name="voiceover_countdown_a11y">Merekam dimulai dalam 3 detik</string>
+    <string name="voiceover_stop_a11y">Hentikan rekaman</string>
+    <string name="a11y_voiceover_added">Rekaman suara ditambahkan di %1$s, panjang %2$s</string>
+    <string name="edit_voiceover">Rekaman suara</string>
 </resources>

@@ -99,6 +99,7 @@ class VideoEditorViewModel(
     private val startPreview: StartPreviewUseCase,
     private val startThumbnails: StartThumbnailsUseCase,
     private val sounds: EditorSounds,
+    voiceover: EditorVoiceover,
     private val captionRendering: EditorCaptionRendering,
     private val export: EditorExport,
     importMedia: ImportMediaUseCase,
@@ -137,6 +138,7 @@ class VideoEditorViewModel(
     private val volumePanel = VolumePanelControl(host)
     private val move = MoveControl(host)
     private val originalAudio = OriginalAudioControl(host)
+    private val voiceoverControl = VoiceoverControl(host, projectId, voiceover)
     private val captions = CaptionControl(host)
     private val canvasPanel = CanvasPanelControl(host) { text, style, widthPx, heightPx, look -> captionRendering.measure(text, style, widthPx, heightPx, look) }
     private val exportSheet = ExportSheetControl(host, export)
@@ -146,6 +148,7 @@ class VideoEditorViewModel(
     init {
         updateState { it.copy(mediaImport = mediaImport.ui, captionMeasure = EditorCaptionMeasure(captionRendering.measure)) }
         addCloseable(AutoCloseable { preview?.close() })
+        addCloseable(AutoCloseable { voiceoverControl.release() })
         viewModelScope.launch { loadStarterSounds() }
         viewModelScope.launch { export.export.state.collect(::showExportEnded) }
         viewModelScope.launch {
@@ -159,6 +162,8 @@ class VideoEditorViewModel(
     }
 
     override fun onIntent(intent: VideoEditorIntent) {
+        // While a take records, what would change the project explains instead of acting (spec P3-08 → What recording does).
+        if (voiceoverControl.isRecording && intent.waitsForStop()) return showToast(ToastMessage.Explain(Explanation.VOICEOVER_STOP_FIRST))
         when (intent) {
             VideoEditorIntent.PlayPause -> togglePlayback()
             VideoEditorIntent.Undo -> undo()
@@ -174,6 +179,7 @@ class VideoEditorViewModel(
             VideoEditorIntent.RetryPreview -> retryPreview()
             is VideoEditorIntent.ToastTimedOut -> updateState { if (it.toast?.id == intent.id) it.copy(toast = null) else it }
             VideoEditorIntent.AppStarted -> {
+                voiceoverControl.appStarted()
                 retryFailedSave()
                 exportSheet.recheckSpace()
             }
@@ -231,6 +237,12 @@ class VideoEditorViewModel(
             is VideoEditorIntent.VolumeChanged -> volumePanel.change(intent.volume)
             VideoEditorIntent.VolumeReleased -> volumePanel.commit()
             VideoEditorIntent.CloseVolumePanel -> volumePanel.close()
+            VideoEditorIntent.VoiceoverTool -> voiceoverControl.open()
+            is VideoEditorIntent.VoiceoverRecord -> voiceoverControl.record(intent.microphoneGranted)
+            VideoEditorIntent.VoiceoverStop -> voiceoverControl.stop()
+            VideoEditorIntent.CloseVoiceoverPanel -> voiceoverControl.close()
+            is VideoEditorIntent.MicrophoneAnswered -> voiceoverControl.microphoneAnswered(intent.granted)
+            is VideoEditorIntent.MicrophoneChecked -> voiceoverControl.microphoneChecked(intent.granted)
             VideoEditorIntent.MoveHereSelected -> move.moveSelectedToPlayhead()
             is VideoEditorIntent.MoveStarted -> move.start(intent.itemId)
             is VideoEditorIntent.MoveEnded -> move.end(intent.itemId, intent.startUs, intent.lane)
@@ -405,6 +417,11 @@ class VideoEditorViewModel(
     private fun togglePlayback() {
         val session = preview ?: return
         if (!state.value.canPlay) return
+        // During a take Play/Pause is Stop; during the countdown the picture waits.
+        if (voiceoverControl.isBusy) {
+            if (voiceoverControl.isRecording) voiceoverControl.stop()
+            return
+        }
         if (session.playback.value.isPlaying) {
             session.pause()
             return
@@ -449,6 +466,7 @@ class VideoEditorViewModel(
             state.value.exportSheet != null -> exportSheet.close()
             state.value.textPanel != null -> captions.closePanel()
             state.value.volumePanel != null -> volumePanel.close()
+            state.value.voiceover != null -> voiceoverControl.close()
             state.value.canvasPanel != null -> canvasPanel.close()
             state.value.reorder != null -> updateState { it.copy(reorder = null) }
             state.value.selectedItemId != null -> updateState { it.withSelection(null, null) }
@@ -824,6 +842,8 @@ class VideoEditorViewModel(
 
     // Leaving saves by itself; only changes that can't be saved make it ask first (spec P1-04 → Saving).
     private fun requestClose() {
+        // A running take stops and lands first, then the editor closes (spec P3-08 → Entry and exit).
+        if (voiceoverControl.stopForClose(::requestClose)) return
         // Close while typing commits first, so the words are saved on the way out.
         captions.commitEntry()
         preview?.pause()
@@ -837,6 +857,8 @@ class VideoEditorViewModel(
     }
 
     private fun goToBackground() {
+        // Before the pause below, so the stop counts as leaving the app and its message waits for the user's return.
+        voiceoverControl.appStopped { editSession?.saveNow() }
         preview?.pause()
         // Android may end a background app without warning, so the newest change is written now.
         editSession?.saveNow()
@@ -907,6 +929,12 @@ class VideoEditorViewModel(
         /** One frame at the export's frame rate. */
         const val FRAME_US = 1_000_000L / ExportSettings.DEFAULT_FRAME_RATE
     }
+}
+
+// Intents that change the project or leave the editor, which a running voiceover take makes wait for Stop.
+private fun VideoEditorIntent.waitsForStop(): Boolean = when (this) {
+    VideoEditorIntent.Undo, VideoEditorIntent.Redo, VideoEditorIntent.ExportTool, VideoEditorIntent.RatioPill, VideoEditorIntent.ToggleOriginalAudio -> true
+    else -> false
 }
 
 /**

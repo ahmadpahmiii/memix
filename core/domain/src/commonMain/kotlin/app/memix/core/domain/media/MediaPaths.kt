@@ -9,6 +9,9 @@ import kotlin.uuid.Uuid
  * lets the launch cleanup find copies whose project was never saved.
  */
 object MediaPaths {
+    /** The suffix of a file still being written; the launch cleanup deletes any such file (a copy, a converted sound or a voiceover take cut short). */
+    const val UNFINISHED_SUFFIX = ".part"
+
     /** Excluded from cloud backup (Android's 25 MB backup quota); see androidApp's data_extraction_rules.xml. */
     const val ROOT = "media"
 

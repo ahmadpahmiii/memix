@@ -1,5 +1,6 @@
 package app.memix.core.domain.video
 
+import app.memix.core.domain.voiceover.ClockSample
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
@@ -76,6 +77,20 @@ interface PreviewSession : AutoCloseable {
      * project's volume.
      */
     fun previewVolume(itemId: String, volume: Float)
+
+    /**
+     * While a voiceover records without headphones (P3-08): plays the picture but none of the project's sound, so the
+     * speaker's sound doesn't go into the take. Engine only: the project, its volumes and its mutes are not touched, and
+     * [update] and seeks keep it. false plays the sound again.
+     */
+    fun setSilent(silent: Boolean)
+
+    /**
+     * The position the player is at, with the monotonic clock's reading at that instant, for placing a voiceover take
+     * (P3-08, [app.memix.core.domain.voiceover.placeTake]). Meaningful only while [PreviewPlayback.isPlaying]; null before the
+     * first composition is on the player.
+     */
+    fun sampleClock(): ClockSample?
 
     /** Stops playback and frees the decoders and the surface. Further calls do nothing. */
     override fun close()

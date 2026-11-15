@@ -145,4 +145,29 @@
     <string name="picker_overhang_toast">The end of this sound is past your video, so it won't play. Trim it or move it earlier.</string>
     <string name="use_sound_missing_toast">The sound didn't come along. Add it from Meme sounds.</string>
     <string name="a11y_sound_added_unnamed">Sound added at %1$s</string>
+    <!-- P3-08 voiceover (spec docs/ux/specs/P3-08-voiceover.md → Copy). -->
+    <string name="tool_voiceover">Voiceover</string>
+    <string name="timeline_voiceover">Voiceover</string>
+    <string name="voiceover_hint">Records at the playhead while your video plays.</string>
+    <string name="voiceover_record">Record</string>
+    <string name="voiceover_stop">Stop</string>
+    <string name="voiceover_recording">Recording</string>
+    <string name="voiceover_muted_note">Your video plays silent so the microphone only hears you. Use headphones to hear it.</string>
+    <string name="voiceover_bluetooth_note">Recording uses your phone's microphone, not the Bluetooth headset.</string>
+    <string name="voiceover_quiet_hint">We can't hear anything. Check that nothing covers the microphone.</string>
+    <string name="voiceover_saved">Voiceover added at %1$s. Record again to keep going.</string>
+    <string name="voiceover_denied">Memix can't record without the microphone. Turn it on in Settings, then come back.</string>
+    <string name="voiceover_open_settings">Open settings</string>
+    <string name="voiceover_at_end_explain">Move the playhead before the end of your video to record.</string>
+    <string name="voiceover_end_toast">Reached the end of your video. Your recording is saved.</string>
+    <string name="voiceover_interrupted_toast">Recording stopped. Your take so far is saved.</string>
+    <string name="voiceover_too_short_toast">That was too short to keep. Try again.</string>
+    <string name="voiceover_silent_toast">Nothing was recorded. Check that your microphone is on, then try again.</string>
+    <string name="voiceover_busy_toast">The microphone is in use by another app. Close it and try again.</string>
+    <string name="voiceover_no_space_toast">Not enough space to record. Free up some space, then try again.</string>
+    <string name="voiceover_stop_first_toast">Stop recording first.</string>
+    <string name="voiceover_countdown_a11y">Recording starts in 3 seconds</string>
+    <string name="voiceover_stop_a11y">Stop recording</string>
+    <string name="a11y_voiceover_added">Voiceover added at %1$s, %2$s long</string>
+    <string name="edit_voiceover">Voiceover</string>
 </resources>

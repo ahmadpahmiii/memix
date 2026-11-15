@@ -33,6 +33,13 @@ Never guess class names or signatures from memory. If an API you expected doesn'
 - Position: a `StateFlow<Long>` ticked by `Choreographer` while playing; the UI reads it only where it's drawn.
 - `CompositionPlayer` and `media3-ui-compose` are `@UnstableApi`, `CompositionPlayer` also `@ExperimentalApi`: opt in to both with `androidx.annotation.OptIn` (lint).
 
+## Voiceover recording (P3-08, TECHNICAL_DESIGN → Voiceover recording)
+
+- `AndroidVoiceRecorder` / `VoiceCapture` / `AacM4aWriter` in `:engine:video` androidMain: `AudioRecord` (`MIC`, mono, 48 kHz then 44.1 kHz) read on its own thread in 20 ms chunks into MediaCodec AAC-LC and MediaMuxer (`<name>.part`, renamed when done). No foreground service: it runs while the editor is on screen. A Bluetooth output pins the built-in microphone with `setPreferredDevice`; never use SCO.
+- Timing is the point of the ticket: `AudioRecord.getTimestamp(TIMEBASE_MONOTONIC)` gives (frame count, `System.nanoTime()`) at the capture pipeline's earliest point, so first-sample time = nanoTime minus frames/rate. Clock samples of the player (`PreviewSession.sampleClock()`) use `System.nanoTime()` too. Never mix `SystemClock.elapsedRealtimeNanos` in.
+- The player is silenced for a no-headphones take with `setSilent` (`player.volume = 0`), engine only. It is re-applied in `newPlayer()`; a composition rebuild does not need it because edits are blocked during a take (check on a phone that `setComposition` keeps the volume).
+- The check is the clap test (docs/qa/phase-3/engineer-hand-checks.md → P3-08); `VoiceoverTuning.extraOffsetUs` is the one correction and `MemixVoiceover` log lines are the readout.
+
 ## Export
 
 - `Transformer` export (`TransformerExport`) under a foreground service with a progress notification and Cancel (`:platform:services`, `AndroidExportForeground`): `mediaProcessing` on Android 15+ through `Service.startForeground` (not `ServiceCompat`, which drops it), `dataSync` on 10 to 14.

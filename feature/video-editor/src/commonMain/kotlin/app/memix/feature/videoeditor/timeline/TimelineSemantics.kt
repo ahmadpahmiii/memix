@@ -71,6 +71,7 @@ import memix.feature.video_editor.generated.resources.reorder_move_earlier
 import memix.feature.video_editor.generated.resources.reorder_move_later
 import memix.feature.video_editor.generated.resources.timeline_my_sound
 import memix.feature.video_editor.generated.resources.timeline_original_audio
+import memix.feature.video_editor.generated.resources.timeline_voiceover
 import memix.feature.video_editor.generated.resources.timeline_zoom_fit
 import memix.feature.video_editor.generated.resources.timeline_zoom_in
 import memix.feature.video_editor.generated.resources.timeline_zoom_out
@@ -404,6 +405,7 @@ private fun itemDescription(track: TrackUi, item: ItemUi, clipCount: Int): Strin
             val originalAudio = stringResource(Res.string.timeline_original_audio)
             stringResource(Res.string.a11y_item, trackName, originalAudio, duration, start)
         }
+        ItemLabel.Voiceover -> stringResource(Res.string.a11y_item, trackName, stringResource(Res.string.timeline_voiceover), duration, start)
         ItemLabel.UnnamedMySound -> stringResource(Res.string.a11y_item, trackName, stringResource(Res.string.timeline_my_sound), duration, start)
         is ItemLabel.SoundTitle -> stringResource(Res.string.a11y_item, trackName, label.title.inLanguage(appLanguageCode()), duration, start)
         // A sound the catalog doesn't know, or a sticker the user cut out (P2-07), has no name to say; saying the

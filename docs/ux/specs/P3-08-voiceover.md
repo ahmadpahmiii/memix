@@ -26,14 +26,13 @@ No board shows it. Components: ToolPanel (video-editor variant, covers the timel
 - **Closing the editor (X) during a recording** stops it, keeps the take (when it is long enough) and then closes: the draft saves as always.
 
 ## Layout
-Panel region at 360 × 640 is about 229 dp tall (the timeline's 157 plus the tool bar's 72; P1-04), so after the 48 dp title row about 181 dp remain. Every state below fits that at 100% font without scrolling; at 200% font the content scrolls under the fixed title row (ToolPanel README).
+Panel region at 360 × 640 is about 229 dp tall (the timeline's 157 plus the tool bar's 72; P1-04). **Content budget: 133 dp**, not 181: the ToolPanel's own 16 dp top padding, the 48 dp title row, the 16 dp gap under it and the 16 dp bottom padding come off first (229 - 16 - 48 - 16 - 16). Corrected after the P3-08 review (the first draft left the panel padding out). Every state below fits 133 dp at 100% font without scrolling, in English and in the longest of the five languages for the Ready states; at 200% font the content scrolls under the fixed title row (ToolPanel README), **so the key control (Record, Cancel, Stop) is always the first thing under the title row**, never below text that can grow.
 
 Title row: **Voiceover** (`title`, a heading), **Done** (Ghost) at the end. Content `space-4` padding, `space-3` between rows.
 
 ### Ready
-1. **Hint:** `voiceover_hint` in `body` `text-secondary`, up to 2 lines.
+1. **One message above Record, never two** (`text-secondary`, wraps, never cut). Priority: the saved line right after a take (`voiceover_saved`, `body`), else the route note when it applies (`label`: no headphones: `voiceover_muted_note`; Bluetooth headset: `voiceover_bluetooth_note`; never both, a Bluetooth headset counts as headphones), else the hint (`voiceover_hint`, `body`, up to 2 lines; so it is seen with headphones on, where no note applies). Why one: hint + Record + note is 150 dp at 100% in English and more in es, id and hi, over the 133 dp budget (P3-08 review). The route note says the video is silent, which is the thing the user must know; "records at the playhead" is what every editor does and the playhead is on screen.
 2. **Record:** a `danger` Button, full width, `touch-target` tall, the `mic` icon (20 dp, `on-primary`) and "Record" (`on-primary` on `danger` 5.7:1). Pressed: `danger-pressed`.
-3. **Route note** (only when it applies, `label` `text-secondary`, wraps, never cut): no headphones connected: `voiceover_muted_note`; Bluetooth headset connected: `voiceover_bluetooth_note`. Never both (a Bluetooth headset counts as headphones, so the video's sound plays in it).
 
 ### Counting down (3 s)
 - The Record button's place shows the number **3, 2, 1** in `display-xl` (`text`, centered, changes once a second with no scale or fade) and a **Secondary Cancel** button under it, full width. The video and the playhead do not move during the countdown; the microphone is not open yet.
@@ -41,14 +40,16 @@ Title row: **Voiceover** (`title`, a heading), **Done** (Ghost) at the end. Cont
 - Tapping Cancel, Done, back or Escape cancels: nothing recorded, back to Ready.
 
 ### Recording
-1. **Status row** (`touch-target` tall): a 12 dp `danger` dot (static, not pulsing: nothing loops, MOTION 2), the word "Recording" in `label` `text`, and at the end the take's length in `timecode` `text` (`00:04.20`, counting up).
-2. **Level meter:** a `rail-height` rail (`hairline`) with a `text` fill that follows the microphone level, at most 20 updates a second, full width. It is a live reading, not an animation, so reduce motion does not change it. It is hidden from screen readers.
-3. **Stop:** the `danger` Button, `stop` icon and "Stop", full width, under the meter.
-4. **Quiet hint** (appears after 3 s of near-silence, `label` `text`, replaces the route note's place): `voiceover_quiet_hint`; it goes when sound returns.
+Order top to bottom (changed in the P3-08 review so Stop is the first thing under the title row at any font scale):
+1. **Stop:** the `danger` Button, `stop` icon and "Stop", full width.
+2. **Status row** (content height, **not** `touch-target` tall: it is not a control): a 12 dp `danger` dot (static, not pulsing: nothing loops, MOTION 2), the word "Recording" in `label` `text`, and at the end the take's length in `timecode` `text` (`00:04.20`, counting up).
+3. **Level meter:** a `rail-height` rail (`hairline`) with a `text` fill that follows the microphone level, at most 20 updates a second, full width. It is a live reading, not an animation, so reduce motion does not change it. It is hidden from screen readers.
+4. **Quiet hint** (appears after 3 s of near-silence, `label` `text`, **takes the meter's place**, because a quiet take has an empty meter anyway and there is no room for both): `voiceover_quiet_hint`, a polite live region (a blind user can't see the meter, so this is their only sign the microphone hears nothing); the meter returns and the hint goes when sound returns.
+Height at 100%: 48 + 12 + about 24 + 12 + 4 = 100 dp, or 130 dp with a two-line quiet hint. At 200% Hindi only Stop and the top of the status row are visible, which is the intent: Stop never scrolls out.
 The transport row above shows the video playing and the project timecode; the timeline under the panel scrolls with the playhead as in any playback, unseen.
 
 ### After Stop
-Back to Ready with the hint line replaced by `voiceover_saved` ("Voiceover added at 0:03"), so the user knows a take landed behind the panel. Record again starts the next take **at the playhead, which sits at the end of the last take**, so narration goes line after line; to redo a line, Undo, then Record.
+Back to Ready with the message above Record replaced by `voiceover_saved` ("Voiceover added at 00:03.00": the visible time is the transport row's timecode; the spoken one is in `a11y_voiceover_added`), so the user knows a take landed behind the panel. The route note waits until the saved line goes (the user has just lived it). Record again starts the next take **at the playhead, which sits at the end of the last take**, so narration goes line after line; to redo a line, Undo, then Record.
 
 ## What recording does
 - **Where it starts:** the playhead when the countdown ends. The video plays from there, in step with the recording.

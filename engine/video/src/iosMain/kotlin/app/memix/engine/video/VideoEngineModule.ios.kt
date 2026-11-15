@@ -21,6 +21,10 @@ import app.memix.core.domain.video.ResultPlayer
 import app.memix.core.domain.video.Thumbnail
 import app.memix.core.domain.video.ThumbnailReader
 import app.memix.core.domain.video.VideoEngine
+import app.memix.core.domain.voiceover.ClockSample
+import app.memix.core.domain.voiceover.VoiceOpening
+import app.memix.core.domain.voiceover.VoiceRecorder
+import app.memix.core.domain.voiceover.VoiceRoute
 import app.memix.core.model.project.CaptionCatalog
 import app.memix.core.model.project.CaptionLook
 import app.memix.core.model.project.CaptionStyle
@@ -42,8 +46,16 @@ actual val videoEngineModule = module {
     single<VideoEngine> { IosVideoEngine() }
     single<CaptionMeasurer> { EstimatedCaptionMeasurer }
     single<SoundImporter> { UnavailableSoundImporter }
+    single<VoiceRecorder> { UnavailableVoiceRecorder }
     // TODO(P7-04): draw photo text layers with the same Core Text layout; nothing draws captions on iOS until then.
     single<SceneCaptions> { NoSceneCaptions }
+}
+
+// TODO(P7-05): AVAudioEngine input tap into an AAC AVAssetWriter, timestamped with the same monotonic clock as the AVPlayer's. Until then recording says it failed.
+private object UnavailableVoiceRecorder : VoiceRecorder {
+    override fun route() = VoiceRoute.PHONE_SPEAKER
+
+    override suspend fun open(destination: String) = VoiceOpening.Failed
 }
 
 // TODO(P7-05): AVAssetExportSession with the Apple M4A preset reads the pick and writes the .m4a (P3-07). Until then every import says the file is not supported.
@@ -137,6 +149,8 @@ private class UnavailablePreviewSession : PreviewSession {
     override fun endTrimFrames() = Unit
     override fun previewVolume(itemId: String, volume: Float) = Unit
     override fun hideCaption(itemId: String?) = Unit
+    override fun setSilent(silent: Boolean) = Unit
+    override fun sampleClock(): ClockSample? = null
     override fun close() = Unit
 }
 

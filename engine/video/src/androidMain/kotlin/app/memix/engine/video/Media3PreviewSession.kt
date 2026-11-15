@@ -19,6 +19,7 @@ import app.memix.core.domain.video.ExportSettings
 import app.memix.core.domain.video.PreviewPlayback
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.domain.video.PreviewStatus
+import app.memix.core.domain.voiceover.ClockSample
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.PixelSize
@@ -103,6 +104,9 @@ internal class Media3PreviewSession(
     private var lengthUs = project.videoLengthUs()
     private var scrubbing = false
     private var closed = false
+
+    // A voiceover is recording without headphones (P3-08): the picture plays, the sound doesn't.
+    private var silent = false
 
     // The live gains of the composition on the player, with the volume it already applies per sound.
     private var liveVolumes = LiveVolumes(emptyMap(), emptyMap())
@@ -222,6 +226,22 @@ internal class Media3PreviewSession(
         // The live gain multiplies the committed level; at 0% there's no fixed step, so it's the level itself.
         liveVolumes.gains[itemId]?.factor = if (committed > 0f) volume / committed else volume
     }
+
+    override fun setSilent(silent: Boolean) {
+        if (closed) return
+        this.silent = silent
+        mutablePlayer.value?.volume = playerVolume()
+    }
+
+    override fun sampleClock(): ClockSample? {
+        val player = mutablePlayer.value
+        if (closed || player == null || playerShowsTrim) return null
+        // The player's own clock follows what is heard; the reading and the clock's time are taken together.
+        val positionUs = player.currentPosition * MICROS_PER_MILLI
+        return ClockSample(positionUs, System.nanoTime())
+    }
+
+    private fun playerVolume(): Float = if (silent) 0f else 1f
 
     override fun hideCaption(itemId: String?) {
         if (closed) return
@@ -373,6 +393,7 @@ internal class Media3PreviewSession(
         player.addAnalyticsListener(playSpan)
         player.playWhenReady = mutablePlayback.value.isPlaying
         player.setScrubbingModeEnabled(scrubbing)
+        player.volume = playerVolume()
         return player
     }
 

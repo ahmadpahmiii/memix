@@ -51,6 +51,7 @@ import memix.core.ui.generated.resources.panel_done
 import memix.feature.video_editor.generated.resources.reorder_move_earlier
 import memix.feature.video_editor.generated.resources.reorder_move_later
 import memix.feature.video_editor.generated.resources.tool_add_media
+import memix.feature.video_editor.generated.resources.tool_voiceover
 import memix.core.ui.generated.resources.tool_delete
 import memix.feature.video_editor.generated.resources.tool_detach_audio
 import memix.core.ui.generated.resources.tool_duplicate
@@ -176,9 +177,9 @@ private fun ReorderBar(onIntent: (VideoEditorIntent) -> Unit, moveEarlierFocus: 
 }
 
 /**
- * Nothing selected: Edit, Meme sounds in blue (it's meme-sound UI), Text, then Add media; each tool keeps its place as
- * more arrive (spec P1-06 → Main tool bar; P1-10 put Text in place 3). An empty project has only Add media: nothing to
- * select, nothing to play a sound over or caption.
+ * Nothing selected: Edit, Meme sounds in blue (it's meme-sound UI), Text, Add media, then Voiceover (P3-08, not blue: a
+ * recording is not a meme sound); each tool keeps its place as more arrive (spec P1-06 → Main tool bar; P1-10 put Text in
+ * place 3). An empty project has only Add media: nothing to select, nothing to play a sound over, caption or record against.
  */
 @Composable
 private fun rememberMainTools(isEmpty: Boolean, focus: EditorFocusTargets, onIntent: (VideoEditorIntent) -> Unit): ImmutableList<ToolBarItem> {
@@ -186,7 +187,8 @@ private fun rememberMainTools(isEmpty: Boolean, focus: EditorFocusTargets, onInt
     val memeSounds = stringResource(Res.string.tool_meme_sounds)
     val text = stringResource(UiRes.string.tool_text)
     val addMedia = stringResource(Res.string.tool_add_media)
-    return remember(isEmpty, edit, memeSounds, text, addMedia, focus, onIntent) {
+    val voiceover = stringResource(Res.string.tool_voiceover)
+    return remember(isEmpty, edit, memeSounds, text, addMedia, voiceover, focus, onIntent) {
         val addMediaTool = ToolBarItem(addMedia, MemixIcons.Create, { onIntent(VideoEditorIntent.AddMediaTool) }, focusRequester = focus.addMediaTool)
         if (isEmpty) return@remember persistentListOf(addMediaTool)
         persistentListOf(
@@ -194,6 +196,7 @@ private fun rememberMainTools(isEmpty: Boolean, focus: EditorFocusTargets, onInt
             ToolBarItem(memeSounds, MemixIcons.Sounds, { onIntent(VideoEditorIntent.MemeSoundsTool) }, ToolTone.MemeSound, focusRequester = focus.memeSoundsTool),
             ToolBarItem(text, MemixIcons.Text, { onIntent(VideoEditorIntent.TextTool) }, focusRequester = focus.textTool),
             addMediaTool,
+            ToolBarItem(voiceover, MemixIcons.Mic, { onIntent(VideoEditorIntent.VoiceoverTool) }, focusRequester = focus.voiceoverTool),
         )
     }
 }
@@ -286,6 +289,7 @@ internal class EditorFocusTargets {
     val memeSoundsTool = FocusRequester()
     val addSoundPill = FocusRequester()
     val volumeTool = FocusRequester()
+    val voiceoverTool = FocusRequester()
     val textTool = FocusRequester()
     val styleTool = FocusRequester()
     val positionTool = FocusRequester()
@@ -305,6 +309,7 @@ internal class EditorFocusTargets {
             FocusTarget.MEME_SOUNDS_TOOL -> memeSoundsTool
             FocusTarget.ADD_SOUND_PILL -> addSoundPill
             FocusTarget.VOLUME_TOOL -> volumeTool
+            FocusTarget.VOICEOVER_TOOL -> voiceoverTool
             FocusTarget.RATIO_PILL -> ratioPill
         }.requestFocus()
     }

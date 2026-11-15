@@ -112,10 +112,13 @@ import app.memix.feature.sounds.SoundsViewModel
 import app.memix.feature.templates.TemplatesScreen
 import app.memix.feature.videoeditor.StageContent
 import app.memix.feature.videoeditor.VideoEditorIntent
+import app.memix.feature.videoeditor.MicrophoneHooks
 import app.memix.feature.videoeditor.VideoEditorScreen
 import app.memix.feature.videoeditor.VideoEditorViewModel
 import app.memix.platform.services.LockPortraitOnPhones
 import app.memix.platform.services.rememberFreeUpSpaceLauncher
+import app.memix.platform.services.KeepScreenOn
+import app.memix.platform.services.rememberMicrophoneAccess
 import app.memix.platform.services.rememberNotificationPermissionRequest
 import memix.composeapp.generated.resources.Res
 import memix.composeapp.generated.resources.nav_create
@@ -523,6 +526,10 @@ private fun VideoEditorDestination(projectId: String, madeFromPhoto: Boolean, st
     // The picker's My sounds actions open the system pickers from here, because platform code stays out of the feature.
     val mySoundPickers = rememberMySoundPickers { source, origin -> soundPicker.onIntent(SoundsIntent.MySoundPicked(source, origin)) }
     LockPortraitOnPhones()
+    // The voiceover's microphone dialog and Settings link are the phone's, so the editor gets them from here (P3-08); a take keeps the screen on.
+    val microphoneAccess = rememberMicrophoneAccess()
+    val microphone = remember(microphoneAccess) { MicrophoneHooks(microphoneAccess::isGranted, microphoneAccess::request, microphoneAccess::openSettings) }
+    KeepScreenOn(state.voiceover?.keepsScreenOn == true)
     EditorMediaPickers(state.mediaPicker, viewModel::onIntent)
     val currentOnClose by rememberUpdatedState(onClose)
     val currentOnCouldntOpen by rememberUpdatedState(onCouldntOpen)
@@ -553,6 +560,7 @@ private fun VideoEditorDestination(projectId: String, madeFromPhoto: Boolean, st
             CaptionStandIn(captionMeasurer, text, style, transform, canvasWidthPx, canvasHeightPx, modifier)
         },
         imageSource = imageSource,
+        microphone = microphone,
         soundPicker = { visible, title, onDismiss, onPick, onUnplayable ->
             EditorSoundPicker(soundPicker, visible, title, mySoundPickers, onDismiss, onPick, onUnplayable) {
                 if (!freeUpSpace.launch(SOUND_SPACE_REQUEST_BYTES)) soundPicker.onIntent(SoundsIntent.FreeUpSpaceUnavailable)

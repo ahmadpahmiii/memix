@@ -21,6 +21,7 @@ enum class VideoEdit(val tool: EditorTool) {
     MUTE_ORIGINAL(EditorTool.MUTE_ORIGINAL),
     UNMUTE_ORIGINAL(EditorTool.UNMUTE_ORIGINAL),
     DETACH_AUDIO(EditorTool.DETACH_AUDIO),
+    VOICEOVER(EditorTool.VOICEOVER),
     ADD_TEXT(EditorTool.ADD_TEXT),
     EDIT_TEXT(EditorTool.EDIT_TEXT),
     TEXT_FONT(EditorTool.TEXT_FONT),

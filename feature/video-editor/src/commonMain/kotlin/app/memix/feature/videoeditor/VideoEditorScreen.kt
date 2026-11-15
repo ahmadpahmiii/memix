@@ -148,6 +148,16 @@ import memix.feature.video_editor.generated.resources.a11y_reorder_position
 import memix.feature.video_editor.generated.resources.a11y_sound_added
 import memix.feature.video_editor.generated.resources.a11y_sound_added_unnamed
 import memix.feature.video_editor.generated.resources.a11y_text_added
+import memix.feature.video_editor.generated.resources.a11y_voiceover_added
+import memix.feature.video_editor.generated.resources.edit_voiceover
+import memix.feature.video_editor.generated.resources.voiceover_at_end_explain
+import memix.feature.video_editor.generated.resources.voiceover_busy_toast
+import memix.feature.video_editor.generated.resources.voiceover_end_toast
+import memix.feature.video_editor.generated.resources.voiceover_interrupted_toast
+import memix.feature.video_editor.generated.resources.voiceover_no_space_toast
+import memix.feature.video_editor.generated.resources.voiceover_silent_toast
+import memix.feature.video_editor.generated.resources.voiceover_stop_first_toast
+import memix.feature.video_editor.generated.resources.voiceover_too_short_toast
 import memix.core.ui.generated.resources.a11y_text_position
 import memix.core.ui.generated.resources.a11y_text_transformed
 import memix.feature.video_editor.generated.resources.canvas_layers_moved
@@ -247,6 +257,7 @@ fun VideoEditorScreen(
     captionStandIn: CaptionStandInSlot,
     imageSource: SceneImageSource,
     soundPicker: SoundPickerSlot,
+    microphone: MicrophoneHooks,
     onFreeUpSpace: (requestedBytes: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -263,11 +274,18 @@ fun VideoEditorScreen(
     val ownsEscape = !state.unsavedSheetOpen && !state.sounds.isOpen && !state.isImporting && state.exportSheet == null
     LifecycleEventEffect(Lifecycle.Event.ON_START) { onIntent(VideoEditorIntent.AppStarted) }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { onIntent(VideoEditorIntent.AppStopped) }
+    // Back from Settings (or the dialog) the permission may have changed; the panel answers without starting a take.
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { onIntent(VideoEditorIntent.MicrophoneChecked(microphone.isGranted())) }
+    // The phone's own dialog, once, at the first Record tap (spec P3-08 → Permission).
+    val askMicrophone = state.voiceover?.askMicrophone == true
+    LaunchedEffect(askMicrophone) {
+        if (askMicrophone) microphone.request { granted -> onIntent(VideoEditorIntent.MicrophoneAnswered(granted)) }
+    }
     // A save needs little room; ask for the import's headroom, so the next import fits too (spec P1-04 → Saving).
     val freeUpSpaceForSave = remember(onFreeUpSpace) { { onFreeUpSpace(ImportMediaUseCase.HEADROOM_BYTES) } }
     val focusTargets = remember { EditorFocusTargets() }
     val backgroundThumbnails = rememberBackgroundThumbnails(imageSource, state.canvas?.background, onIntent)
-    val panelOpen = state.volumePanel != null || state.textPanel != null || state.canvasPanel != null
+    val panelOpen = state.volumePanel != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null
     val sheetOpen = state.sounds.isOpen || state.unsavedSheetOpen || state.exportSheet != null || importSheetShown(state.mediaImport)
     ReturnFocus(state.returnFocus, focusTargets)
     // Typing (spec P1-10 → Typing): the field's words live here, so only the field and the stand-in redraw per key.
@@ -323,6 +341,7 @@ fun VideoEditorScreen(
                 },
                 panel = {
                     VolumePanel(state.volumePanel, state.originalAudio?.muted == true, onIntent, Modifier.fillMaxSize())
+                    VoiceoverPanel(state.voiceover, microphone, onIntent, Modifier.fillMaxSize())
                     val panelCaption = selectedCaption(state)
                     TextPanels(state.textPanel, panelCaption?.style, panelCaption?.transform, onIntent, Modifier.fillMaxSize())
                     CanvasPanel(state.canvasPanel, state.canvas, backgroundThumbnails, onIntent, Modifier.fillMaxSize())
@@ -812,7 +831,7 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
     LaunchedEffect(toast.id) {
         val baseMillis = when (toast.message) {
             is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition, is ToastMessage.SoundAdded,
-            is ToastMessage.MediaAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned,
+            is ToastMessage.MediaAdded, is ToastMessage.VoiceoverAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned,
             -> WHAT_HAPPENED_TOAST_MILLIS
             is ToastMessage.RatioStepped, ToastMessage.ExportStopped, ToastMessage.BackgroundImageSet, ToastMessage.BackgroundImageRemoved -> WHAT_HAPPENED_TOAST_MILLIS
             is ToastMessage.ExportFrameRateLowered, is ToastMessage.ExportResolutionLowered, is ToastMessage.ExportCantDo,
@@ -853,6 +872,7 @@ private fun toastText(message: ToastMessage): String = when (message) {
     is ToastMessage.ReorderPosition -> stringResource(Res.string.a11y_reorder_position, message.position, message.count)
     is ToastMessage.SoundAdded -> soundAddedText(message.title, message.atUs)
     is ToastMessage.MediaAdded -> pluralStringResource(Res.plurals.a11y_media_added, message.count, message.count)
+    is ToastMessage.VoiceoverAdded -> stringResource(Res.string.a11y_voiceover_added, spokenTime(message.atUs), spokenTime(message.lengthUs))
     is ToastMessage.TextAdded -> stringResource(Res.string.a11y_text_added, spokenTime(message.atUs))
     is ToastMessage.TextPositioned -> stringResource(UiRes.string.a11y_text_position, message.acrossPercent, message.downPercent)
     is ToastMessage.TextTransformed -> stringResource(
@@ -895,6 +915,7 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.MUTE_ORIGINAL -> Res.string.edit_mute_original
         VideoEdit.UNMUTE_ORIGINAL -> Res.string.edit_unmute_original
         VideoEdit.DETACH_AUDIO -> Res.string.edit_detach_audio
+        VideoEdit.VOICEOVER -> Res.string.edit_voiceover
         VideoEdit.ADD_TEXT -> UiRes.string.edit_add_text
         VideoEdit.EDIT_TEXT -> UiRes.string.edit_edit_text
         VideoEdit.TEXT_FONT -> UiRes.string.edit_text_font
@@ -934,6 +955,14 @@ private fun explanationText(explanation: Explanation): String = stringResource(
         Explanation.CANVAS_MIN -> UiRes.string.explain_canvas_min
         Explanation.CANVAS_MAX -> UiRes.string.explain_canvas_max
         Explanation.CANVAS_REORDER -> Res.string.explain_canvas_reorder
+        Explanation.VOICEOVER_AT_END -> Res.string.voiceover_at_end_explain
+        Explanation.VOICEOVER_END -> Res.string.voiceover_end_toast
+        Explanation.VOICEOVER_INTERRUPTED -> Res.string.voiceover_interrupted_toast
+        Explanation.VOICEOVER_TOO_SHORT -> Res.string.voiceover_too_short_toast
+        Explanation.VOICEOVER_SILENT -> Res.string.voiceover_silent_toast
+        Explanation.VOICEOVER_BUSY -> Res.string.voiceover_busy_toast
+        Explanation.VOICEOVER_NO_SPACE -> Res.string.voiceover_no_space_toast
+        Explanation.VOICEOVER_STOP_FIRST -> Res.string.voiceover_stop_first_toast
         Explanation.EXPORT_EMPTY -> Res.string.explain_export_empty
         Explanation.EXPORT_NO_SHAPE -> Res.string.explain_export_no_shape
         Explanation.EXPORT_NO_SPACE -> Res.string.explain_export_no_space

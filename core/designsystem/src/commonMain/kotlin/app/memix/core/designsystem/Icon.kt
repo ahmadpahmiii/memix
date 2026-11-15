@@ -47,6 +47,7 @@ import memix.core.designsystem.generated.resources.ic_heart
 import memix.core.designsystem.generated.resources.ic_heart_filled
 import memix.core.designsystem.generated.resources.ic_home
 import memix.core.designsystem.generated.resources.ic_minus
+import memix.core.designsystem.generated.resources.ic_mic
 import memix.core.designsystem.generated.resources.ic_more
 import memix.core.designsystem.generated.resources.ic_move_here
 import memix.core.designsystem.generated.resources.ic_pause
@@ -65,6 +66,7 @@ import memix.core.designsystem.generated.resources.ic_search
 import memix.core.designsystem.generated.resources.ic_share
 import memix.core.designsystem.generated.resources.ic_sounds
 import memix.core.designsystem.generated.resources.ic_split
+import memix.core.designsystem.generated.resources.ic_stop
 import memix.core.designsystem.generated.resources.ic_style
 import memix.core.designsystem.generated.resources.ic_templates
 import memix.core.designsystem.generated.resources.ic_text
@@ -99,6 +101,8 @@ object MemixIcons {
     val Fill = Res.drawable.ic_fill
     val Flag = Res.drawable.ic_flag
     val Folder = Res.drawable.ic_folder
+    val Mic = Res.drawable.ic_mic
+    val Stop = Res.drawable.ic_stop
     val Fit = Res.drawable.ic_fit
     val Flip = Res.drawable.ic_flip
     val Formats = Res.drawable.ic_formats

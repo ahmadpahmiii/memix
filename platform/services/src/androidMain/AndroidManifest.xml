@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROCESSING" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- The voiceover tool's microphone (P3-08): asked once, at the first Record tap, with Android's own dialog. Recording stops when
+         the editor leaves the screen, so there is no foreground service. A phone or tablet without a microphone still installs Memix. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
     <!-- Whether the phone is online, for the offline look of the Sounds screen (P3-04). A normal permission: no prompt. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 

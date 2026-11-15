@@ -68,4 +68,12 @@ sealed interface MediaOrigin {
     @Serializable
     @SerialName("my_sound")
     data class MySound(val name: String) : MediaOrigin
+
+    /**
+     * A voiceover take recorded with the phone's microphone (P3-08), written straight into the project's own media folder
+     * (project schema 12). The timeline labels such a clip "Voiceover".
+     */
+    @Serializable
+    @SerialName("recording")
+    data object Recording : MediaOrigin
 }

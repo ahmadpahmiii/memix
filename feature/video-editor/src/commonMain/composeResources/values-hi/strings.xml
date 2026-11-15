@@ -142,4 +142,29 @@
     <string name="picker_overhang_toast">इस आवाज़ का आखिरी हिस्सा आपके वीडियो के बाद है, इसलिए वह नहीं बजेगा। उसे ट्रिम करें या पहले खिसकाएँ।</string>
     <string name="use_sound_missing_toast">आवाज़ साथ नहीं आई। इसे मीम साउंड से जोड़ें।</string>
     <string name="a11y_sound_added_unnamed">आवाज़ %1$s पर जोड़ी गई</string>
+    <!-- P3-08 voiceover (spec docs/ux/specs/P3-08-voiceover.md → Copy). Machine-drafted until P5-06. -->
+    <string name="tool_voiceover">वॉइसओवर</string>
+    <string name="timeline_voiceover">वॉइसओवर</string>
+    <string name="voiceover_hint">वीडियो चलते समय प्लेहेड से रिकॉर्ड करता है।</string>
+    <string name="voiceover_record">रिकॉर्ड करें</string>
+    <string name="voiceover_stop">रोकें</string>
+    <string name="voiceover_recording">रिकॉर्डिंग जारी है</string>
+    <string name="voiceover_muted_note">रिकॉर्ड करते समय वीडियो बिना आवाज़ के चलता है, ताकि माइक सिर्फ़ आपको सुने। उसे सुनने के लिए हेडफ़ोन लगाएं।</string>
+    <string name="voiceover_bluetooth_note">रिकॉर्डिंग फ़ोन के माइक से होती है, ब्लूटूथ हेडसेट से नहीं।</string>
+    <string name="voiceover_quiet_hint">कुछ सुनाई नहीं दे रहा। देखें कि माइक ढका तो नहीं है।</string>
+    <string name="voiceover_saved">%1$s पर वॉइसओवर जुड़ गया। आगे बढ़ने के लिए फिर रिकॉर्ड करें।</string>
+    <string name="voiceover_denied">माइक के बिना Memix रिकॉर्ड नहीं कर सकता। सेटिंग में उसे चालू करें, फिर वापस आएं।</string>
+    <string name="voiceover_open_settings">सेटिंग खोलें</string>
+    <string name="voiceover_at_end_explain">रिकॉर्ड करने के लिए प्लेहेड को वीडियो के अंत से पहले ले जाएं।</string>
+    <string name="voiceover_end_toast">वीडियो खत्म हो गया। आपकी रिकॉर्डिंग सेव हो गई है।</string>
+    <string name="voiceover_interrupted_toast">रिकॉर्डिंग रुक गई। अब तक का हिस्सा सेव है।</string>
+    <string name="voiceover_too_short_toast">यह रिकॉर्डिंग बहुत छोटी थी। फिर से आज़माएं।</string>
+    <string name="voiceover_silent_toast">कुछ रिकॉर्ड नहीं हुआ। देखें कि माइक चालू है, फिर दोबारा कोशिश करें।</string>
+    <string name="voiceover_busy_toast">माइक किसी दूसरे ऐप में चल रहा है। उसे बंद करें और फिर कोशिश करें।</string>
+    <string name="voiceover_no_space_toast">रिकॉर्ड करने की जगह नहीं है। जगह खाली करें, फिर कोशिश करें।</string>
+    <string name="voiceover_stop_first_toast">पहले रिकॉर्डिंग रोकें।</string>
+    <string name="voiceover_countdown_a11y">रिकॉर्डिंग 3 सेकंड में शुरू होगी</string>
+    <string name="voiceover_stop_a11y">रिकॉर्डिंग रोकें</string>
+    <string name="a11y_voiceover_added">%1$s पर वॉइसओवर जुड़ा, %2$s लंबा</string>
+    <string name="edit_voiceover">वॉइसओवर</string>
 </resources>

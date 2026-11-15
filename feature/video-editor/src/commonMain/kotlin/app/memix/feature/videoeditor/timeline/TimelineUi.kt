@@ -15,6 +15,7 @@ import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TimelineItem
 import app.memix.core.model.project.Track
 import app.memix.core.model.project.TrackKind
+import app.memix.core.model.project.isVoiceover
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -97,6 +98,9 @@ sealed interface ItemLabel {
     /** Detached original audio: "Original audio". */
     data object OriginalAudio : ItemLabel
 
+    /** A voiceover take recorded in Memix (P3-08): "Voiceover". */
+    data object Voiceover : ItemLabel
+
     /** A My sound that had no file name (P3-07): "My sound" in the app's language. */
     data object UnnamedMySound : ItemLabel
 
@@ -154,12 +158,13 @@ private fun itemUiOf(item: TimelineItem, kind: TrackKind, clipNumber: Int, sound
 
 // A video file on an audio track is a clip's detached sound (P1-09); a catalog sound shows its title, a My sound its name.
 private fun audioLabelOf(clip: AudioClip, kind: TrackKind, soundTitles: Map<String, LocalizedText>): ItemLabel {
+    if (clip.source.isVoiceover()) return ItemLabel.Voiceover
     if (kind == TrackKind.AUDIO && clip.source.kind == MediaKind.VIDEO) return ItemLabel.OriginalAudio
     return when (val origin = clip.source.origin) {
         is MediaOrigin.CatalogItem -> soundTitles[origin.itemId]?.let(ItemLabel::SoundTitle) ?: ItemLabel.None
         // A My sound keeps the name it had when it was added (P3-07), so the label survives a rename or a delete.
         is MediaOrigin.MySound -> if (origin.name.isBlank()) ItemLabel.UnnamedMySound else ItemLabel.SoundTitle(LocalizedText(mapOf("en" to origin.name)))
-        is MediaOrigin.GalleryUri, is MediaOrigin.PhotoAsset -> ItemLabel.None
+        is MediaOrigin.GalleryUri, is MediaOrigin.PhotoAsset, MediaOrigin.Recording -> ItemLabel.None
     }
 }
 

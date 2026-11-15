@@ -95,7 +95,7 @@ internal class EditorSoundTools(private val sounds: EditorSounds, private val ho
         val title = when (val origin = clip.source.origin) {
             is MediaOrigin.CatalogItem -> titles[origin.itemId]
             is MediaOrigin.MySound -> origin.name.takeIf { it.isNotBlank() }?.let { LocalizedText(mapOf("en" to it)) }
-            is MediaOrigin.GalleryUri, is MediaOrigin.PhotoAsset -> null
+            is MediaOrigin.GalleryUri, is MediaOrigin.PhotoAsset, MediaOrigin.Recording -> null
         }
         host.updateUiState { it.copy(landed = host.newLanding(persistentSetOf(clip.id), isSound = true)) }
         announceLanding(title, clip.startUs, clip.durationUs)

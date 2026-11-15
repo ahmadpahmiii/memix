@@ -193,6 +193,9 @@ enum class EditorTool(val eventValue: String?) {
     ADD_MEDIA("add_media"),
     REPLACE_CLIP("replace_clip"),
 
+    /** P3-08: once per voiceover take that lands in the project (PM, 11 Nov 2026); a discarded or empty take sends nothing. */
+    VOICEOVER("voiceover"),
+
     /** P1-09: one id per direction of the original-audio toggle (PM, 8 Oct), and Detach audio. */
     MUTE_ORIGINAL("mute_original"),
     UNMUTE_ORIGINAL("unmute_original"),

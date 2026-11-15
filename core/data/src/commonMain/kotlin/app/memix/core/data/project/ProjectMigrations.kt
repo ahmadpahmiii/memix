@@ -47,4 +47,6 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     // 10 → 11 (P3-07): MediaOrigin gained the "my_sound" subtype (a sound from My sounds, with the name it had when it was added). A new
     // subtype leaves every saved origin as it was, so version-10 JSON decodes as it is and the step only moves the version on.
     ProjectMigration(fromVersion = 10) { json -> json },
+    // 11 → 12 (P3-08): MediaOrigin gained the "recording" subtype (a voiceover take). Again a new subtype only, so version-11 JSON decodes as it is.
+    ProjectMigration(fromVersion = 11) { json -> json },
 )

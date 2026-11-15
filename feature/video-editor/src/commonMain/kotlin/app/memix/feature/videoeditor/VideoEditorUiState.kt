@@ -2,6 +2,10 @@ package app.memix.feature.videoeditor
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.setValue
 import app.memix.core.domain.project.LaneTarget
 import app.memix.core.domain.project.MediaPlace
 import app.memix.core.domain.project.TrimEdge
@@ -9,6 +13,7 @@ import app.memix.core.domain.video.ExportChoice
 import app.memix.core.domain.video.ExportEstimate
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.domain.video.VideoCodec
+import app.memix.core.domain.voiceover.VoiceRoute
 import app.memix.core.domain.sound.PickedSound
 import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.project.CanvasRatio
@@ -66,6 +71,8 @@ data class VideoEditorUiState(
     val sounds: SoundsSheetUi = SoundsSheetUi(),
     /** The Volume panel over the timeline and tool bar, or null when it's closed (spec P1-06 → Volume panel). */
     val volumePanel: VolumePanelUi? = null,
+    /** The Voiceover panel over the timeline and tool bar, or null when it's closed (spec P3-08). */
+    val voiceover: VoiceoverPanelUi? = null,
     /** The Canvas panel over the timeline and tool bar, or null when it's closed (spec P1-11). */
     val canvasPanel: CanvasPanelUi? = null,
     /** The Export sheet (spec P1-12), or null when it's closed. */
@@ -242,6 +249,36 @@ data class SoundsSheetUi(val isOpen: Boolean = false)
 @Immutable
 data class VolumePanelUi(val itemId: String, val volume: Float, val isVideoClip: Boolean = false)
 
+/**
+ * The Voiceover panel (spec P3-08). [countdown] is the 3, 2, 1 while [phase] counts down; [savedAtUs] is where the last take of this
+ * visit landed ("Voiceover added at 0:03"); [microphoneDenied] swaps Record for the explanation and Open settings;
+ * [askMicrophone] asks the screen to show Android's own dialog, once; [quiet] shows the covered-microphone hint. The level
+ * and the take's length change many times a second, so they are in [live], which only the views that draw them read.
+ */
+@Immutable
+data class VoiceoverPanelUi(
+    val phase: VoicePhase,
+    val route: VoiceRoute,
+    val live: VoiceoverLive,
+    val countdown: Int = 0,
+    val savedAtUs: Long? = null,
+    val microphoneDenied: Boolean = false,
+    val askMicrophone: Boolean = false,
+    val quiet: Boolean = false,
+) {
+    /** A countdown or a take runs without touches, so the screen must not go dark. */
+    val keepsScreenOn: Boolean get() = phase != VoicePhase.READY
+}
+
+enum class VoicePhase { READY, COUNTING_DOWN, RECORDING }
+
+/** The take's microphone level (0 to 1) and length so far; read only in the meter's and the timecode's own draw or layout. Compared by identity. */
+@Stable
+class VoiceoverLive {
+    var level: Float by mutableFloatStateOf(0f)
+    var elapsedUs: Long by mutableLongStateOf(0L)
+}
+
 /** The original audio's one setting: [muted] when every main clip's own sound is off (`Track.muted`). */
 @Immutable
 data class OriginalAudioUi(val muted: Boolean)
@@ -309,6 +346,9 @@ enum class FocusTarget {
     /** The Volume tool of the selected sound. */
     VOLUME_TOOL,
 
+    /** The Voiceover tool on the main tool bar (P3-08), after its panel closes. */
+    VOICEOVER_TOOL,
+
     /** The Text tool on the main tool bar (P1-10): after typing a blank new caption. */
     TEXT_TOOL,
 
@@ -362,6 +402,19 @@ enum class Explanation {
     /** The ratio pill or Export in reorder mode: "Tap Done to finish reordering first." */
     CANVAS_REORDER,
 
+    /**
+     * Voiceover (P3-08): Record at the end of the video; a take that reached the end, was interrupted, was too short or
+     * silent; the microphone busy or the phone full; a control that waits for Stop.
+     */
+    VOICEOVER_AT_END,
+    VOICEOVER_END,
+    VOICEOVER_INTERRUPTED,
+    VOICEOVER_TOO_SHORT,
+    VOICEOVER_SILENT,
+    VOICEOVER_BUSY,
+    VOICEOVER_NO_SPACE,
+    VOICEOVER_STOP_FIRST,
+
     /** Export (P1-12): an empty draft, no resolution for this shape, not enough space. */
     EXPORT_EMPTY,
     EXPORT_NO_SHAPE,
@@ -407,6 +460,9 @@ sealed interface ToastMessage {
 
     /** After a library sound landed with more than half a second past the end of the video: shown as the trim-or-move toast, spoken with the name and time (P3-05). */
     data class SoundPastEnd(val title: LocalizedText?, val atUs: Long) : ToastMessage
+
+    /** After a voiceover take lands, for screen readers only: "Voiceover added at 3.2 seconds, 4 seconds long" ([atUs] is where it starts). */
+    data class VoiceoverAdded(val atUs: Long, val lengthUs: Long) : ToastMessage
 
     /** After a new caption lands, for screen readers only: "Text added at 3.2 seconds" ([atUs] is where it starts). */
     data class TextAdded(val atUs: Long) : ToastMessage
@@ -604,6 +660,24 @@ sealed interface VideoEditorIntent {
 
     /** Done, system back or Escape on the Volume panel. */
     data object CloseVolumePanel : VideoEditorIntent
+
+    /** The Voiceover tool: opens its panel (the microphone is not asked yet). */
+    data object VoiceoverTool : VideoEditorIntent
+
+    /** Record: [microphoneGranted] is the phone's permission right now. Starts the 3 second countdown, or asks, or explains. */
+    data class VoiceoverRecord(val microphoneGranted: Boolean) : VideoEditorIntent
+
+    /** Cancel during the countdown, or Stop while recording. */
+    data object VoiceoverStop : VideoEditorIntent
+
+    /** Done, system back or Escape on the Voiceover panel: stops what runs, or closes when nothing does. */
+    data object CloseVoiceoverPanel : VideoEditorIntent
+
+    /** Android's microphone dialog closed with this answer. */
+    data class MicrophoneAnswered(val granted: Boolean) : VideoEditorIntent
+
+    /** The editor is back on screen (or the panel opened): the phone's microphone permission is [granted] now. */
+    data class MicrophoneChecked(val granted: Boolean) : VideoEditorIntent
 
     /** Move here on the selected item: it starts at the playhead (spec P1-06 → Move). */
     data object MoveHereSelected : VideoEditorIntent

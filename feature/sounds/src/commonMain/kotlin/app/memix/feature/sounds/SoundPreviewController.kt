@@ -323,7 +323,7 @@ internal class SoundPreviewController(
     private fun MediaRef.rowId(): String? = when (val origin = origin) {
         is MediaOrigin.CatalogItem -> origin.itemId
         is MediaOrigin.MySound -> cachedCopyPath?.let(mineIdByPath::get)
-        is MediaOrigin.GalleryUri, is MediaOrigin.PhotoAsset -> null
+        is MediaOrigin.GalleryUri, is MediaOrigin.PhotoAsset, MediaOrigin.Recording -> null
     }
 
     // The player is opened on the first tap and lives only while the user is on the screen.

@@ -18,6 +18,7 @@ import app.memix.debug.MemixTestCrash
 import app.memix.debug.PhotoExportCheck
 import app.memix.debug.SceneRender
 import app.memix.debug.SegmentCheck
+import app.memix.debug.VoiceoverOffset
 import app.memix.platform.services.LanguageOverride
 import kotlinx.coroutines.launch
 
@@ -87,6 +88,9 @@ class MainActivity : ComponentActivity() {
             val keepMasks = intent.getBooleanExtra("memix.segmentKeepMasks", false)
             lifecycleScope.launch { SegmentCheck().run(segmentCheck, passes, keepMasks) }
         }
+        // Debug and benchmark builds (P3-08): --el memix.voiceoverOffsetUs <µs> moves every voiceover take later on the timeline (negative: earlier)
+        // for the clap test; each take's offsets are logged under the tag MemixVoiceover. Steps in docs/qa/phase-3/engineer-hand-checks.md → P3-08.
+        if (handChecks && intent.hasExtra("memix.voiceoverOffsetUs")) VoiceoverOffset.arm(intent.getLongExtra("memix.voiceoverOffsetUs", 0L))
         setContent { App(isDebugBuild, debugEditorProject = editorCheck) }
     }
 }
