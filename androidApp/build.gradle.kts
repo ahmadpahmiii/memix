@@ -163,6 +163,7 @@ tasks.configureEach {
 
 dependencies {
     implementation(projects.composeApp)
+    implementation(projects.platform.services) // LanguageOverride, applied in attachBaseContext
     implementation(libs.androidx.activity.compose)
     implementation(project.dependencies.platform(libs.koin.bom))
     implementation(libs.koin.android)

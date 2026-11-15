@@ -1,7 +1,6 @@
 package app.memix.platform.services
 
 import android.annotation.SuppressLint
-import android.app.LocaleManager
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -19,6 +18,7 @@ import app.memix.core.domain.drafts.LocalCalendar
 import app.memix.core.domain.media.MediaFiles
 import app.memix.core.domain.media.MediaInspector
 import app.memix.core.domain.photo.PictureClipboard
+import app.memix.core.domain.region.AppLanguageSwitch
 import app.memix.core.domain.share.Sharer
 import app.memix.core.domain.sound.MediaVolume
 import app.memix.core.domain.sound.NetworkStatus
@@ -26,6 +26,7 @@ import app.memix.core.domain.sound.SoundLibrary
 import app.memix.core.domain.stickerpack.WhatsAppStickers
 import app.memix.core.domain.video.AppExitReasons
 import app.memix.core.domain.video.ExportForeground
+import app.memix.core.model.AppLanguage
 import com.google.android.gms.tasks.Task
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -42,6 +43,7 @@ import org.koin.dsl.module
 
 actual val platformServicesModule = module {
     single<DeviceRegion> { AndroidDeviceRegion(androidContext()) }
+    single<AppLanguageSwitch> { AndroidAppLanguageSwitch(androidContext()) }
     single<Logger> { AndroidLogger() }
     single<AppConfig> { FirebaseAppConfig(androidContext()) }
     single<Analytics> { FirebaseAnalyticsLogger(androidContext()) }
@@ -59,17 +61,11 @@ actual val platformServicesModule = module {
 }
 
 private class AndroidDeviceRegion(private val context: Context) : DeviceRegion {
-    override fun regionCode(): String? = systemLocale().country.ifEmpty { null }
+    // The phone's regional setting, not the per-app language's: a Hindi app on a US phone is still in the US.
+    override fun regionCode(): String? = systemLocale(context).country.ifEmpty { null }
 
-    override fun displayName(regionCode: String): String =
-        Locale.Builder().setRegion(regionCode).build().getDisplayCountry(Locale.getDefault())
-
-    // A per-app language (Android 13+) replaces Locale.getDefault(), so the phone's region comes from the system list.
-    private fun systemLocale(): Locale {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return Locale.getDefault()
-        val systemLocales = context.getSystemService(LocaleManager::class.java).systemLocales
-        return if (systemLocales.isEmpty) Locale.getDefault() else systemLocales[0]
-    }
+    override fun displayName(regionCode: String, language: AppLanguage): String =
+        Locale.Builder().setRegion(regionCode).build().getDisplayCountry(Locale.forLanguageTag(language.code))
 }
 
 /** Logcat plus Crashlytics: debug lines become breadcrumbs on the next crash report, errors become non-fatal reports. */

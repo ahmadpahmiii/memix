@@ -18,6 +18,9 @@
     <string name="sounds_tab_mine">My sounds</string>
     <string name="sounds_chip_all">All</string>
     <string name="sounds_region_line">Sounds for %1$s</string>
+    <string name="sounds_region_change">Change</string>
+    <string name="sounds_region_change_a11y">Change region</string>
+    <string name="sounds_region_choose">Choose your region</string>
     <string name="sounds_offline_strip">You're offline. Saved sounds still play.</string>
     <string name="sounds_searching">Searching…</string>
     <string name="sounds_loading_status">Loading sounds</string>

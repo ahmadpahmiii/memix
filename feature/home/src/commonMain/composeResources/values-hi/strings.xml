@@ -6,4 +6,6 @@
     <string name="entry_photo_title">फ़ोटो मीम</string>
     <string name="entry_photo_body">कैप्शन, पैनल, कट-आउट</string>
     <string name="region_global">वैश्विक</string>
+    <string name="home_region_a11y">क्षेत्र: %1$s</string>
+    <string name="home_region_change">क्षेत्र बदलें</string>
 </resources>

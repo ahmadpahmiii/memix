@@ -18,12 +18,14 @@ import app.memix.core.data.sound.FileSoundDownloads
 import app.memix.core.data.sound.KtorSoundFileSource
 import app.memix.core.data.stickerpack.FileStickerPackRepository
 import app.memix.core.data.settings.SettingsPhotoExportPreferences
+import app.memix.core.data.settings.SettingsRegionPreferences
 import app.memix.core.data.settings.SettingsVideoMemeNotePreferences
 import app.memix.core.domain.AppConfig
 import app.memix.core.domain.catalog.SoundCatalogRepository
 import app.memix.core.domain.mysound.MySoundsRepository
 import app.memix.core.domain.photo.PhotoExportPreferences
 import app.memix.core.domain.photo.VideoMemeNotePreferences
+import app.memix.core.domain.region.RegionPreferences
 import app.memix.core.domain.project.ProjectRepository
 import app.memix.core.domain.sound.SoundCollectionsRepository
 import app.memix.core.domain.sound.SoundDownloads
@@ -47,6 +49,7 @@ val dataModule = module {
     single<ExportPreferences> { SettingsExportPreferences(get(), Dispatchers.IO) }
     single<PhotoExportPreferences> { SettingsPhotoExportPreferences(get(), Dispatchers.IO) }
     single<VideoMemeNotePreferences> { SettingsVideoMemeNotePreferences(get(), Dispatchers.IO) }
+    single<RegionPreferences> { SettingsRegionPreferences(get(), Dispatchers.IO) }
     single<StickerPackRepository> { FileStickerPackRepository(get(), get()) }
     single { MemixDatabase(get()) }
     single<ProjectRepository> {

@@ -43,7 +43,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -61,6 +60,7 @@ import app.memix.core.domain.project.TrimEdge
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.TrackKind
 import app.memix.core.ui.formatTimecode
+import app.memix.core.ui.appLanguageCode
 import app.memix.feature.videoeditor.EditorPreview
 import app.memix.feature.videoeditor.LandedItems
 import app.memix.feature.videoeditor.OriginalAudioUi
@@ -441,7 +441,7 @@ private fun rememberTimelinePainter(textMeasurer: TextMeasurer): TimelinePainter
     val originalAudio = stringResource(Res.string.timeline_original_audio)
     val unnamedMySound = stringResource(Res.string.timeline_my_sound)
     val missingFile = stringResource(Res.string.clip_missing_file)
-    val languageCode = LocalLocale.current.language
+    val languageCode = appLanguageCode()
     return remember(textMeasurer, labelStyle, rulerStyle, originalAudio, unnamedMySound, missingFile, languageCode, density) {
         TimelinePainter(textMeasurer, labelStyle, rulerStyle, originalAudio, unnamedMySound, missingFile, languageCode, density)
     }

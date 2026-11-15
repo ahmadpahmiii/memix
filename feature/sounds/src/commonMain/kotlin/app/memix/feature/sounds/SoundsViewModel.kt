@@ -3,7 +3,6 @@ package app.memix.feature.sounds
 import androidx.lifecycle.viewModelScope
 import app.memix.core.designsystem.component.SoundRowLook
 import app.memix.core.domain.AppError
-import app.memix.core.domain.GetPhoneRegionUseCase
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.SoundTab
 import app.memix.core.domain.catalog.CheckRemovedSoundsUseCase
@@ -20,6 +19,7 @@ import app.memix.core.domain.mysound.MySound
 import app.memix.core.domain.mysound.MySoundSource
 import app.memix.core.domain.mysound.RenameOutcome
 import app.memix.core.domain.mysound.matching
+import app.memix.core.domain.region.ObserveRegionUseCase
 import app.memix.core.domain.sound.GetSavedSoundIdsUseCase
 import app.memix.core.domain.sound.ObserveFavoriteSoundIdsUseCase
 import app.memix.core.domain.sound.ObserveFavoriteSoundsUseCase
@@ -73,7 +73,7 @@ class SoundsViewModel(
     private val observeFeed: ObserveSoundFeedUseCase,
     private val loadFeedPage: LoadSoundFeedPageUseCase,
     private val searchSounds: SearchSoundsUseCase,
-    getPhoneRegion: GetPhoneRegionUseCase,
+    observeRegion: ObserveRegionUseCase,
     private val getSavedSoundIds: GetSavedSoundIdsUseCase,
     private val observeFavoriteIds: ObserveFavoriteSoundIdsUseCase,
     private val observeFavorites: ObserveFavoriteSoundsUseCase,
@@ -89,7 +89,9 @@ class SoundsViewModel(
     private val mode: SoundsMode,
     private val pickerMemory: SoundPickerMemory,
 ) : MemixViewModel<SoundsUiState, SoundsIntent>(SoundsUiState()) {
-    private val regionCode: String?
+    // The region the Local tab and Trending read: the confirmed one, else the phone's (P3-11). Null: none known.
+    private var regionCode: String? = null
+    private var regionKnown = false
     private val logEvents = previewTools.logEvents
 
     private val preview = SoundPreviewController(
@@ -174,12 +176,27 @@ class SoundsViewModel(
     private var placeholderJob: Job? = null
 
     init {
-        val region = getPhoneRegion()
-        regionCode = (region as? Region.Country)?.code
         val firstTab = if (mode == SoundsMode.PICKER) pickerMemory.tab else SoundsTab.TRENDING
-        updateState { it.copy(regionName = (region as? Region.Country)?.displayName, tab = firstTab) }
+        updateState { it.copy(tab = firstTab) }
+        viewModelScope.launch { observeRegion().collect(::regionChanged) }
         // Rotation keeps the search and the preview; only a real move to another bottom-nav item ends them.
         if (mode == SoundsMode.LIBRARY) viewModelScope.launch { tabExit.left.collect { leaveScreen() } }
+    }
+
+    // The region arrived or changed (the Region sheet, P3-11). A new country starts the lists over; a new name only (the app
+    // language changed) just updates the header.
+    private fun regionChanged(region: Region) {
+        val country = region as? Region.Country
+        updateState { it.copy(regionName = country?.displayName) }
+        val firstRegion = !regionKnown
+        regionKnown = true
+        if (!firstRegion && country?.code == regionCode) return
+        regionCode = country?.code
+        if (!started) return
+        // The first region of the session is not a change: no cross-fade and no scroll.
+        updateState { it.copy(categoryId = null, regionChanges = if (firstRegion) it.regionChanges else it.regionChanges + 1) }
+        showFeed()
+        if (state.value.query.isNotEmpty()) startSearch(debounceMillis = 0, logResult = false)
     }
 
     // The first time the tab shows: nothing is read or fetched at app start, because this ViewModel is made with the tabs.
@@ -198,7 +215,8 @@ class SoundsViewModel(
         observeOnPhone()
         mine.start()
         viewModelScope.launch { refreshCategories(force = false) }
-        showFeed()
+        // Without the region the first list would be fetched twice; regionChanged() starts it when the region arrives.
+        if (regionKnown) showFeed()
     }
 
     // What is on the phone, whether the phone is online, and what the catalog dropped: the inputs of every row's look.

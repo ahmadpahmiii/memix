@@ -82,6 +82,9 @@ import app.memix.feature.drafts.DraftsUiState
 import app.memix.feature.drafts.DraftsViewModel
 import app.memix.feature.home.HomeScreen
 import app.memix.feature.home.HomeViewModel
+import app.memix.feature.onboarding.RegionSheet
+import app.memix.feature.onboarding.RegionSheetIntent
+import app.memix.feature.onboarding.RegionSheetViewModel
 import app.memix.feature.photoeditor.PhotoEditorIntent
 import app.memix.feature.photoeditor.PhotoEditorScreen
 import app.memix.feature.photoeditor.LayerKind
@@ -299,6 +302,9 @@ private fun MainShell(
     val sounds = koinViewModel<SoundsViewModel>()
     val soundsState = sounds.state.collectAsStateWithLifecycle()
     val soundDetailsUp by remember { derivedStateOf { soundsState.value.details != null || soundsState.value.myImport.showsSheet } }
+    // The Region sheet (P3-11): the first-launch step, then opened from the Local tab's header and Home's region button.
+    val region = koinViewModel<RegionSheetViewModel>()
+    val regionState by region.state.collectAsStateWithLifecycle()
     val freeUpSpace = rememberFreeUpSpaceLauncher()
     // My sounds' two pickers (P3-07): the document picker for an audio file, the photo picker for one video.
     val mySoundPickers = rememberMySoundPickers { source, origin -> sounds.onIntent(SoundsIntent.MySoundPicked(source, origin)) }
@@ -319,7 +325,7 @@ private fun MainShell(
     // review, F1). The scrim's own rule decides, so the hand-over from Create to the import stays covered throughout.
     val sheetUp = createSheetOpen || videoMemeImport.needsScrim || photoMemeImport.needsScrim
     Box(Modifier.fillMaxSize().background(MemixColors.canvas)) {
-        Column(Modifier.fillMaxSize().coveredByModal(sheetUp || draftsSheetUp || soundDetailsUp)) {
+        Column(Modifier.fillMaxSize().coveredByModal(sheetUp || draftsSheetUp || soundDetailsUp || regionState.visible)) {
             Box(Modifier.weight(1f)) {
                 TabsNavHost(
                     tabsController,
@@ -328,6 +334,7 @@ private fun MainShell(
                     sounds = soundsState,
                     soundsClock = sounds.clock,
                     onSoundsIntent = sounds::onIntent,
+                    onOpenRegion = { region.onIntent(RegionSheetIntent.Open) },
                     mySoundPickers = mySoundPickers,
                     onFreeUpSpace = {
                         if (!freeUpSpace.launch(SOUND_SPACE_REQUEST_BYTES)) sounds.onIntent(SoundsIntent.FreeUpSpaceUnavailable)
@@ -376,6 +383,7 @@ private fun MainShell(
             if (!freeUpSpace.launch(requestedBytes)) drafts.onIntent(DraftsIntent.FreeUpSpaceUnavailable)
         })
         SoundDetailsOver(soundsState, sounds.clock, sounds::onIntent)
+        RegionSheet(regionState, region::onIntent)
         MySoundImportSheet(soundsState, sounds::onIntent, mySoundPickers, onFreeUpSpace = { requestedBytes ->
             if (!freeUpSpace.launch(requestedBytes)) sounds.onIntent(SoundsIntent.FreeUpSpaceUnavailable)
         })
@@ -404,6 +412,7 @@ private fun TabsNavHost(
     sounds: State<SoundsUiState>,
     soundsClock: PlaybackClock,
     onSoundsIntent: (SoundsIntent) -> Unit,
+    onOpenRegion: () -> Unit,
     mySoundPickers: MySoundPickers,
     onFreeUpSpace: () -> Unit,
     onOpenCreate: () -> Unit,
@@ -426,11 +435,11 @@ private fun TabsNavHost(
         composable<HomeRoute> {
             val viewModel = koinViewModel<HomeViewModel>()
             val state by viewModel.state.collectAsStateWithLifecycle()
-            HomeScreen(state = state, onStartVideoMeme = onStartVideoMeme, onStartPhotoMeme = onStartPhotoMeme, onOpenCatalog = onOpenCatalog)
+            HomeScreen(state = state, onStartVideoMeme = onStartVideoMeme, onStartPhotoMeme = onStartPhotoMeme, onOpenRegion = onOpenRegion, onOpenCatalog = onOpenCatalog)
         }
         composable<TemplatesRoute> { TemplatesScreen() }
         composable<SoundsRoute> {
-            SoundsScreen(state = sounds.value, onIntent = onSoundsIntent, clock = soundsClock, onFreeUpSpace = onFreeUpSpace, pickers = mySoundPickers)
+            SoundsScreen(state = sounds.value, onIntent = onSoundsIntent, clock = soundsClock, onFreeUpSpace = onFreeUpSpace, onOpenRegion = onOpenRegion, pickers = mySoundPickers)
         }
         composable<DraftsRoute> {
             DraftsScreen(drafts.value, onDraftsIntent, onMakeMeme = onOpenCreate, onOpenDraft = onOpenDraft)

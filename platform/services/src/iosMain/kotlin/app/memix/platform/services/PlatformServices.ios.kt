@@ -10,6 +10,7 @@ import app.memix.core.domain.drafts.LocalCalendar
 import app.memix.core.domain.media.MediaFiles
 import app.memix.core.domain.media.MediaInspector
 import app.memix.core.domain.photo.PictureClipboard
+import app.memix.core.domain.region.AppLanguageSwitch
 import app.memix.core.domain.share.Sharer
 import app.memix.core.domain.sound.MediaVolume
 import app.memix.core.domain.sound.NetworkStatus
@@ -19,16 +20,22 @@ import app.memix.core.domain.video.AppExitReasons
 import app.memix.core.domain.video.ExportControls
 import app.memix.core.domain.video.ExportForeground
 import app.memix.core.domain.video.ExportNotice
+import app.memix.core.model.AppLanguage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 import org.koin.dsl.module
 import platform.Foundation.NSLocale
 import platform.Foundation.NSLocaleCountryCode
+import platform.Foundation.NSLocaleLanguageCode
 import platform.Foundation.currentLocale
+import platform.Foundation.preferredLanguages
 
 actual val platformServicesModule = module {
     single<DeviceRegion> { IosDeviceRegion() }
+    single<AppLanguageSwitch> { IosAppLanguageSwitch() }
     single<Logger> { IosLogger() }
     single<AppConfig> { DefaultAppConfig() }
     single<Analytics> { NoAnalytics() }
@@ -49,8 +56,25 @@ actual val platformServicesModule = module {
 private class IosDeviceRegion : DeviceRegion {
     override fun regionCode(): String? = NSLocale.currentLocale.objectForKey(NSLocaleCountryCode) as? String
 
-    override fun displayName(regionCode: String): String =
-        NSLocale.currentLocale.displayNameForKey(NSLocaleCountryCode, regionCode) ?: regionCode
+    override fun displayName(regionCode: String, language: AppLanguage): String =
+        NSLocale(localeIdentifier = language.code).displayNameForKey(NSLocaleCountryCode, regionCode) ?: regionCode
+}
+
+// TODO(P7-02): switch the app language on iOS. The Compose resources guide writes `AppleLanguages` to NSUserDefaults (a
+// restart may be needed on iOS, unverified); until then the app follows the phone and the Region sheet leaves the Language group out.
+private class IosAppLanguageSwitch : AppLanguageSwitch {
+    private val phoneTag = NSLocale.preferredLanguages.firstOrNull() as? String
+    private val phoneLanguage = AppLanguage.languageSubtag(phoneTag)
+
+    override val current: StateFlow<AppLanguage> = MutableStateFlow(AppLanguage.fromTag(phoneTag) ?: AppLanguage.Default)
+    override val canChange: Boolean = false
+
+    override fun phoneLanguageCode(): String? = phoneLanguage
+
+    override fun languageName(code: String): String =
+        NSLocale(localeIdentifier = current.value.code).displayNameForKey(NSLocaleLanguageCode, code) ?: code
+
+    override fun apply(language: AppLanguage) = Unit
 }
 
 // TODO(P7-08): Crashlytics breadcrumbs and non-fatals on iOS.

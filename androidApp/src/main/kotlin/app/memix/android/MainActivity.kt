@@ -1,5 +1,6 @@
 package app.memix.android
 
+import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.graphics.Color
 import android.os.Bundle
@@ -17,9 +18,12 @@ import app.memix.debug.MemixTestCrash
 import app.memix.debug.PhotoExportCheck
 import app.memix.debug.SceneRender
 import app.memix.debug.SegmentCheck
+import app.memix.platform.services.LanguageOverride
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) = super.attachBaseContext(LanguageOverride.wrap(newBase))
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Memix is dark-only, so system bar icons stay light even when the phone uses a light theme.
         enableEdgeToEdge(SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT))

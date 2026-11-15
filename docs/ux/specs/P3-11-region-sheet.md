@@ -54,6 +54,9 @@ The top-right of Home's top row: `globe` (16), the region name in `label` `text-
 | Later open, current values | Both selected; Save | `region_save` |
 | **Changing the region later** | Tap a tile (white), Save: the sheet closes; the Local list reloads for the region (200 ms cross-fade, scrolled to the top, chip reset to All); Trending's regional part and Home's trending sounds update the same way; the header reads the new name; a polite announcement; no toast | `region_changed_a11y` |
 | **Changing the language later** | Tap a language, Save: the app's strings change at once (the sheet closes first, then every screen redraws in the new language; Hindi gets its display face); the Local header and Home button show the region name in the new language | none |
+| **Language on every Android version** (owner-delegated decision, 12 to 15 Nov) | The Language group is always the tile row and is never read-only. Android 13+ switches through the system per-app language; Android 10 to 12 (API 29 to 32) through a stored override applied when the screen is created, so Save recreates the screen once (the sheet closes first). Nothing differs on screen | none |
+| **iOS until P7-02** | The Language group (heading, tiles and its notes) is left out; the sheet is the Region group and the Primary, and the first-run line is unchanged. It returns with P7-02, in the same layout | none |
+| Editor sound picker | Its Local tab shows the region as a plain line (no "Change", no pressed fill): no second sheet over the picker | `sounds_region_line` |
 | Save with nothing changed | Closes | none |
 | Dismissed later (close, scrim, drag, back) | Closes; nothing applies | none |
 | Phone offline | Works fully: the five regions and five languages ship in the app. Regions the catalog adds later appear in the list the next time it is online and stay cached | none |
@@ -101,6 +104,7 @@ English source; id, es, pt and hi are machine drafts until P5-06. **Budget** = l
 | `sounds_local_unknown_body` | Pick your region to see local sounds. | 56 | Pilih wilayahmu untuk melihat suara lokal. | Elige tu región para ver sonidos locales. | Escolha sua região para ver sons locais. | लोकल साउंड देखने के लिए अपना क्षेत्र चुनें। |
 | `home_region_a11y` | Region: {region} | 28 | Wilayah: {region} | Región: {region} | Região: {region} | क्षेत्र: {region} |
 | `region_changed_a11y` | Region set to {region} | 30 | Wilayah diatur ke {region} | Región cambiada a {region} | Região definida como {region} | क्षेत्र {region} पर सेट हुआ |
+| `home_region_change` | Change region | 24 | Ubah wilayah | Cambiar región | Mudar região | क्षेत्र बदलें |
 | `region_global` | Global | 16 | (exists, P0-05; stays for the defensive case) | | | |
 
 `sounds_local_unknown_body` **replaces** the P3-02 text ("Local sounds show up once Memix knows your region."), and `sounds_local_unknown_title` stays. Language names (never translated): English, Bahasa Indonesia, Español, Português, हिन्दी. Notes for translators: "region" means the country whose local sounds the user wants, not a place inside a country. "Local tab" is the tab the app calls `sounds_tab_local` (id Lokal, es Local, pt Local, hi स्थानीय): the notes must use that exact word. `region_note_unknown` and `region_note_language` explain a default the app chose, so they are calm, not apologetic. Hindi: check the sheet's two-line Primary and the 200% line height of the notes.
@@ -117,7 +121,7 @@ English source; id, es, pt and hi are machine drafts until P5-06. **Budget** = l
 
 ## Analytics
 - `onboarding_complete {language, region}` (PRD, owner 11 Nov): fires **once, at the first confirm** (Continue, or back). `language` is `en`, `id`, `es`, `pt` or `hi` (the chosen one, not the phone's); `region` is the chosen country code (`ID`, `US`, `IN`, `BR`, `MX`, or the code of a catalog region added later). The phone's own country is not sent when the user picked another. Like every event it follows the user's consent choice: if analytics are off, nothing is sent but the first run still counts as done on the phone.
-- No event for a later Save. **For the PM, optional:** `region_change {language, region}` if the owner wants to see how often people move region (not added, since the PRD has none). No event for opening the sheet.
+- `region_change {language, region}` (PRD, PM 11 Nov): fires on a **later Save** only when the language or the region differs from before; never for opening, dismissing, or a Save with nothing changed. Corrected at the 12 Nov review (this spec first said none).
 
 ## QA compares
 Screenshots at 360 dp wide, English unless noted, in `docs/ux/reviews/P3-11/`:
@@ -131,7 +135,7 @@ By recording or note: the one-tap first run (1 tap counted), back at first run (
 ## Questions for the owner
 Each is decided in the spec as recommended, so the build can go on.
 1. **Does the language list change the app's language, or only confirm the phone's?**
-   - **A. Recommended: it changes it** (per-app language). Many Indian and Indonesian phones run in English while the person reads Hindi or Indonesian; the PRD says the screen "confirms language and region". Costs: the engineer must verify that Compose Multiplatform resources and the Hindi display face switch at runtime on Android and iOS; if they can't, the Language group becomes a read-only line ("Memix follows your phone's language") in the same layout, and nothing else changes.
+   - **A. Recommended: it changes it** (per-app language). Many Indian and Indonesian phones run in English while the person reads Hindi or Indonesian; the PRD says the screen "confirms language and region". Costs: the engineer must verify that Compose Multiplatform resources and the Hindi display face switch at runtime on Android and iOS; Decided at the 12 to 15 Nov review: the list is never read-only (a stored override covers Android 10 to 12); on iOS the Language group is left out until P7-02.
    - B. Read-only from the start. Simplest and most robust, but a person with an English phone gets English.
 2. **A phone whose country has no local sounds** (Philippines, Spain, Germany).
    - **A. Recommended: keep their country as the region** (a tile marked selected, a note), so Local says "No local sounds yet" and lights up by itself when that country is added to the catalog (PRD: no app change). The user can pick another region in one tap.

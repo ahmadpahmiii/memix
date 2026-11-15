@@ -1,11 +1,14 @@
 package app.memix.feature.sounds
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -14,14 +17,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -43,6 +50,8 @@ import app.memix.core.designsystem.component.SoundRowLook
 import app.memix.core.designsystem.component.Toast
 import app.memix.core.designsystem.component.ToastAction
 import app.memix.core.designsystem.component.ToastDismiss
+import app.memix.core.designsystem.focusRing
+import app.memix.core.designsystem.pressedColor
 import app.memix.core.ui.EmptyState
 import kotlinx.collections.immutable.ImmutableList
 import memix.core.ui.generated.resources.Res as UiRes
@@ -88,6 +97,9 @@ import memix.feature.sounds.generated.resources.sounds_more_failed
 import memix.feature.sounds.generated.resources.sounds_more_loading
 import memix.feature.sounds.generated.resources.sounds_offline_strip
 import memix.feature.sounds.generated.resources.sounds_refresh_failed
+import memix.feature.sounds.generated.resources.sounds_region_change
+import memix.feature.sounds.generated.resources.sounds_region_change_a11y
+import memix.feature.sounds.generated.resources.sounds_region_choose
 import memix.feature.sounds.generated.resources.sounds_region_line
 import memix.feature.sounds.generated.resources.sounds_search_none_body
 import memix.feature.sounds.generated.resources.sounds_search_none_offline_body
@@ -211,16 +223,37 @@ internal fun StorageFullStrip(canFreeUpSpace: Boolean, onFreeUpSpace: () -> Unit
     }
 }
 
-/** The Local tab's first line. A label until P3-11 turns it into the Region sheet's opener. */
+/**
+ * The Local tab's first line (spec P3-11 → The Local tab's header): the region, and the way to change it. The whole row is
+ * one button that calls [onOpen]; with no [onOpen] (the editor's picker, which has no Region sheet) it is a plain line.
+ * With no [regionName] it reads "Choose your region" and has no "Change" word.
+ */
 @Composable
-internal fun RegionLine(regionName: String, modifier: Modifier = Modifier) {
+internal fun RegionHeader(regionName: String?, onOpen: (() -> Unit)?, modifier: Modifier = Modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val container by pressedColor(interactionSource, MemixColors.surfaceRaised, MemixColors.hairline)
+    val changeLabel = stringResource(Res.string.sounds_region_change_a11y)
+    val clickable = if (onOpen == null) Modifier else Modifier.clickable(interactionSource, indication = null, onClickLabel = changeLabel, role = Role.Button, onClick = onOpen)
     Row(
-        modifier.fillMaxWidth().padding(horizontal = MemixSpacing.space4, vertical = MemixSpacing.space2),
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = MemixSpacing.space4, vertical = MemixSpacing.space2)
+            .focusRing(interactionSource, MemixShapes.radiusMd)
+            .defaultMinSize(minHeight = MemixSize.touchTarget)
+            .clip(MemixShapes.radiusMd)
+            .drawBehind { drawRect(container) }
+            .then(clickable)
+            .padding(horizontal = MemixSpacing.space3),
         horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space2),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(MemixIcons.Globe, contentDescription = null, tint = MemixColors.textSecondary)
-        Text(stringResource(Res.string.sounds_region_line, regionName), MemixTheme.type.label, color = MemixColors.textSecondary)
+        if (regionName == null) {
+            Text(stringResource(Res.string.sounds_region_choose), MemixTheme.type.label, Modifier.weight(1f))
+        } else {
+            Text(stringResource(Res.string.sounds_region_line, regionName), MemixTheme.type.label, Modifier.weight(1f))
+            if (onOpen != null) Text(stringResource(Res.string.sounds_region_change), MemixTheme.type.label, color = MemixColors.primary)
+        }
     }
 }
 
@@ -314,7 +347,7 @@ internal fun LoadErrorBlock(onTryAgain: () -> Unit, modifier: Modifier = Modifie
 
 /** Why a list is empty and, where it helps, the one Secondary button that gets the user somewhere useful. */
 @Composable
-internal fun EmptyBlock(reason: EmptyReason, query: String, regionName: String?, onIntent: (SoundsIntent) -> Unit, modifier: Modifier = Modifier) {
+internal fun EmptyBlock(reason: EmptyReason, query: String, regionName: String?, onIntent: (SoundsIntent) -> Unit, modifier: Modifier = Modifier, picker: Boolean = false) {
     when (reason) {
         EmptyReason.TRENDING -> EmptyState(
             stringResource(Res.string.sounds_empty_trending_title),
@@ -328,8 +361,13 @@ internal fun EmptyBlock(reason: EmptyReason, query: String, regionName: String?,
             modifier,
             action = { GoToButton(Res.string.sounds_browse_global) { onIntent(SoundsIntent.SelectTab(SoundsTab.GLOBAL)) } },
         )
-        // TODO(P3-11): the Region sheet's opener goes here; until then the phone's region is the only source.
-        EmptyReason.LOCAL_UNKNOWN -> EmptyState(
+        // The editor's picker has no Region sheet to send the person to, so it says there is nothing local and offers Global.
+        EmptyReason.LOCAL_UNKNOWN -> if (picker) EmptyState(
+            stringResource(Res.string.sounds_empty_local_title),
+            stringResource(Res.string.sounds_empty_body),
+            modifier,
+            action = { GoToButton(Res.string.sounds_browse_global) { onIntent(SoundsIntent.SelectTab(SoundsTab.GLOBAL)) } },
+        ) else EmptyState(
             stringResource(Res.string.sounds_local_unknown_title),
             stringResource(Res.string.sounds_local_unknown_body),
             modifier,

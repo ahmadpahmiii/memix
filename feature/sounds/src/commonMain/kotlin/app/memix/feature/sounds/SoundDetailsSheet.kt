@@ -30,7 +30,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -59,6 +58,7 @@ import app.memix.core.designsystem.component.SoundRowLook
 import app.memix.core.designsystem.component.SoundRail
 import app.memix.core.designsystem.component.SoundWaveform
 import app.memix.core.designsystem.component.Toast
+import app.memix.core.ui.appLanguageCode
 import app.memix.core.ui.soundPositionText
 import memix.core.ui.generated.resources.Res as UiRes
 import memix.core.ui.generated.resources.sound_dl_downloading
@@ -138,7 +138,7 @@ fun SoundDetailsSheet(state: State<SoundsUiState>, clock: PlaybackClock, onInten
         else -> DetailsPane.DETAILS
     }
     val form = if (open) formNow else lastShown.form
-    val language = LocalLocale.current.language
+    val language = appLanguageCode()
     val name = details?.nameIn(language).orEmpty()
     // The sheet ticks only while it is up; the list behind it runs its own.
     val position = rememberPlaybackPosition(clock, activeId.takeIf { open }, isPlaying = open && isPlaying)

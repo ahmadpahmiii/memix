@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,17 +57,10 @@ fun OptionTile(
     picture: @Composable (tint: Color) -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val normal = if (selected) MemixColors.selection else MemixColors.surfaceRaised
-    val container = pressedColor(interactionSource, normal, if (selected) normal else MemixColors.hairline)
+    val container = containerColor(interactionSource, selected)
     val labelColor = if (selected) MemixColors.onPrimary else MemixColors.text
     val pictureColor = if (selected) MemixColors.onPrimary else MemixColors.textSecondary
-    val tile = modifier
-        .focusRing(interactionSource, MemixShapes.radiusMd)
-        .defaultMinSize(minWidth = MemixSize.touchTarget, minHeight = MemixSize.touchTarget)
-        .clip(MemixShapes.radiusMd)
-        .drawBehind { drawRect(container.value) }
-        .selectable(selected, interactionSource, indication = null, role = Role.RadioButton, onClick = { if (!selected) onClick() })
-        .semantics { if (spokenName != null) contentDescription = spokenName }
+    val tile = modifier.optionTileSurface(interactionSource, container, selected, onClick, spokenName)
     val pictureBox: @Composable () -> Unit = { Box(Modifier.size(ICON_SIZE), contentAlignment = Alignment.Center) { picture(pictureColor) } }
     when (layout) {
         OptionTileLayout.STACKED -> Column(
@@ -87,6 +81,53 @@ fun OptionTile(
         }
     }
 }
+
+/**
+ * The label layout (P3-11): no picture, just the label in `body-strong`, `space-4` side padding, at least
+ * `touch-target` tall. For choices that are words (a region, a language, a voice). Give it equal widths in a two-column grid
+ * (one column at large font) or put it in a scrolling row. The label is never cut: it stays on one line where the tile is as wide as the label needs, and wraps at a space rather than lose a word.
+ * Selection, press and accessibility are the same as the picture layouts.
+ */
+@Composable
+fun OptionTile(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    spokenName: String? = null,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val container = containerColor(interactionSource, selected)
+    Box(
+        modifier
+            .optionTileSurface(interactionSource, container, selected, onClick, spokenName)
+            .padding(horizontal = MemixSpacing.space4),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, MemixTheme.type.bodyStrong, color = if (selected) MemixColors.onPrimary else MemixColors.text)
+    }
+}
+
+@Composable
+private fun containerColor(interactionSource: MutableInteractionSource, selected: Boolean): State<Color> {
+    val normal = if (selected) MemixColors.selection else MemixColors.surfaceRaised
+    return pressedColor(interactionSource, normal, if (selected) normal else MemixColors.hairline)
+}
+
+@Composable
+private fun Modifier.optionTileSurface(
+    interactionSource: MutableInteractionSource,
+    container: State<Color>,
+    selected: Boolean,
+    onClick: () -> Unit,
+    spokenName: String?,
+): Modifier = this
+    .focusRing(interactionSource, MemixShapes.radiusMd)
+    .defaultMinSize(minWidth = MemixSize.touchTarget, minHeight = MemixSize.touchTarget)
+    .clip(MemixShapes.radiusMd)
+    .drawBehind { drawRect(container.value) }
+    .selectable(selected, interactionSource, indication = null, role = Role.RadioButton, onClick = { if (!selected) onClick() })
+    .semantics { if (spokenName != null) contentDescription = spokenName }
 
 /**
  * A ratio drawn as itself, for an [OptionTile]'s picture: a solid rectangle of [aspectRatio] (width ÷ height) in [color],

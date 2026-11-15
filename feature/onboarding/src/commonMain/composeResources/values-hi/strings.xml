@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="region_sheet_title">क्षेत्र और भाषा</string>
+    <string name="region_heading_region">क्षेत्र</string>
+    <string name="region_heading_language">भाषा</string>
+    <string name="region_first_hint">ये आपके फ़ोन की सेटिंग से चुने गए हैं। आप इन्हें बाद में बदल सकते हैं।</string>
+    <string name="region_note_outside">%1$s के लिए अभी लोकल साउंड नहीं हैं। उसका स्थानीय टैब देखने के लिए कोई और क्षेत्र चुनें।</string>
+    <string name="region_note_unknown">आपका क्षेत्र नहीं पता चला, इसलिए हमने आपकी भाषा के हिसाब से एक चुना है। गलत हो तो बदल लें।</string>
+    <string name="region_note_language">Memix अभी %1$s में नहीं है, इसलिए अंग्रेज़ी चुनी गई है।</string>
+    <string name="region_continue">जारी रखें</string>
+    <string name="region_save">सेव करें</string>
+    <string name="region_changed_a11y">क्षेत्र %1$s पर सेट हुआ</string>
+</resources>

@@ -40,7 +40,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
@@ -63,6 +62,7 @@ import app.memix.core.designsystem.component.SoundRowLook
 import app.memix.core.designsystem.component.Tabs
 import app.memix.core.designsystem.component.Toast
 import app.memix.core.ui.ScreenTitle
+import app.memix.core.ui.appLanguageCode
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import memix.feature.sounds.generated.resources.Res
@@ -97,6 +97,7 @@ fun SoundsScreen(
     onIntent: (SoundsIntent) -> Unit,
     clock: PlaybackClock,
     onFreeUpSpace: () -> Unit,
+    onOpenRegion: () -> Unit,
     modifier: Modifier = Modifier,
     pickers: MySoundPickers = MySoundPickers.None,
 ) {
@@ -128,7 +129,7 @@ fun SoundsScreen(
             onUserScroll = { if (searchHasFocus) focusManager.clearFocus() },
         )
     }
-    val fade = rememberTabFade(state.tab)
+    val fade = rememberTabFade(state.tab, state.regionChanges)
     val position = rememberPlaybackPosition(clock, state.activeId, isPlaying = state.playingId != null)
     ReportSentHaptic(state.toast)
 
@@ -143,6 +144,7 @@ fun SoundsScreen(
             fade = fade,
             position = position,
             onIntent = onIntent,
+            onOpenRegion = onOpenRegion,
             pickers = pickers,
             modifier = Modifier.fillMaxSize().nestedScroll(scrollEffects),
         )
@@ -176,25 +178,30 @@ private fun SoundsList(
     fade: Modifier,
     position: State<Long>,
     onIntent: (SoundsIntent) -> Unit,
+    onOpenRegion: () -> Unit,
     pickers: MySoundPickers,
     modifier: Modifier = Modifier,
 ) {
-    val language = LocalLocale.current.language
+    val language = appLanguageCode()
     LoadMoreWhenNearEnd(listState, state.content, onIntent)
-    ScrollToTopOnAdded(listState, state.addedCount)
+    ScrollToTopOnChange(listState, state.addedCount)
+    ScrollToTopOnChange(listState, state.regionChanges)
     LazyColumn(modifier, state = listState, contentPadding = PaddingValues(bottom = MemixSpacing.space4)) {
         item(key = "title", contentType = "title") { ScreenTitle(stringResource(Res.string.sounds_title)) }
         stickyHeader(key = "search-and-tabs", contentType = "search-and-tabs") {
             SearchAndTabs(state.tab, field, searchFocus, onSearchFocusChange, onIntent)
         }
-        soundsBody(state, language, searchFocus, allChipFocus, fade, position, onIntent, pickers = pickers)
+        soundsBody(state, language, searchFocus, allChipFocus, fade, position, onIntent, onOpenRegion = onOpenRegion, pickers = pickers)
     }
 }
 
-/** A sound just added to My sounds is the first row: the list scrolls up to it (spec P3-07 → Entry and exit). */
+/**
+ * The list scrolls to its top when [count] goes up: a sound just added to My sounds is the first row (spec P3-07 → Entry
+ * and exit), and a new region starts the lists over (spec P3-11 → States).
+ */
 @Composable
-internal fun ScrollToTopOnAdded(listState: LazyListState, addedCount: Int) {
-    LaunchedEffect(addedCount) { if (addedCount > 0) listState.animateScrollToItem(0) }
+internal fun ScrollToTopOnChange(listState: LazyListState, count: Int) {
+    LaunchedEffect(count) { if (count > 0) listState.animateScrollToItem(0) }
 }
 
 /**
@@ -213,6 +220,8 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.soundsBody(
     picker: Boolean = false,
     onFreeUpSpace: () -> Unit = {},
     pickers: MySoundPickers = MySoundPickers.None,
+    /** Opens the Region sheet; null in the picker, which sits over the editor and shows the header as a plain line. */
+    onOpenRegion: (() -> Unit)? = null,
 ) {
     state.spokenResultCount?.let { count ->
         item(key = "result-count", contentType = "spoken") {
@@ -234,8 +243,8 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.soundsBody(
     if (state.tab == SoundsTab.MINE && state.query.isEmpty()) {
         mySoundsHeader(hasSounds = state.content is SoundsContent.Rows, pickers = pickers, onIntent = onIntent)
     }
-    if (state.tab == SoundsTab.LOCAL && state.query.isEmpty() && state.regionName != null) {
-        item(key = "region", contentType = "region") { RegionLine(state.regionName, fade) }
+    if (state.tab == SoundsTab.LOCAL && state.query.isEmpty()) {
+        item(key = "region", contentType = "region") { RegionHeader(state.regionName, onOpenRegion, fade) }
     }
     // After "Clear search" focus goes to the search box, after "Show all" to the "All" chip (spec P3-02 → Accessibility).
     val onBlockIntent = { intent: SoundsIntent ->
@@ -266,7 +275,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.contentItems(
             LoadErrorBlock({ onIntent(SoundsIntent.TryAgain) }, fade)
         }
         is SoundsContent.Empty -> item(key = "empty", contentType = "block") {
-            EmptyBlock(content.reason, state.query, state.regionName, onIntent, fade)
+            EmptyBlock(content.reason, state.query, state.regionName, onIntent, fade, picker)
         }
         is SoundsContent.Rows -> {
             items(content.rows, key = { it.id }, contentType = { "sound" }) { row ->
@@ -477,15 +486,18 @@ internal fun LoadMoreWhenNearEnd(listState: LazyListState, content: SoundsConten
     }
 }
 
-/** A tab change cross-fades the list in over `duration-sheet` (120 ms with reduce motion, which reads as a swap). */
+/**
+ * A tab change, or a new region ([regionChanges] goes up), cross-fades the list in over `duration-sheet` (120 ms with
+ * reduce motion, which reads as a swap).
+ */
 @Composable
-internal fun rememberTabFade(tab: SoundsTab): Modifier {
+internal fun rememberTabFade(tab: SoundsTab, regionChanges: Int = 0): Modifier {
     val alpha = remember { Animatable(1f) }
     val millis = if (MemixTheme.reduceMotion) MemixMotion.durationPress else MemixMotion.durationSheet
-    var shownTab by remember { mutableStateOf(tab) }
-    LaunchedEffect(tab) {
-        if (tab == shownTab) return@LaunchedEffect
-        shownTab = tab
+    var shown by remember { mutableStateOf(tab to regionChanges) }
+    LaunchedEffect(tab, regionChanges) {
+        if (tab to regionChanges == shown) return@LaunchedEffect
+        shown = tab to regionChanges
         alpha.snapTo(0f)
         alpha.animateTo(1f, tween(millis))
     }

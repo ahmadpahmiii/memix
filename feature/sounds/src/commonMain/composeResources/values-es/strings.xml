@@ -18,6 +18,9 @@
     <string name="sounds_tab_mine">Mis sonidos</string>
     <string name="sounds_chip_all">Todos</string>
     <string name="sounds_region_line">Sonidos para %1$s</string>
+    <string name="sounds_region_change">Cambiar</string>
+    <string name="sounds_region_change_a11y">Cambiar región</string>
+    <string name="sounds_region_choose">Elige tu región</string>
     <string name="sounds_offline_strip">Sin conexión. Los sonidos guardados siguen sonando.</string>
     <string name="sounds_searching">Buscando…</string>
     <string name="sounds_loading_status">Cargando sonidos</string>

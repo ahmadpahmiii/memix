@@ -18,6 +18,9 @@
     <string name="sounds_tab_mine">Suaraku</string>
     <string name="sounds_chip_all">Semua</string>
     <string name="sounds_region_line">Suara untuk %1$s</string>
+    <string name="sounds_region_change">Ubah</string>
+    <string name="sounds_region_change_a11y">Ubah wilayah</string>
+    <string name="sounds_region_choose">Pilih wilayahmu</string>
     <string name="sounds_offline_strip">Kamu sedang offline. Suara tersimpan tetap bisa diputar.</string>
     <string name="sounds_searching">Mencari…</string>
     <string name="sounds_loading_status">Memuat suara</string>

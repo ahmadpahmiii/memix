@@ -34,7 +34,6 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -52,6 +51,7 @@ import app.memix.core.designsystem.component.Sheet
 import app.memix.core.designsystem.component.SoundFavoriteHeart
 import app.memix.core.designsystem.component.SoundRowLook
 import app.memix.core.designsystem.component.Toast
+import app.memix.core.ui.appLanguageCode
 import kotlinx.coroutines.delay
 import memix.feature.sounds.generated.resources.Res
 import memix.feature.sounds.generated.resources.picker_back_a11y
@@ -99,7 +99,7 @@ fun SoundPickerSheet(
     val details by remember(state) { derivedStateOf { state.value.details } }
     val reportOpen by remember(state) { derivedStateOf { state.value.reportOpen } }
     val importUi by remember(state) { derivedStateOf { state.value.myImport.takeIf { it.showsSheet } } }
-    val language = LocalLocale.current.language
+    val language = appLanguageCode()
     val haptics = LocalHapticFeedback.current
     val titleFocus = remember { FocusRequester() }
     ReportTitleFocus(reportOpen, titleFocus)
@@ -234,7 +234,7 @@ private fun MyImportPane(state: MyImportUi, onIntent: (SoundsIntent) -> Unit, pi
 private fun ReportHost(stateHolder: State<SoundsUiState>, onIntent: (SoundsIntent) -> Unit) {
     val state by stateHolder
     val details = state.details ?: return
-    val name = details.title.inLanguage(LocalLocale.current.language)
+    val name = details.title.inLanguage(appLanguageCode())
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4)) {
         ReportPane(name, state.report, onIntent)
     }
@@ -252,8 +252,8 @@ private fun ListPane(
     onSearchFocusChange: (Boolean) -> Unit,
 ) {
     val state by stateHolder
-    val language = LocalLocale.current.language
-    ScrollToTopOnAdded(listState, state.addedCount)
+    val language = appLanguageCode()
+    ScrollToTopOnChange(listState, state.addedCount)
     val searchFocus = remember { FocusRequester() }
     val allChipFocus = remember { FocusRequester() }
     SearchTextSync(field, state.query, listState, onIntent)
@@ -287,7 +287,7 @@ private fun ListPane(
 private fun DetailsPane(stateHolder: State<SoundsUiState>, clock: PlaybackClock, reportRow: FocusRequester, onIntent: (SoundsIntent) -> Unit) {
     val state by stateHolder
     val details = state.details ?: return
-    val language = LocalLocale.current.language
+    val language = appLanguageCode()
     val position = rememberPlaybackPosition(clock, state.activeId, isPlaying = state.playingId != null)
     val look = state.lookOf(details.id)
     val name = details.nameIn(language)

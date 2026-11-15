@@ -128,7 +128,7 @@ enum class EmptyReason {
     TRENDING,
     LOCAL,
 
-    /** The phone has no region; the Local tab can't pick sounds (P3-11's Region sheet fixes this later). */
+    /** No region is known (defensive: the Region sheet's first confirm sets one); the Local tab's header row opens the sheet. */
     LOCAL_UNKNOWN,
     GLOBAL,
     CATEGORY,
@@ -154,8 +154,10 @@ data class SoundsUiState(
     val categories: ImmutableList<CategoryChipUi> = persistentListOf(),
     /** The selected chip, or null for "All". Reset when the tab changes. */
     val categoryId: String? = null,
-    /** The phone's region name, or null when it has none. */
+    /** The region's name in the app's language, or null when no region is known. */
     val regionName: String? = null,
+    /** Goes up each time the region changes after the lists first loaded; the list scrolls to the top and cross-fades (spec P3-11 → States). */
+    val regionChanges: Int = 0,
     val content: SoundsContent = SoundsContent.Loading(showPlaceholders = false),
     val notice: SoundsNotice? = null,
     /** The sound playing now. */

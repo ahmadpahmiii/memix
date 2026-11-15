@@ -10,10 +10,19 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import app.memix.core.designsystem.Icon
 import app.memix.core.designsystem.MemixIcons
 import app.memix.core.designsystem.MemixMotion
@@ -142,20 +151,23 @@ fun CanvasRatioRow(ratio: CanvasRatio, customPicked: Boolean, onPick: (CanvasRat
 
 /**
  * Scrolls the row so this tile shows whole when it becomes selected, or opens selected (Custom at the row's end at 200%
- * or in a long language; P1-11 review P1).
+ * or in a long language; P1-11 review P1). [margin] is the space kept between the tile and the row's edge when it scrolls
+ * (the Region sheet's language row keeps its `space-4` gutter, P3-11 review P4).
  */
 @Composable
-fun Modifier.keptInViewWhen(selected: Boolean): Modifier {
+fun Modifier.keptInViewWhen(selected: Boolean, margin: Dp = 0.dp): Modifier {
     val requester = remember { BringIntoViewRequester() }
+    var size by remember { mutableStateOf(IntSize.Zero) }
+    val marginPx = with(LocalDensity.current) { margin.toPx() }
     val firstRun = remember { FirstRun() }
     LaunchedEffect(selected) {
         // The scroll ignores the request while the panel is still sliding in, so a tile selected as the panel opens
         // waits for the panel; a later selection waits one frame for the row's layout.
         if (firstRun.pending) awaitFrameTime(MemixMotion.durationSheet.toLong()) else withFrameMillis { }
         firstRun.pending = false
-        if (selected) requester.bringIntoView()
+        if (selected) requester.bringIntoView(Rect(-marginPx, 0f, size.width + marginPx, size.height.toFloat()))
     }
-    return bringIntoViewRequester(requester)
+    return onSizeChanged { size = it }.bringIntoViewRequester(requester)
 }
 
 // Waits [millis] of frame time, the clock the panel's slide runs on.

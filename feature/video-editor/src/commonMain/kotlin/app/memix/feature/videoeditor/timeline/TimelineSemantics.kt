@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.ScrollAxisRange
@@ -41,6 +40,7 @@ import app.memix.core.domain.project.TrimEdge
 import app.memix.core.domain.project.TrimRange
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.TrackKind
+import app.memix.core.ui.appLanguageCode
 import app.memix.core.ui.spokenTime
 import app.memix.core.ui.spokenTimeOf
 import app.memix.feature.videoeditor.VideoEditorIntent
@@ -405,7 +405,7 @@ private fun itemDescription(track: TrackUi, item: ItemUi, clipCount: Int): Strin
             stringResource(Res.string.a11y_item, trackName, originalAudio, duration, start)
         }
         ItemLabel.UnnamedMySound -> stringResource(Res.string.a11y_item, trackName, stringResource(Res.string.timeline_my_sound), duration, start)
-        is ItemLabel.SoundTitle -> stringResource(Res.string.a11y_item, trackName, label.title.inLanguage(LocalLocale.current.language), duration, start)
+        is ItemLabel.SoundTitle -> stringResource(Res.string.a11y_item, trackName, label.title.inLanguage(appLanguageCode()), duration, start)
         // A sound the catalog doesn't know, or a sticker the user cut out (P2-07), has no name to say; saying the
         // track's name twice would sound like a glitch.
         ItemLabel.None -> stringResource(Res.string.a11y_item_unnamed, trackName, duration, start)

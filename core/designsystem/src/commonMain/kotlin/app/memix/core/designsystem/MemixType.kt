@@ -83,7 +83,7 @@ internal fun memixType(): MemixType {
  * from the composition so a language change restyles them on the next composition.
  */
 @Composable
-internal fun usesHindiDisplayFace(): Boolean = LocalLocale.current.language == HINDI_LANGUAGE
+internal fun usesHindiDisplayFace(): Boolean = LocalLocale.current.toLanguageTag().substringBefore('-') == HINDI_LANGUAGE
 
 /**
  * Teko Bold with no letter spacing, because tracking breaks the headline bar that joins Devanagari letters. The line

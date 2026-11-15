@@ -2,7 +2,6 @@ package app.memix
 
 import app.memix.core.data.dataModule
 import app.memix.core.designsystem.readCaptionFontFile
-import app.memix.core.domain.GetPhoneRegionUseCase
 import app.memix.core.domain.RefreshAppConfigUseCase
 import app.memix.core.domain.catalog.CheckRemovedSoundsUseCase
 import app.memix.core.domain.catalog.LoadSoundFeedPageUseCase
@@ -31,6 +30,9 @@ import app.memix.core.domain.project.OpenPhotoDraftUseCase
 import app.memix.core.domain.project.OpenVideoDraftUseCase
 import app.memix.core.domain.project.SaveProjectUseCase
 import app.memix.core.domain.project.StartEditSessionUseCase
+import app.memix.core.domain.region.ConfirmRegionUseCase
+import app.memix.core.domain.region.GetRegionSetupUseCase
+import app.memix.core.domain.region.ObserveRegionUseCase
 import app.memix.core.domain.segmentation.RemoveBackgroundUseCase
 import app.memix.core.domain.sticker.DeleteStickerUseCase
 import app.memix.core.domain.sticker.ListStickersUseCase
@@ -93,6 +95,7 @@ import app.memix.engine.video.videoEngineModule
 import app.memix.feature.drafts.DraftsViewModel
 import app.memix.feature.export.ExportViewModel
 import app.memix.feature.home.HomeViewModel
+import app.memix.feature.onboarding.RegionSheetViewModel
 import app.memix.feature.sounds.SoundPickerMemory
 import app.memix.feature.sounds.MySoundTools
 import app.memix.feature.sounds.SoundPreviewTools
@@ -129,7 +132,9 @@ private val appScope = named("appScope")
 private val appModule = module {
     single<Clock> { Clock.System }
     single(appScope) { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
-    factoryOf(::GetPhoneRegionUseCase)
+    factoryOf(::ObserveRegionUseCase)
+    factoryOf(::GetRegionSetupUseCase)
+    factoryOf(::ConfirmRegionUseCase)
     factoryOf(::RefreshAppConfigUseCase)
     factoryOf(::CreateVideoProjectUseCase)
     factoryOf(::CreatePhotoProjectUseCase)
@@ -232,6 +237,7 @@ private val appModule = module {
     factoryOf(::MakeVideoMemeUseCase)
     factoryOf(::VideoMemeNoteUseCase)
     viewModelOf(::HomeViewModel)
+    viewModelOf(::RegionSheetViewModel)
     singleOf(::SoundsTabExit)
     // The last tab the editor's sound picker showed this run (P3-05).
     singleOf(::SoundPickerMemory)
@@ -320,7 +326,7 @@ private fun org.koin.core.scope.Scope.soundsViewModel(mode: SoundsMode) = Sounds
     observeFeed = get(),
     loadFeedPage = get(),
     searchSounds = get(),
-    getPhoneRegion = get(),
+    observeRegion = get(),
     getSavedSoundIds = get(),
     observeFavoriteIds = get(),
     observeFavorites = get(),

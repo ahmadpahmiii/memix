@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="region_sheet_title">Região e idioma</string>
+    <string name="region_heading_region">Região</string>
+    <string name="region_heading_language">Idioma</string>
+    <string name="region_first_hint">Escolhidos pelas configurações do celular. Você pode mudar depois.</string>
+    <string name="region_note_outside">Ainda não há sons locais para %1$s. Escolha outra região para ver a aba Local dela.</string>
+    <string name="region_note_unknown">Não conseguimos ler sua região, então escolhemos uma pelo seu idioma. Mude se estiver errada.</string>
+    <string name="region_note_language">O Memix ainda não está em %1$s, então o inglês foi selecionado.</string>
+    <string name="region_continue">Continuar</string>
+    <string name="region_save">Salvar</string>
+    <string name="region_changed_a11y">Região definida como %1$s</string>
+</resources>

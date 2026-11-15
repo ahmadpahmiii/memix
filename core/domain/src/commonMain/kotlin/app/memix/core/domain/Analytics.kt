@@ -4,6 +4,7 @@ import app.memix.core.domain.mysound.MySoundFailure
 import app.memix.core.domain.mysound.MySoundSource
 import app.memix.core.domain.photo.PhotoExportAction
 import app.memix.core.domain.sound.SoundReportReason
+import app.memix.core.model.AppLanguage
 import app.memix.core.model.project.PhotoExportFormat
 import app.memix.core.model.project.ProjectType
 import kotlin.math.roundToLong
@@ -76,6 +77,18 @@ sealed interface AnalyticsEvent {
     data class SoundSearch(val results: Int, val offline: Boolean) : AnalyticsEvent {
         override val name = "sound_search"
         override val params = mapOf("results" to results.toString(), "offline" to offline.toString())
+    }
+
+    /** The first confirm of the Region sheet, at first launch (P3-11): the language and the region code the user ended with, not the phone's. */
+    data class OnboardingComplete(val language: AppLanguage, val regionCode: String) : AnalyticsEvent {
+        override val name = "onboarding_complete"
+        override val params = mapOf("language" to language.code, "region" to regionCode)
+    }
+
+    /** The Region sheet was saved with a different language or region after first launch (P3-11). Not sent for opening or dismissing it. */
+    data class RegionChange(val language: AppLanguage, val regionCode: String) : AnalyticsEvent {
+        override val name = "region_change"
+        override val params = mapOf("language" to language.code, "region" to regionCode)
     }
 
     /** A report of a library sound reached the server (P3-10): the reason's code only, never the note. */

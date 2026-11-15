@@ -6,4 +6,6 @@
     <string name="entry_photo_title">Meme foto</string>
     <string name="entry_photo_body">Teks, panel, potongan</string>
     <string name="region_global">Global</string>
+    <string name="home_region_a11y">Wilayah: %1$s</string>
+    <string name="home_region_change">Ubah wilayah</string>
 </resources>

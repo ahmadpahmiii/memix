@@ -7,4 +7,6 @@
     <string name="entry_photo_title">Photo meme</string>
     <string name="entry_photo_body">Captions, panels, cut-outs</string>
     <string name="region_global">Global</string>
+    <string name="home_region_a11y">Region: %1$s</string>
+    <string name="home_region_change">Change region</string>
 </resources>

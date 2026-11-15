@@ -60,7 +60,6 @@ import androidx.compose.ui.layout.MeasurePolicy
 import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.isTraversalGroup
@@ -111,6 +110,7 @@ import app.memix.core.ui.layers.LayerGestureEvents
 import app.memix.core.ui.layers.LayerStageState
 import app.memix.core.ui.layers.LayerTouchSizes
 import app.memix.core.ui.layers.detectLayerGestures
+import app.memix.core.ui.appLanguageCode
 import app.memix.core.ui.spokenTime
 import app.memix.core.ui.spokenTimeOf
 import app.memix.feature.videoeditor.canvas.CanvasPanel
@@ -836,7 +836,7 @@ private fun spokenText(message: ToastMessage): String? = when (message) {
 // "{name} added at {time}", or without the name when the sound has none (a sound the catalog copy doesn't know).
 @Composable
 private fun soundAddedText(title: LocalizedText?, atUs: Long): String {
-    val name = title?.inLanguage(LocalLocale.current.language).orEmpty()
+    val name = title?.inLanguage(appLanguageCode()).orEmpty()
     return if (name.isBlank()) stringResource(Res.string.a11y_sound_added_unnamed, spokenTime(atUs))
     else stringResource(Res.string.a11y_sound_added, name, spokenTime(atUs))
 }
