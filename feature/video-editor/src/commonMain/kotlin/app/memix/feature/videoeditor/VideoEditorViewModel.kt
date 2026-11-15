@@ -36,6 +36,7 @@ import app.memix.core.domain.video.PreviewPlayback
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.domain.video.PreviewStatus
 import app.memix.core.domain.video.StartPreviewUseCase
+import app.memix.core.domain.video.ReadWaveformUseCase
 import app.memix.core.domain.video.StartThumbnailsUseCase
 import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.MediaClip
@@ -54,6 +55,7 @@ import app.memix.feature.mediaimport.ImportIntent
 import app.memix.feature.mediaimport.ImportWording
 import app.memix.feature.videoeditor.timeline.ItemName
 import app.memix.feature.videoeditor.timeline.TimelineThumbnails
+import app.memix.feature.videoeditor.timeline.TimelineWaveforms
 import app.memix.feature.videoeditor.timeline.TrimRanges
 import app.memix.feature.videoeditor.timeline.nameOf
 import app.memix.feature.videoeditor.timeline.timelineUiOf
@@ -98,6 +100,7 @@ class VideoEditorViewModel(
     private val startEditSession: StartEditSessionUseCase,
     private val startPreview: StartPreviewUseCase,
     private val startThumbnails: StartThumbnailsUseCase,
+    private val readWaveform: ReadWaveformUseCase,
     private val sounds: EditorSounds,
     voiceover: EditorVoiceover,
     private val captionRendering: EditorCaptionRendering,
@@ -136,6 +139,7 @@ class VideoEditorViewModel(
     private val host = Host()
     private val soundTools = EditorSoundTools(sounds, host)
     private val volumePanel = VolumePanelControl(host)
+    private val audioEffects = AudioEffectsControl(host)
     private val move = MoveControl(host)
     private val originalAudio = OriginalAudioControl(host)
     private val voiceoverControl = VoiceoverControl(host, projectId, voiceover)
@@ -237,6 +241,12 @@ class VideoEditorViewModel(
             is VideoEditorIntent.VolumeChanged -> volumePanel.change(intent.volume)
             VideoEditorIntent.VolumeReleased -> volumePanel.commit()
             VideoEditorIntent.CloseVolumePanel -> volumePanel.close()
+            VideoEditorIntent.AudioEffectsTool -> audioEffects.open()
+            VideoEditorIntent.CloseAudioEffects -> audioEffects.close()
+            is VideoEditorIntent.AudioEffectsTabSelected -> audioEffects.selectTab(intent.tab)
+            is VideoEditorIntent.AudioEffectChanged -> audioEffects.change(intent.part, intent.value)
+            is VideoEditorIntent.AudioEffectReleased -> audioEffects.release(intent.part)
+            VideoEditorIntent.ResetAudioEffects -> audioEffects.reset()
             VideoEditorIntent.VoiceoverTool -> voiceoverControl.open()
             is VideoEditorIntent.VoiceoverRecord -> voiceoverControl.record(intent.microphoneGranted)
             VideoEditorIntent.VoiceoverStop -> voiceoverControl.stop()
@@ -310,7 +320,9 @@ class VideoEditorViewModel(
         exportSheet.warmUp(project)
         val thumbnails = TimelineThumbnails(startThumbnails(), viewModelScope, decodeDispatcher)
         addCloseable(thumbnails)
-        updateState { it.copy(canvas = canvasUiOf(project), thumbnails = thumbnails) }
+        val waveforms = TimelineWaveforms(readWaveform, viewModelScope)
+        addCloseable(waveforms)
+        updateState { it.copy(canvas = canvasUiOf(project), thumbnails = thumbnails, waveforms = waveforms) }
         viewModelScope.launch { session.state.collect(::showEditState) }
         // Captions are measured with the bundled fonts once they've loaded; until then with the system font.
         viewModelScope.launch {
@@ -340,11 +352,15 @@ class VideoEditorViewModel(
                 timeline = timeline,
                 reorder = it.reorder?.takeIf { reorder -> reorder.originalOrder.toSet() == clipIds },
                 volumePanel = it.volumePanel?.takeIf { panel -> timeline.item(panel.itemId) != null },
+                // Follows the project, so an undo shows in the sliders; closes with its sound.
+                audioEffects = audioEffects.syncedWith(it.audioEffects, project),
                 originalAudio = if (project.hasOriginalAudio()) OriginalAudioUi(muted = project.isOriginalMuted()) else null,
             ).withSelection(it.selectedItemId, project)
         }
         canvasPanel.onCanvasChanged(project.canvas)
         showCaptions(project)
+        // Peaks for the sounds on the timeline; each file is read once, off the main thread.
+        state.value.waveforms?.want(timeline.soundSources())
         if (project.hasNoClips()) {
             closePreview()
             updateState { it.copy(stage = StageContent.EMPTY, isPlaying = false) }
@@ -466,6 +482,7 @@ class VideoEditorViewModel(
             state.value.exportSheet != null -> exportSheet.close()
             state.value.textPanel != null -> captions.closePanel()
             state.value.volumePanel != null -> volumePanel.close()
+            state.value.audioEffects != null -> audioEffects.close()
             state.value.voiceover != null -> voiceoverControl.close()
             state.value.canvasPanel != null -> canvasPanel.close()
             state.value.reorder != null -> updateState { it.copy(reorder = null) }
@@ -933,7 +950,8 @@ class VideoEditorViewModel(
 
 // Intents that change the project or leave the editor, which a running voiceover take makes wait for Stop.
 private fun VideoEditorIntent.waitsForStop(): Boolean = when (this) {
-    VideoEditorIntent.Undo, VideoEditorIntent.Redo, VideoEditorIntent.ExportTool, VideoEditorIntent.RatioPill, VideoEditorIntent.ToggleOriginalAudio -> true
+    VideoEditorIntent.Undo, VideoEditorIntent.Redo, VideoEditorIntent.ExportTool, VideoEditorIntent.RatioPill, VideoEditorIntent.ToggleOriginalAudio,
+    VideoEditorIntent.AudioEffectsTool, VideoEditorIntent.ResetAudioEffects, is VideoEditorIntent.AudioEffectReleased -> true
     else -> false
 }
 

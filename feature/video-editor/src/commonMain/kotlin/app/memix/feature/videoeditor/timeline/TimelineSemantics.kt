@@ -60,6 +60,7 @@ import memix.feature.video_editor.generated.resources.a11y_item_unnamed
 import memix.feature.video_editor.generated.resources.a11y_playhead
 import memix.feature.video_editor.generated.resources.a11y_reorder_tile
 import memix.feature.video_editor.generated.resources.a11y_state_after_end
+import memix.feature.video_editor.generated.resources.a11y_state_effects_on
 import memix.feature.video_editor.generated.resources.a11y_state_original_muted
 import memix.feature.video_editor.generated.resources.a11y_state_past_end
 import memix.feature.video_editor.generated.resources.a11y_state_sound_detached
@@ -425,12 +426,14 @@ private fun itemStates(track: TrackUi, item: ItemUi, facts: ItemFacts): String {
     val hasOwnSound = isMainClip && !item.isPhoto && media?.hasAudio != false
     val muted = if (hasOwnSound && (track.muted || item.silenced)) stringResource(Res.string.a11y_state_original_muted) else null
     val detached = if (item.soundDetached) stringResource(Res.string.a11y_state_sound_detached) else null
+    // A sound that isn't plain says so (spec P3-09 → Accessibility); the waveform itself is decorative and has no node.
+    val effects = if (item.sound?.hasEffects == true) stringResource(Res.string.a11y_state_effects_on) else null
     val pastEnd = when {
         item.startUs >= facts.lengthUs -> stringResource(Res.string.a11y_state_after_end)
         item.endUs > facts.lengthUs -> stringResource(Res.string.a11y_state_past_end)
         else -> null
     }
-    return listOfNotNull(missing, muted, detached, pastEnd).joinToString(STATE_SEPARATOR)
+    return listOfNotNull(missing, muted, detached, effects, pastEnd).joinToString(STATE_SEPARATOR)
 }
 
 private const val MICROS_PER_TENTH = 100_000L

@@ -167,4 +167,25 @@
     <string name="voiceover_stop_a11y">Hentikan rekaman</string>
     <string name="a11y_voiceover_added">Rekaman suara ditambahkan di %1$s, panjang %2$s</string>
     <string name="edit_voiceover">Rekaman suara</string>
+    <!-- Audio effects (P3-09a): machine draft until P5-06; see the English file for the source. -->
+    <string name="tool_audio_effects">Efek audio</string>
+    <string name="fx_title">Efek audio</string>
+    <string name="fx_reset">Reset</string>
+    <string name="fx_reset_a11y">Reset semua efek audio</string>
+    <string name="fx_tab_tone">Nada</string>
+    <string name="fx_tab_fades">Fade</string>
+    <string name="fx_fade_in">Fade in</string>
+    <string name="fx_fade_out">Fade out</string>
+    <string name="fx_pitch">Nada suara</string>
+    <string name="fx_speed">Kecepatan</string>
+    <string name="fx_seconds">%1$s dtk</string>
+    <string name="fx_speed_value">%1$s×</string>
+    <string name="fx_nothing_to_reset">Belum ada efek untuk direset.</string>
+    <string name="fx_fade_too_short">Suara ini terlalu pendek untuk di-fade.</string>
+    <string name="fx_moved_lane_toast">Tidak ada ruang di sini, jadi suara dipindah ke trek lain.</string>
+    <string name="fx_missing_explain">File suara ini hilang, jadi efek tidak bisa diputar. Hapus lalu tambahkan lagi.</string>
+    <string name="a11y_state_effects_on">Efek audio aktif</string>
+    <string name="a11y_fx_tab_on">%1$s, aktif</string>
+    <string name="a11y_audio_effects_reset">Efek audio direset</string>
+    <string name="edit_fx_reset">Reset efek</string>
 </resources>

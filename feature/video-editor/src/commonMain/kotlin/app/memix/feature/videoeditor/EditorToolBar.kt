@@ -65,6 +65,7 @@ import memix.feature.video_editor.generated.resources.tool_reorder
 import memix.feature.video_editor.generated.resources.tool_split
 import memix.core.ui.generated.resources.tool_style
 import memix.core.ui.generated.resources.tool_text
+import memix.feature.video_editor.generated.resources.tool_audio_effects
 import memix.feature.video_editor.generated.resources.tool_volume
 import org.jetbrains.compose.resources.stringResource
 
@@ -220,12 +221,13 @@ private fun rememberClipTools(
     val duplicate = stringResource(UiRes.string.tool_duplicate)
     val reorder = stringResource(Res.string.tool_reorder)
     val volume = stringResource(Res.string.tool_volume)
+    val audioEffects = stringResource(Res.string.tool_audio_effects)
     val moveHere = stringResource(Res.string.tool_move_here)
     val moveHereClickLabel = stringResource(Res.string.tool_move_here_a11y)
     val replace = stringResource(UiRes.string.tool_replace)
     val detach = stringResource(Res.string.tool_detach_audio)
     val textTools = rememberTextTools(onIntent, focus)
-    return remember(clipTools, isMissing, split, delete, duplicate, reorder, volume, moveHere, moveHereClickLabel, replace, detach, textTools, onIntent, reorderFocus, focus) {
+    return remember(clipTools, isMissing, split, delete, duplicate, reorder, volume, audioEffects, moveHere, moveHereClickLabel, replace, detach, textTools, onIntent, reorderFocus, focus) {
         val splitTool = ToolBarItem(split, MemixIcons.Split, { onIntent(VideoEditorIntent.SplitSelected) })
         val deleteTool = ToolBarItem(delete, MemixIcons.Delete, { onIntent(VideoEditorIntent.DeleteSelected) }, ToolTone.Danger)
         val duplicateTool = ToolBarItem(duplicate, MemixIcons.Duplicate, { onIntent(VideoEditorIntent.DuplicateSelected) })
@@ -233,6 +235,7 @@ private fun rememberClipTools(
         // P1-06 → Accessibility).
         val moveHereTool = ToolBarItem(moveHere, MemixIcons.MoveHere, { onIntent(VideoEditorIntent.MoveHereSelected) }, clickLabel = moveHereClickLabel)
         val volumeTool = ToolBarItem(volume, MemixIcons.Volume, { onIntent(VideoEditorIntent.VolumeTool) }, focusRequester = focus.volumeTool)
+        val audioEffectsTool = ToolBarItem(audioEffects, MemixIcons.AudioEffects, { onIntent(VideoEditorIntent.AudioEffectsTool) }, focusRequester = focus.audioEffectsTool)
         val replaceTool = ToolBarItem(replace, MemixIcons.Replace, { onIntent(VideoEditorIntent.ReplaceSelected) }, focusRequester = focus.replaceTool)
         val reorderTool = ToolBarItem(reorder, MemixIcons.Reorder, { onIntent(VideoEditorIntent.StartReorderSelected) }, focusRequester = reorderFocus)
         when (clipTools) {
@@ -247,10 +250,12 @@ private fun rememberClipTools(
                 val usual = listOf(splitTool, deleteTool, duplicateTool, reorderTool)
                 (if (isMissing) listOf(replaceTool) + usual else usual + replaceTool).toImmutableList()
             }
+            // Audio effects fourth, so it shows without scrolling at 360 dp (spec P3-09 → Entry and exit).
             ClipTools.SOUND -> persistentListOf(
                 volumeTool,
                 splitTool,
                 deleteTool,
+                audioEffectsTool,
                 moveHereTool,
                 duplicateTool,
             )
@@ -289,6 +294,7 @@ internal class EditorFocusTargets {
     val memeSoundsTool = FocusRequester()
     val addSoundPill = FocusRequester()
     val volumeTool = FocusRequester()
+    val audioEffectsTool = FocusRequester()
     val voiceoverTool = FocusRequester()
     val textTool = FocusRequester()
     val styleTool = FocusRequester()
@@ -309,6 +315,7 @@ internal class EditorFocusTargets {
             FocusTarget.MEME_SOUNDS_TOOL -> memeSoundsTool
             FocusTarget.ADD_SOUND_PILL -> addSoundPill
             FocusTarget.VOLUME_TOOL -> volumeTool
+            FocusTarget.AUDIO_EFFECTS_TOOL -> audioEffectsTool
             FocusTarget.VOICEOVER_TOOL -> voiceoverTool
             FocusTarget.RATIO_PILL -> ratioPill
         }.requestFocus()

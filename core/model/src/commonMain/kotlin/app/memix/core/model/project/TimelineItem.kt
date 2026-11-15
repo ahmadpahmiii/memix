@@ -56,8 +56,14 @@ data class AudioClip(
     val trimOutUs: Long,
     /** 1 is the sound's original loudness. */
     val volume: Float = 1f,
+    /** The Audio effects panel's settings (P3-09); all off by default. The source file is never changed. */
+    val effects: AudioEffects = AudioEffects(),
 ) : TimelineItem {
-    override val durationUs: Long get() = trimOutUs - trimInUs
+    /** How much of the source plays, µs. */
+    val sourceSpanUs: Long get() = trimOutUs - trimInUs
+
+    // Derived, not saved: the part of the source that plays, at the effects' speed (P3-09: a speed change moves the end).
+    override val durationUs: Long get() = effects.timelineLengthOf(sourceSpanUs)
 }
 
 @Serializable

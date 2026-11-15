@@ -38,6 +38,9 @@ data class TimelineUi(
     /** The item with [id], or null when no track holds it (any more). */
     fun item(id: String): ItemUi? = tracks.firstNotNullOfOrNull { track -> track.items.firstOrNull { it.id == id } }
 
+    /** The files of every sound on the timeline, for the waveforms. */
+    fun soundSources(): List<MediaRef> = tracks.flatMap { track -> track.items.mapNotNull { it.sound?.source } }.distinct()
+
     /** Where main clip [itemId] starts, µs; null when [itemId] is null or not a main clip. */
     fun mainClipStartUs(itemId: String?): Long? = mainClip(itemId)?.startUs
 
@@ -75,7 +78,7 @@ data class ItemUi(
     val label: ItemLabel,
     /** The picture source of a main video or overlay clip, for its thumbnail strip; null for every other item. */
     val media: MediaRef? = null,
-    /** Main video clips: where the strip's first tile starts in the source. */
+    /** Main video clips: where the strip's first tile starts in the source. Sounds: where the waveform starts in the file. */
     val trimInUs: Long = 0,
     val trimOutUs: Long = 0,
     /** Main video clips: 1 for the first clip, for "clip 2 of 3". 0 for every other item. */
@@ -85,9 +88,25 @@ data class ItemUi(
     val soundDetached: Boolean = false,
     /** A video clip with sound whose volume is 0. */
     val silenced: Boolean = false,
+    /** A meme sound or an audio clip: what its waveform and its spoken name need (P3-09); null for every other item. */
+    val sound: SoundLook? = null,
 ) {
     val endUs: Long get() = startUs + durationUs
 }
+
+/**
+ * What a sound clip's bars follow (spec P3-09 → What a bar is): the file's peaks [source] from the item's trim-in at [speed], scaled by
+ * [volume] and shaped by the two fades (µs of timeline time). [hasEffects]: any Audio effect is set, which the clip says when read aloud.
+ */
+@Immutable
+data class SoundLook(
+    val source: MediaRef,
+    val speed: Float,
+    val volume: Float,
+    val fadeInUs: Long,
+    val fadeOutUs: Long,
+    val hasEffects: Boolean,
+)
 
 /** The words on an item. Names the model doesn't hold yet arrive with their tickets. */
 @Immutable
@@ -148,7 +167,15 @@ private fun itemUiOf(item: TimelineItem, kind: TrackKind, clipNumber: Int, sound
         soundDetached = item.audioDetached,
         silenced = item.volume == 0f && item.source.hasAudio != false && item.source.kind == MediaKind.VIDEO,
     )
-    is AudioClip -> ItemUi(item.id, item.startUs, item.durationUs, audioLabelOf(item, kind, soundTitles))
+    is AudioClip -> ItemUi(
+        id = item.id,
+        startUs = item.startUs,
+        durationUs = item.durationUs,
+        label = audioLabelOf(item, kind, soundTitles),
+        trimInUs = item.trimInUs,
+        trimOutUs = item.trimOutUs,
+        sound = SoundLook(item.source, item.effects.speed, item.volume, item.effects.fadeInUs, item.effects.fadeOutUs, !item.effects.isDefault),
+    )
     is TextItem -> ItemUi(item.id, item.startUs, item.durationUs, writtenLabelOf(item.text))
     // TODO(P4-12): the sticker's name from its pack.
     is StickerItem -> ItemUi(item.id, item.startUs, item.durationUs, ItemLabel.None)

@@ -6,8 +6,6 @@ import androidx.media3.common.C
 import androidx.media3.common.Effect
 import androidx.media3.common.MediaItem
 import androidx.media3.common.audio.AudioProcessor
-import androidx.media3.common.audio.ChannelMixingAudioProcessor
-import androidx.media3.common.audio.ChannelMixingMatrix
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.TextureOverlay
@@ -43,6 +41,8 @@ internal class Media3CompositionBuilder(
      * exports. An item at 0% with a live gain gets no fixed volume step: its live gain starts at 0 and can raise it.
      */
     private val liveGains: Map<String, LiveGainProcessor> = emptyMap(),
+    /** The preview's live fades per sound (the fade sliders are heard while they move); empty for exports. */
+    private val liveFades: Map<String, LiveFades> = emptyMap(),
     /** The plan's captions over the composited video; null when the plan has none. */
     private val captionOverlay: CaptionOverlay? = null,
     /** The "Memix" mark of a free export, drawn above the captions; null in previews and watermark-free exports (P1-13). */
@@ -104,7 +104,7 @@ internal class Media3CompositionBuilder(
         } else {
             mediaItem.setClippingConfiguration(clipping(clip.trimInUs, clip.trimOutUs))
         }
-        val audioProcessors = if (clip.playsOwnAudio) itemVolume(clip.itemId, clip.volume) else emptyList()
+        val audioProcessors = if (clip.playsOwnAudio) AudioChain.volume(clip.volume, liveGains[clip.itemId]) else emptyList()
         val item = EditedMediaItem.Builder(mediaItem.build())
             .setRemoveAudio(!clip.playsOwnAudio)
             // The output rate for photos; a ceiling that drops extra frames from faster videos.
@@ -131,8 +131,9 @@ internal class Media3CompositionBuilder(
             .setUri(uriByMedia.getValue(clip.source))
             .setClippingConfiguration(clipping(clip.trimInUs, clip.trimOutUs))
             .build()
-        // Detached audio points at the original video file; its picture isn't decoded again here.
-        val processors = itemVolume(clip.itemId, clip.volume)
+        // Detached audio points at the original video file; its picture isn't decoded again here. The effects run first, then the
+        // volume (spec P3-09 → rule 1); the preview and the export both build this item, so they play the same chain.
+        val processors = AudioChain.forSound(clip, liveGains[clip.itemId], liveFades[clip.itemId])
         return EditedMediaItem.Builder(mediaItem)
             .setRemoveVideo(true)
             .setEffects(Effects(processors, emptyList()))
@@ -153,34 +154,10 @@ internal class Media3CompositionBuilder(
             .setEndPositionUs(trimOutUs)
             .build()
 
-    // The committed volume, then the preview's live gain if it has one. A 0% item's silence comes from its live gain
-    // alone, since a fixed 0 step before it would leave nothing to raise.
-    private fun itemVolume(itemId: String, volume: Float): List<AudioProcessor> {
-        val liveGain = liveGains[itemId] ?: return volumeProcessors(volume)
-        return if (volume == 0f) listOf(liveGain) else volumeProcessors(volume) + liveGain
-    }
-
-    // Scales every channel by the volume. Media3 clamps samples past full scale, so volumes above 1
-    // get louder without wrapping around.
-    private fun volumeProcessors(volume: Float): List<AudioProcessor> {
-        if (volume == 1f) return emptyList()
-        val processor = ChannelMixingAudioProcessor()
-        for (channelCount in 1..MAX_CHANNEL_COUNT) {
-            processor.putChannelMixingMatrix(ChannelMixingMatrix(channelCount, channelCount, scaledIdentity(channelCount, volume)))
-        }
-        return listOf(processor)
-    }
-
-    // Row-major: the diagonal of an n x n matrix sits at every (n + 1)th index.
-    private fun scaledIdentity(channelCount: Int, scale: Float) =
-        FloatArray(channelCount * channelCount) { index -> if (index % (channelCount + 1) == 0) scale else 0f }
-
     // Media3 takes photo durations in whole milliseconds; never round a photo down to nothing.
     private fun roundedMs(durationUs: Long): Long = ((durationUs + MICROS_PER_MILLI / 2) / MICROS_PER_MILLI).coerceAtLeast(1)
 
     private companion object {
-        /** 7.1 surround; phone recordings are mono or stereo. */
-        const val MAX_CHANNEL_COUNT = 8
         const val MICROS_PER_MILLI = 1_000L
     }
 }

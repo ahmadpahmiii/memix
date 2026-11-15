@@ -8,7 +8,9 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
 import app.memix.core.domain.Logger
+import app.memix.core.domain.Outcome
 import app.memix.core.domain.sound.SoundPlayer
+import app.memix.core.domain.video.AudioPeaks
 import app.memix.core.domain.video.EXPORT_AUDIO_BITRATE_BPS
 import app.memix.core.domain.video.ExportCapabilities
 import app.memix.core.domain.video.ExportError
@@ -47,12 +49,15 @@ internal class Media3VideoEngine(
 ) : VideoEngine {
     private val sourceResolver = MediaSourceResolver(context.filesDir)
     private val transformerExport = TransformerExport(context)
+    private val peaksReader = AudioPeaksReader(context.filesDir, context.cacheDir, ioDispatcher, logger)
     private val capabilityScanner = ExportCapabilityScanner(ioDispatcher, GalleryVideoFile.WRITES_STRAIGHT_TO_GALLERY)
 
     override fun createPreview(project: Project): PreviewSession =
         Media3PreviewSession(context, sourceResolver, captionRenderer, logger, ioDispatcher, project, measureSoundOnsets)
 
     override fun openThumbnails(): ThumbnailReader = MediaThumbnailReader(context.filesDir, ioDispatcher, logger)
+
+    override suspend fun waveform(source: MediaRef): Outcome<AudioPeaks> = peaksReader.read(source)
 
     override fun openSoundPlayer(): SoundPlayer = Media3SoundPlayer(context, logger)
 

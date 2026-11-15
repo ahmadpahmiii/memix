@@ -16,6 +16,8 @@ import app.memix.core.domain.video.VideoCodec
 import app.memix.core.domain.voiceover.VoiceRoute
 import app.memix.core.domain.sound.PickedSound
 import app.memix.core.model.catalog.LocalizedText
+import app.memix.core.model.project.AudioEffects
+import app.memix.core.model.project.AudioEffectsCatalog
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.CaptionBox
 import app.memix.core.model.project.CaptionShadow
@@ -34,6 +36,7 @@ import app.memix.feature.mediaimport.ImportWording
 import app.memix.feature.videoeditor.timeline.ItemName
 import app.memix.feature.videoeditor.timeline.TimelineThumbnails
 import app.memix.feature.videoeditor.timeline.TimelineUi
+import app.memix.feature.videoeditor.timeline.TimelineWaveforms
 import app.memix.feature.videoeditor.timeline.TrimRanges
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
@@ -71,6 +74,8 @@ data class VideoEditorUiState(
     val sounds: SoundsSheetUi = SoundsSheetUi(),
     /** The Volume panel over the timeline and tool bar, or null when it's closed (spec P1-06 → Volume panel). */
     val volumePanel: VolumePanelUi? = null,
+    /** The Audio effects panel over the timeline and tool bar, or null when it's closed (spec P3-09). */
+    val audioEffects: AudioEffectsPanelUi? = null,
     /** The Voiceover panel over the timeline and tool bar, or null when it's closed (spec P3-08). */
     val voiceover: VoiceoverPanelUi? = null,
     /** The Canvas panel over the timeline and tool bar, or null when it's closed (spec P1-11). */
@@ -117,6 +122,8 @@ data class VideoEditorUiState(
     val captionStandIn: CaptionUi? = null,
     /** The thumbnail tiles of the timeline's strips, once the draft has opened. Compared by identity. */
     val thumbnails: TimelineThumbnails? = null,
+    /** The waveforms of the timeline's sounds, once the draft has opened. Compared by identity. */
+    val waveforms: TimelineWaveforms? = null,
     /** The play button shows Pause; switches as soon as play is asked for. */
     val isPlaying: Boolean = false,
     val canUndo: Boolean = false,
@@ -228,7 +235,7 @@ enum class ClipTools {
     /** A caption: Edit text, Style, Position, Delete, Split, Move here, Duplicate (spec P1-10 → Text clip tools). */
     TEXT,
 
-    /** A meme sound or detached audio: Volume, Split, Delete, Move here, Duplicate. */
+    /** A meme sound or detached audio: Volume, Split, Delete, Audio effects, Move here, Duplicate. */
     SOUND,
 
     /** Overlays, stickers and effects: Split, Delete, Move here, Duplicate. */
@@ -248,6 +255,22 @@ data class SoundsSheetUi(val isOpen: Boolean = false)
  */
 @Immutable
 data class VolumePanelUi(val itemId: String, val volume: Float, val isVideoClip: Boolean = false)
+
+/**
+ * The Audio effects panel of sound [itemId] (spec P3-09): the open [tab] (kept for the visit), and the [effects] as the sliders
+ * show them, which follow a drag before it's committed. [clipLengthUs] is the clip's length on the timeline: what its two fades share.
+ */
+@Immutable
+data class AudioEffectsPanelUi(val itemId: String, val tab: AudioEffectsTab, val effects: AudioEffects, val clipLengthUs: Long) {
+    /** Under [AudioEffectsCatalog.MIN_FADEABLE_US] the clip is too short to fade. */
+    val canFade: Boolean get() = clipLengthUs >= AudioEffectsCatalog.MIN_FADEABLE_US
+}
+
+/** The Audio effects panel's tabs, in the order they show. P3-09b adds Voice (before Tone), Bass and Echo (before Fades). */
+enum class AudioEffectsTab { TONE, FADES }
+
+/** The sliders of the Audio effects panel: each release commits one step named for it. */
+enum class AudioEffectPart { PITCH, SPEED, FADE_IN, FADE_OUT }
 
 /**
  * The Voiceover panel (spec P3-08). [countdown] is the 3, 2, 1 while [phase] counts down; [savedAtUs] is where the last take of this
@@ -346,6 +369,9 @@ enum class FocusTarget {
     /** The Volume tool of the selected sound. */
     VOLUME_TOOL,
 
+    /** The Audio effects tool of the selected sound, after its panel closes (P3-09). */
+    AUDIO_EFFECTS_TOOL,
+
     /** The Voiceover tool on the main tool bar (P3-08), after its panel closes. */
     VOICEOVER_TOOL,
 
@@ -415,6 +441,10 @@ enum class Explanation {
     VOICEOVER_NO_SPACE,
     VOICEOVER_STOP_FIRST,
 
+    /** Audio effects (P3-09): the sound's file is missing, or too short to fade. */
+    AUDIO_EFFECTS_MISSING,
+    FADE_TOO_SHORT,
+
     /** Export (P1-12): an empty draft, no resolution for this shape, not enough space. */
     EXPORT_EMPTY,
     EXPORT_NO_SHAPE,
@@ -460,6 +490,15 @@ sealed interface ToastMessage {
 
     /** After a library sound landed with more than half a second past the end of the video: shown as the trim-or-move toast, spoken with the name and time (P3-05). */
     data class SoundPastEnd(val title: LocalizedText?, val atUs: Long) : ToastMessage
+
+    /** After a Speed change made a sound longer than the room it had: it moved to another track (P3-09 rule 4). */
+    data object SoundMovedLane : ToastMessage
+
+    /** Reset with no effect set (P3-09). */
+    data object NothingToReset : ToastMessage
+
+    /** After a slider or Reset of the Audio effects panel, for screen readers only: "Audio effects reset" (P3-09). */
+    data object AudioEffectsReset : ToastMessage
 
     /** After a voiceover take lands, for screen readers only: "Voiceover added at 3.2 seconds, 4 seconds long" ([atUs] is where it starts). */
     data class VoiceoverAdded(val atUs: Long, val lengthUs: Long) : ToastMessage
@@ -660,6 +699,24 @@ sealed interface VideoEditorIntent {
 
     /** Done, system back or Escape on the Volume panel. */
     data object CloseVolumePanel : VideoEditorIntent
+
+    /** The Audio effects tool of the selected sound: opens its panel (P3-09), or explains when the sound's file is gone. */
+    data object AudioEffectsTool : VideoEditorIntent
+
+    /** Done, system back or Escape on the Audio effects panel. */
+    data object CloseAudioEffects : VideoEditorIntent
+
+    /** A tab of the Audio effects panel; it stays for the visit. */
+    data class AudioEffectsTabSelected(val tab: AudioEffectsTab) : VideoEditorIntent
+
+    /** A slider of the Audio effects panel moved to [value] (semitones, speed, or seconds of fade); nothing committed yet. */
+    data class AudioEffectChanged(val part: AudioEffectPart, val value: Float) : VideoEditorIntent
+
+    /** The slider of [part] was let go (or stepped): its value is one step, named for it (none if it's where it began). */
+    data class AudioEffectReleased(val part: AudioEffectPart) : VideoEditorIntent
+
+    /** Reset in the Audio effects panel: every effect of the clip back to its default, one step. */
+    data object ResetAudioEffects : VideoEditorIntent
 
     /** The Voiceover tool: opens its panel (the microphone is not asked yet). */
     data object VoiceoverTool : VideoEditorIntent

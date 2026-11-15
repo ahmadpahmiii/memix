@@ -1,6 +1,8 @@
 package app.memix.core.domain.video
 
+import app.memix.core.domain.Outcome
 import app.memix.core.domain.sound.SoundPlayer
+import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
 
@@ -13,7 +15,8 @@ import app.memix.core.model.project.Project
  * and audio tracks (trims, volume, muted tracks, detached audio). Overlay, sticker and effect tracks are
  * skipped with a log line until their tickets add them (P4-01, P4-12, P4-06).
  *
- * Waveforms (P3-09) join this interface with the ticket that first uses them.
+ * Meme sounds and audio clips also play with the Audio effects of P3-09 (fades, pitch, speed): the preview and the export
+ * build the same chain from the clip's [app.memix.core.model.project.AudioEffects].
  */
 interface VideoEngine {
     /**
@@ -62,6 +65,14 @@ interface VideoEngine {
      * Returns at once; nothing loads until the first [SoundPlayer.play]. Main thread only. The caller closes it.
      */
     fun openSoundPlayer(): SoundPlayer
+
+    /**
+     * The peaks of the sound in [source], for the waveform on the timeline (P3-09): about 100 a second over the whole file,
+     * decoded on the engine's background thread and kept on disk, so the second call for a file is quick. Null when the file
+     * is missing ([app.memix.core.domain.AppError.NotFound]: the Audio effects tool explains) or can't be decoded
+     * ([app.memix.core.domain.AppError.Unexpected]: no bars, nothing else). Main-safe; cancelling drops the result.
+     */
+    suspend fun waveform(source: MediaRef): Outcome<AudioPeaks>
 
     /**
      * Opens a [ResultPlayer] for a finished export at [location] (P1-12's Exported screen). Returns at once; the first

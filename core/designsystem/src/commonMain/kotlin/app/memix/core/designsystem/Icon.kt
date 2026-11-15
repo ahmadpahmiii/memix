@@ -12,6 +12,7 @@ import memix.core.designsystem.generated.resources.Res
 import memix.core.designsystem.generated.resources.ic_adjust
 import memix.core.designsystem.generated.resources.ic_arrow
 import memix.core.designsystem.generated.resources.ic_arrow_back
+import memix.core.designsystem.generated.resources.ic_audio_effects
 import memix.core.designsystem.generated.resources.ic_blur
 import memix.core.designsystem.generated.resources.ic_bubble
 import memix.core.designsystem.generated.resources.ic_check
@@ -94,6 +95,7 @@ object MemixIcons {
     val Sticker = Res.drawable.ic_sticker
     val Create = Res.drawable.ic_create
     val Delete = Res.drawable.ic_delete
+    val AudioEffects = Res.drawable.ic_audio_effects
     val DetachAudio = Res.drawable.ic_detach_audio
     val Drafts = Res.drawable.ic_drafts
     val Duplicate = Res.drawable.ic_duplicate

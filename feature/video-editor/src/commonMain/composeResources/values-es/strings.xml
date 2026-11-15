@@ -167,4 +167,25 @@
     <string name="voiceover_stop_a11y">Detener grabación</string>
     <string name="a11y_voiceover_added">Voz en off añadida en %1$s, de %2$s</string>
     <string name="edit_voiceover">Voz en off</string>
+    <!-- Audio effects (P3-09a): machine draft until P5-06; see the English file for the source. -->
+    <string name="tool_audio_effects">Efectos de audio</string>
+    <string name="fx_title">Efectos de audio</string>
+    <string name="fx_reset">Restablecer</string>
+    <string name="fx_reset_a11y">Restablecer todos los efectos de audio</string>
+    <string name="fx_tab_tone">Tono</string>
+    <string name="fx_tab_fades">Fundidos</string>
+    <string name="fx_fade_in">Entrada gradual</string>
+    <string name="fx_fade_out">Salida gradual</string>
+    <string name="fx_pitch">Tono</string>
+    <string name="fx_speed">Velocidad</string>
+    <string name="fx_seconds">%1$s s</string>
+    <string name="fx_speed_value">%1$s×</string>
+    <string name="fx_nothing_to_reset">No hay efectos que restablecer.</string>
+    <string name="fx_fade_too_short">Este sonido es demasiado corto para un fundido.</string>
+    <string name="fx_moved_lane_toast">No había espacio aquí, así que el sonido pasó a otra pista.</string>
+    <string name="fx_missing_explain">Falta el archivo de este sonido, así que los efectos no se pueden oír. Bórralo y añádelo de nuevo.</string>
+    <string name="a11y_state_effects_on">Efectos de audio activados</string>
+    <string name="a11y_fx_tab_on">%1$s, activado</string>
+    <string name="a11y_audio_effects_reset">Efectos de audio restablecidos</string>
+    <string name="edit_fx_reset">Restablecer efectos</string>
 </resources>

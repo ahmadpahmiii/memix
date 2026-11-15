@@ -10,6 +10,7 @@ import app.memix.core.domain.mysound.SoundProbe
 import app.memix.core.domain.sound.SoundPlayer
 import app.memix.core.domain.text.CaptionBlockSize
 import app.memix.core.domain.text.CaptionMeasurer
+import app.memix.core.domain.video.AudioPeaks
 import app.memix.core.domain.video.ExportCapabilities
 import app.memix.core.domain.video.ExportError
 import app.memix.core.domain.video.ExportOutcome
@@ -90,6 +91,8 @@ private object EstimatedCaptionMeasurer : CaptionMeasurer {
 }
 
 // TODO(P7-05): export with AVMutableComposition and AVAssetWriter, built from the same CompositionPlan as Android.
+// TODO(P7-03, P7-05): render AudioEffects from the same spec in AVAudioMix and the composition: fades as volume ramps, speed with scaleTimeRange,
+// pitch with AVAudioUnitTimePitch (offline for the export), in the order of AudioEffectsCatalog.CHAIN_ORDER. Until then no sound plays on iOS at all.
 private class IosVideoEngine : VideoEngine {
     override suspend fun export(project: Project, settings: ExportSettings, onProgress: (Float) -> Unit): ExportOutcome =
         ExportOutcome.Failed(ExportError.UNKNOWN)
@@ -106,6 +109,9 @@ private class IosVideoEngine : VideoEngine {
 
     // TODO(P7-03): AVAssetImageGenerator frames (UIImage -> JPEG). Until then the timeline's tiles stay empty.
     override fun openThumbnails(): ThumbnailReader = UnavailableThumbnailReader
+
+    // TODO(P7-03): decode the sound with AVAssetReader into the same peaks (AudioPeaks, 100 a second). Until then no waveform shows.
+    override suspend fun waveform(source: MediaRef): Outcome<AudioPeaks> = Outcome.Failure(AppError.Unexpected(UnsupportedOperationException("no waveform on iOS yet")))
 
     // TODO(P7-03): AVAudioPlayer. Until then the sounds sheet's play buttons do nothing.
     override fun openSoundPlayer(): SoundPlayer = SilentSoundPlayer()
@@ -148,6 +154,8 @@ private class UnavailablePreviewSession : PreviewSession {
     override fun showTrimFrame(clip: MediaClip, sourceTimeUs: Long) = Unit
     override fun endTrimFrames() = Unit
     override fun previewVolume(itemId: String, volume: Float) = Unit
+
+    override fun previewFades(itemId: String, fadeInUs: Long, fadeOutUs: Long) = Unit
     override fun hideCaption(itemId: String?) = Unit
     override fun setSilent(silent: Boolean) = Unit
     override fun sampleClock(): ClockSample? = null

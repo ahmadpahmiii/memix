@@ -170,4 +170,25 @@
     <string name="voiceover_stop_a11y">Stop recording</string>
     <string name="a11y_voiceover_added">Voiceover added at %1$s, %2$s long</string>
     <string name="edit_voiceover">Voiceover</string>
+    <!-- Audio effects (P3-09a). Budgets and translator notes: docs/ux/specs/P3-09-audio-effects.md -> Copy. a11y_audio_effects_reset is the engineer's addition (the spec says a Reset is announced, without words): designer to confirm. {n} is a number formatted in the language's own format. -->
+    <string name="tool_audio_effects">Audio effects</string>
+    <string name="fx_title">Audio effects</string>
+    <string name="fx_reset">Reset</string>
+    <string name="fx_reset_a11y">Reset all audio effects</string>
+    <string name="fx_tab_tone">Tone</string>
+    <string name="fx_tab_fades">Fades</string>
+    <string name="fx_fade_in">Fade in</string>
+    <string name="fx_fade_out">Fade out</string>
+    <string name="fx_pitch">Pitch</string>
+    <string name="fx_speed">Speed</string>
+    <string name="fx_seconds">%1$s s</string>
+    <string name="fx_speed_value">%1$s×</string>
+    <string name="fx_nothing_to_reset">No effects to reset.</string>
+    <string name="fx_fade_too_short">This sound is too short to fade.</string>
+    <string name="fx_moved_lane_toast">There wasn't room here, so the sound moved to another track.</string>
+    <string name="fx_missing_explain">This sound's file is missing, so effects can't play. Delete it and add it again.</string>
+    <string name="a11y_state_effects_on">Audio effects on</string>
+    <string name="a11y_fx_tab_on">%1$s, on</string>
+    <string name="a11y_audio_effects_reset">Audio effects reset</string>
+    <string name="edit_fx_reset">Reset effects</string>
 </resources>

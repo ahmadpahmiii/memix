@@ -167,4 +167,25 @@
     <string name="voiceover_stop_a11y">रिकॉर्डिंग रोकें</string>
     <string name="a11y_voiceover_added">%1$s पर वॉइसओवर जुड़ा, %2$s लंबा</string>
     <string name="edit_voiceover">वॉइसओवर</string>
+    <!-- Audio effects (P3-09a): machine draft until P5-06; see the English file for the source. -->
+    <string name="tool_audio_effects">ऑडियो इफ़ेक्ट</string>
+    <string name="fx_title">ऑडियो इफ़ेक्ट</string>
+    <string name="fx_reset">रीसेट</string>
+    <string name="fx_reset_a11y">सभी ऑडियो इफ़ेक्ट रीसेट करें</string>
+    <string name="fx_tab_tone">टोन</string>
+    <string name="fx_tab_fades">फ़ेड</string>
+    <string name="fx_fade_in">फ़ेड इन</string>
+    <string name="fx_fade_out">फ़ेड आउट</string>
+    <string name="fx_pitch">पिच</string>
+    <string name="fx_speed">स्पीड</string>
+    <string name="fx_seconds">%1$s सेकंड</string>
+    <string name="fx_speed_value">%1$s×</string>
+    <string name="fx_nothing_to_reset">रीसेट करने के लिए कोई इफ़ेक्ट नहीं है।</string>
+    <string name="fx_fade_too_short">यह साउंड फ़ेड के लिए बहुत छोटा है।</string>
+    <string name="fx_moved_lane_toast">यहाँ जगह नहीं थी, इसलिए साउंड दूसरे ट्रैक पर चला गया।</string>
+    <string name="fx_missing_explain">इस साउंड की फ़ाइल नहीं मिली, इसलिए इफ़ेक्ट नहीं चल सकते। इसे हटाकर फिर जोड़ें।</string>
+    <string name="a11y_state_effects_on">ऑडियो इफ़ेक्ट चालू</string>
+    <string name="a11y_fx_tab_on">%1$s, चालू</string>
+    <string name="a11y_audio_effects_reset">ऑडियो इफ़ेक्ट रीसेट हो गए</string>
+    <string name="edit_fx_reset">इफ़ेक्ट रीसेट</string>
 </resources>

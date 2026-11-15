@@ -49,4 +49,8 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     ProjectMigration(fromVersion = 10) { json -> json },
     // 11 → 12 (P3-08): MediaOrigin gained the "recording" subtype (a voiceover take). Again a new subtype only, so version-11 JSON decodes as it is.
     ProjectMigration(fromVersion = 11) { json -> json },
+    // 12 → 13 (P3-09a): AudioClip gained "effects" (fades, pitch, speed and the P3-09b voice, bass, distortion and echo fields), all with
+    // defaults that mean off. Version-12 JSON has no "effects", which decodes as the defaults: a sound saved before plays as saved, at
+    // speed 1 so its length is unchanged. The step only moves the version on.
+    ProjectMigration(fromVersion = 12) { json -> json },
 )

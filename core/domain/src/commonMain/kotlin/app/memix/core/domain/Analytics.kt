@@ -196,6 +196,16 @@ enum class EditorTool(val eventValue: String?) {
     /** P3-08: once per voiceover take that lands in the project (PM, 11 Nov 2026); a discarded or empty take sends nothing. */
     VOICEOVER("voiceover"),
 
+    /**
+     * P3-09a: the Audio effects panel (PM, 11 Nov 2026), one event per recorded step. `audio_reset` is one event for a whole Reset. P3-09b
+     * adds `audio_bass`, `audio_distortion`, `audio_echo`, `audio_echo_length` and `audio_voice` (its `value` is the preset id).
+     */
+    AUDIO_FADE_IN("audio_fade_in"),
+    AUDIO_FADE_OUT("audio_fade_out"),
+    AUDIO_PITCH("audio_pitch"),
+    AUDIO_SPEED("audio_speed"),
+    AUDIO_RESET("audio_reset"),
+
     /** P1-09: one id per direction of the original-audio toggle (PM, 8 Oct), and Detach audio. */
     MUTE_ORIGINAL("mute_original"),
     UNMUTE_ORIGINAL("unmute_original"),

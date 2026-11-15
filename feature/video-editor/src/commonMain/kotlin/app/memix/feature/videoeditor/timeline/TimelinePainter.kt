@@ -30,6 +30,7 @@ import app.memix.core.designsystem.MemixShapes
 import app.memix.core.designsystem.MemixSize
 import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.MemixStroke
+import app.memix.core.designsystem.component.waveformDisplayLevel
 import app.memix.core.domain.project.LaneTarget
 import app.memix.core.domain.project.TrimEdge
 import app.memix.core.model.project.MediaRef
@@ -77,6 +78,10 @@ internal class TimelinePainter(
     private val badgeInsetPx = with(density) { MemixSpacing.space1.toPx() }
     private val badgeMinMarginPx = with(density) { MemixSpacing.space2.toPx() }
     private val handleTargetPx = with(density) { MemixSize.touchTarget.toPx() }
+    private val barWidthPx = with(density) { MemixSize.waveformBarWidth.toPx() }
+    private val barPitchPx = with(density) { (MemixSize.waveformBarWidth + MemixSize.waveformBarGap).toPx() }
+    private val barInsetPx = with(density) { MemixSpacing.space1.toPx() }
+    private val labelPatchPx = with(density) { MemixSpacing.space1.toPx() }
 
     /** Thumbnail tiles are squares the main clip's height. */
     val tileSizePx: Int = with(density) { MemixSize.trackHeightVideo.roundToPx() }
@@ -138,6 +143,7 @@ internal class TimelinePainter(
         playheadUs: Long,
         pxPerUs: Float,
         thumbnails: TimelineThumbnails?,
+        waveforms: TimelineWaveforms?,
         missingSources: Set<MediaRef>,
         trim: TrimDrag?,
         move: MoveDrag?,
@@ -148,7 +154,7 @@ internal class TimelinePainter(
         val centerPx = size.width / 2
         val zeroX = xOf(0, playheadUs, centerPx, pxPerUs)
         val endX = xOf(timeline.lengthUs, playheadUs, centerPx, pxPerUs)
-        place.set(playheadUs, centerPx, pxPerUs, endX, timeline.lengthUs, thumbnails, missingSources)
+        place.set(playheadUs, centerPx, pxPerUs, endX, timeline.lengthUs, thumbnails, waveforms, missingSources)
         val draggedId = trim?.item?.id ?: move?.item?.id
         for (rowIndex in lanes.rows.indices) {
             val row = lanes.rows[rowIndex]
@@ -190,15 +196,17 @@ internal class TimelinePainter(
         var endX = 0f
         var lengthUs = 0L
         var thumbnails: TimelineThumbnails? = null
+        var waveforms: TimelineWaveforms? = null
         var missingSources: Set<MediaRef> = emptySet()
 
-        fun set(playheadUs: Long, centerPx: Float, pxPerUs: Float, endX: Float, lengthUs: Long, thumbnails: TimelineThumbnails?, missing: Set<MediaRef>) {
+        fun set(playheadUs: Long, centerPx: Float, pxPerUs: Float, endX: Float, lengthUs: Long, thumbnails: TimelineThumbnails?, waveforms: TimelineWaveforms?, missing: Set<MediaRef>) {
             this.playheadUs = playheadUs
             this.centerPx = centerPx
             this.pxPerUs = pxPerUs
             this.endX = endX
             this.lengthUs = lengthUs
             this.thumbnails = thumbnails
+            this.waveforms = waveforms
             this.missingSources = missing
         }
     }
@@ -237,7 +245,12 @@ internal class TimelinePainter(
                 if (pastEnd) drawPastEndWash(row, left, right, place.endX)
             }
             TrackKind.TEXT, TrackKind.STICKER, TrackKind.MEME_SOUND, TrackKind.AUDIO, TrackKind.EFFECT -> {
-                drawItemBody(row, left, right, trackColorOf(row.track.kind))
+                val color = trackColorOf(row.track.kind)
+                drawItemBody(row, left, right, color)
+                // With bars, the label sits on a solid patch of the clip's color and no bar runs behind it (spec P3-09); the patch is under the wash.
+                val hasPatch = item.sound != null && measureLabelPatch(item, row, left, right)
+                val hasBars = drawWaveform(row, item, startUs, endUs, trimInUs, left, right, place, skipPatch = hasPatch)
+                if (hasBars && hasPatch) drawRoundRect(color, Offset(patchLeft, patchTop), Size(patchRight - patchLeft, patchHeight), CornerRadius(cornerPx))
                 if (pastEnd) drawPastEndWash(row, left, right, place.endX)
                 labelOf(item)?.let { drawItemLabel(item.id, it, row, left, right, place.endX, MemixColors.onTrack) }
             }
@@ -294,6 +307,73 @@ internal class TimelinePainter(
 
     private fun DrawScope.drawItemBody(row: LaneRow, left: Float, right: Float, color: Color) {
         drawRoundRect(color, Offset(left, row.itemTopPx), Size(right - left, row.itemHeightPx), CornerRadius(cornerPx))
+    }
+
+    /**
+     * The bars of a sound clip (spec P3-09 → Waveforms on the timeline): one every 4 dp, centered on the clip's midline, in `on-track`
+     * at `waveform-clip-opacity`, as tall as the loudest peak of the stretch the bar covers times the clip's volume and its fades.
+     * [trimInUs] is where the drawn clip starts in the file, so a trim being dragged moves the bars with its edge. Only the bars in
+     * view are drawn, each a few reads of the peaks; nothing is allocated. Returns whether it drew (the peaks have arrived), so the
+     * label knows to sit on its patch. They fade in over 120 ms when the peaks arrive.
+     */
+    private fun DrawScope.drawWaveform(row: LaneRow, item: ItemUi, startUs: Long, endUs: Long, trimInUs: Long, left: Float, right: Float, place: ItemPlace, skipPatch: Boolean): Boolean {
+        val sound = item.sound ?: return false
+        val waveforms = place.waveforms ?: return false
+        val peaks = waveforms.peaksOf(sound.source) ?: return false
+        val arrival = waveforms.arrivedAt(sound.source)?.let { (it.elapsedNow().inWholeMilliseconds.toFloat() / MemixMotion.durationPress).coerceIn(0f, 1f) } ?: 1f
+        val visibleLeft = max(left, 0f)
+        val visibleRight = min(right, size.width)
+        if (visibleRight <= visibleLeft) return true
+        val firstBar = floor((visibleLeft - left) / barPitchPx).toInt().coerceAtLeast(0)
+        val lastBar = ceil((visibleRight - left) / barPitchPx).toInt()
+        val color = MemixColors.onTrack.copy(alpha = MemixSize.waveformClipOpacity * arrival)
+        val maxHeightPx = row.itemHeightPx - 2 * barInsetPx
+        val midY = row.itemTopPx + row.itemHeightPx / 2
+        val usPerBar = barPitchPx / place.pxPerUs
+        val clipLengthUs = endUs - startUs
+        // The fades a slider is dragging to, before they are committed (P3-09).
+        val live = waveforms.liveFades?.takeIf { it.itemId == item.id }
+        val fadeInUs = live?.fadeInUs ?: sound.fadeInUs
+        val fadeOutUs = live?.fadeOutUs ?: sound.fadeOutUs
+        for (bar in firstBar until lastBar) {
+            val x = left + bar * barPitchPx
+            if (x >= right) break
+            if (skipPatch && x + barWidthPx > patchLeft && x < patchRight) continue
+            val relativeUs = (bar * usPerBar).toLong()
+            // The stretch of the file this bar covers: the timeline's time at the clip's speed.
+            val fromUs = trimInUs + (relativeUs * sound.speed).toLong()
+            val toUs = trimInUs + ((relativeUs + usPerBar) * sound.speed).toLong()
+            val level = waveformDisplayLevel(peaks.peakBetween(fromUs, toUs))
+            val fade = fadeGain(relativeUs + (usPerBar / 2).toLong(), clipLengthUs, fadeInUs, fadeOutUs)
+            val height = (level * sound.volume * fade * maxHeightPx).coerceIn(barWidthPx, maxHeightPx)
+            drawRoundRect(color, Offset(x, midY - height / 2), Size(barWidthPx, height), CornerRadius(barWidthPx / 2))
+        }
+        return true
+    }
+
+    // Where the label's patch goes, measured into the fields below (no allocation per frame); false when the item has no label that fits.
+    private var patchLeft = 0f
+    private var patchRight = 0f
+    private var patchTop = 0f
+    private var patchHeight = 0f
+
+    private fun measureLabelPatch(item: ItemUi, row: LaneRow, left: Float, right: Float): Boolean {
+        val text = labelOf(item) ?: return false
+        val labelLeft = max(left, 0f) + labelPaddingPx
+        val layout = labelLayout(item.id, text, right - labelPaddingPx - labelLeft) ?: return false
+        patchLeft = labelLeft - labelPatchPx
+        patchRight = labelLeft + layout.size.width + labelPatchPx
+        patchHeight = layout.size.height.toFloat()
+        patchTop = row.itemTopPx + (row.itemHeightPx - patchHeight) / 2
+        return true
+    }
+
+    /** 0 to 1: how loud a clip [clipLengthUs] long is [relativeUs] after its start, under a fade in and a fade out (a fade shortens the bars toward the edge). */
+    private fun fadeGain(relativeUs: Long, clipLengthUs: Long, fadeInUs: Long, fadeOutUs: Long): Float {
+        val fadingIn = if (fadeInUs > 0 && relativeUs < fadeInUs) relativeUs.toFloat() / fadeInUs else 1f
+        val untilEndUs = clipLengthUs - relativeUs
+        val fadingOut = if (fadeOutUs > 0 && untilEndUs < fadeOutUs) untilEndUs.coerceAtLeast(0).toFloat() / fadeOutUs else 1f
+        return min(fadingIn, fadingOut)
     }
 
     /** The part after the end of the video, washed with `scrim`: it doesn't play or export. */

@@ -1,5 +1,6 @@
 package app.memix.core.designsystem.component
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -28,6 +30,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.memix.core.designsystem.MemixColors
@@ -42,6 +46,10 @@ import app.memix.core.designsystem.focusRing
 /**
  * Four or more sibling views of one screen; the row scrolls when it overflows and keeps the selected tab in view.
  * Fewer than four: [SegmentedTabs]. [contentPadding] is the gutter inside the scrolling row, so tabs scroll to the screen edge.
+ *
+ * A tab in [markedTabs] has something set on it and shows a `primary` dot (`space-2` wide) after its label, so a setting on a tab
+ * nobody is looking at isn't forgotten (the Audio effects panel, P3-09). The dot is a second signal: [markedName] turns the label
+ * into the tab's spoken name ("Echo, on"), so it isn't color alone and the visible label still comes first (WCAG 2.5.3).
  */
 @Composable
 fun Tabs(
@@ -50,8 +58,10 @@ fun Tabs(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: Dp = 0.dp,
+    markedTabs: Set<Int> = emptySet(),
+    markedName: (String) -> String = { it },
+    scroll: ScrollState = rememberScrollState(),
 ) {
-    val scroll = rememberScrollState()
     val lefts = remember(labels.size) { IntArray(labels.size) }
     val widths = remember(labels.size) { IntArray(labels.size) }
     var viewportPx by remember { mutableIntStateOf(0) }
@@ -86,7 +96,15 @@ fun Tabs(
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(label, MemixTheme.type.label, color = if (selected) MemixColors.text else MemixColors.textSecondary, maxLines = 1)
+                val marked = index in markedTabs
+                Row(
+                    Modifier.then(if (marked) Modifier.clearAndSetSemantics { contentDescription = markedName(label) } else Modifier),
+                    horizontalArrangement = Arrangement.spacedBy(MemixSpacing.space1),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(label, MemixTheme.type.label, color = if (selected) MemixColors.text else MemixColors.textSecondary, maxLines = 1)
+                    if (marked) Box(Modifier.size(MemixSpacing.space2).clip(MemixShapes.radiusFull).drawBehind { drawRect(MemixColors.primary) })
+                }
             }
         }
     }

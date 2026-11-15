@@ -95,9 +95,19 @@ internal object CompositionPlanner {
             .filterIsInstance<AudioClip>()
             .filter { it.volume > 0f || keepSilent }
             .mapNotNull { it.cutTo(timelineEndUs) }
-            .sortedBy { it.startUs }
+            .sortedBy { it.clip.startUs }
         return packIntoLanes(clips).map { laneClips ->
-            AudioLane(track.id, track.kind, backToBack(laneClips, ::Gap) { it.toSoundClip() })
+            AudioLane(track.id, track.kind, soundSegments(laneClips))
+        }
+    }
+
+    // The lane's sounds back to back from time 0, with a gap for each empty stretch (like [backToBack]).
+    private fun soundSegments(clips: List<CutClip>): List<AudioSegment> = buildList {
+        var cursorUs = 0L
+        for (cut in clips) {
+            if (cut.clip.startUs > cursorUs) add(Gap(cut.clip.startUs - cursorUs))
+            add(cut.toSoundClip())
+            cursorUs = cut.clip.endUs
         }
     }
 
@@ -111,28 +121,35 @@ internal object CompositionPlanner {
                 .map { CaptionClip(it.id, it.startUs.coerceAtLeast(0), minOf(it.endUs, timelineEndUs), it.text, it.style, it.transform) }
         }
 
-    /** The part of this clip that lies between 0 and [timelineEndUs], or null when none of it does. */
-    private fun AudioClip.cutTo(timelineEndUs: Long): AudioClip? {
+    /** A clip cut to the video, and how long it was before the cut ([fullLengthUs]: where its Fade out counts back from). */
+    private class CutClip(val clip: AudioClip, val fullLengthUs: Long) {
+        fun toSoundClip() = SoundClip(clip.id, clip.source, clip.trimInUs, clip.trimOutUs, clip.volume, clip.effects, fullLengthUs)
+    }
+
+    /**
+     * The part of this clip that lies between 0 and [timelineEndUs], or null when none of it does. The cuts are timeline time;
+     * the clip's speed turns them into source time. A clip that starts before 0 (the editor never makes one) loses the start of its Fade in
+     * with the cut head: the fade is not shifted, so the sound would begin a little louder than the timeline shows.
+     */
+    private fun AudioClip.cutTo(timelineEndUs: Long): CutClip? {
         val headCutUs = (-startUs).coerceAtLeast(0)
         val cutStartUs = startUs + headCutUs
-        val cutTrimInUs = trimInUs + headCutUs
-        val cutTrimOutUs = minOf(trimOutUs, cutTrimInUs + (timelineEndUs - cutStartUs))
+        val cutTrimInUs = trimInUs + effects.sourceSpanOf(headCutUs)
+        val cutTrimOutUs = minOf(trimOutUs, cutTrimInUs + effects.sourceSpanOf(timelineEndUs - cutStartUs))
         if (cutTrimOutUs <= cutTrimInUs) return null
-        return copy(startUs = cutStartUs, trimInUs = cutTrimInUs, trimOutUs = cutTrimOutUs)
+        return CutClip(copy(startUs = cutStartUs, trimInUs = cutTrimInUs, trimOutUs = cutTrimOutUs), fullLengthUs = durationUs)
     }
 
     // Clips on one track normally follow each other. When two overlap, the later one goes to the first
     // lane that is free at its start, so both are heard instead of one cutting the other off.
-    private fun packIntoLanes(sortedClips: List<AudioClip>): List<List<AudioClip>> {
-        val lanes = mutableListOf<MutableList<AudioClip>>()
-        for (clip in sortedClips) {
-            val freeLane = lanes.firstOrNull { it.last().endUs <= clip.startUs }
-            if (freeLane != null) freeLane.add(clip) else lanes.add(mutableListOf(clip))
+    private fun packIntoLanes(sortedClips: List<CutClip>): List<List<CutClip>> {
+        val lanes = mutableListOf<MutableList<CutClip>>()
+        for (cut in sortedClips) {
+            val freeLane = lanes.firstOrNull { it.last().clip.endUs <= cut.clip.startUs }
+            if (freeLane != null) freeLane.add(cut) else lanes.add(mutableListOf(cut))
         }
         return lanes
     }
-
-    private fun AudioClip.toSoundClip() = SoundClip(id, source, trimInUs, trimOutUs, volume)
 
     /** [sortedItems] (not overlapping) as back-to-back segments from time 0, with a gap for each empty stretch. */
     private fun <T : TimelineItem, S> backToBack(sortedItems: List<T>, gap: (Long) -> S, segment: (T) -> S): List<S> =

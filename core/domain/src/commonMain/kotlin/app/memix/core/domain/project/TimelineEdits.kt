@@ -47,8 +47,8 @@ fun Project.splitItem(itemId: String, atUs: Long, newItemId: String): Project {
     if (!canSplit(itemId, atUs)) return this
     val (track, item) = findItem(itemId) ?: return this
     val leftLengthUs = atUs - item.startUs
-    val left = item.withLength(leftLengthUs)
-    val right = item.withId(newItemId).withStart(atUs).trimmedFromStart(leftLengthUs)
+    val left = item.withLength(leftLengthUs).withoutFade(FadeEdge.OUT).withFadesFitted()
+    val right = item.withId(newItemId).withStart(atUs).trimmedFromStart(leftLengthUs).withoutFade(FadeEdge.IN).withFadesFitted()
     return replaceTrack(track.copy(items = track.items.flatMap { if (it.id == itemId) listOf(left, right) else listOf(it) }))
 }
 
@@ -87,7 +87,7 @@ fun Project.trimItem(itemId: String, edge: TrimEdge, edgeUs: Long): Project {
     val trimmed = when (edge) {
         TrimEdge.START -> item.withStart(clampedUs).trimmedFromStart(clampedUs - item.startUs)
         TrimEdge.END -> item.withLength(clampedUs - item.startUs)
-    }
+    }.withFadesFitted()
     if (track.kind != TrackKind.MAIN_VIDEO) return replaceTrack(track.copy(items = track.items.map { if (it.id == itemId) trimmed else it }))
     // The order from before the trim: a start dragged past the previous clip's start doesn't swap the two.
     return replaceTrack(track.copy(items = repacked(mainClipsInOrder(track).map { if (it.id == itemId) trimmed else it })))
@@ -206,14 +206,14 @@ internal fun Track.isFree(startUs: Long, endUs: Long): Boolean = items.none { it
 /** How much of the source plays before the item's start: null when there's no limit or it isn't known. */
 private fun TimelineItem.footageBeforeUs(): Long? = when (this) {
     is MediaClip -> if (source.kind == MediaKind.IMAGE) null else trimInUs
-    is AudioClip -> trimInUs
+    is AudioClip -> effects.timelineLengthFloorOf(trimInUs)
     is TextItem, is StickerItem, is EffectItem -> null
 }
 
 /** How much of the source is left after the item's end; 0 when the source's length isn't known (can't extend). */
 private fun TimelineItem.footageAfterUs(): Long? = when (this) {
     is MediaClip -> if (source.kind == MediaKind.IMAGE) null else source.remainingAfter(trimOutUs)
-    is AudioClip -> source.remainingAfter(trimOutUs)
+    is AudioClip -> effects.timelineLengthOf(source.remainingAfter(trimOutUs))
     is TextItem, is StickerItem, is EffectItem -> null
 }
 
@@ -239,10 +239,13 @@ private fun TimelineItem.withId(id: String): TimelineItem = when (this) {
     is EffectItem -> copy(id = id)
 }
 
-/** The item cut (or extended) to [lengthUs], keeping its start and where it starts in its source. */
+/**
+ * The item cut (or extended) to [lengthUs] of timeline time, keeping its start and where it starts in its source. A sound
+ * with a speed other than 1 plays more or less of its source in that time.
+ */
 private fun TimelineItem.withLength(lengthUs: Long): TimelineItem = when (this) {
     is MediaClip -> copy(trimOutUs = trimInUs + lengthUs)
-    is AudioClip -> copy(trimOutUs = trimInUs + lengthUs)
+    is AudioClip -> copy(trimOutUs = trimInUs + effects.sourceSpanOf(lengthUs))
     is TextItem -> copy(durationUs = lengthUs)
     is StickerItem -> copy(durationUs = lengthUs)
     is EffectItem -> copy(durationUs = lengthUs)
@@ -254,8 +257,21 @@ private fun TimelineItem.withLength(lengthUs: Long): TimelineItem = when (this) 
  */
 private fun TimelineItem.trimmedFromStart(deltaUs: Long): TimelineItem = when (this) {
     is MediaClip -> if (source.kind == MediaKind.IMAGE) copy(trimInUs = 0, trimOutUs = durationUs - deltaUs) else copy(trimInUs = trimInUs + deltaUs)
-    is AudioClip -> copy(trimInUs = trimInUs + deltaUs)
+    is AudioClip -> copy(trimInUs = (trimInUs + effects.sourceSpanOf(deltaUs)).coerceAtLeast(0))
     is TextItem -> copy(durationUs = durationUs - deltaUs)
     is StickerItem -> copy(durationUs = durationUs - deltaUs)
     is EffectItem -> copy(durationUs = durationUs - deltaUs)
 }
+
+private enum class FadeEdge { IN, OUT }
+
+// A split puts Fade in on the left piece and Fade out on the right one, so it doesn't leave a dip in the middle (spec P3-09 rule 5).
+private fun TimelineItem.withoutFade(edge: FadeEdge): TimelineItem = when {
+    this !is AudioClip -> this
+    edge == FadeEdge.IN -> copy(effects = effects.copy(fadeInUs = 0))
+    else -> copy(effects = effects.copy(fadeOutUs = 0))
+}
+
+// A trim or a split that made a sound shorter keeps its fades inside it, in the same step.
+private fun TimelineItem.withFadesFitted(): TimelineItem =
+    if (this is AudioClip) copy(effects = effects.withFadesFitted(durationUs)) else this

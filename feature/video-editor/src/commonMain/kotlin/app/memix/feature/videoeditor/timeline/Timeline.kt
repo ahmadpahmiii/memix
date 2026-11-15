@@ -114,6 +114,7 @@ internal fun Timeline(
     landed: LandedItems?,
     preview: EditorPreview?,
     thumbnails: TimelineThumbnails?,
+    waveforms: TimelineWaveforms?,
     originalAudio: OriginalAudioUi?,
     addSoundPillFocus: FocusRequester,
     addMediaTileFocus: FocusRequester,
@@ -122,7 +123,7 @@ internal fun Timeline(
 ) {
     // Time always runs left to right, whatever the language (spec → Structure).
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        TimelineContent(timeline, selectedItemId, trimRanges, reorder, landed, preview, thumbnails, originalAudio, addSoundPillFocus, addMediaTileFocus, onIntent, modifier)
+        TimelineContent(timeline, selectedItemId, trimRanges, reorder, landed, preview, thumbnails, waveforms, originalAudio, addSoundPillFocus, addMediaTileFocus, onIntent, modifier)
     }
 }
 
@@ -143,6 +144,7 @@ private fun TimelineContent(
     landed: LandedItems?,
     preview: EditorPreview?,
     thumbnails: TimelineThumbnails?,
+    waveforms: TimelineWaveforms?,
     originalAudio: OriginalAudioUi?,
     addSoundPillFocus: FocusRequester,
     addMediaTileFocus: FocusRequester,
@@ -200,6 +202,7 @@ private fun TimelineContent(
     AnimateLanes(motion, lanes)
     val reordering = state.reorder != null
     if (thumbnails != null) LoadThumbnails(controller, timeline, thumbnails, painter.tileSizePx, reordering, onFade = { fadeFrame = it })
+    if (waveforms != null) FadeInWaveforms(waveforms, onFade = { fadeFrame = it })
 
     Box(
         modifier
@@ -293,6 +296,7 @@ private fun TimelineContent(
                             // Read so the strip redraws when a tile arrives and while it fades in.
                             fadeFrame
                             thumbnails?.version
+                            waveforms?.version
                             val playheadUs = state.playheadUs
                             val pxPerUs = pxPerUs(state.dpPerSecond, density.density)
                             val missingSources = thumbnails?.missingSources.orEmpty()
@@ -301,7 +305,7 @@ private fun TimelineContent(
                             // In reorder mode the main clips are tiles, drawn over the wash in the layer above.
                             val strip = state.reorder
                             with(painter) {
-                                drawLanes(timeline, lanes, playheadUs, pxPerUs, thumbnails, missingSources, trim, move, motion, hideMainClips = strip != null)
+                                drawLanes(timeline, lanes, playheadUs, pxPerUs, thumbnails, waveforms, missingSources, trim, move, motion, hideMainClips = strip != null)
                             }
                             // A carried item draws its own outline where it goes.
                             if (strip == null && move == null) {
@@ -555,6 +559,19 @@ private fun LoadThumbnails(
     }
     LaunchedEffect(thumbnails) {
         snapshotFlow { thumbnails.version }.collectLatest {
+            val fadeEnd = TimeSource.Monotonic.markNow() + MemixMotion.durationPress.milliseconds
+            while (fadeEnd.hasNotPassedNow()) withFrameNanos(onFade)
+            // One more frame, drawn at full opacity.
+            withFrameNanos(onFade)
+        }
+    }
+}
+
+/** Ticks [onFade] every frame for 120 ms after peaks arrive, so the new bars fade in (spec P3-09 → Motion); the sound's lanes redraw on each tick. */
+@Composable
+private fun FadeInWaveforms(waveforms: TimelineWaveforms, onFade: (frameTimeNanos: Long) -> Unit) {
+    LaunchedEffect(waveforms) {
+        snapshotFlow { waveforms.version }.collectLatest {
             val fadeEnd = TimeSource.Monotonic.markNow() + MemixMotion.durationPress.milliseconds
             while (fadeEnd.hasNotPassedNow()) withFrameNanos(onFade)
             // One more frame, drawn at full opacity.

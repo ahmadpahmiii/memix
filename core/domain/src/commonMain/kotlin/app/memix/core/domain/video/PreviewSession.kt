@@ -79,6 +79,13 @@ interface PreviewSession : AutoCloseable {
     fun previewVolume(itemId: String, volume: Float)
 
     /**
+     * While an Audio effects fade slider moves (P3-09): sets the two fades of sound [itemId] (µs of timeline time) on the playing
+     * sound right away, without rebuilding. Pitch and speed can't be changed this way: they are heard after the release, when the
+     * composition is rebuilt. The next [update] replaces it with the project's fades.
+     */
+    fun previewFades(itemId: String, fadeInUs: Long, fadeOutUs: Long)
+
+    /**
      * While a voiceover records without headphones (P3-08): plays the picture but none of the project's sound, so the
      * speaker's sound doesn't go into the take. Engine only: the project, its volumes and its mutes are not touched, and
      * [update] and seeks keep it. false plays the sound again.

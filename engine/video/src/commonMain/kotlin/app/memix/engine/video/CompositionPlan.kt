@@ -1,5 +1,6 @@
 package app.memix.engine.video
 
+import app.memix.core.model.project.AudioEffects
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.MediaKind
@@ -132,8 +133,16 @@ internal data class SoundClip(
     val trimOutUs: Long,
     /** 1 is the original loudness; 0 only in a preview's plan (export plans leave silent clips out). */
     val volume: Float,
+    /** The Audio effects panel's settings (P3-09); preview and export build the same processors from them. */
+    val effects: AudioEffects = AudioEffects(),
+    /**
+     * How long the whole clip lasts on the timeline, µs, before the end of the video cut it: Fade out counts back from
+     * here, so a clip that runs past the end still fades at its own end. Equals [durationUs] when nothing was cut.
+     */
+    val clipLengthUs: Long = effects.timelineLengthOf(trimOutUs - trimInUs),
 ) : AudioSegment {
-    override val durationUs: Long get() = trimOutUs - trimInUs
+    // Timeline length: the part of the source that plays, at the effects' speed.
+    override val durationUs: Long get() = effects.timelineLengthOf(trimOutUs - trimInUs)
 }
 
 /**

@@ -9,6 +9,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ColumnScope
@@ -26,7 +27,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -40,6 +44,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
@@ -49,6 +54,7 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixMotion
+import app.memix.core.designsystem.MemixSize
 import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.MemixStroke
 import app.memix.core.designsystem.MemixTheme
@@ -69,6 +75,10 @@ import app.memix.core.designsystem.Text
  * reserves the space; the caller anchors it at the bottom and refits the stage above it), and then scrolls inside.
  * [headerActions] sit between the title and Done and wrap under the title when the row doesn't fit (the Layers panel's
  * Move buttons); with [scrolls] false the content scrolls itself (a lazy list) instead of the panel.
+ *
+ * [pinned] stays under the title while the content scrolls (the Audio effects panel's tabs, P3-09). Title row plus [pinned] take
+ * at most `pinned-bar-max-fraction` of the panel: at a large font, where they would take more, [pinned] scrolls with the content
+ * and only the title row stays.
  */
 @Composable
 fun ToolPanel(
@@ -80,6 +90,7 @@ fun ToolPanel(
     contentMaxHeight: Dp? = null,
     headerActions: (@Composable () -> Unit)? = null,
     scrolls: Boolean = true,
+    pinned: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val reduceMotion = MemixTheme.reduceMotion
@@ -92,10 +103,17 @@ fun ToolPanel(
     ) {
         val titleFocus = remember { FocusRequester() }
         LaunchedEffect(Unit) { titleFocus.requestFocus() }
+        // Measured once, wherever the pinned part is drawn, so moving it into the scrolling content can't flip the decision back.
+        var panelHeightPx by remember { mutableIntStateOf(0) }
+        var titleRowPx by remember { mutableIntStateOf(0) }
+        var pinnedPx by remember { mutableIntStateOf(0) }
+        val pinnedFits = pinned == null || (titleRowPx + pinnedPx) <= panelHeightPx * MemixSize.pinnedBarMaxFraction
+        val pinnedPart: @Composable () -> Unit = { if (pinned != null) Box(Modifier.onSizeChanged { pinnedPx = it.height }) { pinned() } }
         Column(
             Modifier
                 // The video editor's panel fills the region it covers; the photo editor's is as tall as its content, up to a cap.
                 .then(if (contentMaxHeight == null) Modifier.fillMaxSize() else Modifier.fillMaxWidth().heightIn(max = contentMaxHeight))
+                .onSizeChanged { panelHeightPx = it.height }
                 // Takes every touch in its region, so nothing reaches the timeline underneath.
                 .pointerInput(Unit) {}
                 .background(MemixColors.surface)
@@ -111,30 +129,36 @@ fun ToolPanel(
                 .padding(MemixSpacing.space4),
             verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4),
         ) {
-            val titleModifier = Modifier.focusRequester(titleFocus).focusable().semantics { heading() }
-            if (headerActions == null) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(title, MemixTheme.type.title, titleModifier.weight(1f))
-                    Button(doneLabel, onDone, variant = ButtonVariant.Ghost)
-                }
-            } else {
-                FlowRow(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    itemVerticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(title, MemixTheme.type.title, titleModifier)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        headerActions()
+            // No gap between the title row and what is pinned under it: both are one header (the Audio effects panel fits two sliders).
+            Column {
+                val titleModifier = Modifier.focusRequester(titleFocus).focusable().semantics { heading() }
+                if (headerActions == null) {
+                    Row(Modifier.fillMaxWidth().onSizeChanged { titleRowPx = it.height }, verticalAlignment = Alignment.CenterVertically) {
+                        Text(title, MemixTheme.type.title, titleModifier.weight(1f))
                         Button(doneLabel, onDone, variant = ButtonVariant.Ghost)
                     }
+                } else {
+                    FlowRow(
+                        Modifier.fillMaxWidth().onSizeChanged { titleRowPx = it.height },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        itemVerticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(title, MemixTheme.type.title, titleModifier)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            headerActions()
+                            Button(doneLabel, onDone, variant = ButtonVariant.Ghost)
+                        }
+                    }
                 }
+                if (pinnedFits) pinnedPart()
             }
             Column(
                 Modifier.weight(1f, fill = false).then(if (scrolls) Modifier.verticalScroll(rememberScrollState()) else Modifier),
                 verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4),
-                content = content,
-            )
+            ) {
+                if (!pinnedFits) pinnedPart()
+                content()
+            }
         }
     }
 }

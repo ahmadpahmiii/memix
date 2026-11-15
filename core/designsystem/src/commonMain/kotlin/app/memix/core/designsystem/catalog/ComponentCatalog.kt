@@ -463,7 +463,7 @@ private fun IconSection() = Section("Icons") {
         "undo" to MemixIcons.Undo, "redo" to MemixIcons.Redo, "edit" to MemixIcons.Edit, "split" to MemixIcons.Split,
         "delete" to MemixIcons.Delete, "duplicate" to MemixIcons.Duplicate, "reorder" to MemixIcons.Reorder,
         "volume" to MemixIcons.Volume, "move_here" to MemixIcons.MoveHere, "replace" to MemixIcons.Replace,
-        "volume_off" to MemixIcons.VolumeOff, "detach_audio" to MemixIcons.DetachAudio, "text" to MemixIcons.Text,
+        "volume_off" to MemixIcons.VolumeOff, "detach_audio" to MemixIcons.DetachAudio, "audio_effects" to MemixIcons.AudioEffects, "text" to MemixIcons.Text,
         "edit_text" to MemixIcons.EditText, "style" to MemixIcons.Style, "position" to MemixIcons.Position,
         "minus" to MemixIcons.Minus, "plus" to MemixIcons.Plus, "rotate_left" to MemixIcons.RotateLeft,
         "rotate_right" to MemixIcons.RotateRight, "arrow" to MemixIcons.Arrow, "scale_rotate" to MemixIcons.ScaleRotate,

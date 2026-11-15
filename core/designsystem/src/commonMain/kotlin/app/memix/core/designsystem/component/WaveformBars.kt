@@ -16,9 +16,12 @@ fun waveformBarHeights(peaks: List<Float>, barCount: Int): FloatArray {
         val end = ceil((bar + 1) * peaks.size.toFloat() / barCount).toInt().coerceIn(start + 1, peaks.size)
         var loudest = 0f
         for (index in start until end) loudest = max(loudest, peaks[index])
-        loudest.coerceIn(0f, 1f).pow(DISPLAY_CURVE_EXPONENT)
+        waveformDisplayLevel(loudest)
     }
 }
+
+/** The display curve of one peak (0 to 1): the rows' and the timeline's bars read alike (P3-09). */
+fun waveformDisplayLevel(peak: Float): Float = peak.coerceIn(0f, 1f).pow(DISPLAY_CURVE_EXPONENT)
 
 /** How many bars of [barWidth] with [gap] between them fit in [width], at least one. */
 internal fun waveformBarCount(width: Float, barWidth: Float, gap: Float): Int =

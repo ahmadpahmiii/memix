@@ -33,7 +33,7 @@ Before 09b ships the panel shows only the tabs that exist (Tone, Fades), never a
 - **Tab remembered** for the rest of the visit, else the first tab.
 
 ## Layout
-Panel region at 360 × 640 is about 229 dp (P1-04: timeline 157 plus tool bar 72). Title row 48 plus tabs 48 leave about 133 dp of content, and every tab below is built to fit that at 100% font: two sliders (108 dp), a tile row and a hint, or one slider and one segmented row (128 dp).
+**Budget (corrected in the P3-09a review; the first draft forgot the panel's own padding and the slider's label line).** The region is the timeline plus the tool bar (P1-04): 229 dp at 360 × 640, 302 at 360 × 800, 348 at 412 × 915. After padding (32), the title row (48), the tabs (48, no gap above them, ToolPanel README → Pinned slot) and the gap under them (16), **85 / 158 / 204 dp** are left. A Slider row is about 68 dp (label line plus the 48 dp rail). So at 100% font: **two sliders (152 dp) fit from 360 × 800 up; at 360 × 640 the first slider shows and the second scrolls** (accepted: that size is the floor, not the common phone; the scroll is the ToolPanel's rule). Tone and Fades are two sliders; Bass is two sliders; Echo is a slider and a segmented row; Voice is a tile row and a hint. At 200% font every tab scrolls on every phone.
 - **Title row:** "Audio effects" (`title`, heading), **Reset** (Quiet) and **Done** (Ghost). Reset and Done wrap under the title at large font (P2-04 pattern).
 - **Tabs** (the Tabs component, `Tabs` not SegmentedTabs because there are five, and because an editor panel that grows by ticket takes Tabs from its first ticket): **Voice · Tone · Bass · Echo · Fades**, selected `text` with the white 2 px underline. The row scrolls sideways and the selected tab scrolls into view. **A dot** (8 dp, `space-2`, `primary`) after the label marks a tab that has anything set, so effects set on another tab are never forgotten; it is a second signal with the spoken state "on" (not color alone).
 - **Pinned part:** title row plus tabs. If they would take more than `pinned-bar-max-fraction` (40%) of the panel at large font, the tabs scroll with the content and only the title row stays (the same token, a third use). The content scrolls under what is pinned.
@@ -64,7 +64,7 @@ Panel region at 360 × 640 is about 229 dp (P1-04: timeline 157 plus tool bar 72
 ## Waveforms on the timeline (09a)
 - **Where:** meme sound clips (blue) and audio clips (green): voiceover, imported, detached original audio. **Not** on main video clips (their thumbnails fill them; Questions 3), not on text, sticker or effect clips.
 - **Look:** the P3-03 bars (`waveform-bar-width` 2 dp, `waveform-bar-gap` 2 dp, `radius-full` ends), centered on the clip's midline, in `on-track` at `waveform-clip-opacity` (60%). Maximum bar height: the clip's height (`track-height`, 28 dp) minus `space-1` above and below, 20 dp. A bar is never shorter than its width, so silence is a dotted line. About 3.3:1 on `track-audio` and 3.6:1 on `track-meme-sound` (computed by hand; QA measures a screenshot; the graphic needs 3:1, WCAG 2.2 SC 1.4.11). The clip's label (sticky, P1-05) sits on a **solid patch of the clip's color** (`space-1` side padding, `radius-sm`), so no bar runs behind a letter and the label stays `on-track` 6.8:1 and 7.9:1 as before.
-- **What a bar is:** the sound's peaks over the clip's trimmed range, resampled to one bar per 4 dp at the current zoom (the maximum in each bucket), times the clip's **volume** (capped at the clip height) and its **fades** (a fade shortens the bars toward the edge, so a fade is visible as the shape). Pitch, echo, bass and distortion do not change the bars; speed changes how many bars the clip has. Drawn in the draw phase only: dragging a Volume or fade slider redraws bars with no recomposition (mobile-performance skill).
+- **What a bar is:** the sound's peaks over the clip's trimmed range, resampled to one bar per 4 dp at the current zoom (the maximum in each bucket), times the clip's **volume** (capped at the clip height) and its **fades** (a fade shortens the bars toward the edge, so a fade is visible as the shape). Pitch, echo, bass and distortion do not change the bars; speed changes how many bars the clip has. Drawn in the draw phase only (mobile-performance skill). The panel covers the timeline while a slider moves, so the bars follow a Volume or fade change **when the change is committed** (on release), seen when the panel closes; nothing needs to redraw while dragging (P3-09a review).
 - **Peaks:** catalog sounds use `waveform_path` (P3-03; about 32 to 64 values, so a long zoom-in shows stepped bars, accepted); voiceover, imported and detached audio need peaks at about 100 a second, computed once when the clip is created and cached with the project's media (the engineer's call; Requests).
 - **While peaks are missing or loading:** no bars and no placeholder; the label alone, as today. Bars fade in over 120 ms when they arrive. A file that can't be decoded shows nothing (the clip's existing missing-file look still applies).
 - **Past the end of the video:** the wash covers bars as it covers everything (P1-05). **Selected:** the white outline and handles as ever; bars unchanged.
@@ -92,10 +92,10 @@ Panel region at 360 × 640 is about 229 dp (P1-04: timeline 157 plus tool bar 72
 | State | What shows | Copy |
 | --- | --- | --- |
 | Panel open, nothing set | Title, Reset, Done, tabs with no dots, the open tab at its defaults | `fx_title` |
-| A slider being dragged (fast phone) | Heard live; readout moves; one undo step on release | none |
+| A slider being dragged (fast phone) | Readout moves; **Fade sliders are heard and their bars redraw while dragging; Pitch and Speed are heard after release in 09a** (live pitch and speed deferred, PM to schedule; P3-09a review, release-to-sound under 1 s); one undo step on release | none |
 | A slider being dragged (slow phone) | Readout moves; heard after release; status after 1 s | `fx_preparing` |
 | Effect set | The tab has a dot; the clip's spoken description says effects are on | `a11y_state_effects_on` |
-| Fade at its limit | The slider stops; one SegmentTick; no toast | none |
+| Fade at its limit | The thumb and readout stop at what the other fade leaves; no toast. (SegmentTick at the stop dropped in the P3-09a review: the shared Slider ticks only at a snap value, and the thumb stopping is a clear enough signal. Revisit if the owner test shows people drag against the stop.) | none |
 | Clip too short to fade (under 0.3 s) | Sliders at 0; a tap explains | `fx_fade_too_short` |
 | Speed makes the clip overlap its neighbor | The clip moves to another lane; lanes slide; toast 4 s | `fx_moved_lane_toast` |
 | Speed pushes the clip past the end of the video | Wash on the overhang, nothing said | none |
@@ -161,7 +161,8 @@ English source; id, es, pt and hi are machine drafts until P5-06. **Budget** = l
 | `fx_voice_megaphone` | Megaphone | 12 | Megafon | Megáfono | Megafone | मेगाफ़ोन |
 | `fx_voice_cave` | Cave | 12 | Gua | Cueva | Caverna | गुफ़ा |
 | `fx_voice_hint` | Voices stack with pitch, bass and echo. | 56 | Efek suara digabung dengan nada, bass, dan gema. | Las voces se suman al tono, los graves y el eco. | As vozes se somam ao tom, aos graves e ao eco. | आवाज़ के इफ़ेक्ट पिच, बास और इको के साथ जुड़ते हैं। |
-| `fx_seconds` | {n} s | 8 | {n} dtk | {n} s | {n} s | {n} से |
+| `fx_seconds` | {n} s | 10 | {n} dtk | {n} s | {n} s | {n} सेकंड |
+| `a11y_audio_effects_reset` | Audio effects reset | 32 | Efek audio direset | Efectos de audio restablecidos | Efeitos de áudio redefinidos | ऑडियो इफ़ेक्ट रीसेट हो गए |
 | `fx_speed_value` | {n}× | 8 | {n}× | {n}× | {n}× | {n}× |
 | `fx_nothing_to_reset` | No effects to reset. | 36 | Belum ada efek untuk direset. | No hay efectos que restablecer. | Não há efeitos para redefinir. | रीसेट करने के लिए कोई इफ़ेक्ट नहीं है। |
 | `fx_fade_too_short` | This sound is too short to fade. | 44 | Suara ini terlalu pendek untuk di-fade. | Este sonido es demasiado corto para un fundido. | Este som é curto demais para um fade. | यह साउंड फ़ेड के लिए बहुत छोटा है। |
