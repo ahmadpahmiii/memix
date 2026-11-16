@@ -140,9 +140,14 @@ internal data class SoundClip(
      * here, so a clip that runs past the end still fades at its own end. Equals [durationUs] when nothing was cut.
      */
     val clipLengthUs: Long = effects.timelineLengthOf(trimOutUs - trimInUs),
+    /**
+     * How long the echo and the voice ring on after the clip, µs: the effects' tail, shortened where the end of the video comes
+     * first. The sound is built that long, so its lane is busy for [durationUs].
+     */
+    val tailUs: Long = 0,
 ) : AudioSegment {
-    // Timeline length: the part of the source that plays, at the effects' speed.
-    override val durationUs: Long get() = effects.timelineLengthOf(trimOutUs - trimInUs)
+    // Timeline length: the part of the source that plays, at the effects' speed, plus the tail that rings after it.
+    override val durationUs: Long get() = effects.timelineLengthOf(trimOutUs - trimInUs) + tailUs
 }
 
 /**

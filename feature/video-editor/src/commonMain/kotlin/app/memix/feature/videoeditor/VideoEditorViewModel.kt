@@ -246,6 +246,8 @@ class VideoEditorViewModel(
             is VideoEditorIntent.AudioEffectsTabSelected -> audioEffects.selectTab(intent.tab)
             is VideoEditorIntent.AudioEffectChanged -> audioEffects.change(intent.part, intent.value)
             is VideoEditorIntent.AudioEffectReleased -> audioEffects.release(intent.part)
+            is VideoEditorIntent.AudioVoiceSelected -> audioEffects.selectVoice(intent.preset)
+            is VideoEditorIntent.AudioEchoLengthSelected -> audioEffects.selectEchoLength(intent.length)
             VideoEditorIntent.ResetAudioEffects -> audioEffects.reset()
             VideoEditorIntent.VoiceoverTool -> voiceoverControl.open()
             is VideoEditorIntent.VoiceoverRecord -> voiceoverControl.record(intent.microphoneGranted)
@@ -951,7 +953,8 @@ class VideoEditorViewModel(
 // Intents that change the project or leave the editor, which a running voiceover take makes wait for Stop.
 private fun VideoEditorIntent.waitsForStop(): Boolean = when (this) {
     VideoEditorIntent.Undo, VideoEditorIntent.Redo, VideoEditorIntent.ExportTool, VideoEditorIntent.RatioPill, VideoEditorIntent.ToggleOriginalAudio,
-    VideoEditorIntent.AudioEffectsTool, VideoEditorIntent.ResetAudioEffects, is VideoEditorIntent.AudioEffectReleased -> true
+    VideoEditorIntent.AudioEffectsTool, VideoEditorIntent.ResetAudioEffects, is VideoEditorIntent.AudioEffectReleased,
+    is VideoEditorIntent.AudioVoiceSelected, is VideoEditorIntent.AudioEchoLengthSelected -> true
     else -> false
 }
 

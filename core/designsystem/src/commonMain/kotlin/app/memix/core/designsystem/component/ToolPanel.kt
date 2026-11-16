@@ -153,7 +153,8 @@ fun ToolPanel(
                 if (pinnedFits) pinnedPart()
             }
             Column(
-                Modifier.weight(1f, fill = false).then(if (scrolls) Modifier.verticalScroll(rememberScrollState()) else Modifier),
+                // A scrolling body ends with the panel's gutter, so its last line can scroll fully into view.
+                Modifier.weight(1f, fill = false).then(if (scrolls) Modifier.verticalScroll(rememberScrollState()).padding(bottom = MemixSpacing.space4) else Modifier),
                 verticalArrangement = Arrangement.spacedBy(MemixSpacing.space4),
             ) {
                 if (!pinnedFits) pinnedPart()

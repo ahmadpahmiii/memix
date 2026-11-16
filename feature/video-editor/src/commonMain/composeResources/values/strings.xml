@@ -191,4 +191,24 @@
     <string name="a11y_fx_tab_on">%1$s, on</string>
     <string name="a11y_audio_effects_reset">Audio effects reset</string>
     <string name="edit_fx_reset">Reset effects</string>
+    <!-- Audio effects, second half (P3-09b): Voice, Bass and Echo tabs. Budgets and translator notes: docs/ux/specs/P3-09-audio-effects.md -> Copy. -->
+    <string name="fx_tab_voice">Voice</string>
+    <string name="fx_tab_bass">Bass</string>
+    <string name="fx_tab_echo">Echo</string>
+    <string name="fx_bass">Bass boost</string>
+    <string name="fx_distortion">Distortion</string>
+    <string name="fx_echo">Echo</string>
+    <string name="fx_echo_length">Echo length</string>
+    <string name="fx_length_short">Short</string>
+    <string name="fx_length_medium">Medium</string>
+    <string name="fx_length_long">Long</string>
+    <string name="fx_voice_none">None</string>
+    <string name="fx_voice_chipmunk">Chipmunk</string>
+    <string name="fx_voice_giant">Giant</string>
+    <string name="fx_voice_robot">Robot</string>
+    <string name="fx_voice_megaphone">Megaphone</string>
+    <string name="fx_voice_cave">Cave</string>
+    <string name="fx_voice_hint">Voices stack with pitch, bass and echo.</string>
+    <string name="edit_fx_voice">Voice</string>
+    <string name="edit_fx_echo_length">Echo length</string>
 </resources>

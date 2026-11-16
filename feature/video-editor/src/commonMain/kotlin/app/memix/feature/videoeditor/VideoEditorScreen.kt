@@ -196,6 +196,11 @@ import memix.feature.video_editor.generated.resources.fx_missing_explain
 import memix.feature.video_editor.generated.resources.fx_nothing_to_reset
 import memix.feature.video_editor.generated.resources.fx_pitch
 import memix.feature.video_editor.generated.resources.fx_speed
+import memix.feature.video_editor.generated.resources.fx_bass
+import memix.feature.video_editor.generated.resources.fx_distortion
+import memix.feature.video_editor.generated.resources.fx_echo
+import memix.feature.video_editor.generated.resources.edit_fx_echo_length
+import memix.feature.video_editor.generated.resources.edit_fx_voice
 import memix.feature.video_editor.generated.resources.fx_fade_too_short
 import memix.feature.video_editor.generated.resources.a11y_audio_effects_reset
 import memix.core.ui.generated.resources.editor_close
@@ -928,6 +933,11 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.FADE_OUT -> Res.string.fx_fade_out
         VideoEdit.PITCH -> Res.string.fx_pitch
         VideoEdit.SPEED -> Res.string.fx_speed
+        VideoEdit.BASS -> Res.string.fx_bass
+        VideoEdit.DISTORTION -> Res.string.fx_distortion
+        VideoEdit.ECHO -> Res.string.fx_echo
+        VideoEdit.ECHO_LENGTH -> Res.string.edit_fx_echo_length
+        VideoEdit.VOICE -> Res.string.edit_fx_voice
         VideoEdit.RESET_EFFECTS -> Res.string.edit_fx_reset
         VideoEdit.ADD_SOUND -> Res.string.edit_add_sound
         VideoEdit.ADD_MEDIA -> Res.string.edit_add_media

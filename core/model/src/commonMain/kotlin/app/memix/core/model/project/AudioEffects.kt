@@ -54,6 +54,22 @@ data class AudioEffects(
     /** The Echo tab's mark (P3-09b). */
     val hasEcho: Boolean get() = echoAmount > 0f
 
+    /** True when the voice, bass, distortion or echo can raise the level: the chain then ends in the peak limiter ([AudioEffectStage.LIMITER]). */
+    val needsLimiter: Boolean get() = hasVoice || hasBass || hasEcho
+
+    /** The bass shelf of [bassBoost], or null while it is off. */
+    val bassFilter: BiquadSpec? get() = AudioEffectsCatalog.bassFilter(bassBoost)
+
+    /** The echo of [echoAmount] and [echoLength], or null while the amount is 0. */
+    val echoSpec: EchoSpec? get() = AudioEffectsCatalog.echoSpec(echoAmount, echoLength)
+
+    /**
+     * How long the sound keeps ringing after the clip's last sample (the echo's repeats and a voice's room), µs: up to
+     * [AudioEffectsCatalog.ECHO_TAIL_MAX_US], 0 when nothing rings. The engine extends the clip by this much, less where the video ends first.
+     * A set Fade out means no tail: the fade ends the sound at the clip's end, so a tail would be silence that only reserves a lane.
+     */
+    val tailUs: Long get() = if (fadeOutUs > 0) 0L else minOf(AudioEffectsCatalog.ECHO_TAIL_MAX_US, (VoiceRecipes.of(voice)?.echo?.tailUs ?: 0L) + (echoSpec?.tailUs ?: 0L))
+
     /** How long a stretch of the source of [sourceSpanUs] lasts on the timeline at this [speed]. */
     fun timelineLengthOf(sourceSpanUs: Long): Long =
         if (speed == 1f) sourceSpanUs else (sourceSpanUs / speed.toDouble()).roundToLong()
@@ -120,15 +136,49 @@ object AudioEffectsCatalog {
     /** The echo's tail rings out after the clip, up to this long, and is cut at the end of the video (P3-09b). */
     const val ECHO_TAIL_MAX_US = 1_500_000L
 
+    /** Bass boost: a low shelf at [BASS_SHELF_HZ] that lifts everything below it by up to [BASS_MAX_GAIN_DB] (spec: about +12 dB below a few hundred hertz). */
+    const val BASS_SHELF_HZ = 250f
+    const val BASS_MAX_GAIN_DB = 12f
+
+    /** Distortion: a soft clip (tanh) whose input gain goes from 1 (clean) at 0% to [DISTORTION_MAX_GAIN] (deep-fried) at 100%. */
+    const val DISTORTION_MAX_GAIN = 25f
+
+    /** The loudest first repeat of the echo, as a share of the sound, and the share of each repeat that comes back (at 100%). */
+    const val ECHO_MAX_WET = 0.8f
+    const val ECHO_MAX_FEEDBACK = 0.45f
+
+    /** The peak limiter's ceiling, dBFS: stacked effects never reach full scale (spec P3-09 rule 7). */
+    const val LIMITER_CEILING_DB = -1f
+
+    fun bassFilter(bassBoost: Float): BiquadSpec? =
+        if (bassBoost <= 0f) null else BiquadSpec(BiquadShape.LOW_SHELF, BASS_SHELF_HZ, gainDb = BASS_MAX_GAIN_DB * bassBoost.coerceAtMost(1f))
+
+    /** The multiplier a distortion of [distortion] (0 to 1) puts on the signal before it is soft-clipped. */
+    fun distortionGain(distortion: Float): Float = 1f + (DISTORTION_MAX_GAIN - 1f) * distortion.coerceIn(0f, 1f)
+
+    fun echoSpec(amount: Float, length: EchoLength): EchoSpec? {
+        if (amount <= 0f) return null
+        val level = amount.coerceAtMost(1f)
+        return EchoSpec(length.delayUs, feedback = ECHO_MAX_FEEDBACK * level, wet = ECHO_MAX_WET * level)
+    }
+
     /** The stages in the one order every engine applies them; the clip's volume comes after the last one. */
     val CHAIN_ORDER: List<AudioEffectStage> = AudioEffectStage.entries
+
+    /** The Bass, Distortion and Echo sliders move in 10% steps. */
+    const val LEVEL_STEP = 0.1f
+
+    /** [level] snapped to the sliders' 10% grid and kept inside 0 to 1; a whole number of steps over [LEVEL_STEPS], so 0.3 is exactly 0.3f. */
+    fun cleanLevel(level: Float): Float = (level.coerceIn(0f, 1f) * LEVEL_STEPS).roundToLong() / LEVEL_STEPS
+
+    private const val LEVEL_STEPS = 10f
 
     /** [speed] snapped to the panel's 0.1 grid and kept inside the range: 1.2000000476837158 is 1.2. */
     fun cleanSpeed(speed: Float): Float = (speed.coerceIn(MIN_SPEED, MAX_SPEED) * 10f).roundToLong() / 10f
 }
 
 /**
- * One stage of the chain, in the order of [AudioEffectsCatalog.CHAIN_ORDER]. P3-09b adds LIMITER (the peak limiter at about -1 dBFS)
- * after FADES: it ends the effects, before the clip's volume.
+ * One stage of the chain, in the order of [AudioEffectsCatalog.CHAIN_ORDER]. LIMITER (P3-09b, the peak limiter at
+ * [AudioEffectsCatalog.LIMITER_CEILING_DB]) ends the effects, before the clip's volume.
  */
-enum class AudioEffectStage { SPEED_AND_PITCH, VOICE, BASS_AND_DISTORTION, ECHO, FADES }
+enum class AudioEffectStage { SPEED_AND_PITCH, VOICE, BASS_AND_DISTORTION, ECHO, FADES, LIMITER }

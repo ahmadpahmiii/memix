@@ -188,4 +188,24 @@
     <string name="a11y_fx_tab_on">%1$s, ativo</string>
     <string name="a11y_audio_effects_reset">Efeitos de áudio redefinidos</string>
     <string name="edit_fx_reset">Redefinir efeitos</string>
+    <!-- Audio effects, second half (P3-09b): Voice, Bass and Echo tabs. Budgets and translator notes: docs/ux/specs/P3-09-audio-effects.md -> Copy. -->
+    <string name="fx_tab_voice">Voz</string>
+    <string name="fx_tab_bass">Graves</string>
+    <string name="fx_tab_echo">Eco</string>
+    <string name="fx_bass">Reforço de graves</string>
+    <string name="fx_distortion">Distorção</string>
+    <string name="fx_echo">Eco</string>
+    <string name="fx_echo_length">Duração do eco</string>
+    <string name="fx_length_short">Curto</string>
+    <string name="fx_length_medium">Médio</string>
+    <string name="fx_length_long">Longo</string>
+    <string name="fx_voice_none">Nenhuma</string>
+    <string name="fx_voice_chipmunk">Esquilo</string>
+    <string name="fx_voice_giant">Gigante</string>
+    <string name="fx_voice_robot">Robô</string>
+    <string name="fx_voice_megaphone">Megafone</string>
+    <string name="fx_voice_cave">Caverna</string>
+    <string name="fx_voice_hint">As vozes se somam ao tom, aos graves e ao eco.</string>
+    <string name="edit_fx_voice">Voz</string>
+    <string name="edit_fx_echo_length">Duração do eco</string>
 </resources>

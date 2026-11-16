@@ -3,12 +3,14 @@ package app.memix.core.domain.project
 import app.memix.core.model.project.AudioClip
 import app.memix.core.model.project.AudioEffects
 import app.memix.core.model.project.AudioEffectsCatalog
+import app.memix.core.model.project.EchoLength
 import app.memix.core.model.project.Project
+import app.memix.core.model.project.VoicePreset
 
 /*
  * The Audio effects panel's edits (spec docs/ux/specs/P3-09-audio-effects.md). They act on a meme sound or an audio clip
  * and, like every edit, return a new Project, or this one unchanged when they can't apply (which the edit session records
- * as no step). The source file is never touched: the effects live in the clip. P3-09b adds its setters here.
+ * as no step). The source file is never touched: the effects live in the clip.
  */
 
 /** The effects of sound [itemId]; null when it isn't a meme sound or an audio clip. */
@@ -40,6 +42,31 @@ fun Project.setFadeOut(itemId: String, fadeUs: Long): Project = withClip(itemId)
 /** Shifts the pitch of sound [itemId] by [semitones] (-12 to +12) without changing its speed. */
 fun Project.setPitch(itemId: String, semitones: Int): Project = withClip(itemId) { clip ->
     clip.copy(effects = clip.effects.copy(pitchSemitones = semitones.coerceIn(AudioEffectsCatalog.PITCH_RANGE_SEMITONES)))
+}
+
+/** Boosts the lows of sound [itemId] by [level] (0 off to 1, 10% steps). */
+fun Project.setBassBoost(itemId: String, level: Float): Project = withClip(itemId) { clip ->
+    clip.copy(effects = clip.effects.copy(bassBoost = AudioEffectsCatalog.cleanLevel(level)))
+}
+
+/** Distorts sound [itemId] by [level] (0 off to 1, 10% steps). */
+fun Project.setDistortion(itemId: String, level: Float): Project = withClip(itemId) { clip ->
+    clip.copy(effects = clip.effects.copy(distortion = AudioEffectsCatalog.cleanLevel(level)))
+}
+
+/** Echoes sound [itemId] with repeats [level] loud (0 off to 1, 10% steps). The echo's length is kept while it is off. */
+fun Project.setEchoAmount(itemId: String, level: Float): Project = withClip(itemId) { clip ->
+    clip.copy(effects = clip.effects.copy(echoAmount = AudioEffectsCatalog.cleanLevel(level)))
+}
+
+/** Sets the time between the echo's repeats; stored even while the echo is off. */
+fun Project.setEchoLength(itemId: String, length: EchoLength): Project = withClip(itemId) { clip ->
+    clip.copy(effects = clip.effects.copy(echoLength = length))
+}
+
+/** Gives sound [itemId] the voice [preset]. It starts a character and changes no slider (spec P3-09 → Voice). */
+fun Project.setVoice(itemId: String, preset: VoicePreset): Project = withClip(itemId) { clip ->
+    clip.copy(effects = clip.effects.copy(voice = preset))
 }
 
 /**

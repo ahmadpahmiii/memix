@@ -11,35 +11,55 @@ import androidx.media3.common.util.UnstableApi
 import app.memix.core.model.project.AudioEffectStage
 import app.memix.core.model.project.AudioEffects
 import app.memix.core.model.project.AudioEffectsCatalog
+import app.memix.core.model.project.VoiceRecipe
+import app.memix.core.model.project.VoiceRecipes
+import app.memix.engine.video.audio.DistortionProcessor
+import app.memix.engine.video.audio.EchoProcessor
+import app.memix.engine.video.audio.FilterProcessor
+import app.memix.engine.video.audio.GainSource
+import app.memix.engine.video.audio.PeakLimiterProcessor
+import app.memix.engine.video.audio.RingModulationProcessor
+import app.memix.engine.video.audio.TailProcessor
 import kotlin.math.ceil
 import kotlin.math.pow
 
 /**
  * The audio processors of one item with sound, in the order they run (spec docs/ux/specs/P3-09-audio-effects.md → rule 1):
- * the Audio effects of its clip ([AudioEffects]: speed and pitch, then fades; P3-09b adds voice, bass and distortion, echo and the
- * limiter), then its volume, then the preview's live gain. [Media3CompositionBuilder] calls it for every item of a composition,
+ * the Audio effects of its clip ([AudioEffects]: speed and pitch, voice, bass and distortion, echo, fades, then the peak limiter),
+ * then its volume, then the preview's live gain. [Media3CompositionBuilder] calls it for every item of a composition,
  * and the preview and the export both build their composition with that builder, so the two play the same chain. Nothing here
  * knows which of them it is; the preview's live gain is the one extra, and it changes nothing at 1.
  */
 @OptIn(UnstableApi::class)
 internal object AudioChain {
-    /** The chain of sound [clip]; [liveGain] is the preview's volume slider hook (null in an export). */
-    fun forSound(clip: SoundClip, liveGain: LiveGainProcessor?, liveFades: LiveFades? = null): List<AudioProcessor> =
-        effects(clip.effects, clip.clipLengthUs, liveFades) + volume(clip.volume, liveGain)
+    /**
+     * The chain of sound [clip]; [liveGain], [liveFades] and [liveBass] are the preview's hooks for the Volume, Fade and Bass and Distortion
+     * sliders (null in an export, which builds a stage only when its effect is set).
+     */
+    fun forSound(clip: SoundClip, liveGain: LiveGainProcessor?, liveFades: LiveFades? = null, liveBass: LiveBass? = null): List<AudioProcessor> =
+        effects(clip.effects, clip.clipLengthUs, clip.tailUs, liveFades, liveBass) + volume(clip.volume, liveGain)
 
     /**
-     * The processors for [effects] on a clip that lasts [clipLengthUs] on the timeline, in [AudioEffectsCatalog.CHAIN_ORDER].
-     * Fresh instances each call: a processor keeps the state of its stream, so no two items share one. Empty when nothing is set.
+     * The processors for [effects] on a clip that lasts [clipLengthUs] on the timeline and rings out for [tailUs] after it, in
+     * [AudioEffectsCatalog.CHAIN_ORDER]. Fresh instances each call: a processor keeps the state of its stream, so no two items share
+     * one. Empty when nothing is set.
      */
-    fun effects(effects: AudioEffects, clipLengthUs: Long, liveFades: LiveFades? = null): List<AudioProcessor> =
-        AudioEffectsCatalog.CHAIN_ORDER.mapNotNull { stage ->
-            when (stage) {
-                AudioEffectStage.SPEED_AND_PITCH -> speedAndPitch(effects)
-                AudioEffectStage.FADES -> fades(effects, clipLengthUs, liveFades)
-                // TODO(P3-09b): voice, bass and distortion, echo, then the limiter before the volume.
-                AudioEffectStage.VOICE, AudioEffectStage.BASS_AND_DISTORTION, AudioEffectStage.ECHO -> null
-            }
+    fun effects(
+        effects: AudioEffects,
+        clipLengthUs: Long,
+        tailUs: Long = 0,
+        liveFades: LiveFades? = null,
+        liveBass: LiveBass? = null,
+    ): List<AudioProcessor> = AudioEffectsCatalog.CHAIN_ORDER.flatMap { stage ->
+        when (stage) {
+            AudioEffectStage.SPEED_AND_PITCH -> listOfNotNull(speedAndPitch(effects))
+            AudioEffectStage.VOICE -> voice(effects, tailUs)
+            AudioEffectStage.BASS_AND_DISTORTION -> bassAndDistortion(effects, liveBass)
+            AudioEffectStage.ECHO -> listOfNotNull(effects.echoSpec?.let { EchoProcessor(it) })
+            AudioEffectStage.FADES -> listOfNotNull(fades(effects, clipLengthUs, tailUs, liveFades))
+            AudioEffectStage.LIMITER -> listOfNotNull(limiter(effects, liveBass))
         }
+    }
 
     /**
      * The committed volume, then the preview's live gain if it has one. A 0% item's silence comes from its live gain alone,
@@ -54,16 +74,59 @@ internal object AudioChain {
     // the length it makes (getDurationAfterProcessorApplied), so the item's length in the composition follows the speed.
     private fun speedAndPitch(effects: AudioEffects): AudioProcessor? {
         if (!effects.hasTone) return null
-        return SonicAudioProcessor().apply {
-            setSpeed(effects.speed)
-            setPitch(2f.pow(effects.pitchSemitones / SEMITONES_PER_OCTAVE))
+        return sonic(effects.speed, effects.pitchSemitones)
+    }
+
+    private fun sonic(speed: Float, pitchSemitones: Int) = SonicAudioProcessor().apply {
+        setSpeed(speed)
+        setPitch(2f.pow(pitchSemitones / SEMITONES_PER_OCTAVE))
+    }
+
+    // The voice preset's own pitch shift comes first (Sonic keeps the length), then the tail starts: from there on silence is added
+    // after the clip so the filters' and echoes' last repeats ring out. Without a voice the same place starts the tail for the Echo stage.
+    private fun voice(effects: AudioEffects, tailUs: Long): List<AudioProcessor> {
+        val recipe = VoiceRecipes.of(effects.voice)
+        val tail = listOfNotNull(if (tailUs > 0) TailProcessor(tailUs) else null)
+        if (recipe == null) return tail
+        val pitch = listOfNotNull(if (recipe.pitchSemitones != 0) sonic(1f, recipe.pitchSemitones) else null)
+        return pitch + tail + recipeProcessors(recipe, tailUs)
+    }
+
+    private fun recipeProcessors(recipe: VoiceRecipe, tailUs: Long): List<AudioProcessor> =
+        recipe.filters.map { filter -> FilterProcessor { filter } } +
+            listOfNotNull(recipe.ringModulation?.let { RingModulationProcessor(it, tailUs) }) +
+            listOfNotNull(if (recipe.drive > 0f) DistortionProcessor(GainSource { AudioEffectsCatalog.distortionGain(recipe.drive) }) else null) +
+            listOfNotNull(recipe.echo?.let { EchoProcessor(it) })
+
+    // Bass first, then distortion. The preview always has both, reading the sliders' live values, so a slider moved from 0 is heard
+    // at once; at 0 they pass the sound through untouched. The export has each only when it is set.
+    private fun bassAndDistortion(effects: AudioEffects, liveBass: LiveBass?): List<AudioProcessor> {
+        if (liveBass != null) {
+            return listOf(
+                FilterProcessor { liveBass.bassFilter() },
+                DistortionProcessor(GainSource { AudioEffectsCatalog.distortionGain(liveBass.distortion) }),
+            )
         }
+        val bass = effects.bassFilter
+        return listOfNotNull(
+            bass?.let { filter -> FilterProcessor { filter } },
+            if (effects.distortion > 0f) DistortionProcessor(GainSource { AudioEffectsCatalog.distortionGain(effects.distortion) }) else null,
+        )
+    }
+
+    // Ends the effects (spec P3-09 rule 7). The export has it when an effect that can raise the level is set; the preview always
+    // has it, and it limits only while such an effect is set (a plain sound is never touched, as in the export).
+    private fun limiter(effects: AudioEffects, liveBass: LiveBass?): AudioProcessor? {
+        val ceiling = 10f.pow(AudioEffectsCatalog.LIMITER_CEILING_DB / DB_PER_AMPLITUDE_DECADE)
+        if (liveBass == null) return if (effects.needsLimiter) PeakLimiterProcessor(ceiling) { true } else null
+        val committed = effects.hasVoice || effects.hasEcho
+        return PeakLimiterProcessor(ceiling) { committed || liveBass.bassBoost > 0f || liveBass.distortion > 0f }
     }
 
     // The preview's sound always has the stage (its fades can be set while it plays); an export only when a fade is set.
-    private fun fades(effects: AudioEffects, clipLengthUs: Long, liveFades: LiveFades?): AudioProcessor? {
+    private fun fades(effects: AudioEffects, clipLengthUs: Long, tailUs: Long, liveFades: LiveFades?): AudioProcessor? {
         if (!effects.hasFades && liveFades == null) return null
-        return GainProcessor(FadeGains(liveFades ?: LiveFades(effects.fadeInUs, effects.fadeOutUs), clipLengthUs, isLive = liveFades != null))
+        return GainProcessor(FadeGains(liveFades ?: LiveFades(effects.fadeInUs, effects.fadeOutUs), clipLengthUs, isLive = liveFades != null, tailUs = tailUs))
     }
 
     // Scales every channel by the volume. Media3 clamps samples past full scale, so volumes above 1 get louder without wrapping around.
@@ -81,6 +144,9 @@ internal object AudioChain {
         FloatArray(channelCount * channelCount) { index -> if (index % (channelCount + 1) == 0) scale else 0f }
 
     private const val SEMITONES_PER_OCTAVE = 12f
+
+    /** dB to a linear level: 10^(dB / 20). */
+    private const val DB_PER_AMPLITUDE_DECADE = 20f
 
     /** 7.1 surround; phone recordings are mono or stereo. */
     private const val MAX_CHANNEL_COUNT = 8
@@ -110,9 +176,11 @@ internal class FadeGains(
     private val fades: LiveFades,
     private val clipLengthUs: Long,
     private val isLive: Boolean = false,
+    // Media3 counts positions after the [TailProcessor] from its tail on (it maps the start position through the item's longer length); [tailUs] takes that out.
+    private val tailUs: Long = 0,
 ) : GainProcessor.GainProvider {
     override fun getGainFactorAtSamplePosition(samplePosition: Long, sampleRate: Int): Float {
-        val timeUs = samplePosition * MICROS_PER_SECOND / sampleRate
+        val timeUs = (samplePosition - tailFrames(sampleRate)) * MICROS_PER_SECOND / sampleRate
         val fadeInUs = fades.fadeInUs
         val fadeOutUs = fades.fadeOutUs
         val rampEndUs = clipLengthUs - minOf(END_MARGIN_US, fadeOutUs / 2)
@@ -127,11 +195,13 @@ internal class FadeGains(
         if (getGainFactorAtSamplePosition(samplePosition, sampleRate) != 1f) return C.TIME_UNSET
         val fadeOutUs = fades.fadeOutUs
         if (fadeOutUs <= 0) return if (isLive) samplePosition + liveWindowFrames(sampleRate) else C.TIME_END_OF_SOURCE
-        val fadeOutStartFrame = ceil((clipLengthUs - fadeOutUs) * sampleRate / MICROS_PER_SECOND).toLong()
+        val fadeOutStartFrame = ceil((clipLengthUs - fadeOutUs) * sampleRate / MICROS_PER_SECOND).toLong() + tailFrames(sampleRate)
         // Unity at samplePosition, so the range reaches at least one frame. A live fade may be set at any moment: look only a short way ahead.
         val end = maxOf(fadeOutStartFrame, samplePosition + 1)
         return if (isLive) minOf(end, samplePosition + liveWindowFrames(sampleRate)) else end
     }
+
+    private fun tailFrames(sampleRate: Int): Long = (tailUs * sampleRate / MICROS_PER_SECOND).toLong()
 
     private fun liveWindowFrames(sampleRate: Int): Long = sampleRate * LIVE_WINDOW_US / MICROS_PER_SECOND.toLong()
 

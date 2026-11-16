@@ -65,11 +65,13 @@ import org.jetbrains.compose.resources.DrawableResource
  * A heading above a horizontally scrolling single-choice group named by it. The row scrolls edge to edge: it reaches
  * past the panel's `space-4` side padding and keeps that padding inside the scroll, so at rest the first item lines up
  * with the heading and scrolled items slide out at the screen edge (ToolPanel README → Content; P1-10 review P1).
+ * [showHeading] false leaves the heading out of the picture when the panel's tab already says it (the Voice tab); the group
+ * is still named by it for screen readers.
  */
 @Composable
-fun ChoiceRow(heading: String, choices: @Composable () -> Unit) {
+fun ChoiceRow(heading: String, showHeading: Boolean = true, choices: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(MemixSpacing.space2)) {
-        Text(heading, MemixTheme.type.label, Modifier.semantics { heading() }, color = MemixColors.textSecondary)
+        if (showHeading) Text(heading, MemixTheme.type.label, Modifier.semantics { heading() }, color = MemixColors.textSecondary)
         Row(
             Modifier
                 .bleedPastPanelPadding()
@@ -83,8 +85,11 @@ fun ChoiceRow(heading: String, choices: @Composable () -> Unit) {
     }
 }
 
-// Measures the content `space-4` wider on each side than the panel's content area and places it that far left.
-private fun Modifier.bleedPastPanelPadding(): Modifier = layout { measurable, constraints ->
+/**
+ * Measures the content `space-4` wider on each side than the panel's content area and places it that far left, so a scrolling row
+ * (choices, tabs) runs to the screen edge; give the row `space-4` of its own padding so it lines up at rest.
+ */
+fun Modifier.bleedPastPanelPadding(): Modifier = layout { measurable, constraints ->
     val bleed = MemixSpacing.space4.roundToPx()
     val wide = constraints.maxWidth + 2 * bleed
     val placeable = measurable.measure(constraints.copy(minWidth = wide, maxWidth = wide))

@@ -93,6 +93,9 @@ private object EstimatedCaptionMeasurer : CaptionMeasurer {
 // TODO(P7-05): export with AVMutableComposition and AVAssetWriter, built from the same CompositionPlan as Android.
 // TODO(P7-03, P7-05): render AudioEffects from the same spec in AVAudioMix and the composition: fades as volume ramps, speed with scaleTimeRange,
 // pitch with AVAudioUnitTimePitch (offline for the export), in the order of AudioEffectsCatalog.CHAIN_ORDER. Until then no sound plays on iOS at all.
+// TODO(P7-06): the P3-09b stages read the same specs (VoiceRecipes, AudioEffects.bassFilter and echoSpec, AudioEffectsCatalog.distortionGain):
+// the pure kernels in engine/video/commonMain/.../audio (BiquadFilter, SoftClip, RingModulator, EchoLine, PeakLimiter) are shared Kotlin, to be
+// run in an AVAudioEngine tap or an offline render; the echo's tail (AudioEffects.tailUs, planned as SoundClip.tailUs) extends the item with silence.
 private class IosVideoEngine : VideoEngine {
     override suspend fun export(project: Project, settings: ExportSettings, onProgress: (Float) -> Unit): ExportOutcome =
         ExportOutcome.Failed(ExportError.UNKNOWN)
@@ -156,6 +159,7 @@ private class UnavailablePreviewSession : PreviewSession {
     override fun previewVolume(itemId: String, volume: Float) = Unit
 
     override fun previewFades(itemId: String, fadeInUs: Long, fadeOutUs: Long) = Unit
+    override fun previewBass(itemId: String, bassBoost: Float, distortion: Float) = Unit
     override fun hideCaption(itemId: String?) = Unit
     override fun setSilent(silent: Boolean) = Unit
     override fun sampleClock(): ClockSample? = null

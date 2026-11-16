@@ -188,4 +188,24 @@
     <string name="a11y_fx_tab_on">%1$s, चालू</string>
     <string name="a11y_audio_effects_reset">ऑडियो इफ़ेक्ट रीसेट हो गए</string>
     <string name="edit_fx_reset">इफ़ेक्ट रीसेट</string>
+    <!-- Audio effects, second half (P3-09b): Voice, Bass and Echo tabs. Budgets and translator notes: docs/ux/specs/P3-09-audio-effects.md -> Copy. -->
+    <string name="fx_tab_voice">आवाज़</string>
+    <string name="fx_tab_bass">बास</string>
+    <string name="fx_tab_echo">इको</string>
+    <string name="fx_bass">बास बूस्ट</string>
+    <string name="fx_distortion">डिस्टॉर्शन</string>
+    <string name="fx_echo">इको</string>
+    <string name="fx_echo_length">इको की लंबाई</string>
+    <string name="fx_length_short">छोटा</string>
+    <string name="fx_length_medium">मध्यम</string>
+    <string name="fx_length_long">लंबा</string>
+    <string name="fx_voice_none">कोई नहीं</string>
+    <string name="fx_voice_chipmunk">चिपमंक</string>
+    <string name="fx_voice_giant">दानव</string>
+    <string name="fx_voice_robot">रोबोट</string>
+    <string name="fx_voice_megaphone">मेगाफ़ोन</string>
+    <string name="fx_voice_cave">गुफ़ा</string>
+    <string name="fx_voice_hint">आवाज़ के इफ़ेक्ट पिच, बास और इको के साथ जुड़ते हैं।</string>
+    <string name="edit_fx_voice">आवाज़</string>
+    <string name="edit_fx_echo_length">इको की लंबाई</string>
 </resources>

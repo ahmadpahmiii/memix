@@ -55,7 +55,7 @@ Before 09b ships the panel shows only the tabs that exist (Tone, Fades), never a
 ### Echo (09b)
 - **Echo:** Slider 0 to 100%, default 0 (off), step 10%: how loud the repeats are.
 - **Echo length:** SegmentedChoice **Short · Medium · Long** (about 150, 300 and 500 ms between repeats), default Medium. It has no effect while Echo is 0 and is stored anyway; nothing is dimmed (DESIGN_SYSTEM: controls stay enabled).
-- **The tail** rings out after the clip ends, up to about 1.5 s, and is cut at the end of the video. It is not drawn on the timeline (the clip keeps its length), and preview and export do the same.
+- **The tail** rings out after the clip ends, up to about 1.5 s, and is cut at the end of the video. It is not drawn on the timeline (the clip keeps its length), and preview and export do the same. **Lane rule (09b review, 16 Nov, revised by the coordinator):** the engine's lane packing keeps a lane busy until clip end plus tail, so a sound that starts inside another's tail is mixed on its own engine lane. This is plan-only: the project and the timeline do not change, so there is **no toast and no new copy** for the tail case (`fx_moved_lane_toast` stays for Speed only). A set Fade out means no tail at all (the fade rule), so no lane is reserved. The tail is not drawn; a faint tail on the selected clip stays a possible later proposal (new token needed).
 
 ### Fades (09a)
 - **Fade in** and **Fade out:** Sliders 0 to 5 s, step 0.1 s, default 0 (off), readout `1.2 s`. The two can never add up to more than the clip: dragging one stops at what the other leaves (SegmentTick at the stop, no toast), so a fade never pushes the other.

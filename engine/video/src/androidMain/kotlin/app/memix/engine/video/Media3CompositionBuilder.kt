@@ -43,6 +43,8 @@ internal class Media3CompositionBuilder(
     private val liveGains: Map<String, LiveGainProcessor> = emptyMap(),
     /** The preview's live fades per sound (the fade sliders are heard while they move); empty for exports. */
     private val liveFades: Map<String, LiveFades> = emptyMap(),
+    /** The preview's live Bass boost and Distortion per sound (heard while their sliders move); empty for exports. */
+    private val liveBass: Map<String, LiveBass> = emptyMap(),
     /** The plan's captions over the composited video; null when the plan has none. */
     private val captionOverlay: CaptionOverlay? = null,
     /** The "Memix" mark of a free export, drawn above the captions; null in previews and watermark-free exports (P1-13). */
@@ -133,7 +135,7 @@ internal class Media3CompositionBuilder(
             .build()
         // Detached audio points at the original video file; its picture isn't decoded again here. The effects run first, then the
         // volume (spec P3-09 → rule 1); the preview and the export both build this item, so they play the same chain.
-        val processors = AudioChain.forSound(clip, liveGains[clip.itemId], liveFades[clip.itemId])
+        val processors = AudioChain.forSound(clip, liveGains[clip.itemId], liveFades[clip.itemId], liveBass[clip.itemId])
         return EditedMediaItem.Builder(mediaItem)
             .setRemoveVideo(true)
             .setEffects(Effects(processors, emptyList()))

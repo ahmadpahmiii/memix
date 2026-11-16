@@ -451,3 +451,46 @@ The references are in `docs/qa/references/P3-09a-audio-effects/` (the harness's 
 10. **Layout, for the designer:** after removing the gap under the title, the render still shows one slider in the 229 dp region and about 300 dp is needed for both (`panel-tone-800.png`, `panel-fades-800.png` at 256 dp); check on the phone what height the panel really gets at 360x800 and whether scrolling to the second slider is acceptable.
 11. **Fade end and drift:** a sound with Fade out 1 s ends in silence with no click at the clip's end, in the preview and the export, also at 0.5x and 2x. Put a sound after a sped-up one on the same lane and check its start against the project (no drift over several sped-up clips). In a hand-check build compare Sonic's real output length with the plan (not logged yet: add a line in `AudioChain` if drift shows).
 12. **Decode:** open a project with a 10-minute imported sound: the editor stays smooth while peaks decode (background priority), the bars arrive, `cache/waveforms/` stays under 5 MB after opening many projects. A deleted file: the tool says the file is missing; a damaged file: no bars and the tool opens.
+
+## P3-09b · Audio effects, second half (Bass, Echo, Voice, limiter)
+
+Built and checked off-device on 16 Nov 2026 (Linux, no emulator, no phone): desktop harness 225 checks pass (kernels, tail, limiter, preview chain against export chain bit-identical for every preset and slider extreme, 40 stacked renders never above -1 dBFS); reference renders in `docs/qa/references/P3-09b-audio-effects/`; panel renders in `docs/ux/reviews/P3-09b/`. **Not run:** anything on a phone. The "Done when" (preview and export sound the same, null test under -40 dB, ear check per preset, no clipping when stacked) stays open until steps 1 to 3 pass. Use `installBenchmark` on the owner's phone.
+
+### 1. Ear check per preset (preview, then the exported file)
+
+Clip of speech (a voiceover or an imported voice, 10 s or more), one meme sound. Each row: set it, listen in the preview, export, play the file.
+
+| Set | Should sound | Watch for |
+| --- | --- | --- |
+| Voice: Chipmunk | higher and brighter, same speed | warble, metallic ring |
+| Voice: Giant | lower, heavier, same speed | muffled to the point of unintelligible |
+| Voice: Robot | metallic, buzzing, still understandable | too quiet or too buzzy to understand |
+| Voice: Megaphone | thin, loud, a little grit | harsh, painful at phone volume |
+| Voice: Cave | long dull echo, rings after the end of the clip | tail cut with a click, tail longer than the video |
+| Bass 100% | deeper, fuller, no crackle | pumping or crackle on loud sounds (limiter) |
+| Distortion 100% | harsh, deep-fried, never a digital buzz of clipping | silence or volume drop |
+| Echo 100%, Short, Medium, Long | clear repeats fading away | repeats cut at the end |
+| Voice + Pitch + Bass + Echo together | still one sound, not louder than before | clipping |
+
+Tune by ear: the numbers are in `VoiceRecipes.kt` and `AudioEffectsCatalog` (one place each). Note each preset's verdict for the designer and PM.
+
+### 2. No clipping when stacked
+
+Loud sound (a meme sound at 100%): Bass 100%, Distortion 100%, Echo 100% Long, a voice, Volume 100%. Export. On a computer: `ffmpeg -i export.mp4 -af volumedetect -f null -`: `max_volume` is -1.0 dB or lower (the limiter's ceiling; the AAC encoder can add a fraction). Also listen for pumping.
+
+### 3. The on-device null test
+
+As P3-09a step 2, with the sources in `docs/qa/references/P3-09b-audio-effects/` (`source-tone.wav`, `source-voice.wav`, `source-burst.wav`) and the ids in its `measurements.md`: export the baseline (no effect), then each of `bass-100`, `distortion-100`, `echo-medium-70`, `voice-chipmunk`, `voice-giant`, `voice-robot`, `voice-megaphone`, `voice-cave`, and compare with the reference. Pass: no worse than the baseline plus 6 dB. The echo and Cave exports are up to 1.5 s longer than the clip's end only when the video has room; check an export where the sound ends at the end of the video: the file is not longer than the video.
+
+### 4. The rest
+
+1. **Panel:** tabs Voice, Tone, Bass, Echo, Fades in that order; Voice opens first on a fresh visit; dots on tabs that have anything set (also Echo length alone does not count as set); Reset clears all in one step ("Reset effects").
+2. **Live:** drag Bass boost and Distortion while playing: heard as it moves, back to the original at 0 with no click. Echo, Echo length and Voice are heard after release.
+3. **Undo names and analytics:** "Undo: Bass boost", "Undo: Distortion", "Undo: Echo", "Undo: Echo length", "Undo: Voice"; `tool_use` ids `audio_bass`, `audio_distortion`, `audio_echo`, `audio_echo_length`, `audio_voice` with `value` the preset id; a tap on the selected tile or segment records nothing.
+4. **Tail and lanes:** put a second sound 0.5 s after a sound with Echo Long: both play, the echo rings under the second; at the end of the video the tail is cut.
+5. **Seek:** drag the playhead into an echo and press Play: the first repeats of what was said before the seek are missing (accepted), the rest equals the export.
+6. **Languages and font:** Voice tiles in Hindi at 200%, the hint wraps, tiles scroll sideways and the selected one scrolls into view; Echo length segments stack at 200%.
+7. **Cost (benchmark build):** `installBenchmark`, a project with 6 sounds on the timeline (each carries the preview's bass, distortion and limiter stages), play and scrub for a minute: `adb shell dumpsys gfxinfo app.memix` janky frames under 5%, `adb logcat | grep -i underrun` shows no audio underruns. If it costs, the planned fallback is to build those three stages only for the item whose panel is open or whose effect is set.
+8. **Many echoes (lane cap):** ten short sounds 0.3 s apart, each with Echo 100% Long: playback has no underruns (at most 2 extra plan lanes; earlier tails are cut at the next sound), and the project shows no extra lane on the timeline. A set Fade out leaves no tail (export is not longer than the video).
+9. **Ear check notes:** Distortion's first step (10%) is much louder than 0 (a soft clip lifts quiet sound); judge whether the first steps feel like a jump. Slider values are exact tenths (0.3 is 0.3).
+10. **Spanish Reset at 130%:** `panel-es-130.png`, at 130% Reset and Listo wrap under the title with clear spacing in the render; check on the phone that Reset wraps under the title without crowding it.

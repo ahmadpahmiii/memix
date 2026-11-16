@@ -234,6 +234,13 @@ internal class Media3PreviewSession(
         }
     }
 
+    override fun previewBass(itemId: String, bassBoost: Float, distortion: Float) {
+        liveVolumes.bass[itemId]?.let {
+            it.bassBoost = bassBoost
+            it.distortion = distortion
+        }
+    }
+
     override fun setSilent(silent: Boolean) {
         if (closed) return
         this.silent = silent
@@ -295,8 +302,9 @@ internal class Media3PreviewSession(
             val volumes = itemsWithSoundOf(playablePlan)
             // A 0% item is silenced by its live gain (no fixed step), so that gain starts at 0.
             val liveGains = volumes.mapValues { (_, volume) -> LiveGainProcessor().apply { if (volume == 0f) factor = 0f } }
-            val liveFades = playablePlan.audioLanes.flatMap { it.segments }.filterIsInstance<SoundClip>()
-                .associate { it.itemId to LiveFades(it.effects.fadeInUs, it.effects.fadeOutUs) }
+            val sounds = playablePlan.audioLanes.flatMap { it.segments }.filterIsInstance<SoundClip>()
+            val liveFades = sounds.associate { it.itemId to LiveFades(it.effects.fadeInUs, it.effects.fadeOutUs) }
+            val liveBass = sounds.associate { it.itemId to LiveBass(it.effects.bassBoost, it.effects.distortion) }
             val visibility = CaptionVisibility()
             val captions = playablePlan.captions.takeIf { it.isNotEmpty() }?.let {
                 CaptionOverlay(it, captionRenderer, playablePlan.canvasWidthPx, playablePlan.canvasHeightPx, visibility)
@@ -308,6 +316,7 @@ internal class Media3PreviewSession(
                 onsetLog,
                 liveGains,
                 liveFades,
+                liveBass,
                 captionOverlay = captions,
                 frameShortSidePx = if (playablePlan.background == PlanBackground.Blur) BLUR_PREVIEW_SHORT_SIDE_PX else null,
                 backgroundFile = resolved.backgroundFile,
@@ -316,7 +325,7 @@ internal class Media3PreviewSession(
                 composition,
                 plan.durationUs,
                 missingMedia = unplayable.isNotEmpty(),
-                LiveVolumes(liveGains, volumes, liveFades),
+                LiveVolumes(liveGains, volumes, liveFades, liveBass),
                 visibility,
                 PixelSize(plan.canvasWidthPx, plan.canvasHeightPx),
             )
@@ -466,7 +475,7 @@ internal class Media3PreviewSession(
     }
 
     /** Each item's [LiveGainProcessor] in one composition, and the volume that composition applies to it. */
-    private class LiveVolumes(val gains: Map<String, LiveGainProcessor>, val committed: Map<String, Float>, val fades: Map<String, LiveFades> = emptyMap())
+    private class LiveVolumes(val gains: Map<String, LiveGainProcessor>, val committed: Map<String, Float>, val fades: Map<String, LiveFades> = emptyMap(), val bass: Map<String, LiveBass> = emptyMap())
 
     private companion object {
         const val MICROS_PER_MILLI = 1_000L

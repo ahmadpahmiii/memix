@@ -21,10 +21,12 @@ import app.memix.core.model.project.AudioEffectsCatalog
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.CaptionBox
 import app.memix.core.model.project.CaptionShadow
+import app.memix.core.model.project.EchoLength
 import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.RatioTerms
 import app.memix.core.model.project.Transform
+import app.memix.core.model.project.VoicePreset
 import app.memix.core.ui.text.TextEntryUi
 import app.memix.core.ui.editor.SaveProblem
 import app.memix.core.ui.panels.PositionStep
@@ -266,11 +268,11 @@ data class AudioEffectsPanelUi(val itemId: String, val tab: AudioEffectsTab, val
     val canFade: Boolean get() = clipLengthUs >= AudioEffectsCatalog.MIN_FADEABLE_US
 }
 
-/** The Audio effects panel's tabs, in the order they show. P3-09b adds Voice (before Tone), Bass and Echo (before Fades). */
-enum class AudioEffectsTab { TONE, FADES }
+/** The Audio effects panel's tabs, in the order they show (spec P3-09 → Layout). */
+enum class AudioEffectsTab { VOICE, TONE, BASS, ECHO, FADES }
 
 /** The sliders of the Audio effects panel: each release commits one step named for it. */
-enum class AudioEffectPart { PITCH, SPEED, FADE_IN, FADE_OUT }
+enum class AudioEffectPart { PITCH, SPEED, FADE_IN, FADE_OUT, BASS, DISTORTION, ECHO }
 
 /**
  * The Voiceover panel (spec P3-08). [countdown] is the 3, 2, 1 while [phase] counts down; [savedAtUs] is where the last take of this
@@ -709,11 +711,17 @@ sealed interface VideoEditorIntent {
     /** A tab of the Audio effects panel; it stays for the visit. */
     data class AudioEffectsTabSelected(val tab: AudioEffectsTab) : VideoEditorIntent
 
-    /** A slider of the Audio effects panel moved to [value] (semitones, speed, or seconds of fade); nothing committed yet. */
+    /** A slider of the Audio effects panel moved to [value] (semitones, speed, seconds of fade, or 0 to 1 for bass, distortion and echo); nothing committed yet. */
     data class AudioEffectChanged(val part: AudioEffectPart, val value: Float) : VideoEditorIntent
 
     /** The slider of [part] was let go (or stepped): its value is one step, named for it (none if it's where it began). */
     data class AudioEffectReleased(val part: AudioEffectPart) : VideoEditorIntent
+
+    /** A tile of the Voice tab: one step ("Voice"), none if it is the voice already set. */
+    data class AudioVoiceSelected(val preset: VoicePreset) : VideoEditorIntent
+
+    /** A segment of the Echo tab's length: one step ("Echo length"), none if it is the one already set. */
+    data class AudioEchoLengthSelected(val length: EchoLength) : VideoEditorIntent
 
     /** Reset in the Audio effects panel: every effect of the clip back to its default, one step. */
     data object ResetAudioEffects : VideoEditorIntent

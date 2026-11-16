@@ -188,4 +188,24 @@
     <string name="a11y_fx_tab_on">%1$s, aktif</string>
     <string name="a11y_audio_effects_reset">Efek audio direset</string>
     <string name="edit_fx_reset">Reset efek</string>
+    <!-- Audio effects, second half (P3-09b): Voice, Bass and Echo tabs. Budgets and translator notes: docs/ux/specs/P3-09-audio-effects.md -> Copy. -->
+    <string name="fx_tab_voice">Suara</string>
+    <string name="fx_tab_bass">Bass</string>
+    <string name="fx_tab_echo">Gema</string>
+    <string name="fx_bass">Penguat bass</string>
+    <string name="fx_distortion">Distorsi</string>
+    <string name="fx_echo">Gema</string>
+    <string name="fx_echo_length">Panjang gema</string>
+    <string name="fx_length_short">Pendek</string>
+    <string name="fx_length_medium">Sedang</string>
+    <string name="fx_length_long">Panjang</string>
+    <string name="fx_voice_none">Tidak ada</string>
+    <string name="fx_voice_chipmunk">Tupai</string>
+    <string name="fx_voice_giant">Raksasa</string>
+    <string name="fx_voice_robot">Robot</string>
+    <string name="fx_voice_megaphone">Megafon</string>
+    <string name="fx_voice_cave">Gua</string>
+    <string name="fx_voice_hint">Efek suara digabung dengan nada, bass, dan gema.</string>
+    <string name="edit_fx_voice">Suara</string>
+    <string name="edit_fx_echo_length">Panjang gema</string>
 </resources>

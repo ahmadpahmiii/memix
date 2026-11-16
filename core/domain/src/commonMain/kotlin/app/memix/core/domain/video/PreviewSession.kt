@@ -86,6 +86,13 @@ interface PreviewSession : AutoCloseable {
     fun previewFades(itemId: String, fadeInUs: Long, fadeOutUs: Long)
 
     /**
+     * While an Audio effects Bass boost or Distortion slider moves (P3-09b): sets both ([bassBoost] and [distortion], 0 to 1) of sound
+     * [itemId] on the playing sound right away, without rebuilding. The echo, the echo length and the voice change the sound's length or
+     * the chain's shape, so they are heard after the release, when the composition is rebuilt. The next [update] replaces it with the project's values.
+     */
+    fun previewBass(itemId: String, bassBoost: Float, distortion: Float)
+
+    /**
      * While a voiceover records without headphones (P3-08): plays the picture but none of the project's sound, so the
      * speaker's sound doesn't go into the take. Engine only: the project, its volumes and its mutes are not touched, and
      * [update] and seeks keep it. false plays the sound again.

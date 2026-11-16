@@ -197,13 +197,18 @@ enum class EditorTool(val eventValue: String?) {
     VOICEOVER("voiceover"),
 
     /**
-     * P3-09a: the Audio effects panel (PM, 11 Nov 2026), one event per recorded step. `audio_reset` is one event for a whole Reset. P3-09b
-     * adds `audio_bass`, `audio_distortion`, `audio_echo`, `audio_echo_length` and `audio_voice` (its `value` is the preset id).
+     * P3-09: the Audio effects panel (PM, 11 Nov 2026), one event per recorded step. `audio_reset` is one event for a whole Reset.
+     * `audio_voice` also sends `value`, the preset id (`chipmunk`, `giant`, `robot`, `megaphone`, `cave` or `none`; never anything about the file).
      */
     AUDIO_FADE_IN("audio_fade_in"),
     AUDIO_FADE_OUT("audio_fade_out"),
     AUDIO_PITCH("audio_pitch"),
     AUDIO_SPEED("audio_speed"),
+    AUDIO_BASS("audio_bass"),
+    AUDIO_DISTORTION("audio_distortion"),
+    AUDIO_ECHO("audio_echo"),
+    AUDIO_ECHO_LENGTH("audio_echo_length"),
+    AUDIO_VOICE("audio_voice"),
     AUDIO_RESET("audio_reset"),
 
     /** P1-09: one id per direction of the original-audio toggle (PM, 8 Oct), and Detach audio. */

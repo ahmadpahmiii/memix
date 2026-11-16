@@ -107,7 +107,7 @@ internal object CompositionPlanner {
         for (cut in clips) {
             if (cut.clip.startUs > cursorUs) add(Gap(cut.clip.startUs - cursorUs))
             add(cut.toSoundClip())
-            cursorUs = cut.clip.endUs
+            cursorUs = cut.busyUntilUs
         }
     }
 
@@ -121,9 +121,19 @@ internal object CompositionPlanner {
                 .map { CaptionClip(it.id, it.startUs.coerceAtLeast(0), minOf(it.endUs, timelineEndUs), it.text, it.style, it.transform) }
         }
 
-    /** A clip cut to the video, and how long it was before the cut ([fullLengthUs]: where its Fade out counts back from). */
-    private class CutClip(val clip: AudioClip, val fullLengthUs: Long) {
-        fun toSoundClip() = SoundClip(clip.id, clip.source, clip.trimInUs, clip.trimOutUs, clip.volume, clip.effects, fullLengthUs)
+    /**
+     * A clip cut to the video, and how long it was before the cut ([fullLengthUs]: where its Fade out counts back from). [tailUs] is
+     * how long its echo rings after it: up to the effects' tail, and never past the end of the video (spec P3-09 → Echo), so a clip
+     * the video cuts has none.
+     */
+    private class CutClip(val clip: AudioClip, val fullLengthUs: Long, val tailUs: Long) {
+        /** Where its lane is free again: a sound that starts before this goes on another lane, so the tail rings under it. */
+        val busyUntilUs: Long get() = clip.endUs + tailUs
+
+        /** This clip with its tail cut so it is over by [limitUs]. */
+        fun withTailEndingBy(limitUs: Long) = CutClip(clip, fullLengthUs, minOf(tailUs, (limitUs - clip.endUs).coerceAtLeast(0)))
+
+        fun toSoundClip() = SoundClip(clip.id, clip.source, clip.trimInUs, clip.trimOutUs, clip.volume, clip.effects, fullLengthUs, tailUs)
     }
 
     /**
@@ -137,18 +147,42 @@ internal object CompositionPlanner {
         val cutTrimInUs = trimInUs + effects.sourceSpanOf(headCutUs)
         val cutTrimOutUs = minOf(trimOutUs, cutTrimInUs + effects.sourceSpanOf(timelineEndUs - cutStartUs))
         if (cutTrimOutUs <= cutTrimInUs) return null
-        return CutClip(copy(startUs = cutStartUs, trimInUs = cutTrimInUs, trimOutUs = cutTrimOutUs), fullLengthUs = durationUs)
+        val cut = copy(startUs = cutStartUs, trimInUs = cutTrimInUs, trimOutUs = cutTrimOutUs)
+        val tailUs = minOf(effects.tailUs, timelineEndUs - cut.endUs).coerceAtLeast(0)
+        return CutClip(cut, fullLengthUs = durationUs, tailUs = tailUs)
     }
 
     // Clips on one track normally follow each other. When two overlap, the later one goes to the first
-    // lane that is free at its start, so both are heard instead of one cutting the other off.
+    // lane that is free at its start, so both are heard instead of one cutting the other off. An echo's tail keeps its lane busy too,
+    // but a tail is not drawn and never worth many lanes (each lane is one more audio sequence to decode and mix): once tails have
+    // opened [MAX_TAIL_LANES] more lanes than the clips alone need, the earlier sound's tail is cut at the next sound's start instead.
     private fun packIntoLanes(sortedClips: List<CutClip>): List<List<CutClip>> {
+        val lanesWithoutTails = laneCountIgnoringTails(sortedClips)
         val lanes = mutableListOf<MutableList<CutClip>>()
         for (cut in sortedClips) {
-            val freeLane = lanes.firstOrNull { it.last().clip.endUs <= cut.clip.startUs }
-            if (freeLane != null) freeLane.add(cut) else lanes.add(mutableListOf(cut))
+            val freeLane = lanes.firstOrNull { it.last().busyUntilUs <= cut.clip.startUs }
+            if (freeLane != null) {
+                freeLane.add(cut)
+                continue
+            }
+            val tailBlockedLane = lanes.firstOrNull { it.last().clip.endUs <= cut.clip.startUs }
+            if (tailBlockedLane != null && lanes.size >= lanesWithoutTails + MAX_TAIL_LANES) {
+                tailBlockedLane.add(tailBlockedLane.removeAt(tailBlockedLane.lastIndex).withTailEndingBy(cut.clip.startUs))
+                tailBlockedLane.add(cut)
+            } else {
+                lanes.add(mutableListOf(cut))
+            }
         }
         return lanes
+    }
+
+    private fun laneCountIgnoringTails(sortedClips: List<CutClip>): Int {
+        val laneEnds = mutableListOf<Long>()
+        for (cut in sortedClips) {
+            val free = laneEnds.indexOfFirst { it <= cut.clip.startUs }
+            if (free >= 0) laneEnds[free] = cut.clip.endUs else laneEnds.add(cut.clip.endUs)
+        }
+        return laneEnds.size
     }
 
     /** [sortedItems] (not overlapping) as back-to-back segments from time 0, with a gap for each empty stretch. */
@@ -181,4 +215,7 @@ internal object CompositionPlanner {
     private fun TrackKind.carriesSound(): Boolean = this == TrackKind.MEME_SOUND || this == TrackKind.AUDIO
 
     private val TimelineItem.endUs: Long get() = startUs + durationUs
+
+    /** Tails may open this many more lanes than the clips alone need (each lane is one more audio sequence in the composition). */
+    private const val MAX_TAIL_LANES = 2
 }
