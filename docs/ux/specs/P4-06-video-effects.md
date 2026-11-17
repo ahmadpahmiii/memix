@@ -94,7 +94,7 @@ Defaults: length (ms) and intensity (%). *Ref time* = the instant in the item th
 | --- | --- | --- | --- | --- | --- |
 | `zoom_punch` | Zoom punch | Punch | 600 · 70 | Scale 1 to **1.5**, centered on the frame, fast in, eased out. Edges leave the canvas | 80 ms |
 | `slow_push` | Slow push | Ramp | 3000 · 60 | Scale 1 to **1.3** by the item's end | end |
-| `shake` | Shake | Steady | 1000 · 60 | Offset x and y = 2.5% of short × (sin 2π·13τ + 0.5 sin 2π·29τ + 1)/1.5 and (sin 2π·11τ + 0.5 sin 2π·31τ + 2)/1.5; rotation ±1.2° at 17 Hz; cover | 120 ms |
+| `shake` | Shake | Steady | 1000 · 60 | Offset x and y = 2.5% of short × (sin 2π·13τ + 0.5 sin 2π·29τ)/1.5 and (sin 2π·11τ + 0.5 sin 2π·31τ)/1.5 (centred, no drift; amended 17 Nov, the first draft had +1/+2 constants); rotation ±1.2° at 17 Hz; cover | 120 ms |
 | `wobble` | Wobble | Steady | 2000 · 60 | Rotation 6° × sin 2π·1.2τ about the center; cover | 208 ms |
 | `bounce` | Bounce | Steady | 2000 · 60 | Offset up 6% of short × \|sin 2π·2τ\|; cover | 125 ms |
 
@@ -114,9 +114,9 @@ Defaults: length (ms) and intensity (%). *Ref time* = the instant in the item th
 | --- | --- | --- | --- | --- | --- |
 | `flash` | Flash | Decay | 250 · 80 | White over the frame at 90% × *s*, fading out. **One flash per item** | 0 ms |
 | `light_pulse` | Light pulse | Steady | 2000 · 50 | Brightness × (1 + 0.5 × *s* × (0.5 − 0.5 cos 2π·2τ)): a swell twice a second | 250 ms |
-| `glow` | Glow | Steady | 2000 · 60 | Pixels above 60% luma blurred at 2.5% of short and **screen**-added at 80% × *s* | any |
-| `spotlight` | Spotlight | Steady | 2000 · 70 | Darkens outside a soft circle centered on the frame: radius 0.9 down to 0.35 of the half-diagonal, outside multiplied by 1 − 0.85 × *s*, edge 20% of the radius | any |
-| `sun_leak` | Sun leak | Steady | 2000 · 60 | A soft warm glow (`#FF9A3C`, radius 45% of short) screen-added at 45% × *s*, drifting along the top edge left to right at 0.15 cycles a second | 0 ms |
+| `glow` | Glow | Steady | 2000 · 60 | Pixels above 60% luma blurred at 2.5% of short (on the quarter-size copy: sigma = 2.5% × short / 4 in that copy's pixels) and **screen**-added at 80% × *s* | any |
+| `spotlight` | Spotlight | Steady | 2000 · 70 | Darkens outside a soft circle centered on the frame: radius 0.9 down to 0.35 of the half-diagonal, outside multiplied by 1 − 0.85 × *s*, edge 20% of the radius, feather centred on the radius | any |
+| `sun_leak` | Sun leak | Steady | 2000 · 60 | A soft warm glow (`#FF9A3C`, radius 45% of short) screen-added at 45% × *s*, drifting along the top edge, back and forth (ping-pong: x = w × (1 − \|1 − 2·frac(0.15τ)\|), so no jump at 6.7 s); the tile uses a top-aligned square crop at τ = 1667 ms | 0 ms |
 
 **Color** (06a)
 
@@ -126,7 +126,7 @@ Defaults: length (ms) and intensity (%). *Ref time* = the instant in the item th
 | `mono` | Mono | Steady | 2000 · 100 | Saturation × (1 − *s*), Rec. 709 luma; contrast +10% × *s* | any |
 | `negative` | Negative | Steady | 1000 · 100 | mix(color, 1 − color, *s*) per channel | any |
 | `duotone` | Duotone | Steady | 2000 · 70 | Luma mapped from shadows `#241B4B` to highlights `#F6B73C`, mixed with the picture by *s* | any |
-| `poster` | Poster | Steady | 2000 · 60 | Each channel reduced to *n* = round(16 − 13 × *s*) levels (16 to 3) | any |
+| `poster` | Poster | Steady | 2000 · 60 | Each channel reduced to *n* = round(16 − 13 × *s*) levels (16 to 3); at *s* = 0 the pass is skipped | any |
 
 **Blur** (06b)
 
@@ -163,7 +163,7 @@ Defaults: length (ms) and intensity (%). *Ref time* = the instant in the item th
 | Intensity panel | Name, slider, one-line description | `fx_desc_<id>`, `effects_intensity` |
 | Intensity 0% | Slider at 0; stage as without it | none |
 | Item past the end | `scrim` wash on the overhang | none |
-| Fourth overlapping item refused | Toast; nothing moves | `explain_effect_max` |
+| Fourth overlapping item refused | Toast; nothing moves; from the sheet, the sheet closes first (amended 17 Nov) | `explain_effect_max` |
 | Too short to trim further (0.1 s) | The handle stops | none |
 | Preview catching up | Last frame stays; "Updating the preview" after 1 s | `editor_updating_preview` |
 | Preview cannot hold 30 fps | Lower preview resolution, no message | none |
@@ -224,7 +224,7 @@ English source; drafts for id, es, pt and hi (the engineer machine-drafts the re
 | `fx_name_static` | Static | 16 | Statis · Estática · Chiado · स्टैटिक | TV noise |
 | `fx_name_flash` | Flash | 16 | Kilat · Destello · Clarão · फ़्लैश | One white flash |
 | `fx_name_light_pulse` | Light pulse | 16 | Denyut cahaya · Pulso de luz · Pulso de luz · रोशनी की धड़कन | |
-| `fx_name_glow` | Glow | 16 | Cahaya · Brillo · Brilho · चमक | |
+| `fx_name_glow` | Glow | 16 | Pendar · Brillo · Brilho · चमक | |
 | `fx_name_spotlight` | Spotlight | 16 | Sorotan · Foco · Holofote · स्पॉटलाइट | |
 | `fx_name_sun_leak` | Sun leak | 16 | Cahaya bocor · Luz solar · Vazamento de sol · धूप की झलक | Warm light drifting in |
 | `fx_name_deep_fry` | Deep-fry | 16 | reuse the photo editor's `edit_photo_tab_deepfry` value | Same word in both editors |
@@ -323,7 +323,7 @@ Use the debug draft `effects-check` (Requests 5) and a 360 × 640 and a 360 × 8
 ## Tokens and icons
 - **No new color, size, radius or motion token.** The grid reuses `grid-tile-min`, the pressed tile `hairline`, the bonk `duration-bonk`.
 - **New content group** `effects` in `design/tokens.json` and `design/system/tokens.json` (envelopes, the max overlap, the 30 ids by tab with defaults and parameters, the photosensitivity ceiling). Kotlin: `EffectCatalog` (commonMain next to `OverlayCatalog`), not in `MemixTheme`.
-- **One new icon** (DESIGN_SYSTEM → Iconography; the engineer draws, I approve in the review): `effects` (Kotlin `MemixIcons.Effects`, `ic_effects.xml`): a **solid 7 px circle** (the core) at the right with **three stroked arcs trailing to its left** (2 px, flat caps, lengths 6, 9 and 12 px, 2.5 px apart vertically): a thing in motion. It must not read as `blur` (a dot with four strokes around it, no trail) or `audio_effects` (a wave with a dot).
+- **One new icon** (DESIGN_SYSTEM → Iconography; the engineer draws, I approve in the review): `effects` (Kotlin `MemixIcons.Effects`, `ic_effects.xml`): a **solid 7 px circle** (the core) at the right with **three stroked arcs trailing to its left** (2 px, flat caps, lengths 6, 9 and 12 px, 3.5 px apart vertically, amended 17 Nov so the strokes don't merge): a thing in motion. It must not read as `blur` (a dot with four strokes around it, no trail) or `audio_effects` (a wave with a dot).
 - **Pointer edits made with this spec:** ToolBar README (the effect item bar; Effects in the main bar), Timeline README (effect items), DESIGN_SYSTEM (iconography, "Effects" content paragraph), P4-07's "Deep-fry is one of the effects" line stays true.
 
 ## Questions for the owner

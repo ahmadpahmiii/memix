@@ -159,7 +159,7 @@ object VideoLookMath {
     }
 
     // The separable blur at (x, y) of 8-bit pixels, the edge pixel repeating past the picture (the sampler's clamp-to-edge).
-    private fun blurAt(source: IntArray, width: Int, height: Int, x: Int, y: Int, kernel: FloatArray, reach: Int, out: FloatArray) {
+    internal fun blurAt(source: IntArray, width: Int, height: Int, x: Int, y: Int, kernel: FloatArray, reach: Int, out: FloatArray) {
         var r = 0f
         var g = 0f
         var b = 0f

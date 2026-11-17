@@ -7,7 +7,6 @@ import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.EffectItem
-import app.memix.core.model.project.EffectSpec
 import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
@@ -128,7 +127,7 @@ internal object ExportCheckProject {
     private fun effectTrack() = Track(
         id = "track-effect",
         kind = TrackKind.EFFECT,
-        items = listOf(EffectItem(id = "effect-zoom", startUs = 3_500_000, durationUs = 400_000, effect = EffectSpec("effect.zoom_punch"))),
+        items = listOf(EffectItem(id = "effect-zoom", startUs = 3_500_000, durationUs = 400_000, effectId = "zoom_punch", intensity = 0.7f)),
     )
 
     // Pushed by hand, so the origin is a stand-in; the engine plays the cached copy.

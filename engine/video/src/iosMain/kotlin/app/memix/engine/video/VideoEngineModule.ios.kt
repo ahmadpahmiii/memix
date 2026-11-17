@@ -173,6 +173,9 @@ private class UnavailablePreviewSession : PreviewSession {
     override fun previewMask(itemId: String, mask: ClipMask) = Unit
     // TODO(P7-04): the AVFoundation compositor draws the look (filter and adjustments) from the same ClipLook; until then a video shows no look on iOS.
     override fun previewLook(itemId: String, look: ClipLook) = Unit
+    // TODO(P7-04): the 15 effects of P4-06a as Core Image / Metal passes after the compositor, from EffectMath's numbers and the references in
+    // docs/qa/references/P4-06-effects/. Until then this whole preview is the unavailable stub: an effect is not drawn on iOS at all, never drawn wrong.
+    override fun previewEffectIntensity(itemId: String, intensity: Float) = Unit
 
     override fun setSilent(silent: Boolean) = Unit
     override fun sampleClock(): ClockSample? = null

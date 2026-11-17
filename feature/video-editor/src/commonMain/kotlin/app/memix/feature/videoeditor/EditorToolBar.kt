@@ -72,6 +72,11 @@ import memix.feature.video_editor.generated.resources.tool_green_screen_click
 import memix.feature.video_editor.generated.resources.tool_filters
 import memix.feature.video_editor.generated.resources.tool_filters_click_all
 import memix.feature.video_editor.generated.resources.tool_filters_click_clip
+import memix.feature.video_editor.generated.resources.effects_change_title
+import memix.feature.video_editor.generated.resources.tool_effect_change_click
+import memix.feature.video_editor.generated.resources.tool_effects
+import memix.feature.video_editor.generated.resources.tool_effects_click
+import memix.feature.video_editor.generated.resources.tool_intensity
 import memix.feature.video_editor.generated.resources.tool_mask
 import memix.feature.video_editor.generated.resources.tool_mask_click
 import memix.feature.video_editor.generated.resources.tool_keyframes
@@ -217,7 +222,9 @@ private fun rememberMainTools(isEmpty: Boolean, focus: EditorFocusTargets, onInt
     val overlayClickLabel = stringResource(Res.string.tool_overlay_click)
     val filters = stringResource(Res.string.tool_filters)
     val filtersClickLabel = stringResource(Res.string.tool_filters_click_all)
-    return remember(isEmpty, edit, memeSounds, text, addMedia, voiceover, overlay, overlayClickLabel, filters, filtersClickLabel, focus, onIntent) {
+    val effects = stringResource(Res.string.tool_effects)
+    val effectsClickLabel = stringResource(Res.string.tool_effects_click)
+    return remember(isEmpty, edit, memeSounds, text, addMedia, voiceover, overlay, overlayClickLabel, filters, filtersClickLabel, effects, effectsClickLabel, focus, onIntent) {
         val addMediaTool = ToolBarItem(addMedia, MemixIcons.Create, { onIntent(VideoEditorIntent.AddMediaTool) }, focusRequester = focus.addMediaTool)
         if (isEmpty) return@remember persistentListOf(addMediaTool)
         persistentListOf(
@@ -227,7 +234,8 @@ private fun rememberMainTools(isEmpty: Boolean, focus: EditorFocusTargets, onInt
             addMediaTool,
             ToolBarItem(overlay, MemixIcons.Overlay, { onIntent(VideoEditorIntent.AddOverlayTool) }, clickLabel = overlayClickLabel, focusRequester = focus.overlayTool),
             ToolBarItem(voiceover, MemixIcons.Mic, { onIntent(VideoEditorIntent.VoiceoverTool) }, focusRequester = focus.voiceoverTool),
-            // Filters sit after Voiceover until Stickers and Effects (P2-09 follow-ups, P4-06) take their places before it (spec P4-07 → The tool and its scope).
+            // Effects (P4-06) and Filters sit after Voiceover until Stickers (P2-09 follow-ups) takes its place before them (spec P4-06 → The tool and the bars).
+            ToolBarItem(effects, MemixIcons.Effects, { onIntent(VideoEditorIntent.EffectsTool) }, clickLabel = effectsClickLabel, focusRequester = focus.effectsTool),
             ToolBarItem(filters, MemixIcons.Adjust, { onIntent(VideoEditorIntent.FiltersAllTool) }, clickLabel = filtersClickLabel, focusRequester = focus.filtersTool),
         )
     }
@@ -269,7 +277,10 @@ private fun rememberClipTools(
     val maskClick = stringResource(Res.string.tool_mask_click)
     val filtersLabel = stringResource(Res.string.tool_filters)
     val filtersClick = stringResource(Res.string.tool_filters_click_clip)
-    return remember(clipTools, isMissing, greenScreenLabel, greenScreenClick, maskLabel, maskClick, filtersLabel, filtersClick, split, delete, duplicate, reorder, volume, audioEffects, moveHere, moveHereClickLabel, replace, detach, textTools, position, opacity, layerOrder, keyframesLabel, keyframesClick, onIntent, reorderFocus, focus) {
+    val intensityLabel = stringResource(Res.string.tool_intensity)
+    val changeEffectLabel = stringResource(Res.string.effects_change_title)
+    val changeEffectClick = stringResource(Res.string.tool_effect_change_click)
+    return remember(clipTools, intensityLabel, changeEffectLabel, changeEffectClick, isMissing, greenScreenLabel, greenScreenClick, maskLabel, maskClick, filtersLabel, filtersClick, split, delete, duplicate, reorder, volume, audioEffects, moveHere, moveHereClickLabel, replace, detach, textTools, position, opacity, layerOrder, keyframesLabel, keyframesClick, onIntent, reorderFocus, focus) {
         val splitTool = ToolBarItem(split, MemixIcons.Split, { onIntent(VideoEditorIntent.SplitSelected) })
         val deleteTool = ToolBarItem(delete, MemixIcons.Delete, { onIntent(VideoEditorIntent.DeleteSelected) }, ToolTone.Danger)
         val duplicateTool = ToolBarItem(duplicate, MemixIcons.Duplicate, { onIntent(VideoEditorIntent.DuplicateSelected) })
@@ -287,7 +298,11 @@ private fun rememberClipTools(
         val greenScreenTool = ToolBarItem(greenScreenLabel, MemixIcons.GreenScreen, { onIntent(VideoEditorIntent.GreenScreenTool) }, clickLabel = greenScreenClick, focusRequester = focus.greenScreenTool)
         val maskTool = ToolBarItem(maskLabel, MemixIcons.Mask, { onIntent(VideoEditorIntent.MaskTool) }, clickLabel = maskClick, focusRequester = focus.maskTool)
         val filtersTool = ToolBarItem(filtersLabel, MemixIcons.Adjust, { onIntent(VideoEditorIntent.FiltersTool) }, clickLabel = filtersClick, focusRequester = focus.filtersTool)
+        val intensityTool = ToolBarItem(intensityLabel, MemixIcons.Adjust, { onIntent(VideoEditorIntent.IntensityTool) }, focusRequester = focus.intensityTool)
+        val changeEffectTool = ToolBarItem(changeEffectLabel, MemixIcons.Replace, { onIntent(VideoEditorIntent.ChangeEffectTool) }, clickLabel = changeEffectClick, focusRequester = focus.changeEffectTool)
         when (clipTools) {
+            // An effect's tools (spec P4-06 → The tool and the bars): Intensity and Delete first so both show whole at 360 dp; no Keyframes, Volume or Position.
+            ClipTools.EFFECT -> persistentListOf(intensityTool, deleteTool, changeEffectTool, splitTool, moveHereTool, duplicateTool)
             // The overlay's own tools (spec P4-01b → Overlay tool bar): Position (the no-drag route) and Opacity first, Delete third.
             // A missing file puts Delete first and leaves out what acts on nothing visible.
             ClipTools.VIDEO_OVERLAY -> {
@@ -375,6 +390,9 @@ internal class EditorFocusTargets {
     val greenScreenTool = FocusRequester()
     val maskTool = FocusRequester()
     val filtersTool = FocusRequester()
+    val effectsTool = FocusRequester()
+    val changeEffectTool = FocusRequester()
+    val intensityTool = FocusRequester()
 
     /** Moves focus to [target]'s control; nothing happens when it isn't on screen. */
     fun moveTo(target: FocusTarget) {
@@ -401,6 +419,9 @@ internal class EditorFocusTargets {
             FocusTarget.GREEN_SCREEN_TOOL -> greenScreenTool
             FocusTarget.MASK_TOOL -> maskTool
             FocusTarget.FILTERS_TOOL -> filtersTool
+            FocusTarget.EFFECTS_TOOL -> effectsTool
+            FocusTarget.CHANGE_EFFECT_TOOL -> changeEffectTool
+            FocusTarget.INTENSITY_TOOL -> intensityTool
         }.requestFocus()
     }
 }

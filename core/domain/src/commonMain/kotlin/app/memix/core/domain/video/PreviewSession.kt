@@ -107,6 +107,13 @@ interface PreviewSession : AutoCloseable {
     fun previewLook(itemId: String, look: ClipLook)
 
     /**
+     * While an effect's Intensity slider drags (P4-06): draws effect item [itemId] at [intensity] (0 to 1) at once, paused or playing, with no rebuild.
+     * Ignored when the composition has no effects pass (the effect is added by an [update], which rebuilds). The [update] that commits the change
+     * draws the same intensity by itself.
+     */
+    fun previewEffectIntensity(itemId: String, intensity: Float)
+
+    /**
      * While the Volume panel's slider moves (P1-08, P1-09): plays sound or clip [itemId] at [volume] (1 = its own
      * level) right away, without rebuilding, so the change is heard live, also when raising it from 0%. Nothing plays
      * for a clip whose sound is muted with every clip's, or detached. The next [update] replaces it with the

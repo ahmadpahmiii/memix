@@ -83,38 +83,52 @@ object ImagePipeline {
             for (c in 0..2) rgb[c] = clamp(luma + (rgb[c] - luma) * k)
         }
 
-        // One recipe scaled by the amount: saturation, contrast, a warm-red tint, then grain (the hard sharpen is step 5).
-        private fun deepFry(x: Int, y: Int) {
-            saturate(1f + ImagePipelineRules.DEEP_FRY_SATURATION * fry)
-            for (c in 0..2) rgb[c] = clamp((rgb[c] - 0.5f) * (1f + ImagePipelineRules.DEEP_FRY_CONTRAST * fry) + 0.5f)
-            rgb[0] = clamp(rgb[0] * (1f + ImagePipelineRules.DEEP_FRY_TINT * fry))
-            rgb[2] = clamp(rgb[2] * (1f - ImagePipelineRules.DEEP_FRY_TINT * fry))
-            val grain = grainAt(x, y) * ImagePipelineRules.DEEP_FRY_GRAIN * fry
-            for (c in 0..2) rgb[c] = clamp(rgb[c] + grain)
-        }
-
-        // The grain's cells are a share of the shorter side and each cell's value a fixed hash, so every size lays out the same field.
-        // A pixel takes the field's average over its own square (cells weighted by overlap), as if the finer picture were scaled down:
-        // sampling one point instead makes a cell about two pixels wide land differently at 1080 and at 2160.
-        private fun grainAt(x: Int, y: Int): Float {
-            val left = x / grainCell
-            val top = y / grainCell
-            val span = 1f / grainCell
-            val firstX = floor(left).toInt()
-            val lastX = ceil(left + span).toInt() - 1
-            val firstY = floor(top).toInt()
-            val lastY = ceil(top + span).toInt() - 1
-            var sum = 0f
-            for (cy in firstY..lastY) {
-                val weightY = overlap(cy, top, span)
-                for (cx in firstX..lastX) sum += grainOf(cx, cy) * weightY * overlap(cx, left, span)
-            }
-            return sum
-        }
-
-        // The share of the pixel's extent [start, start + span) (in cells) that lies in cell [cell].
-        private fun overlap(cell: Int, start: Float, span: Float): Float = (min(cell + 1f, start + span) - max(cell.toFloat(), start)).coerceAtLeast(0f) / span
+        // One recipe scaled by the amount (the video editor's Deep-fry effect runs the same function, P4-06); the hard sharpen is step 5.
+        private fun deepFry(x: Int, y: Int) = deepFryRgb(rgb, grainAt(x, y, grainCell), fry)
     }
+
+    /** Deep-fry's grain cell in pixels for a picture whose shorter side is [shortSidePx]. */
+    fun grainCellPx(shortSidePx: Float): Float = ImagePipelineRules.GRAIN_CELL_OF_SHORT_SIDE * shortSidePx
+
+    /**
+     * Deep-fry at amount [fry] on one pixel's [rgb] (0 to 1 each, in place): saturation, contrast, a warm-red tint, then [grain] (from
+     * [grainAt], -1 to 1) added. The photo editor's recipe, used as it is by the video effect (spec P4-06 → Color).
+     */
+    fun deepFryRgb(rgb: FloatArray, grain: Float, fry: Float) {
+        val luma = LUMA_R * rgb[0] + LUMA_G * rgb[1] + LUMA_B * rgb[2]
+        val k = 1f + ImagePipelineRules.DEEP_FRY_SATURATION * fry
+        for (c in 0..2) rgb[c] = clamp(luma + (rgb[c] - luma) * k)
+        for (c in 0..2) rgb[c] = clamp((rgb[c] - 0.5f) * (1f + ImagePipelineRules.DEEP_FRY_CONTRAST * fry) + 0.5f)
+        rgb[0] = clamp(rgb[0] * (1f + ImagePipelineRules.DEEP_FRY_TINT * fry))
+        rgb[2] = clamp(rgb[2] * (1f - ImagePipelineRules.DEEP_FRY_TINT * fry))
+        val added = grain * ImagePipelineRules.DEEP_FRY_GRAIN * fry
+        for (c in 0..2) rgb[c] = clamp(rgb[c] + added)
+    }
+
+    /**
+     * The grain at pixel ([x], [y]) for cells [grainCell] pixels wide (see [grainCellPx]). The cells are a share of the shorter side and each
+     * cell's value a fixed hash, so every size lays out the same field. A pixel takes the field's average over its own square (cells weighted
+     * by overlap), as if the finer picture were scaled down: sampling one point instead makes a cell about two pixels wide land differently at
+     * 1080 and at 2160.
+     */
+    fun grainAt(x: Int, y: Int, grainCell: Float): Float {
+        val left = x / grainCell
+        val top = y / grainCell
+        val span = 1f / grainCell
+        val firstX = floor(left).toInt()
+        val lastX = ceil(left + span).toInt() - 1
+        val firstY = floor(top).toInt()
+        val lastY = ceil(top + span).toInt() - 1
+        var sum = 0f
+        for (cy in firstY..lastY) {
+            val weightY = overlap(cy, top, span)
+            for (cx in firstX..lastX) sum += grainOf(cx, cy) * weightY * overlap(cx, left, span)
+        }
+        return sum
+    }
+
+    // The share of the pixel's extent [start, start + span) (in cells) that lies in cell [cell].
+    private fun overlap(cell: Int, start: Float, span: Float): Float = (min(cell + 1f, start + span) - max(cell.toFloat(), start)).coerceAtLeast(0f) / span
 
     /** A fixed pseudo-random value in -1 to 1 for grain cell ([cellX], [cellY]): the same on every platform and size. */
     fun grainOf(cellX: Int, cellY: Int): Float {

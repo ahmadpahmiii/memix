@@ -44,6 +44,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -145,6 +146,10 @@ internal class Media3PreviewSession(
     private var shownLooks: Map<String, LiveLook> = emptyMap()
     private val lookRebuilds = MutableStateFlow(0)
     private val lookRebuildGate = LookRebuildGate()
+
+    // The shown composition's live effect items (P4-06), or null when it was built without the effects pass: edits of effect items then move the
+    // list the player draws from its next frame, with no new composition.
+    private var shownEffects: LiveEffects? = null
     private val positionTicker = FrameTicker(::publishPlayerPosition)
     private val headphonesUnplugged = HeadphonesUnpluggedReceiver(context, onUnplugged = ::pause)
     private val playSpan = PlaySpanLog(logger)
@@ -184,7 +189,9 @@ internal class Media3PreviewSession(
     init {
         showTiming.start(ShowTimingLog.Change.OPEN)
         scope.launch {
-            combine(projects, trimClip, lookRebuilds) { next, clip, _ -> next to clip }.collectLatest { (next, clip) ->
+            // A change of effect items alone is not a new composition (see sameComposition), so the project is read here, not taken from the flow.
+            combine(projects.distinctUntilChanged(::sameComposition), trimClip, lookRebuilds) { _, clip, _ -> clip }.collectLatest { clip ->
+                val next = projects.value
                 if (clip != null) {
                     showTrimComposition(withContext(ioDispatcher) { prepare(trimProjectOf(next, clip)) })
                 } else {
@@ -229,6 +236,7 @@ internal class Media3PreviewSession(
     override fun update(project: Project) {
         // An equal project renders nothing new, so there is no edit to time.
         if (closed || project == projects.value) return
+        if (sameComposition(projects.value, project)) return showEffectEdit(project)
         // A committed caption edit ends its stand-in: the new composition draws the caption itself.
         requestedHiddenCaption = null
         requestedHiddenOverlay = null
@@ -241,6 +249,26 @@ internal class Media3PreviewSession(
         updateCount++
         publish { it.copy(isCatchingUp = true) }
         projects.value = project
+    }
+
+    // An edit of effect items only (add, move, trim, Intensity, delete among others): the effects pass reads its items live, so the player draws the
+    // new list from its next frame. The project is kept for the next composition; paused, a seek to where it is draws the frame again.
+    // Skips the show-timing, catching-up and caption bookkeeping of update() on purpose: nothing is rebuilt, so there is nothing to wait for.
+    private fun showEffectEdit(project: Project) {
+        projects.value = project
+        shownEffects?.spans = effectSpansOf(project)
+        redrawWhenPaused()
+    }
+
+    override fun previewEffectIntensity(itemId: String, intensity: Float) {
+        if (closed) return
+        val live = shownEffects ?: return
+        live.spans = live.spans.map { if (it.itemId == itemId) it.copy(intensity = intensity) else it }
+        redrawWhenPaused()
+    }
+
+    private fun redrawWhenPaused() {
+        if (!playerShowsTrim && !mutablePlayback.value.isPlaying) mutablePlayer.value?.let { player -> player.seekTo(player.currentPosition) }
     }
 
     override fun showTrimFrame(clip: MediaClip, sourceTimeUs: Long) {
@@ -407,6 +435,7 @@ internal class Media3PreviewSession(
             val liveKeys = playablePlan.chromaKeys.mapValues { (_, key) -> LiveChromaKey(key) }
             val liveMasks = playablePlan.masks.mapValues { (_, mask) -> LiveMask(mask) }
             val liveLooks = playablePlan.looks.mapValues { (_, look) -> LiveLook(look) }
+            val liveEffects = if (playablePlan.hasEffects) LiveEffects(playablePlan.effects) else null
             val visibility = CaptionVisibility()
             var overlayVisibility: OverlayVisibility? = null
             val captions = playablePlan.captions.takeIf { it.isNotEmpty() }?.let {
@@ -424,6 +453,7 @@ internal class Media3PreviewSession(
                 liveMasks = liveMasks,
                 liveLooks = liveLooks,
                 lutTables = lutTables,
+                liveEffects = liveEffects,
                 captionOverlay = captions,
                 frameShortSidePx = if (playablePlan.background == PlanBackground.Blur) BLUR_PREVIEW_SHORT_SIDE_PX else null,
                 backgroundFile = resolved.backgroundFile,
@@ -443,6 +473,7 @@ internal class Media3PreviewSession(
                 liveKeys = liveKeys,
                 liveMasks = liveMasks,
                 liveLooks = liveLooks,
+                liveEffects = liveEffects,
             )
         } catch (e: RuntimeException) {
             // Media3's own argument checks.
@@ -482,6 +513,9 @@ internal class Media3PreviewSession(
         shownMasks = prepared.liveMasks
         requestedLiveLooks.forEach { (itemId, look) -> prepared.liveLooks[itemId]?.takeIf { it.covers(look) }?.look = look }
         shownLooks = prepared.liveLooks
+        // Effect items edited while this one was built.
+        prepared.liveEffects?.spans = effectSpansOf(projects.value)
+        shownEffects = prepared.liveEffects
         try {
             // Rebuilds every decoder (Media3 1.11.1), so it costs a re-prepare; the position and play state carry on.
             player.setComposition(prepared.composition, startUs / MICROS_PER_MILLI)
@@ -618,6 +652,8 @@ internal class Media3PreviewSession(
             /** The mask's live value of every masked clip in this composition. */
             val liveMasks: Map<String, LiveMask>,
             val liveLooks: Map<String, LiveLook>,
+            /** The effects pass's live items; null when the composition has none (see [effectsChangeComposition]). */
+            val liveEffects: LiveEffects?,
         ) : PreparedPreview
 
         class Failed(val reason: String, val cause: Throwable?) : PreparedPreview
@@ -652,6 +688,19 @@ internal class Media3PreviewSession(
 }
 
 private const val TAG = "MemixPreview"
+
+/**
+ * True when the two projects need the same composition: they differ at most in their effect items, and either both have an effect this engine draws
+ * or neither does. The effects pass reads its items live, so such an edit is not a rebuild; the first effect and the last one going are (they add
+ * and remove the pass).
+ */
+private fun sameComposition(before: Project, after: Project): Boolean =
+    before.withoutEffectItems() == after.withoutEffectItems() && effectSpansOf(before).isEmpty() == effectSpansOf(after).isEmpty()
+
+private fun Project.withoutEffectItems(): Project {
+    val timeline = video ?: return this
+    return copy(video = timeline.copy(tracks = timeline.tracks.filter { it.kind != TrackKind.EFFECT }))
+}
 
 private const val TRIM_TRACK_ID = "trim-preview"
 

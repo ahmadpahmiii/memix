@@ -60,7 +60,15 @@ class ProjectEditSession internal constructor(
      * finger lifts (mobile-performance skill), so 60 frames of dragging are one undo, not 60.
      */
     fun commit(tool: EditorTool, font: String? = null, value: String? = null, filter: String? = null, loggedAs: List<EditorTool> = listOf(tool), edit: (Project) -> Project): Boolean {
-        val recorded = changeHistory { history -> history.record(tool, edit(history.current)) }
+        lastRefusal = null
+        val recorded = changeHistory { history ->
+            val before = history.current
+            val after = edit(before)
+            // A fourth overlapping effect or a fourth Flash within a second is never a step, whoever made the edit (spec P4-06 → Stacking, Photosensitivity).
+            val refusal = effectRefusal(before, after)
+            lastRefusal = refusal
+            history.record(tool, if (refusal == null) after else before)
+        }
         if (recorded) {
             logProjectCreateOnFirstContent()
             // One step can log several events (a crop screen's Done: one per part it changed).
@@ -68,6 +76,10 @@ class ProjectEditSession internal constructor(
         }
         return recorded
     }
+
+    /** Why the last [commit] was refused by the effect rules, or null; the editor says so. */
+    var lastRefusal: EffectRefusal? = null
+        private set
 
     /** Goes back one step. Does nothing when [ProjectEditState.canUndo] is false. */
     fun undo() {

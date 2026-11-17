@@ -53,6 +53,10 @@ import memix.feature.video_editor.generated.resources.Res
 import memix.core.ui.generated.resources.Res as UiRes
 import memix.core.ui.generated.resources.import_item_photo
 import memix.core.ui.generated.resources.import_item_video
+import app.memix.feature.videoeditor.effects.effectNameOf
+import memix.feature.video_editor.generated.resources.a11y_effect_node
+import memix.feature.video_editor.generated.resources.effects_change_title
+import memix.feature.video_editor.generated.resources.tool_intensity
 import memix.feature.video_editor.generated.resources.a11y_back_1s
 import memix.feature.video_editor.generated.resources.a11y_clip_media
 import memix.feature.video_editor.generated.resources.tool_green_screen
@@ -326,7 +330,7 @@ private fun ItemSemantics(controller: TimelineController, track: TrackUi, item: 
     val description = itemDescription(track, item, facts.clipCount)
     val states = itemStates(track, item, facts)
     val isSelected = item.id == facts.selectedItemId
-    val actions = if (isSelected) rememberItemActions(controller, isMainClip = track.kind == TrackKind.MAIN_VIDEO) else emptyList()
+    val actions = if (isSelected) rememberItemActions(controller, isMainClip = track.kind == TrackKind.MAIN_VIDEO, isEffect = item.label is ItemLabel.Effect) else emptyList()
     Box(
         Modifier.semantics {
             contentDescription = description
@@ -387,14 +391,16 @@ private fun HandleSemantics(controller: TimelineController, track: TrackUi, item
 
 /** Split, Delete, Duplicate, and for main clips Move earlier and Move later. P1-08 adds Move to playhead. */
 @Composable
-private fun rememberItemActions(controller: TimelineController, isMainClip: Boolean): List<CustomAccessibilityAction> {
+private fun rememberItemActions(controller: TimelineController, isMainClip: Boolean, isEffect: Boolean): List<CustomAccessibilityAction> {
     val split = stringResource(Res.string.tool_split)
     val delete = stringResource(UiRes.string.tool_delete)
     val duplicate = stringResource(UiRes.string.tool_duplicate)
     val earlier = stringResource(Res.string.reorder_move_earlier)
     val later = stringResource(Res.string.reorder_move_later)
     val moveToPlayhead = stringResource(Res.string.tool_move_here_a11y)
-    return remember(controller, isMainClip, split, delete, duplicate, earlier, later, moveToPlayhead) {
+    val changeEffect = stringResource(Res.string.effects_change_title)
+    val intensity = stringResource(Res.string.tool_intensity)
+    return remember(controller, isMainClip, isEffect, split, delete, duplicate, earlier, later, moveToPlayhead, changeEffect, intensity) {
         fun action(label: String, intent: VideoEditorIntent) = CustomAccessibilityAction(label) {
             controller.onIntent(intent)
             true
@@ -405,6 +411,8 @@ private fun rememberItemActions(controller: TimelineController, isMainClip: Bool
             action(duplicate, VideoEditorIntent.DuplicateSelected),
         )
         // Main clips reorder; every other item moves to the playhead, the single-pointer route for Move (spec P1-06).
+        // An effect also changes and sets its strength without a gesture (spec P4-06 → Accessibility).
+        if (isEffect) return@remember edits + action(moveToPlayhead, VideoEditorIntent.MoveHereSelected) + action(changeEffect, VideoEditorIntent.ChangeEffectTool) + action(intensity, VideoEditorIntent.IntensityTool)
         if (!isMainClip) return@remember edits + action(moveToPlayhead, VideoEditorIntent.MoveHereSelected)
         edits + action(earlier, VideoEditorIntent.MoveSelectedClip(steps = -1)) + action(later, VideoEditorIntent.MoveSelectedClip(steps = 1))
     }
@@ -451,6 +459,10 @@ private fun baseDescription(track: TrackUi, item: ItemUi, clipCount: Int): Strin
         }
         ItemLabel.Voiceover -> stringResource(Res.string.a11y_item, trackName, stringResource(Res.string.timeline_voiceover), duration, start)
         ItemLabel.UnnamedMySound -> stringResource(Res.string.a11y_item, trackName, stringResource(Res.string.timeline_my_sound), duration, start)
+        is ItemLabel.Effect -> {
+            val name = effectNameOf(label.effectId)?.let { stringResource(it) } ?: trackName
+            stringResource(Res.string.a11y_effect_node, name, spokenTime(item.startUs), spokenTime(item.endUs), label.intensityPercent)
+        }
         is ItemLabel.SoundTitle -> stringResource(Res.string.a11y_item, trackName, label.title.inLanguage(appLanguageCode()), duration, start)
         // A sound the catalog doesn't know, or a sticker the user cut out (P2-07), has no name to say; saying the
         // track's name twice would sound like a glitch.

@@ -1,6 +1,7 @@
 package app.memix.feature.videoeditor.timeline
 
 import androidx.compose.runtime.Immutable
+import kotlin.math.roundToInt
 import app.memix.core.domain.project.videoLengthUs
 import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.project.AudioClip
@@ -140,6 +141,9 @@ sealed interface ItemLabel {
     /** A meme sound's title from the catalog, in every app language; the timeline shows the app's language. */
     data class SoundTitle(val title: LocalizedText) : ItemLabel
 
+    /** An effect item (P4-06): the effect's name, and its intensity for the spoken description. */
+    data class Effect(val effectId: String, val intensityPercent: Int) : ItemLabel
+
     /** Main video clips (thumbnails instead), and items whose name isn't in the model yet. */
     data object None : ItemLabel
 }
@@ -193,8 +197,7 @@ private fun itemUiOf(item: TimelineItem, kind: TrackKind, clipNumber: Int, sound
     is TextItem -> ItemUi(item.id, item.startUs, item.durationUs, writtenLabelOf(item.text))
     // TODO(P4-12): the sticker's name from its pack.
     is StickerItem -> ItemUi(item.id, item.startUs, item.durationUs, ItemLabel.None)
-    // TODO(P4-06): the effect's name from the effect registry.
-    is EffectItem -> ItemUi(item.id, item.startUs, item.durationUs, ItemLabel.None)
+    is EffectItem -> ItemUi(item.id, item.startUs, item.durationUs, ItemLabel.Effect(item.effectId, (item.intensity * PERCENT).roundToInt()))
 }
 
 // A video file on an audio track is a clip's detached sound (P1-09); a catalog sound shows its title, a My sound its name.
@@ -229,3 +232,5 @@ private fun ItemUi.withLookOf(item: TimelineItem): ItemUi {
     val look = (item as? MediaClip)?.look ?: return this
     return copy(filterId = look.filter?.takeIf { it.intensity > 0f }?.id, adjusted = look.adjust != ImageAdjust())
 }
+
+private const val PERCENT = 100f

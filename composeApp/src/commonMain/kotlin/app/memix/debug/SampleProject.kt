@@ -7,7 +7,6 @@ import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.EffectItem
-import app.memix.core.model.project.EffectSpec
 import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
@@ -157,7 +156,8 @@ internal object SampleProject {
                 id = "effect-zoom-punch",
                 startUs = 4_000_000,
                 durationUs = 400_000,
-                effect = EffectSpec("effect.zoom_punch", params = mapOf("intensity" to 0.75f, "scale" to 1.3f)),
+                effectId = "zoom_punch",
+                intensity = 0.7f,
             ),
         ),
     )

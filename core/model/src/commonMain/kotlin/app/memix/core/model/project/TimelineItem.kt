@@ -124,12 +124,16 @@ data class StickerItem(
     val keyframes: List<Keyframe> = emptyList(),
 ) : TimelineItem
 
-/** An effect applied to the whole canvas for as long as the item lasts. */
+/**
+ * A video effect applied to the whole composed frame, captions included, for as long as the item lasts (P4-06). [effectId] is one of the
+ * [EffectCatalog] ids, saved forever; an id this build can't draw is kept and skipped. [intensity] is 0 (no effect) to 1.
+ */
 @Serializable
 @SerialName("effect_item")
 data class EffectItem(
     override val id: String,
     override val startUs: Long,
     override val durationUs: Long,
-    val effect: EffectSpec,
+    val effectId: String,
+    val intensity: Float,
 ) : TimelineItem

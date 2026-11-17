@@ -71,4 +71,9 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     // unfiltered and looks as saved. The step only moves the version on; the bump keeps an older build from opening a draft whose look it
     // would draw without (see Project.needsNewerApp).
     ProjectMigration(fromVersion = 17) { json -> json },
+    // 18 → 19 (P4-06a): EffectItem is now (effectId, intensity) on an "effect" lane: the video effects. No build before this one could place an effect (only the
+    // debug hand-check projects carried one, in a shape that no draft saved), so version-18 JSON has no effect items and decodes as it is. The step only
+    // moves the version on; the bump keeps an older build from opening a draft whose effects it would drop on the next save. P4-06b adds no bump:
+    // the 30 effect ids are data.
+    ProjectMigration(fromVersion = 18) { json -> json },
 )

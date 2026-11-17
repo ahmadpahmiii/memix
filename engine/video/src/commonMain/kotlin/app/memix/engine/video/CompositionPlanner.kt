@@ -75,8 +75,9 @@ internal object CompositionPlanner {
             overlays = overlays.layers,
             audioLanes = tracks.filter { it.kind.carriesSound() && !it.muted }.flatMap { audioLanes(it, durationUs, keepSilentItems) },
             captions = captions(tracks, durationUs),
+            effects = effectSpansOf(project),
             skippedOverlayIds = overlays.skippedIds,
-            notRendered = notRendered(tracks) + overlays.skippedLines,
+            notRendered = notRendered(tracks) + unbuiltEffectLines(project) + overlays.skippedLines,
         )
         return PlanResult.Ready(plan)
     }
@@ -331,10 +332,12 @@ internal object CompositionPlanner {
 
     /** The ticket that renders a track kind this engine skips today, or null when it renders it. */
     private fun ticketThatAddsRendering(kind: TrackKind): String? = when (kind) {
-        TrackKind.MAIN_VIDEO, TrackKind.OVERLAY, TrackKind.MEME_SOUND, TrackKind.AUDIO, TrackKind.TEXT -> null
+        TrackKind.MAIN_VIDEO, TrackKind.OVERLAY, TrackKind.MEME_SOUND, TrackKind.AUDIO, TrackKind.TEXT, TrackKind.EFFECT -> null
         TrackKind.STICKER -> "P4-12"
-        TrackKind.EFFECT -> "P4-06"
     }
+
+    private fun unbuiltEffectLines(project: Project): List<String> =
+        unbuiltEffectIdsOf(project).map { "Not rendered yet: effect $it, arrives with P4-06b" }
 
     private fun itemCount(track: Track): String = if (track.items.size == 1) "1 item" else "${track.items.size} items"
 

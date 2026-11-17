@@ -21,7 +21,6 @@ import app.memix.core.model.project.ImageAdjust
 import app.memix.core.model.project.ImageEdit
 import app.memix.core.model.project.ItemLook
 import app.memix.core.model.project.Keyframe
-import app.memix.core.model.project.EffectSpec
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaOrigin
@@ -107,6 +106,9 @@ internal class EditorCheckProjects : KoinComponent {
         MASK_MAIN -> maskMain()
         FILTERS_CHECK -> filtersCheck(withLooks = false)
         FILTERS_MIXED -> filtersCheck(withLooks = true)
+        EFFECTS_CHECK -> effectsCheck(EFFECTS_CHECK, emptyList())
+        STACK_TWO -> effectsCheck(STACK_TWO, stackedEffects(zoomFirst = true))
+        STACK_TWO_REVERSE -> effectsCheck(STACK_TWO_REVERSE, stackedEffects(zoomFirst = false))
         else -> null
     }
 
@@ -163,7 +165,7 @@ internal class EditorCheckProjects : KoinComponent {
             Track(
                 "check-effect",
                 TrackKind.EFFECT,
-                listOf(EffectItem("check-zoom", startUs = 4_000_000, durationUs = 400_000, EffectSpec("effect.zoom_punch"))),
+                listOf(EffectItem("check-zoom", startUs = 4_000_000, durationUs = 400_000, effectId = "zoom_punch", intensity = 0.7f)),
             ),
         ),
     )
@@ -431,6 +433,28 @@ internal class EditorCheckProjects : KoinComponent {
      * main bar (every main clip) and from each clip's bar (that clip). With [withLooks] (`filters-mixed`) the clips already differ: the video has
      * Cinema at 80% and a vignette, the photo has Mono, the grid none, and the overlay has Vivid, so the mixed state shows at once.
      */
+    /**
+     * The P4-06a effects scene (spec docs/ux/specs/P4-06-video-effects.md → QA compares): the 4 s, 9:16, 1080 x 1920 `effects-check.mp4` (a 12 x 12 lettered grid
+     * over colour bars with a white square that moves; the ffmpeg command is in engineer-hand-checks.md → P4-06a), the caption "CHECK" and a sticker (the sticker lane
+     * draws from P4-12, so it only shows on its lane), plus [effects]. `stack-two` has a zoom punch on lane 1 and a Deep-fry on lane 2 over the same second, `stack-two-reverse`
+     * the other way round: lane order is application order, so the two frames differ.
+     */
+    private fun effectsCheck(id: String, effects: List<Track>): Project = project(
+        id,
+        mainClips = listOf(MediaClip("fx-main", startUs = 0, source = effectsClip, trimInUs = 0, trimOutUs = 4_000_000)),
+        extraTracks = listOf(
+            Track("fx-text", TrackKind.TEXT, listOf(TextItem("fx-caption", startUs = 0, durationUs = 4_000_000, "CHECK", CAPTION, Transform(centerX = 0.5f, centerY = 0.25f)))),
+            Track("fx-sticker", TrackKind.STICKER, listOf(StickerItem("fx-sticker-item", startUs = 500_000, durationUs = 2_000_000, photoMeasured, Transform(centerX = 0.5f, centerY = 0.5f, scale = 0.5f)))),
+        ) + effects,
+    )
+
+    private fun stackedEffects(zoomFirst: Boolean): List<Track> {
+        val zoom = EffectItem("fx-zoom", startUs = 1_000_000, durationUs = 600_000, effectId = "zoom_punch", intensity = 1f)
+        val fry = EffectItem("fx-fry", startUs = 1_000_000, durationUs = 2_000_000, effectId = "deep_fry", intensity = 0.7f)
+        val ordered = if (zoomFirst) listOf(zoom, fry) else listOf(fry, zoom)
+        return ordered.mapIndexed { index, item -> Track("fx-lane-$index", TrackKind.EFFECT, listOf(item)) }
+    }
+
     private fun filtersCheck(withLooks: Boolean): Project {
         fun look(filter: FilterRef?, adjust: ImageAdjust = ImageAdjust()) = if (withLooks) ImageEdit(adjust = adjust, filter = filter) else null
         val main = listOf(
@@ -538,10 +562,13 @@ internal class EditorCheckProjects : KoinComponent {
         const val MASK_MAIN = "mask-main"
         const val FILTERS_CHECK = "filters-check"
         const val FILTERS_MIXED = "filters-mixed"
+        const val EFFECTS_CHECK = "effects-check"
+        const val STACK_TWO = "stack-two"
+        const val STACK_TWO_REVERSE = "stack-two-reverse"
         private val FILTER_SCENES = setOf(FILTERS_CHECK, FILTERS_MIXED)
         private val NAMES = listOf(
             EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK,
-            TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK, OVERLAY_CHECK, OVERLAY_PERF, KEYFRAME_CHECK, GREENSCREEN_CHECK, GREENSCREEN_MAIN, MASK_CHECK, MASK_MAIN, FILTERS_CHECK, FILTERS_MIXED,
+            TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK, OVERLAY_CHECK, OVERLAY_PERF, KEYFRAME_CHECK, GREENSCREEN_CHECK, GREENSCREEN_MAIN, MASK_CHECK, MASK_MAIN, FILTERS_CHECK, FILTERS_MIXED, EFFECTS_CHECK, STACK_TWO, STACK_TWO_REVERSE,
         ) + PhotoCheckProjects.NAMES
         private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20
@@ -575,6 +602,8 @@ internal class EditorCheckProjects : KoinComponent {
         private val toneMeasured = MediaRef(
             MediaOrigin.CatalogItem("debug-tone-1k"), MediaKind.AUDIO, cachedCopyPath = "${ExportCheckProject.MEDIA_DIR}/tone-1k.m4a", durationUs = 10_000_000,
         )
+        // The 4 s effects scene of P4-06a (desktop-made; the ffmpeg command is in the hand checks), measured like the others.
+        private val effectsClip = media("effects-check.mp4", MediaKind.VIDEO).copy(durationUs = 4_000_000, pixelSize = PixelSize(1080, 1920), hasAudio = false)
         private val photo4x3Measured = photo4x3.copy(pixelSize = PixelSize(1440, 1080), hasAudio = false)
         private val sound = MediaRef(MediaOrigin.CatalogItem("debug-beep"), MediaKind.AUDIO, cachedCopyPath = "${ExportCheckProject.MEDIA_DIR}/sound.m4a")
 

@@ -62,6 +62,8 @@ internal class TimelinePainter(
     private val originalAudioLabel: String,
     private val voiceoverLabel: String,
     private val unnamedMySoundLabel: String,
+    /** The names of the effects this build draws, by effect id (P4-06). */
+    private val effectNames: Map<String, String>,
     private val missingFileLabel: String,
     /** The app's language, for catalog titles that come in every language. */
     private val languageCode: String,
@@ -497,6 +499,7 @@ internal class TimelinePainter(
         ItemLabel.OriginalAudio -> originalAudioLabel
         ItemLabel.Voiceover -> voiceoverLabel
         ItemLabel.UnnamedMySound -> unnamedMySoundLabel
+        is ItemLabel.Effect -> effectNames[label.effectId]
         is ItemLabel.SoundTitle -> label.title.inLanguage(languageCode)
         ItemLabel.None -> null
     }

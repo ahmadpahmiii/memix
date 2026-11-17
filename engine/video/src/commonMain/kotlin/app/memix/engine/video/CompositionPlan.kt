@@ -39,11 +39,19 @@ internal data class CompositionPlan(
     val audioLanes: List<AudioLane>,
     /** The captions drawn over the video, in draw order (later ones on top), cut to [durationUs]. */
     val captions: List<CaptionClip> = emptyList(),
+    /**
+     * The effect items drawn over the whole composed frame, captions included, in lane order (P4-06). The composition carries the effects
+     * pass only when this isn't empty; the items it holds are read live per frame, so an edit of one needs no new composition.
+     */
+    val effects: List<EffectSpan> = emptyList(),
     /** Overlay clips left out because the phone can't decode that many videos at once, or their size isn't known (see [OverlayAdmission]). */
     val skippedOverlayIds: List<String> = emptyList(),
     /** One log line per thing in the project this engine doesn't render yet, naming the ticket that adds it. */
     val notRendered: List<String>,
 ) {
+    /** True when the effects pass is part of the composition (an empty list builds none, so a project with no effects costs nothing). */
+    val hasEffects: Boolean get() = effects.isNotEmpty()
+
     /** True when overlays are drawn: the engine then composites several video sequences instead of playing the main one alone. */
     val hasOverlays: Boolean get() = overlays.isNotEmpty()
 

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import app.memix.feature.videoeditor.effects.effectNameTexts
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -518,8 +519,9 @@ private fun rememberTimelinePainter(textMeasurer: TextMeasurer): TimelinePainter
     val unnamedMySound = stringResource(Res.string.timeline_my_sound)
     val missingFile = stringResource(Res.string.clip_missing_file)
     val languageCode = appLanguageCode()
-    return remember(textMeasurer, labelStyle, rulerStyle, originalAudio, voiceover, unnamedMySound, missingFile, languageCode, density) {
-        TimelinePainter(textMeasurer, labelStyle, rulerStyle, originalAudio, voiceover, unnamedMySound, missingFile, languageCode, density)
+    val effectNames = effectNameTexts()
+    return remember(textMeasurer, labelStyle, rulerStyle, originalAudio, voiceover, unnamedMySound, effectNames, missingFile, languageCode, density) {
+        TimelinePainter(textMeasurer, labelStyle, rulerStyle, originalAudio, voiceover, unnamedMySound, effectNames, missingFile, languageCode, density)
     }
 }
 

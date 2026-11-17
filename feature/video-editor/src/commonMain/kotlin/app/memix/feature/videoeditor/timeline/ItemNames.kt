@@ -17,6 +17,7 @@ import memix.feature.video_editor.generated.resources.track_overlay
 import memix.feature.video_editor.generated.resources.track_sticker
 import memix.feature.video_editor.generated.resources.track_text
 import memix.feature.video_editor.generated.resources.track_video
+import app.memix.feature.videoeditor.effects.effectNameOf
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -39,6 +40,9 @@ sealed interface ItemName {
 
     data object UnnamedMySound : ItemName
 
+    /** An effect item (P4-06), by its effect's id. */
+    data class Effect(val effectId: String) : ItemName
+
     data class Unnamed(val trackKind: TrackKind) : ItemName
 }
 
@@ -60,6 +64,7 @@ internal fun nameOf(track: TrackUi, item: ItemUi): ItemName {
         is ItemLabel.SoundTitle -> ItemName.Sound(label.title)
         ItemLabel.Voiceover -> ItemName.Voiceover
         ItemLabel.UnnamedMySound -> ItemName.UnnamedMySound
+        is ItemLabel.Effect -> ItemName.Effect(label.effectId)
         ItemLabel.None -> ItemName.Unnamed(track.kind)
     }
 }
@@ -72,6 +77,7 @@ internal fun spokenName(name: ItemName): String = when (name) {
     is ItemName.Sound -> name.title.inLanguage(appLanguageCode())
     ItemName.Voiceover -> stringResource(Res.string.timeline_voiceover)
     ItemName.UnnamedMySound -> stringResource(Res.string.timeline_my_sound)
+    is ItemName.Effect -> effectNameOf(name.effectId)?.let { stringResource(it) } ?: stringResource(Res.string.track_effect)
     is ItemName.Unnamed -> stringResource(trackNameOf(name.trackKind))
 }
 

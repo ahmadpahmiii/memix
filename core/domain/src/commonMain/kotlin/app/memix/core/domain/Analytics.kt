@@ -291,6 +291,17 @@ enum class EditorTool(val eventValue: String?) {
     MASK_POSITION("mask_adjust"),
 
     /**
+     * P4-06a: video effects (spec docs/ux/specs/P4-06-video-effects.md → Analytics), once per committed step, `editor: "video"`. `effect_add` and
+     * `effect_change` send `value` = the effect id (a fixed catalog id, never user content); `effect_intensity` is an Intensity release,
+     * `effect_delete` Delete on an effect item. A lane change is named "Move effect" in the undo history and logs the shared `move`.
+     */
+    EFFECT_ADD("effect_add"),
+    EFFECT_CHANGE("effect_change"),
+    EFFECT_INTENSITY("effect_intensity"),
+    EFFECT_DELETE("effect_delete"),
+    EFFECT_MOVE("move"),
+
+    /**
      * P1-11: the Canvas panel (PM, 20 Oct), each with a `value`. Fit and Fill are one event, `canvas_fit` with `value`
      * `fit` or `fill`, but two entries, so the undo history can say "Undo: Fill".
      */

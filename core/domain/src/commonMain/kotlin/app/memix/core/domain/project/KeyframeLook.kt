@@ -114,7 +114,7 @@ private fun geometricScale(from: Float, to: Float, progress: Double): Float =
  * y of the cubic Bézier through (0,0), (x1,y1), (x2,y2), (1,1) at the point whose x is [x]: the CSS timing function. Newton's method
  * from the straight line, with bisection when the slope is too flat to trust it.
  */
-private fun bezierProgress(x1: Double, y1: Double, x2: Double, y2: Double, x: Double): Double {
+internal fun bezierProgress(x1: Double, y1: Double, x2: Double, y2: Double, x: Double): Double {
     if (x <= 0.0) return 0.0
     if (x >= 1.0) return 1.0
     var s = x

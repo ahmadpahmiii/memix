@@ -20,6 +20,8 @@ import app.memix.core.domain.project.canDelete
 import app.memix.core.domain.project.canSplit
 import app.memix.core.domain.project.deleteItem
 import app.memix.core.domain.project.duplicateItem
+import app.memix.core.domain.project.effectItem
+import app.memix.core.domain.project.EffectRefusal
 import app.memix.core.domain.project.hasNoClips
 import app.memix.core.domain.project.hasOriginalAudio
 import app.memix.core.domain.project.isOriginalMuted
@@ -157,6 +159,7 @@ class VideoEditorViewModel(
     private val greenScreen = GreenScreenControl(host, startThumbnails, decodeDispatcher)
     private val masks = MaskControl(host)
     private val looks = LookControl(host, startThumbnails, decodeDispatcher)
+    private val effects = EffectControl(host, startThumbnails, decodeDispatcher)
     private val canvasPanel = CanvasPanelControl(host) { text, style, widthPx, heightPx, look -> captionRendering.measure(text, style, widthPx, heightPx, look) }
     private val exportSheet = ExportSheetControl(host, export)
     // The canvas size of the picture on screen, as the preview last reported it.
@@ -168,6 +171,7 @@ class VideoEditorViewModel(
         addCloseable(AutoCloseable { voiceoverControl.release() })
         addCloseable(greenScreen)
         addCloseable(looks)
+        addCloseable(effects)
         viewModelScope.launch { state.map { it.lookPanel == null }.distinctUntilChanged().collect { gone -> if (gone) looks.release() } }
         viewModelScope.launch { loadStarterSounds() }
         viewModelScope.launch { export.export.state.collect(::showExportEnded) }
@@ -338,6 +342,15 @@ class VideoEditorViewModel(
             VideoEditorIntent.GreenScreenReleased -> greenScreen.released()
             VideoEditorIntent.GreenScreenPickToggled -> greenScreen.togglePick()
             is VideoEditorIntent.GreenScreenPickReleased -> greenScreen.pickReleased(intent.canvasFx, intent.canvasFy)
+            VideoEditorIntent.EffectsTool -> effects.openSheet()
+            VideoEditorIntent.CloseEffectsSheet -> effects.closeSheet()
+            is VideoEditorIntent.EffectsTabSelected -> effects.selectTab(intent.tab)
+            is VideoEditorIntent.EffectPicked -> effects.pick(intent.effectId)
+            VideoEditorIntent.ChangeEffectTool -> effects.openChange()
+            VideoEditorIntent.IntensityTool -> effects.openPanel()
+            VideoEditorIntent.CloseIntensity -> effects.closePanel()
+            is VideoEditorIntent.EffectIntensityChanged -> effects.intensityChanged(intent.intensity)
+            VideoEditorIntent.EffectIntensityReleased -> effects.intensityReleased()
             VideoEditorIntent.FiltersAllTool -> looks.openForAllClips()
             VideoEditorIntent.FiltersTool -> looks.openForSelected()
             VideoEditorIntent.CloseLook -> looks.closePanel()
@@ -442,6 +455,8 @@ class VideoEditorViewModel(
                 greenScreen = greenScreen.syncedWith(it.greenScreen, project),
                 maskPanel = masks.syncedWith(it.maskPanel, project, overlayUis),
                 lookPanel = looks.syncedWith(it.lookPanel, project),
+                effectPanel = effects.syncedWith(it.effectPanel, project),
+                effectsSheet = effects.sheetSyncedWith(it.effectsSheet, project),
                 // The bar follows the keyframes through edits and undo; it closes with its item.
                 keyframeBar = it.keyframeBar?.let { bar -> project.keyframeBarOf(bar.itemId, bar) },
                 // Follows the project, so an undo shows in the sliders; closes with its sound.
@@ -586,6 +601,8 @@ class VideoEditorViewModel(
             state.value.greenScreen != null -> greenScreen.closePanel()
             state.value.maskPanel != null -> masks.close()
             state.value.lookPanel != null -> looks.closePanel()
+            state.value.effectsSheet != null -> effects.closeSheet()
+            state.value.effectPanel != null -> effects.closePanel()
             state.value.overlayPanel != null -> overlays.closePanel()
             state.value.keyframeBar?.easingOpen == true -> keyframes.closeEasing()
             state.value.volumePanel != null -> volumePanel.close()
@@ -632,9 +649,10 @@ class VideoEditorViewModel(
         if (!project.canDelete(itemId)) return showToast(ToastMessage.Explain(Explanation.LAST_CLIP))
         // Named before it's gone.
         val name = state.value.timeline.nameOf(itemId)
-        if (!commit(VideoEdit.DELETE) { it.deleteItem(itemId) }) return
+        val edit = if (project.effectItem(itemId) != null) VideoEdit.EFFECT_DELETE else VideoEdit.DELETE
+        if (!commit(edit) { it.deleteItem(itemId) }) return
         updateState { it.withSelection(null, null) }
-        announce(VideoEdit.DELETE, name)
+        announce(edit, name)
     }
 
     private fun duplicateSelected() {
@@ -940,7 +958,9 @@ class VideoEditorViewModel(
     ): Boolean {
         val session = editSession ?: return false
         if (pausesPlayback) preview?.pause()
+        // The session refuses edits that break the effect rules (three at once, three flashes a second); the toast says why.
         val recorded = session.commit(edit.tool, font, value, filter, loggedAs = loggedAs ?: listOf(edit.tool), edit = change)
+        session.lastRefusal?.let { showToast(ToastMessage.Explain(if (it == EffectRefusal.OVERLAP) Explanation.EFFECT_MAX else Explanation.EFFECT_FLASH)) }
         if (recorded) showEditState(session.state.value)
         return recorded
     }
@@ -1108,12 +1128,14 @@ internal fun VideoEditorUiState.withSelection(itemId: String?, project: Project?
     val lookOpen = lookPanel?.takeIf { it.isAllClips || (itemId != null && itemId == it.itemId) }
     // The keyframe bar belongs to its item: selecting another one shows that item's own bar.
     val keyframes = keyframeBar?.takeIf { itemId != null && itemId == it.itemId }
-    val track = itemId?.let(timeline::trackOf) ?: return copy(selectedItemId = null, clipTools = null, trimRanges = null, textPanel = null, overlayPanel = null, greenScreen = null, maskPanel = null, lookPanel = lookPanel?.takeIf { it.isAllClips }, keyframeBar = null)
+    // The Intensity panel belongs to its effect item.
+    val effectOpen = effectPanel?.takeIf { itemId != null && itemId == it.itemId }
+    val track = itemId?.let(timeline::trackOf) ?: return copy(selectedItemId = null, clipTools = null, trimRanges = null, textPanel = null, overlayPanel = null, greenScreen = null, maskPanel = null, lookPanel = lookPanel?.takeIf { it.isAllClips }, effectPanel = null, keyframeBar = null)
     val start = project?.trimRange(itemId, TrimEdge.START)
     val end = project?.trimRange(itemId, TrimEdge.END)
     val ranges = if (start != null && end != null) TrimRanges(start, end) else null
     val mediaKind = timeline.item(itemId)?.media?.kind
-    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind), trimRanges = ranges, textPanel = panel, overlayPanel = overlay, greenScreen = green, maskPanel = maskOpen, lookPanel = lookOpen, keyframeBar = keyframes)
+    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind), trimRanges = ranges, textPanel = panel, overlayPanel = overlay, greenScreen = green, maskPanel = maskOpen, lookPanel = lookOpen, effectPanel = effectOpen, keyframeBar = keyframes)
 }
 
 private fun clipToolsFor(kind: TrackKind, mediaKind: MediaKind?): ClipTools = when (kind) {
@@ -1121,5 +1143,6 @@ private fun clipToolsFor(kind: TrackKind, mediaKind: MediaKind?): ClipTools = wh
     TrackKind.TEXT -> ClipTools.TEXT
     TrackKind.MEME_SOUND, TrackKind.AUDIO -> ClipTools.SOUND
     TrackKind.OVERLAY -> if (mediaKind == MediaKind.IMAGE) ClipTools.PHOTO_OVERLAY else ClipTools.VIDEO_OVERLAY
-    TrackKind.STICKER, TrackKind.EFFECT -> ClipTools.OTHER
+    TrackKind.EFFECT -> ClipTools.EFFECT
+    TrackKind.STICKER -> ClipTools.OTHER
 }

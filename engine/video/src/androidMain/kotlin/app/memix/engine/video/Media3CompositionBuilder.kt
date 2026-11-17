@@ -55,6 +55,8 @@ internal class Media3CompositionBuilder(
     private val liveLooks: Map<String, LiveLook> = emptyMap(),
     /** The filters' color tables, read once per filter (P4-07). */
     private val lutTables: LutTables? = null,
+    /** The preview's live effect items (P4-06: an edit of one moves it without a new composition); a plan with effects and none here gets its own fixed list. */
+    private val liveEffects: LiveEffects? = null,
     /** The plan's captions over the composited video; null when the plan has none. */
     private val captionOverlay: CaptionOverlay? = null,
     /** The "Memix" mark of a free export, drawn above the captions; null in previews and watermark-free exports (P1-13). */
@@ -111,10 +113,18 @@ internal class Media3CompositionBuilder(
 
     // Captions are laid out at the canvas size and drawn scaled to the frame, so a lower resolution never re-lays out a
     // caption (spec P1-10 → Geometry: layout resolution). One effect draws its overlays in list order, so the watermark
-    // goes last: above everything (spec P1-13 → The mark).
+    // goes last: above everything (spec P1-13 → The mark). The effects pass (P4-06) sits between the two: it hits the
+    // captions and never the mark (spec P4-06 → Where effects sit). With no effects the two overlays stay one pass.
     private fun compositionVideoEffects(): List<Effect> {
-        val overlays: List<TextureOverlay> = listOfNotNull(captionOverlay, watermarkOverlay)
-        return if (overlays.isEmpty()) emptyList() else listOf(OverlayEffect(overlays))
+        if (!plan.hasEffects) {
+            val overlays: List<TextureOverlay> = listOfNotNull(captionOverlay, watermarkOverlay)
+            return if (overlays.isEmpty()) emptyList() else listOf(OverlayEffect(overlays))
+        }
+        return listOfNotNull(
+            captionOverlay?.let { OverlayEffect(listOf(it)) },
+            EffectsEffect(liveEffects ?: LiveEffects(plan.effects)),
+            watermarkOverlay?.let { OverlayEffect(listOf(it)) },
+        )
     }
 
     private fun mainVideoSequence(): EditedMediaItemSequence {

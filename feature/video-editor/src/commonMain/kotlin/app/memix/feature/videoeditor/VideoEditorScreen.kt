@@ -120,6 +120,9 @@ import app.memix.feature.videoeditor.captions.CaptionLayer
 import app.memix.feature.videoeditor.overlays.OverlayLayer
 import app.memix.feature.videoeditor.greenscreen.GreenScreenPanel
 import app.memix.feature.videoeditor.greenscreen.PickLayer
+import app.memix.feature.videoeditor.effects.EffectPanel
+import app.memix.feature.videoeditor.effects.EffectTiles
+import app.memix.feature.videoeditor.effects.EffectsSheet
 import app.memix.feature.videoeditor.looks.LookPanel
 import app.memix.feature.videoeditor.masks.MaskPanel
 import app.memix.feature.videoeditor.masks.MaskStage
@@ -310,6 +313,14 @@ import memix.feature.video_editor.generated.resources.explain_keyframe_move_none
 import memix.feature.video_editor.generated.resources.explain_keyframe_none_next
 import memix.feature.video_editor.generated.resources.explain_keyframe_none_prev
 import memix.feature.video_editor.generated.resources.explain_keyframe_outside
+import memix.feature.video_editor.generated.resources.a11y_effect_added
+import memix.feature.video_editor.generated.resources.edit_effect_add
+import memix.feature.video_editor.generated.resources.edit_effect_delete
+import memix.feature.video_editor.generated.resources.edit_effect_move
+import memix.feature.video_editor.generated.resources.effects_change_title
+import memix.feature.video_editor.generated.resources.explain_effect_flash
+import memix.feature.video_editor.generated.resources.explain_effect_max
+import memix.feature.video_editor.generated.resources.tool_intensity
 import memix.feature.video_editor.generated.resources.keyframe_add
 import memix.feature.video_editor.generated.resources.keyframe_added
 import memix.feature.video_editor.generated.resources.keyframe_easing
@@ -354,7 +365,7 @@ fun VideoEditorScreen(
         onBackCompleted = { onIntent(VideoEditorIntent.Back) },
     )
     // The sounds sheet, the import sheet and the Volume panel take back and Escape themselves while they're open.
-    val ownsEscape = !state.unsavedSheetOpen && !state.sounds.isOpen && !state.isImporting && state.exportSheet == null
+    val ownsEscape = !state.unsavedSheetOpen && !state.sounds.isOpen && state.effectsSheet == null && !state.isImporting && state.exportSheet == null
     LifecycleEventEffect(Lifecycle.Event.ON_START) { onIntent(VideoEditorIntent.AppStarted) }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { onIntent(VideoEditorIntent.AppStopped) }
     // Back from Settings (or the dialog) the permission may have changed; the panel answers without starting a take.
@@ -369,8 +380,9 @@ fun VideoEditorScreen(
     val focusTargets = remember { EditorFocusTargets() }
     val backgroundThumbnails = rememberBackgroundThumbnails(imageSource, state.canvas?.background, onIntent)
     val lookTiles = rememberLookTiles(imageTools)
-    val panelOpen = state.volumePanel != null || state.audioEffects != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null || state.overlayPanel != null || state.greenScreen != null || state.maskPanel != null || state.lookPanel != null || state.keyframeBar?.easingOpen == true
-    val sheetOpen = state.sounds.isOpen || state.unsavedSheetOpen || state.exportSheet != null || importSheetShown(state.mediaImport)
+    val effectTiles = rememberEffectTiles(imageTools)
+    val panelOpen = state.volumePanel != null || state.audioEffects != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null || state.overlayPanel != null || state.greenScreen != null || state.maskPanel != null || state.lookPanel != null || state.effectPanel != null || state.keyframeBar?.easingOpen == true
+    val sheetOpen = state.sounds.isOpen || state.effectsSheet != null || state.unsavedSheetOpen || state.exportSheet != null || importSheetShown(state.mediaImport)
     ReturnFocus(state.returnFocus, focusTargets)
     // Typing (spec P1-10 → Typing): the field's words live here, so only the field and the stand-in redraw per key.
     val entry = state.textEntry
@@ -438,6 +450,7 @@ fun VideoEditorScreen(
                     GreenScreenPanel(state.greenScreen, onIntent, Modifier.fillMaxSize())
                     MaskPanel(state.maskPanel, onIntent, Modifier.fillMaxSize())
                     LookPanel(state.lookPanel, lookTiles, onIntent, Modifier.fillMaxSize())
+                    EffectPanel(state.effectPanel, onIntent, Modifier.fillMaxSize())
                     OverlayPanels(state.overlayPanel, { timeUs -> selectedOverlayTransform(state, timeUs) }, panelPlayhead, onIntent, Modifier.fillMaxSize())
                     CanvasPanel(state.canvasPanel, state.canvas, backgroundThumbnails, onIntent, Modifier.fillMaxSize())
                 },
@@ -448,6 +461,7 @@ fun VideoEditorScreen(
             )
         }
         MemeSoundsSheet(state.sounds, soundPicker, onIntent)
+        EffectsSheet(state.effectsSheet, effectTiles, onIntent)
         state.mediaImport?.let { EditorImportSheet(it, state.importWording, onIntent, onFreeUpSpace) }
         UnsavedChangesSheet(
             state.unsavedSheetOpen,
@@ -463,6 +477,13 @@ fun VideoEditorScreen(
  * The small pictures of the Canvas panel's Image swatch, and the watch on the background picture's file: when its thumbnail
  * can't be decoded the editor is told once, so the swatch, the panel and a toast say it is missing (spec P2-12 → States).
  */
+// The Effects sheet's tiles, made from a frame of the clip under the playhead (spec P4-06 → The grid); emptied when the sheet closes.
+@Composable
+private fun rememberEffectTiles(imageTools: ImageToolRenderer): EffectTiles {
+    val scope = rememberCoroutineScope()
+    return remember(imageTools) { EffectTiles(imageTools, scope) }
+}
+
 // The Filters panel's 21 tiles, made from a frame of the clip (spec P4-07 → The panel); they live as long as the screen and are emptied when the panel closes.
 @Composable
 private fun rememberLookTiles(imageTools: ImageToolRenderer): FilterThumbnails {
@@ -1043,7 +1064,7 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
     LaunchedEffect(toast.id) {
         val baseMillis = when (toast.message) {
             is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition, is ToastMessage.SoundAdded,
-            is ToastMessage.MediaAdded, ToastMessage.OverlayAdded, is ToastMessage.OverlayOpacity, is ToastMessage.OverlayLayer, ToastMessage.NothingToReset, ToastMessage.AudioEffectsReset, is ToastMessage.VoiceoverAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned, is ToastMessage.MaskStepped, is ToastMessage.KeyframeAdded, is ToastMessage.KeyframePicked, ToastMessage.GreenScreenPicked, ToastMessage.KeyframeRemoved, is ToastMessage.EasingChanged,
+            is ToastMessage.MediaAdded, ToastMessage.OverlayAdded, ToastMessage.EffectAdded, is ToastMessage.OverlayOpacity, is ToastMessage.OverlayLayer, ToastMessage.NothingToReset, ToastMessage.AudioEffectsReset, is ToastMessage.VoiceoverAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned, is ToastMessage.MaskStepped, is ToastMessage.KeyframeAdded, is ToastMessage.KeyframePicked, ToastMessage.GreenScreenPicked, ToastMessage.KeyframeRemoved, is ToastMessage.EasingChanged,
             -> WHAT_HAPPENED_TOAST_MILLIS
             is ToastMessage.RatioStepped, ToastMessage.ExportStopped, ToastMessage.BackgroundImageSet, ToastMessage.BackgroundImageRemoved -> WHAT_HAPPENED_TOAST_MILLIS
             is ToastMessage.ExportFrameRateLowered, is ToastMessage.ExportResolutionLowered, is ToastMessage.ExportCantDo,
@@ -1082,6 +1103,7 @@ private fun toastText(message: ToastMessage): String = when (message) {
     ToastMessage.MissingOverlay -> stringResource(Res.string.editor_missing_overlay)
     ToastMessage.OverlaysSkipped -> stringResource(Res.string.overlay_skipped_toast)
     ToastMessage.OverlayAdded -> stringResource(Res.string.a11y_overlay_added)
+    ToastMessage.EffectAdded -> stringResource(Res.string.a11y_effect_added)
     is ToastMessage.OverlayOpacity -> stringResource(Res.string.a11y_overlay_opacity, message.percent)
     is ToastMessage.OverlayLayer -> stringResource(UiRes.string.a11y_layer_order, message.layer, message.count)
     is ToastMessage.Explain -> explanationText(message.explanation)
@@ -1174,6 +1196,11 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.ADJUST_BRIGHTNESS, VideoEdit.ADJUST_CONTRAST, VideoEdit.ADJUST_SATURATION, VideoEdit.ADJUST_WARMTH, VideoEdit.ADJUST_SHARPEN, VideoEdit.ADJUST_VIGNETTE -> UiRes.string.edit_adjust
         VideoEdit.RESET_LOOK -> UiRes.string.edit_photo_reset
         VideoEdit.MASK_POSITION -> Res.string.edit_mask_position
+        VideoEdit.EFFECT_ADD -> Res.string.edit_effect_add
+        VideoEdit.EFFECT_CHANGE -> Res.string.effects_change_title
+        VideoEdit.EFFECT_INTENSITY -> Res.string.tool_intensity
+        VideoEdit.EFFECT_MOVE -> Res.string.edit_effect_move
+        VideoEdit.EFFECT_DELETE -> Res.string.edit_effect_delete
         VideoEdit.KEYFRAME_ADD -> Res.string.keyframe_add
         VideoEdit.KEYFRAME_REMOVE -> Res.string.keyframe_remove
         VideoEdit.KEYFRAME_MOVE -> Res.string.edit_keyframe_move
@@ -1213,6 +1240,8 @@ private fun explanationText(explanation: Explanation): String = stringResource(
         Explanation.TEXT_BIGGEST -> UiRes.string.explain_text_biggest
         Explanation.TEXT_EDGE -> Res.string.explain_text_edge
         Explanation.OVERLAY_EDGE -> Res.string.explain_overlay_edge
+        Explanation.EFFECT_MAX -> Res.string.explain_effect_max
+        Explanation.EFFECT_FLASH -> Res.string.explain_effect_flash
         Explanation.MASK_NONE -> Res.string.explain_mask_none
         Explanation.MASK_MIN -> Res.string.explain_mask_min
         Explanation.MASK_MAX -> Res.string.explain_mask_max

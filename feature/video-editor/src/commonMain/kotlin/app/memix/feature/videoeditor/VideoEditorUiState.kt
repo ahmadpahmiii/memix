@@ -139,6 +139,10 @@ data class VideoEditorUiState(
     val maskPanel: MaskUi? = null,
     /** The Filters panel (P4-07), from the main bar (every main clip) or a clip's bar (that clip), or null when it is closed. */
     val lookPanel: LookUi? = null,
+    /** The Effects sheet (P4-06), from the main bar (add) or an effect item's bar (replace), or null when it is closed. */
+    val effectsSheet: EffectsSheetUi? = null,
+    /** The Intensity panel of the selected effect item (P4-06), or null when it is closed. */
+    val effectPanel: EffectPanelUi? = null,
     /**
      * An overlay a finger or a held arrow moved, or a commit the preview hasn't shown yet: the editor's stand-in draws it from
      * there until the preview's new frame takes over, so it never shows twice or jumps (spec P4-01b → Live feedback). Null otherwise.
@@ -278,7 +282,10 @@ enum class ClipTools {
     /** A photo overlay: Position, Opacity, Delete, Split, Layer order, Move here, Duplicate. */
     PHOTO_OVERLAY,
 
-    /** Stickers and effects: Split, Delete, Move here, Duplicate. */
+    /** An effect item (P4-06): Intensity, Delete, Change effect, Split, Move here, Duplicate. */
+    EFFECT,
+
+    /** Stickers: Split, Delete, Move here, Duplicate. */
     OTHER,
 }
 
@@ -473,6 +480,11 @@ enum class FocusTarget {
 
     /** The Filters tool, on the main bar or the selected clip's bar, after its panel closes (P4-07). */
     FILTERS_TOOL,
+
+    /** The Effects tool on the main bar, after the sheet closes with nothing changed (P4-06); an effect item's Change effect and Intensity tools likewise. */
+    EFFECTS_TOOL,
+    CHANGE_EFFECT_TOOL,
+    INTENSITY_TOOL,
 }
 
 /** What a spoken mask step reads out: the width or height in percent, or the turn in degrees (a move is read as a place). */
@@ -555,6 +567,10 @@ enum class Explanation {
     AUDIO_EFFECTS_MISSING,
     FADE_TOO_SHORT,
 
+    /** A fourth effect would overlap three others: an add, move, trim or duplicate that would make one is refused (P4-06). */
+    EFFECT_MAX,
+    EFFECT_FLASH,
+
     /** Export (P1-12): an empty draft, no resolution for this shape, not enough space. */
     EXPORT_EMPTY,
     EXPORT_NO_SHAPE,
@@ -605,6 +621,9 @@ sealed interface ToastMessage {
 
     /** Spoken only, after an overlay landed. */
     data object OverlayAdded : ToastMessage
+
+    /** Spoken only, after an effect landed on the timeline (P4-06). */
+    data object EffectAdded : ToastMessage
 
     /** Spoken only, after the Opacity slider was released at [percent]. */
     data class OverlayOpacity(val percent: Int) : ToastMessage
@@ -1061,6 +1080,28 @@ sealed interface VideoEditorIntent {
 
     /** A mask slider was let go (or stepped): one step, none if unchanged. */
     data object MaskSliderReleased : VideoEditorIntent
+
+    /** Effects on the main bar: the sheet opens to add an effect at the playhead (P4-06). */
+    data object EffectsTool : VideoEditorIntent
+
+    /** Close, the scrim, back or Escape on the Effects sheet. */
+    data object CloseEffectsSheet : VideoEditorIntent
+
+    data class EffectsTabSelected(val tab: app.memix.core.model.project.EffectTab) : VideoEditorIntent
+
+    /** A tile: lands the effect, or in replace mode swaps the selected item's. */
+    data class EffectPicked(val effectId: String) : VideoEditorIntent
+
+    /** Change effect on the selected effect item: the sheet in replace mode. */
+    data object ChangeEffectTool : VideoEditorIntent
+
+    /** Intensity on the selected effect item, and Done, back or Escape on its panel. */
+    data object IntensityTool : VideoEditorIntent
+    data object CloseIntensity : VideoEditorIntent
+
+    /** The Intensity slider moved: seen at once, nothing committed yet; and let go (or stepped): one step. */
+    data class EffectIntensityChanged(val intensity: Float) : VideoEditorIntent
+    data object EffectIntensityReleased : VideoEditorIntent
 
     /** Filters on the main bar: the panel opens for every main clip (spec P4-07 → The tool and its scope). */
     data object FiltersAllTool : VideoEditorIntent
