@@ -35,7 +35,7 @@ Always measure release (or `benchmark`, which is minified by R8 like release sin
 
 ## Media (Android)
 
-- Hardware decoders only; respect the device's concurrent codec limit (query capabilities; degrade overlays to a lower-res proxy if over).
+- Hardware decoders only; respect the device's concurrent codec limit: `VideoDecoderBudget` (hardware `maxSupportedInstances`) and `OverlayAdmission` leave out overlay videos that don't fit, whole and top layer first (P4-01a); a lower-res proxy is the next step if the owner's phone needs it. Preview fps with overlays: `dumpsys SurfaceFlinger --latency <SurfaceView layer>` (the `MemixPreview` play-span counters come from one decoder only).
 - Preview can render at reduced resolution while scrubbing; export always at full resolution.
 - Compile GL shader programs once and reuse; release players, codecs, surfaces and GL resources when leaving the editor.
 - Background removal masks: compute at preview resolution, cache per frame, recompute at export resolution.

@@ -4,6 +4,7 @@ import app.memix.core.model.project.AudioClip
 import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
+import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TimelineItem
@@ -35,9 +36,17 @@ internal sealed interface PlanProblem {
  *
  * Items at 0% are left out of an export's plan (they'd only add silence). A preview's plan keeps them
  * ([keepSilentItems]), so the Volume slider can raise one and be heard while it moves (P1-09).
+ *
+ * Each overlay track becomes one overlay layer (P4-01), in track order, bottom to top, cut to the main track's length and padded
+ * with gaps to it. Overlay videos that the phone can't decode at the same time as the rest are left out by [OverlayAdmission],
+ * against [videoDecoderBudget] decoders for the main clip and the overlay videos together.
  */
 internal object CompositionPlanner {
-    fun plan(project: Project, keepSilentItems: Boolean = false): PlanResult {
+    fun plan(
+        project: Project,
+        keepSilentItems: Boolean = false,
+        videoDecoderBudget: Int = OverlayAdmission.DEFAULT_VIDEO_DECODER_BUDGET,
+    ): PlanResult {
         val tracks = project.video?.tracks.orEmpty()
         val mainTrack = tracks.firstOrNull { it.kind == TrackKind.MAIN_VIDEO }
         val mainClips = mainTrack?.items.orEmpty()
@@ -49,6 +58,7 @@ internal object CompositionPlanner {
 
         // Sorted by start and not overlapping, so the last clip ends last.
         val durationUs = mainClips.last().endUs
+        val overlays = overlayLayers(tracks, mainClips, durationUs, videoDecoderBudget)
         val plan = CompositionPlan(
             canvasWidthPx = project.canvas.widthPx,
             canvasHeightPx = project.canvas.heightPx,
@@ -59,9 +69,11 @@ internal object CompositionPlanner {
             },
             durationUs = durationUs,
             mainVideo = backToBack(mainClips, ::Gap) { it.toVisualClip(mainTrack.muted, keepSilentItems) },
+            overlays = overlays.layers,
             audioLanes = tracks.filter { it.kind.carriesSound() && !it.muted }.flatMap { audioLanes(it, durationUs, keepSilentItems) },
             captions = captions(tracks, durationUs),
-            notRendered = notRendered(tracks),
+            skippedOverlayIds = overlays.skippedIds,
+            notRendered = notRendered(tracks) + overlays.skippedLines,
         )
         return PlanResult.Ready(plan)
     }
@@ -109,6 +121,84 @@ internal object CompositionPlanner {
             add(cut.toSoundClip())
             cursorUs = cut.busyUntilUs
         }
+    }
+
+    /** What [overlayLayers] found: the layers to draw, and the overlay clips left out with a log line each. */
+    private class OverlayLayers(val layers: List<OverlayLayer>, val skippedIds: List<String>, val skippedLines: List<String>)
+
+    private fun overlayLayers(tracks: List<Track>, mainClips: List<MediaClip>, durationUs: Long, videoDecoderBudget: Int): OverlayLayers {
+        val skipped = mutableListOf<Pair<String, String>>() // item id to its log line
+        // The first overlay track is the lowest layer.
+        val overlayTracks = tracks.filter { it.kind == TrackKind.OVERLAY }
+        val cutByLayer = overlayTracks.map { track ->
+            cutOverlays(track, durationUs) { clip, reason -> skipped += clip.id to "Not rendered: overlay ${clip.id} ($reason)" }
+        }
+        val admitted = admittedVideos(cutByLayer, mainClips, videoDecoderBudget)
+        val layers = overlayTracks.zip(cutByLayer).mapNotNull { (track, cuts) ->
+            val (kept, left) = cuts.partition { it.clip.isStill || it.clip.itemId in admitted }
+            left.forEach { skipped += it.clip.itemId to overBudgetLine(it.clip.itemId, videoDecoderBudget) }
+            if (kept.isEmpty()) null else OverlayLayer(track.id, overlaySegments(kept, durationUs))
+        }
+        return OverlayLayers(layers, skipped.map { it.first }, skipped.map { it.second })
+    }
+
+    private fun admittedVideos(cutByLayer: List<List<CutOverlay>>, mainClips: List<MediaClip>, videoDecoderBudget: Int): Set<String> {
+        val candidates = cutByLayer.flatMapIndexed { layer, cuts ->
+            cuts.filterNot { it.clip.isStill }.map { OverlayAdmission.Candidate(it.clip.itemId, layer, it.startUs, it.startUs + it.clip.durationUs) }
+        }
+        val mainVideoSpans = mainClips.filter { it.source.kind == MediaKind.VIDEO }.map { it.startUs until it.endUs }
+        return OverlayAdmission.admit(candidates, mainVideoSpans, videoDecoderBudget)
+    }
+
+    private fun overBudgetLine(itemId: String, budget: Int) =
+        "Not rendered: overlay $itemId (more videos at once than this phone decodes: main video and overlay videos together, at most $budget)"
+
+    /** An overlay clip cut to the video, with where it starts on the timeline. */
+    private class CutOverlay(val clip: OverlayClip, val startUs: Long)
+
+    // The clips of one overlay track that can be drawn: cut to 0..durationUs, in time order, none overlapping the one before.
+    private fun cutOverlays(track: Track, durationUs: Long, skip: (MediaClip, String) -> Unit): List<CutOverlay> {
+        val cuts = mutableListOf<CutOverlay>()
+        var cursorUs = 0L
+        for (clip in track.items.filterIsInstance<MediaClip>().sortedBy { it.startUs }) {
+            if (clip.durationUs <= 0 || clip.startUs >= durationUs) continue
+            val pixelSize = clip.source.pixelSize?.takeIf { it.widthPx > 0 && it.heightPx > 0 }
+            if (pixelSize == null) {
+                skip(clip, "its picture size isn't known")
+                continue
+            }
+            val cut = clip.cutTo(durationUs, pixelSize) ?: continue
+            if (cut.startUs < cursorUs) {
+                skip(clip, "it overlaps the clip before it on its layer")
+                continue
+            }
+            cuts += cut
+            cursorUs = cut.startUs + cut.clip.durationUs
+        }
+        return cuts
+    }
+
+    // The part of the clip that lies between 0 and the end of the video; a photo only has a length, so it is cut from 0 as well.
+    private fun MediaClip.cutTo(timelineEndUs: Long, pixelSize: PixelSize): CutOverlay? {
+        val headCutUs = (-startUs).coerceAtLeast(0)
+        val cutStartUs = startUs + headCutUs
+        val lengthUs = minOf(durationUs - headCutUs, timelineEndUs - cutStartUs)
+        if (lengthUs <= 0) return null
+        val isPhoto = source.kind == MediaKind.IMAGE
+        val cutTrimInUs = if (isPhoto) 0L else trimInUs + headCutUs
+        val clip = OverlayClip(id, source, cutTrimInUs, cutTrimInUs + lengthUs, pixelSize, transform, opacity)
+        return CutOverlay(clip, cutStartUs)
+    }
+
+    // The layer's clips back to back from time 0, a gap for each empty stretch and one after the last up to the end of the video.
+    private fun overlaySegments(clips: List<CutOverlay>, durationUs: Long): List<OverlaySegment> = buildList {
+        var cursorUs = 0L
+        for (cut in clips) {
+            if (cut.startUs > cursorUs) add(Gap(cut.startUs - cursorUs))
+            add(cut.clip)
+            cursorUs = cut.startUs + cut.clip.durationUs
+        }
+        if (cursorUs < durationUs) add(Gap(durationUs - cursorUs))
     }
 
     // Text lanes from the first to the last, so a lower lane draws over a higher one (spec P1-10 → Draw order); blank
@@ -204,8 +294,7 @@ internal object CompositionPlanner {
 
     /** The ticket that renders a track kind this engine skips today, or null when it renders it. */
     private fun ticketThatAddsRendering(kind: TrackKind): String? = when (kind) {
-        TrackKind.MAIN_VIDEO, TrackKind.MEME_SOUND, TrackKind.AUDIO, TrackKind.TEXT -> null
-        TrackKind.OVERLAY -> "P4-01"
+        TrackKind.MAIN_VIDEO, TrackKind.OVERLAY, TrackKind.MEME_SOUND, TrackKind.AUDIO, TrackKind.TEXT -> null
         TrackKind.STICKER -> "P4-12"
         TrackKind.EFFECT -> "P4-06"
     }

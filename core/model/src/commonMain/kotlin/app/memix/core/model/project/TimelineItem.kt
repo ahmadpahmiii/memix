@@ -14,6 +14,10 @@ sealed interface TimelineItem {
 /**
  * A video or photo from the gallery on the main video or an overlay track.
  * For a photo, [trimInUs]..[trimOutUs] is simply how long it shows.
+ *
+ * On an overlay track (P4-01) the clip floats over the main video: [transform] and [opacity] place and fade it, [fit] and the
+ * sound fields are not used (an overlay is silent until a later ticket gives it sound). On the main track the clip always fills
+ * the canvas by [fit]; [transform] is its framing, which P4-16 will draw (identity until then; the engine ignores it today).
  */
 @Serializable
 @SerialName("media_clip")
@@ -30,6 +34,18 @@ data class MediaClip(
     /** True once the clip's audio was moved to its own clip on an audio track, so it no longer plays here. */
     val audioDetached: Boolean = false,
     val fit: FrameFit = FrameFit.FIT,
+    /**
+     * Where an overlay sits on the canvas (the same spec text and stickers use). Scale 1 is the picture fitted whole inside the
+     * canvas ([OverlayCatalog.SCALE_RANGE]), so the shape of the picture is always kept.
+     */
+    val transform: Transform = Transform(),
+    /** 1 draws an overlay fully, [OverlayCatalog.OPACITY_RANGE]'s start is the most see-through it gets. */
+    val opacity: Float = 1f,
+    /**
+     * The clip's crop, quarter turns and mirrors (P4-16, the photo editor's [ImageEdit] reused). Saved from schema 14 so P4-16
+     * needs no second bump, and ignored by every engine until that ticket; null is none.
+     */
+    val edit: ImageEdit? = null,
 ) : TimelineItem {
     // Derived, not saved, so it can never disagree with the trim points.
     override val durationUs: Long get() = trimOutUs - trimInUs

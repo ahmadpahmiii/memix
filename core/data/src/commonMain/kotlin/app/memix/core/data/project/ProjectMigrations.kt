@@ -53,4 +53,8 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     // defaults that mean off. Version-12 JSON has no "effects", which decodes as the defaults: a sound saved before plays as saved, at
     // speed 1 so its length is unchanged. The step only moves the version on.
     ProjectMigration(fromVersion = 12) { json -> json },
+    // 13 → 14 (P4-01a): MediaClip gained "transform" (center, scale, turn), "opacity" (overlay tracks) and "edit" (P4-16's crop, turns and mirrors, inert until then). All have
+    // defaults (centered, scale 1, 0°, fully opaque, no edit) and the codec writes defaults, so version-13 JSON decodes as it is; a main clip
+    // ignores both, and an overlay track saved before (only the debug hand-check projects had one) draws as a full-canvas Fit overlay.
+    ProjectMigration(fromVersion = 13) { json -> json },
 )

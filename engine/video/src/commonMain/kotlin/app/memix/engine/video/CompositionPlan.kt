@@ -10,7 +10,7 @@ import app.memix.core.model.project.TrackKind
 import app.memix.core.model.project.Transform
 
 /**
- * A project laid out the way both platform engines build it: one main video sequence plus audio-only
+ * A project laid out the way both platform engines build it: one main video sequence, overlay layers drawn over it and audio-only
  * lanes, each running back to back from time 0, all in microseconds. Plain data with no Media3 or
  * AVFoundation types, so the Project-to-engine mapping is shared by Android and iOS and can be read
  * and checked on its own. Built by [CompositionPlanner].
@@ -24,13 +24,23 @@ internal data class CompositionPlan(
     val durationUs: Long,
     /** The main video track in timeline order; a [Gap] stands for empty time between clips. */
     val mainVideo: List<MainVideoSegment>,
+    /**
+     * The overlay layers (P4-01), bottom to top: a later layer draws over an earlier one, and every layer draws over the main
+     * video. Each runs from 0 to [durationUs] (gaps pad it), so every layer is as long as the video.
+     */
+    val overlays: List<OverlayLayer> = emptyList(),
     /** Unmuted meme sound and audio tracks, plus extra lanes where clips on one track overlap. */
     val audioLanes: List<AudioLane>,
     /** The captions drawn over the video, in draw order (later ones on top), cut to [durationUs]. */
     val captions: List<CaptionClip> = emptyList(),
+    /** Overlay clips left out because the phone can't decode that many videos at once, or their size isn't known (see [OverlayAdmission]). */
+    val skippedOverlayIds: List<String> = emptyList(),
     /** One log line per thing in the project this engine doesn't render yet, naming the ticket that adds it. */
     val notRendered: List<String>,
 ) {
+    /** True when overlays are drawn: the engine then composites several video sequences instead of playing the main one alone. */
+    val hasOverlays: Boolean get() = overlays.isNotEmpty()
+
     /** True when the export needs an audio track: a main clip plays its own sound, or an audio lane exists. */
     val hasAudio: Boolean
         get() = audioLanes.isNotEmpty() || mainVideo.any { it is VisualClip && it.playsOwnAudio }
@@ -39,8 +49,9 @@ internal data class CompositionPlan(
     val mediaItems: List<Pair<String, MediaRef>>
         get() {
             val mainMedia = mainVideo.filterIsInstance<VisualClip>().map { it.itemId to it.source }
+            val overlayMedia = overlays.flatMap { it.segments }.filterIsInstance<OverlayClip>().map { it.itemId to it.source }
             val laneMedia = audioLanes.flatMap { it.segments }.filterIsInstance<SoundClip>().map { it.itemId to it.source }
-            return mainMedia + laneMedia
+            return mainMedia + overlayMedia + laneMedia
         }
 
     /** Where each sound of the audio lanes starts on the timeline, µs, in lane order. */
@@ -63,8 +74,12 @@ internal data class CompositionPlan(
         if (itemIds.isEmpty()) return this
         fun MainVideoSegment.gapIfListed() = if (this is VisualClip && itemId in itemIds) Gap(durationUs) else this
         fun AudioSegment.gapIfListed() = if (this is SoundClip && itemId in itemIds) Gap(durationUs) else this
+        fun OverlaySegment.gapIfListed() = if (this is OverlayClip && itemId in itemIds) Gap(durationUs) else this
         return copy(
             mainVideo = mainVideo.map { it.gapIfListed() },
+            overlays = overlays
+                .map { layer -> layer.copy(segments = layer.segments.map { it.gapIfListed() }) }
+                .filter { layer -> layer.segments.any { it is OverlayClip } },
             audioLanes = audioLanes
                 .map { lane -> lane.copy(segments = lane.segments.map { it.gapIfListed() }) }
                 .filter { lane -> lane.segments.any { it is SoundClip } },
@@ -99,8 +114,13 @@ internal sealed interface AudioSegment {
     val durationUs: Long
 }
 
-/** Empty time: black frames on the main video sequence, silence in an audio lane. */
-internal data class Gap(override val durationUs: Long) : MainVideoSegment, AudioSegment
+/** One piece of an overlay layer. */
+internal sealed interface OverlaySegment {
+    val durationUs: Long
+}
+
+/** Empty time: black frames on the main video sequence, silence in an audio lane, nothing drawn in an overlay layer. */
+internal data class Gap(override val durationUs: Long) : MainVideoSegment, AudioSegment, OverlaySegment
 
 /** A video or photo on the main track, shown at the canvas size. */
 internal data class VisualClip(
@@ -124,6 +144,32 @@ internal data class VisualClip(
     /** A photo: shown for [durationUs] instead of being trimmed. */
     val isStill: Boolean get() = source.kind == MediaKind.IMAGE
 }
+
+/**
+ * A video or photo floating over the main video (P4-01). Only the part from [trimInUs] to [trimOutUs] plays, silent. Where it
+ * sits comes from [transform] and [opacity] through [OverlayRender].
+ */
+internal data class OverlayClip(
+    val itemId: String,
+    val source: MediaRef,
+    val trimInUs: Long,
+    val trimOutUs: Long,
+    /** The picture's size as shown, rotation applied; the scale-1 size of the overlay is this picture fitted inside the canvas. */
+    val pixelSize: PixelSize,
+    val transform: Transform,
+    val opacity: Float,
+) : OverlaySegment {
+    override val durationUs: Long get() = trimOutUs - trimInUs
+
+    /** A photo: shown for [durationUs] instead of being trimmed. */
+    val isStill: Boolean get() = source.kind == MediaKind.IMAGE
+}
+
+/** Overlay clips and gaps that follow each other from time 0 to the end of the video: one layer of the stack. */
+internal data class OverlayLayer(
+    val trackId: String,
+    val segments: List<OverlaySegment>,
+)
 
 /** A sound on an audio lane: a meme sound, imported audio or a clip's detached audio. */
 internal data class SoundClip(

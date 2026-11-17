@@ -50,10 +50,11 @@ internal class Media3VideoEngine(
     private val sourceResolver = MediaSourceResolver(context.filesDir)
     private val transformerExport = TransformerExport(context)
     private val peaksReader = AudioPeaksReader(context.filesDir, context.cacheDir, ioDispatcher, logger)
+    private val decoderBudget = VideoDecoderBudget(logger)
     private val capabilityScanner = ExportCapabilityScanner(ioDispatcher, GalleryVideoFile.WRITES_STRAIGHT_TO_GALLERY)
 
     override fun createPreview(project: Project): PreviewSession =
-        Media3PreviewSession(context, sourceResolver, captionRenderer, logger, ioDispatcher, project, measureSoundOnsets)
+        Media3PreviewSession(context, sourceResolver, captionRenderer, decoderBudget, logger, ioDispatcher, project, measureSoundOnsets)
 
     override fun openThumbnails(): ThumbnailReader = MediaThumbnailReader(context.filesDir, ioDispatcher, logger)
 
@@ -78,7 +79,7 @@ internal class Media3VideoEngine(
         project: Project,
         settings: ExportSettings,
         onProgress: (Float) -> Unit,
-    ): ExportOutcome = when (val planned = CompositionPlanner.plan(project)) {
+    ): ExportOutcome = when (val planned = CompositionPlanner.plan(project, videoDecoderBudget = withContext(ioDispatcher) { decoderBudget.videoDecoders })) {
         is PlanResult.Unplayable -> unplayable(planned.problem)
         is PlanResult.Ready -> exportPlan(planned.plan, settings, onProgress)
     }

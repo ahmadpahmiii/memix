@@ -15,6 +15,7 @@ import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.MediaRef
+import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.ProjectType
 import app.memix.core.model.project.StickerItem
@@ -82,6 +83,8 @@ internal class EditorCheckProjects : KoinComponent {
         TEXT_SHADOW_CHECK -> textShadowCheck()
         CANVAS_CHECK -> canvasCheck()
         CANVAS_IMAGE_CHECK -> canvasImageCheck()
+        OVERLAY_CHECK -> overlayCheck()
+        OVERLAY_PERF -> overlayPerf()
         else -> null
     }
 
@@ -308,6 +311,63 @@ internal class EditorCheckProjects : KoinComponent {
         return withPicture.copy(canvas = withPicture.canvas.copy(background = CanvasBackground.Image(PhotoCheckProjects.backgroundMedia(missing = false))))
     }
 
+    /**
+     * The P4-01a overlay check: 10 s of the 1080p clip with five overlays on five layers (bottom to top: a wide video, a tall video
+     * turned 12°, a square photo turned −10° at 60%, a 4:3 photo, and the 1080p clip small in the corner), each at its own place,
+     * size, opacity and time. The media carry their measured sizes and lengths, so the export hook sees them without the editor
+     * having opened the draft. `docs/qa/references/P4-01-overlays/` is this layout drawn from the planner's own numbers.
+     */
+    private fun overlayCheck(): Project {
+        val layers = listOf(
+            overlayLayer("a", clipAMeasured, startUs = 1_000_000, lengthUs = 6_000_000, Transform(0.30f, 0.25f, 0.5f, 0f), opacity = 1f),
+            overlayLayer("b", clipBMeasured, startUs = 2_000_000, lengthUs = 6_000_000, Transform(0.70f, 0.30f, 0.45f, 12f), opacity = 0.8f),
+            overlayLayer("photo", photoMeasured, startUs = 1_000_000, lengthUs = 8_000_000, Transform(0.50f, 0.55f, 0.6f, -10f), opacity = 0.6f),
+            overlayLayer("photo43", photo4x3Measured, startUs = 3_000_000, lengthUs = 6_000_000, Transform(0.25f, 0.80f, 0.4f, 0f), opacity = 1f),
+            overlayLayer("corner", clip1080pMeasured, startUs = 4_000_000, lengthUs = 6_000_000, Transform(0.75f, 0.80f, 0.35f, 0f), opacity = 0.9f, trimInUs = 10_000_000),
+        )
+        return project(OVERLAY_CHECK, listOf(MediaClip("overlay-main", 0, clip1080pMeasured, trimInUs = 0, trimOutUs = 10_000_000)), layers)
+    }
+
+    /**
+     * The P4-01 performance check ("five overlays at 1080p preview at 30 fps or more"): 10 s of the 1080p clip with five more 1080p
+     * videos over it at the same time, so six videos decode at once, each at a different place and size.
+     */
+    private fun overlayPerf(): Project {
+        val places = listOf(
+            Transform(0.28f, 0.22f, 0.45f, 0f), Transform(0.72f, 0.22f, 0.45f, 0f), Transform(0.28f, 0.50f, 0.45f, 0f),
+            Transform(0.72f, 0.50f, 0.45f, 0f), Transform(0.50f, 0.78f, 0.45f, 0f),
+        )
+        val layers = places.mapIndexed { index, place ->
+            overlayLayer("perf-$index", clip1080pMeasured, startUs = 0, lengthUs = 10_000_000, place, opacity = 1f, trimInUs = 2_000_000L * index)
+        }
+        return project(OVERLAY_PERF, listOf(MediaClip("overlay-main", 0, clip1080pMeasured, trimInUs = 0, trimOutUs = 10_000_000)), layers)
+    }
+
+    private fun overlayLayer(
+        name: String,
+        source: MediaRef,
+        startUs: Long,
+        lengthUs: Long,
+        transform: Transform,
+        opacity: Float,
+        trimInUs: Long = 0,
+    ) = Track(
+        "overlay-$name-layer",
+        TrackKind.OVERLAY,
+        listOf(
+            MediaClip(
+                "overlay-$name",
+                startUs,
+                source,
+                trimInUs = if (source.kind == MediaKind.IMAGE) 0 else trimInUs,
+                trimOutUs = if (source.kind == MediaKind.IMAGE) lengthUs else trimInUs + lengthUs,
+                volume = 0f,
+                transform = transform,
+                opacity = opacity,
+            ),
+        ),
+    )
+
     private fun project(id: String, mainClips: List<MediaClip>, extraTracks: List<Track> = emptyList()) = Project(
         id = id,
         type = ProjectType.VIDEO,
@@ -333,9 +393,11 @@ internal class EditorCheckProjects : KoinComponent {
         const val TEXT_SHADOW_CHECK = "text-shadow-check"
         const val CANVAS_CHECK = "canvas-check"
         const val CANVAS_IMAGE_CHECK = "canvas-image-check"
+        const val OVERLAY_CHECK = "overlay-check"
+        const val OVERLAY_PERF = "overlay-perf"
         private val NAMES = listOf(
             EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK,
-            TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK,
+            TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK, OVERLAY_CHECK, OVERLAY_PERF,
         ) + PhotoCheckProjects.NAMES
         private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20
@@ -352,6 +414,13 @@ internal class EditorCheckProjects : KoinComponent {
         private val photo = media("photo.png", MediaKind.IMAGE)
         private val photo4x3 = media("photo-4x3.png", MediaKind.IMAGE)
         private val missingFile = media("missing.mp4", MediaKind.VIDEO)
+
+        // The same files with the facts the editor measures at import (P1-03's ffmpeg commands make them), for the overlay checks.
+        private val clip1080pMeasured = clip1080p.copy(durationUs = 32_000_000, pixelSize = PixelSize(1080, 1920), hasAudio = true)
+        private val clipAMeasured = clipA.copy(durationUs = 6_000_000, pixelSize = PixelSize(1280, 720), hasAudio = true)
+        private val clipBMeasured = clipB.copy(durationUs = 6_000_000, pixelSize = PixelSize(720, 1280), hasAudio = true)
+        private val photoMeasured = photo.copy(pixelSize = PixelSize(1080, 1080), hasAudio = false)
+        private val photo4x3Measured = photo4x3.copy(pixelSize = PixelSize(1440, 1080), hasAudio = false)
         private val sound = MediaRef(MediaOrigin.CatalogItem("debug-beep"), MediaKind.AUDIO, cachedCopyPath = "${ExportCheckProject.MEDIA_DIR}/sound.m4a")
 
         // Pushed by hand, so the origin is a stand-in; the engine plays the copy.

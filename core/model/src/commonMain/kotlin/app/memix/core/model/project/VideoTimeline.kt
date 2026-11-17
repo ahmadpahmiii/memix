@@ -26,7 +26,10 @@ enum class TrackKind {
     /** [MediaClip]s played one after another. */
     @SerialName("main_video") MAIN_VIDEO,
 
-    /** [MediaClip]s shown over the main video (picture in picture). */
+    /**
+     * [MediaClip]s shown over the main video (picture in picture, P4-01). Each track is one layer: its clips never overlap in
+     * time, and a track later in [VideoTimeline.tracks] draws over an earlier one, like text lanes. The main video is always below.
+     */
     @SerialName("overlay") OVERLAY,
 
     /** [TextItem]s. */

@@ -18,9 +18,10 @@ import app.memix.core.model.project.PixelSize
 import java.io.File
 
 /**
- * Builds the Media3 [Composition] for a [CompositionPlan]: the main video sequence first, then one
- * audio-only sequence per audio lane. Media3 mixes sequences that overlap in time and ends with the
- * longest one, which the plan guarantees is the main video sequence. The same composition feeds the
+ * Builds the Media3 [Composition] for a [CompositionPlan]: the video sequences first, then one
+ * audio-only sequence per audio lane. The video is the main sequence alone, or with overlays ([OverlaySequences]) the stage,
+ * the overlay layers and the main sequence composited together. Media3 mixes sequences that overlap in time and ends with the
+ * longest one, which the plan guarantees is as long as the main video sequence. The same composition feeds the
  * export (Transformer) and the preview (CompositionPlayer), so both render alike.
  *
  * Every main clip is drawn at one frame size, the canvas's shape, by the canvas rules ([CanvasFraming]); captions go over
@@ -66,11 +67,15 @@ internal class Media3CompositionBuilder(
     private val pictureBars: BackgroundBars? = if (plan.background is PlanBackground.Image) BackgroundBars(backgroundFile, frame) else null
 
     fun build(): Composition {
-        val sequences = listOf(mainVideoSequence()) + plan.audioLanes.map(::audioSequence)
-        val composition = Composition.Builder(sequences)
+        // With overlays, the video is several sequences composited in a fixed order (OverlaySequences); without, just the main one.
+        val overlays = if (plan.hasOverlays) OverlaySequences(plan, uriByMedia, frame, frameRate) else null
+        val main = mainVideoSequence()
+        val videoSequences = overlays?.videoSequences(main) ?: listOf(main)
+        val composition = Composition.Builder(videoSequences + plan.audioLanes.map(::audioSequence))
             // Exports are SDR: every chat app shows SDR right, and Media3 refuses SDR clips or photos
             // after an HDR video in one sequence. OpenGL tone mapping works from API 29, our minSdk.
             .setHdrMode(Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)
+        overlays?.let { composition.setVideoCompositorSettings(it.compositorSettings()) }
         val videoEffects = compositionVideoEffects()
         if (mixProcessors.isNotEmpty() || videoEffects.isNotEmpty()) composition.setEffects(Effects(mixProcessors, videoEffects))
         return composition.build()
@@ -142,24 +147,24 @@ internal class Media3CompositionBuilder(
             .setSourceDuration(clip.source, clip.trimOutUs)
             .build()
     }
-
-    // Media3 checks that the trim ends inside the source. A length measured at import can be a few µs shorter
-    // than a trim set from another measurement, so the source counts as at least as long as the trim.
-    private fun EditedMediaItem.Builder.setSourceDuration(source: MediaRef, trimOutUs: Long): EditedMediaItem.Builder {
-        val durationUs = source.durationUs ?: return this
-        return setDurationUs(maxOf(durationUs, trimOutUs))
-    }
-
-    private fun clipping(trimInUs: Long, trimOutUs: Long): MediaItem.ClippingConfiguration =
-        MediaItem.ClippingConfiguration.Builder()
-            .setStartPositionUs(trimInUs)
-            .setEndPositionUs(trimOutUs)
-            .build()
-
-    // Media3 takes photo durations in whole milliseconds; never round a photo down to nothing.
-    private fun roundedMs(durationUs: Long): Long = ((durationUs + MICROS_PER_MILLI / 2) / MICROS_PER_MILLI).coerceAtLeast(1)
-
-    private companion object {
-        const val MICROS_PER_MILLI = 1_000L
-    }
 }
+
+// Media3 checks that the trim ends inside the source. A length measured at import can be a few µs shorter
+// than a trim set from another measurement, so the source counts as at least as long as the trim.
+@OptIn(UnstableApi::class)
+internal fun EditedMediaItem.Builder.setSourceDuration(source: MediaRef, trimOutUs: Long): EditedMediaItem.Builder {
+    val durationUs = source.durationUs ?: return this
+    return setDurationUs(maxOf(durationUs, trimOutUs))
+}
+
+@OptIn(UnstableApi::class)
+internal fun clipping(trimInUs: Long, trimOutUs: Long): MediaItem.ClippingConfiguration =
+    MediaItem.ClippingConfiguration.Builder()
+        .setStartPositionUs(trimInUs)
+        .setEndPositionUs(trimOutUs)
+        .build()
+
+// Media3 takes photo durations in whole milliseconds; never round a photo down to nothing.
+internal fun roundedMs(durationUs: Long): Long = ((durationUs + MICROS_PER_MILLI / 2) / MICROS_PER_MILLI).coerceAtLeast(1)
+
+private const val MICROS_PER_MILLI = 1_000L

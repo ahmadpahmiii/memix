@@ -31,7 +31,9 @@ import app.memix.core.model.project.VideoTimeline
  * | 3 – 5     | photo, fit                    | meme sound at 3.5–4.0 (source 0.5–1.0); muted beep at 4.2 must stay silent |
  * | 5 – 8     | clip B, source 1–4 s, fit     | clip B's audio once, from the audio track (detached)    |
  *
- * Text, sticker, overlay and effect items are there to show the engine's "not rendered yet" log lines.
+ * Text, sticker and effect items are there to show the engine's "not rendered yet" log lines. The overlay's file has no measured
+ * size here, so the engine leaves it out with a log line too (the overlay checks are `overlay-check` and `overlay-perf` in
+ * [EditorCheckProjects]).
  */
 internal object ExportCheckProject {
     const val ID = "export-check"

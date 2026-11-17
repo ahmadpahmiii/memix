@@ -124,6 +124,11 @@ data class PreviewPlayback(
     /** True when at least one clip's media file is missing or unreadable; such clips play as black and silence. */
     val missingMedia: Boolean,
     /**
+     * Overlay clips (P4-01) the preview leaves out because the phone can't decode that many videos at once; the export leaves out
+     * the same ones. Empty when all draw. The editor can say so (copy and policy: P4-01b).
+     */
+    val skippedOverlayIds: List<String> = emptyList(),
+    /**
      * True from an [PreviewSession.update] that changed the project until the changed project's first frame shows
      * (or the preview fails). Meanwhile the picture is the last frame before the edit (P1-06 → Preview catching up).
      */

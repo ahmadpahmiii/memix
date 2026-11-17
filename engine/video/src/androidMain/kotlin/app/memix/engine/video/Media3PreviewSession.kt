@@ -9,6 +9,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.ExperimentalApi
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.effect.MultipleInputVideoGraph
 import androidx.media3.exoplayer.DecoderCounters
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.transformer.Composition
@@ -64,6 +65,7 @@ internal class Media3PreviewSession(
     private val context: Context,
     private val sourceResolver: MediaSourceResolver,
     private val captionRenderer: AndroidCaptionRenderer,
+    private val decoderBudget: VideoDecoderBudget,
     private val logger: Logger,
     private val ioDispatcher: CoroutineDispatcher,
     project: Project,
@@ -83,6 +85,9 @@ internal class Media3PreviewSession(
     // isCatchingUp clears only on the first frame of the newest update, not of an older one still on its way.
     private var updateCount = 0
     private var shownUpdate = 0
+
+    // Whether the player was built with the video graph that composites overlays (see playerFor).
+    private var playerComposites = false
 
     // The canvas size of the composition on the player, which becomes the picture's at its first frame.
     private var playerCanvasSize: PixelSize? = null
@@ -289,10 +294,12 @@ internal class Media3PreviewSession(
     // Runs on ioDispatcher.
     private fun prepare(project: Project): PreparedPreview {
         // Silent items stay in, so raising one from 0% is heard while the slider moves.
-        val plan = when (val planned = CompositionPlanner.plan(project, keepSilentItems = true)) {
+        val planned = CompositionPlanner.plan(project, keepSilentItems = true, videoDecoderBudget = decoderBudget.videoDecoders)
+        val plan = when (planned) {
             is PlanResult.Unplayable -> return PreparedPreview.Failed("the project can't be played: ${planned.problem}", cause = null)
             is PlanResult.Ready -> planned.plan
         }
+        if (plan.skippedOverlayIds.isNotEmpty()) logger.debug(TAG, "Overlays left out of the preview: ${plan.skippedOverlayIds}")
         val resolved = sourceResolver.resolve(plan)
         // Each missing file, and each file whose length isn't known, plays as black and silence.
         val unplayable = resolved.missingItemIds.toSet() + plan.itemsWithoutLength()
@@ -328,6 +335,8 @@ internal class Media3PreviewSession(
                 LiveVolumes(liveGains, volumes, liveFades, liveBass),
                 visibility,
                 PixelSize(plan.canvasWidthPx, plan.canvasHeightPx),
+                compositesOverlays = playablePlan.hasOverlays,
+                skippedOverlayIds = plan.skippedOverlayIds,
             )
         } catch (e: RuntimeException) {
             // Media3's own argument checks.
@@ -346,7 +355,7 @@ internal class Media3PreviewSession(
     private fun showComposition(prepared: PreparedPreview.Ready, update: Int) {
         lengthUs = prepared.lengthUs
         val startUs = mutablePosition.value.coerceIn(0, lengthUs)
-        val player = mutablePlayer.value ?: newPlayer().also { mutablePlayer.value = it }
+        val player = playerFor(prepared.compositesOverlays)
         // A caption hidden while this composition was built (a gesture that began meanwhile) stays hidden on it.
         prepared.captions.hiddenItemId = requestedHiddenCaption
         shownCaptions = prepared.captions
@@ -368,7 +377,7 @@ internal class Media3PreviewSession(
         playerCanvasSize = prepared.canvasSize
         liveVolumes = prepared.liveVolumes
         mutablePosition.value = startUs
-        publish { it.copy(missingMedia = prepared.missingMedia) }
+        publish { it.copy(missingMedia = prepared.missingMedia, skippedOverlayIds = prepared.skippedOverlayIds) }
         timeFirstFrame()
     }
 
@@ -403,11 +412,23 @@ internal class Media3PreviewSession(
         }
     }
 
-    private fun newPlayer(): CompositionPlayer {
-        val player = CompositionPlayer.Builder(context)
+    // A player's video graph is fixed when it is built (Media3 1.11.1): CompositionPlayer composites several video sequences only
+    // with the multiple-input graph, and plays a single one best with the default. So the first overlay added, or the last one
+    // removed, swaps the player; the surface shows the new one's first frame in place of the old picture.
+    private fun playerFor(compositesOverlays: Boolean): CompositionPlayer {
+        val current = mutablePlayer.value
+        if (current != null && compositesOverlays == playerComposites) return current
+        current?.release()
+        playerComposites = compositesOverlays
+        return newPlayer(compositesOverlays).also { mutablePlayer.value = it }
+    }
+
+    private fun newPlayer(compositesOverlays: Boolean): CompositionPlayer {
+        val builder = CompositionPlayer.Builder(context)
             // Pauses for calls and other apps' sound (handled by Media3), like every media player.
             .setAudioAttributes(MEDIA_AUDIO, /* handleAudioFocus= */ true)
-            .build()
+        if (compositesOverlays) builder.setVideoGraphFactory(MultipleInputVideoGraph.Factory())
+        val player = builder.build()
         player.addListener(playerListener)
         player.addAnalyticsListener(playSpan)
         player.playWhenReady = mutablePlayback.value.isPlaying
@@ -462,6 +483,9 @@ internal class Media3PreviewSession(
             val liveVolumes: LiveVolumes,
             val captions: CaptionVisibility,
             val canvasSize: PixelSize,
+            /** True when the composition draws overlays, so its player needs the compositing video graph. */
+            val compositesOverlays: Boolean,
+            val skippedOverlayIds: List<String>,
         ) : PreparedPreview
 
         class Failed(val reason: String, val cause: Throwable?) : PreparedPreview
