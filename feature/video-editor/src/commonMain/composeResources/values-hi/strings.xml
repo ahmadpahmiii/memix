@@ -307,4 +307,13 @@
     <string name="a11y_mask_width">चौड़ाई, %1$d प्रतिशत</string>
     <string name="a11y_mask_height">ऊँचाई, %1$d प्रतिशत</string>
     <string name="a11y_mask_rotation">घुमाव, %1$d डिग्री</string>
+    <!-- Filters and adjustments on video clips (P4-07). The 20 filter names, adjustments and tabs are shared with the photo editor in :core:ui. -->
+    <string name="tool_filters">फ़िल्टर</string>
+    <string name="tool_filters_click_all">अपने वीडियो का लुक बदलें</string>
+    <string name="tool_filters_click_clip">इस क्लिप का लुक बदलें</string>
+    <string name="filters_title_all">फ़िल्टर, सभी क्लिप</string>
+    <string name="filters_mixed_hint">क्लिप के लुक अलग-अलग हैं। बदलाव सभी पर लागू होगा।</string>
+    <string name="a11y_state_filtered">फ़िल्टर: %1$s</string>
+    <string name="a11y_state_adjusted">समायोजित</string>
+    <string name="edit_filter_all">फ़िल्टर, सभी क्लिप</string>
 </resources>

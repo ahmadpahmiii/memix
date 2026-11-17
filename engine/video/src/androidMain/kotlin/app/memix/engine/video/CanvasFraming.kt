@@ -47,9 +47,15 @@ internal class CanvasFraming(
     private val liveKey: LiveChromaKey? = null,
     /** The clip's shape mask (P4-03b), when it has one: it runs after the framing, on the clip's own box, before the background goes behind the frame. */
     private val liveMask: LiveMask? = null,
+    /** The clip's look (P4-07: filter and adjustments), already as effects: they run on the clip's own picture, after the key and before the framing, so Fit's bars and the background are not filtered. */
+    private val look: List<Effect> = emptyList(),
 ) {
     fun effects(): List<Effect> {
         if (liveKey != null || liveMask != null) return layeredEffects(liveKey, liveMask)
+        return look + framingEffects()
+    }
+
+    private fun framingEffects(): List<Effect> {
         if (clip.fit == FrameFit.FILL) return listOf(presentation(frame, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP))
         val picture = clip.pixelSize?.takeIf { it.widthPx > 0 && it.heightPx > 0 }
             ?: return listOf(presentation(frame, Presentation.LAYOUT_SCALE_TO_FIT))
@@ -78,7 +84,7 @@ internal class CanvasFraming(
             is PlanBackground.Image -> BackdropEffect(BLACK_ARGB, pictureBars?.whole())
             PlanBackground.Blur -> BackdropEffect(BLACK_ARGB, null)
         }
-        return listOfNotNull(key?.let(::ChromaKeyEffect), framing, mask?.let { MaskEffect(it, maskBoxPicture(picture)) }, backdrop)
+        return listOfNotNull(key?.let(::ChromaKeyEffect)) + look + listOfNotNull(framing, mask?.let { MaskEffect(it, maskBoxPicture(picture)) }, backdrop)
     }
 
     // The mask's box is the picture fitted in the frame (what Fit leaves around it is not the clip); Fill, the frame's own shape and an unknown size use the whole frame.

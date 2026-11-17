@@ -1,6 +1,7 @@
 package app.memix.feature.photoeditor
 
 import androidx.compose.animation.Crossfade
+import app.memix.core.ui.look.FilterThumbnails
 import app.memix.core.ui.crop.CropScreen
 import app.memix.core.domain.project.EditPhotoTab
 import app.memix.core.model.project.ImageEdit

@@ -15,6 +15,7 @@ import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.CompositionPlayer
 import app.memix.core.domain.Logger
+import app.memix.core.domain.project.updateClipLook
 import app.memix.core.domain.project.videoLengthUs
 import app.memix.core.domain.video.ExportSettings
 import app.memix.core.domain.video.PreviewPlayback
@@ -22,6 +23,7 @@ import app.memix.core.domain.video.PreviewSession
 import app.memix.core.domain.video.PreviewStatus
 import app.memix.core.domain.voiceover.ClockSample
 import app.memix.core.model.project.ChromaKey
+import app.memix.core.model.project.ClipLook
 import app.memix.core.model.project.ClipMask
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
@@ -70,6 +72,7 @@ internal class Media3PreviewSession(
     private val decoderBudget: VideoDecoderBudget,
     private val logger: Logger,
     private val ioDispatcher: CoroutineDispatcher,
+    private val lutTables: LutTables,
     project: Project,
     /** Hand-check builds: log where each sound is heard in the mix ([SoundOnsetLog]). */
     private val measureSoundOnsets: Boolean = false,
@@ -136,6 +139,12 @@ internal class Media3PreviewSession(
     // The same for the mask's live moves (P4-03b).
     private var requestedLiveMask: Pair<String, ClipMask>? = null
     private var shownMasks: Map<String, LiveMask> = emptyMap()
+    // The look sliders' newest look per clip (P4-07), the shown composition's live looks, and a counter that asks for a new composition when a
+    // look needs a shader pass or a filter the shown one wasn't built with (the first drag on a clip with no look).
+    private val requestedLiveLooks = mutableMapOf<String, ClipLook>()
+    private var shownLooks: Map<String, LiveLook> = emptyMap()
+    private val lookRebuilds = MutableStateFlow(0)
+    private val lookRebuildGate = LookRebuildGate()
     private val positionTicker = FrameTicker(::publishPlayerPosition)
     private val headphonesUnplugged = HeadphonesUnpluggedReceiver(context, onUnplugged = ::pause)
     private val playSpan = PlaySpanLog(logger)
@@ -175,13 +184,14 @@ internal class Media3PreviewSession(
     init {
         showTiming.start(ShowTimingLog.Change.OPEN)
         scope.launch {
-            combine(projects, trimClip, ::Pair).collectLatest { (next, clip) ->
+            combine(projects, trimClip, lookRebuilds) { next, clip, _ -> next to clip }.collectLatest { (next, clip) ->
                 if (clip != null) {
                     showTrimComposition(withContext(ioDispatcher) { prepare(trimProjectOf(next, clip)) })
                 } else {
                     val update = updateCount
                     captionRenderer.prepare()
-                    show(withContext(ioDispatcher) { prepare(next) }, update)
+                    val withLooks = requestedLiveLooks.entries.fold(next) { project, (itemId, look) -> project.updateClipLook(itemId) { look } }
+                    show(withContext(ioDispatcher) { prepare(withLooks) }, update)
                 }
             }
         }
@@ -225,6 +235,7 @@ internal class Media3PreviewSession(
         requestedLiveOpacity = null
         requestedLiveKey = null
         requestedLiveMask = null
+        requestedLiveLooks.clear()
         showTiming.start(ShowTimingLog.Change.EDIT)
         lengthUs = project.videoLengthUs()
         updateCount++
@@ -333,6 +344,27 @@ internal class Media3PreviewSession(
         if (!playerShowsTrim && !mutablePlayback.value.isPlaying) mutablePlayer.value?.let { player -> player.seekTo(player.currentPosition) }
     }
 
+    override fun previewLook(itemId: String, look: ClipLook) {
+        if (closed) return
+        requestedLiveLooks[itemId] = look
+        val live = shownLooks[itemId]
+        if (live == null || !live.covers(look)) return if (look.isNeutral) Unit else rebuildForLooks()
+        live.look = look
+        // Playing, the next frame draws it; paused, a seek to where it is draws the frame again through the shaders.
+        if (!playerShowsTrim && !mutablePlayback.value.isPlaying) mutablePlayer.value?.let { player -> player.seekTo(player.currentPosition) }
+    }
+
+    // A look the shown composition can't draw (a pass or a filter it was built without) is drawn by a new one, built with the look in the project.
+    private fun rebuildForLooks() {
+        if (lookRebuildGate.request()) startLookRebuild()
+    }
+
+    private fun startLookRebuild() {
+        updateCount++
+        publish { it.copy(isCatchingUp = true) }
+        lookRebuilds.value++
+    }
+
     override fun endTrimFrames() {
         if (closed || trimClip.value == null) return
         // The project's composition is rebuilt at positionUs, the trim's commit included when it came first (the
@@ -374,6 +406,7 @@ internal class Media3PreviewSession(
             val liveBass = sounds.associate { it.itemId to LiveBass(it.effects.bassBoost, it.effects.distortion) }
             val liveKeys = playablePlan.chromaKeys.mapValues { (_, key) -> LiveChromaKey(key) }
             val liveMasks = playablePlan.masks.mapValues { (_, mask) -> LiveMask(mask) }
+            val liveLooks = playablePlan.looks.mapValues { (_, look) -> LiveLook(look) }
             val visibility = CaptionVisibility()
             var overlayVisibility: OverlayVisibility? = null
             val captions = playablePlan.captions.takeIf { it.isNotEmpty() }?.let {
@@ -389,6 +422,8 @@ internal class Media3PreviewSession(
                 liveBass,
                 liveKeys = liveKeys,
                 liveMasks = liveMasks,
+                liveLooks = liveLooks,
+                lutTables = lutTables,
                 captionOverlay = captions,
                 frameShortSidePx = if (playablePlan.background == PlanBackground.Blur) BLUR_PREVIEW_SHORT_SIDE_PX else null,
                 backgroundFile = resolved.backgroundFile,
@@ -407,6 +442,7 @@ internal class Media3PreviewSession(
                 skippedOverlayIds = plan.skippedOverlayIds,
                 liveKeys = liveKeys,
                 liveMasks = liveMasks,
+                liveLooks = liveLooks,
             )
         } catch (e: RuntimeException) {
             // Media3's own argument checks.
@@ -417,8 +453,16 @@ internal class Media3PreviewSession(
     private fun show(prepared: PreparedPreview, update: Int) {
         if (closed) return
         when (prepared) {
-            is PreparedPreview.Failed -> fail(prepared.reason, prepared.cause)
-            is PreparedPreview.Ready -> showComposition(prepared, update)
+            is PreparedPreview.Failed -> {
+                lookRebuildGate.shown(stillUncovered = false)
+                fail(prepared.reason, prepared.cause)
+            }
+            is PreparedPreview.Ready -> {
+                showComposition(prepared, update)
+                // Looks asked for while this one was built that it can't draw (a pass or filter it lacks) get exactly one more build.
+                val uncovered = requestedLiveLooks.any { (id, look) -> !look.isNeutral && shownLooks[id]?.covers(look) != true }
+                if (lookRebuildGate.shown(uncovered)) startLookRebuild()
+            }
         }
     }
 
@@ -436,6 +480,8 @@ internal class Media3PreviewSession(
         shownKeys = prepared.liveKeys
         requestedLiveMask?.let { (itemId, mask) -> prepared.liveMasks[itemId]?.mask = mask }
         shownMasks = prepared.liveMasks
+        requestedLiveLooks.forEach { (itemId, look) -> prepared.liveLooks[itemId]?.takeIf { it.covers(look) }?.look = look }
+        shownLooks = prepared.liveLooks
         try {
             // Rebuilds every decoder (Media3 1.11.1), so it costs a re-prepare; the position and play state carry on.
             player.setComposition(prepared.composition, startUs / MICROS_PER_MILLI)
@@ -571,6 +617,7 @@ internal class Media3PreviewSession(
             val liveKeys: Map<String, LiveChromaKey>,
             /** The mask's live value of every masked clip in this composition. */
             val liveMasks: Map<String, LiveMask>,
+            val liveLooks: Map<String, LiveLook>,
         ) : PreparedPreview
 
         class Failed(val reason: String, val cause: Throwable?) : PreparedPreview

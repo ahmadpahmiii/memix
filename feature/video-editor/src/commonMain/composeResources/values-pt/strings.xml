@@ -307,4 +307,13 @@
     <string name="a11y_mask_width">Largura, %1$d por cento</string>
     <string name="a11y_mask_height">Altura, %1$d por cento</string>
     <string name="a11y_mask_rotation">Rotação, %1$d graus</string>
+    <!-- Filters and adjustments on video clips (P4-07). The 20 filter names, adjustments and tabs are shared with the photo editor in :core:ui. -->
+    <string name="tool_filters">Filtros</string>
+    <string name="tool_filters_click_all">Mude o visual do seu vídeo</string>
+    <string name="tool_filters_click_clip">Mude o visual deste clipe</string>
+    <string name="filters_title_all">Filtros, todos os clipes</string>
+    <string name="filters_mixed_hint">Os clipes têm visuais diferentes. A mudança vale para todos.</string>
+    <string name="a11y_state_filtered">Filtro: %1$s</string>
+    <string name="a11y_state_adjusted">Ajustado</string>
+    <string name="edit_filter_all">Filtro, todos os clipes</string>
 </resources>

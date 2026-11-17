@@ -246,3 +246,37 @@ JVM harnesses (not in the repo): 64 checks on `MaskMath` (each shape's edge, sof
 ### 4. Things that could not be verified
 - Everything on a phone: the GL pass (orientation, the main clip's box through `Presentation` and `BackdropEffect`), the gestures and haptics, TalkBack, reduce motion, the panel's pinned tabs at 360 x 640.
 - Delegated: Blur background under a masked main clip is black; the flush snap needs the shape's axes aligned with the box's; the guides draw the centre lines only; mask parameters are not keyframed.
+
+## P4-07 · video filters and adjustments
+
+Spec: `docs/ux/specs/P4-07-video-filters-addendum.md` (on `P2-04-image-tools.md`). Notes: `docs/TECHNICAL_DESIGN.md` → Video filters and adjustments. Screenshots (desktop renders, not a phone): `docs/ux/reviews/P4-07/`. Reference renders, photo path and video twin side by side: `docs/qa/references/P4-07-video-filters/`. Scenes: `--es memix.openEditor filters-check` (three main clips, the 1080p video, the grid picture and the patterned 3:2 picture, and a 5 s overlay video, no looks) and `filters-mixed` (the clips already differ: Cinema 80% with a vignette on the video, Mono on the patterned picture, nothing on the grid, Vivid on the overlay).
+
+### 1. What was checked without a device
+A throwaway JVM harness (not in the repo; compiles `:core:model` and `:core:domain`): 245 checks, all pass.
+- **Parity (the Done when).** The video twin (`VideoLookMath`, line by line what the two shaders compute) against the photo path (`ImagePipeline`) on three procedural 1080 x 1440 pictures (a chart with a gray ramp, skin and color patches and a hue sweep; a hard-edged picture; a soft one): all 20 filters at 100% and 50%, the six adjustments at -100, 0, +100 and 50, and all six plus a filter together, 198 cases: worst mean difference 0.221/255 per channel, 100% of pixels within 6/255 (and within 3/255), worst single pixel 2/255. The same look at 2160 halved against 1080: 100% within 3/255 on the soft picture, 99.2% on the chart. The sharpen kernel's merged taps equal the full kernel, and the tap count stays within the shader's 9 for every size from 240 to 4320 px short side.
+- Edits and model: the all-clips edit, the mixed-state write (one setting to every clip, the rest per clip), a clip and an overlay, a sound refused, new clips taking the shared look (none when mixed or empty), Split, Duplicate and Replace keeping it, geometry kept when the look changes, Reset per tab, the analytics ids each step logs, a neutral look saved as none.
+- Filter then key: the matte is identical with and without the look. Limited range: a studio-swing source expanded to full range gives the full-range still's look within 2/255.
+- Builds: `assembleDebug`, `lint`, `compileCommonMainKotlinMetadata`, `verifySqlDelightMigration`, `bundleRelease` green.
+
+### 2. The Done when, on a phone
+1. **Same looks as the photo editor.** Open `photo-image-tools` and `filters-check`; for each of the 20 filters at 100%, and a sample at 50%, put the same still on a photo layer and as a main photo clip and compare (the main bar's Filters, a tile): same ids, same order, the same look. Export 1080p30 and pull the frame at 1.5 s: against the photo render at 1080, mean difference at most 2/255 per channel and 99% of pixels within 6/255 (the encoder's allowance); `docs/qa/references/P4-07-video-filters/filters-100-*.png` show what to expect. The six adjustments at -100, 0, +100 on the gray ramp.
+2. **Main bar, every main clip.** `filters-check`, nothing selected: Filters (main bar, after Voiceover): the title reads "Filters, all clips", Filters tab, the strip shows the video's frame. Tap Noir: every main clip is Noir, the overlay is not; one undo step ("Filter, all clips"); Undo takes it from all three. Intensity: live while dragging, one step on release.
+3. **A clip's own bar.** Tap the grid clip, swipe the bar to Filters (after Mask): the title reads "Filters"; Vivid on that clip only. The playhead jumps to the clip when it was outside it. The overlay's bar has Filters too and the look draws on the overlay only.
+4. **Mixed.** `filters-mixed`, Filters from the main bar: no tile selected, no Intensity row, the hint under the tabs; Adjust shows the clip under the playhead. Tap Warm: all three clips become Warm, their sliders stay as they were. Drag Contrast: all three clips get that value, the filters stay.
+5. **Adjust.** Brightness, Contrast, Saturation, Warmth, Sharpen, Vignette: live on the playing video (30 fps, no stutter), one step on release (steps of 10 with a keyboard or TalkBack). The first drag on a clip that has no look, or Sharpen from 0 on a clip with only color looks, builds one new composition (a one-off hitch, delegated); later drags are smooth.
+6. **Reset** (header, per tab, for the panel's scope): Filters removes the filter, Adjust zeroes the six; one step; "Reset" in Undo.
+7. **Other edits.** Add media after a look every main clip shares: the new clip has it; with different looks it has none. Split and Duplicate keep it, Replace keeps it, Ratio change leaves it. The timeline thumbnails show no color (geometry only). The clip's spoken description gains "Filter: Vivid" or "Adjusted".
+8. **Pipeline.** A Fit clip (the 1080p video in 9:16 is a full-frame fit; the 3:2 picture is Fit with bars): the bars stay black and the vignette darkens the clip's edges, not the bars. A keyed overlay with a filter: the key is unchanged and the subject is graded. Blur background: the blurred copy has the look; under a keyed or masked clip Blur is black (P4-04, P4-03b).
+9. **Old draft.** A draft saved before this build opens with no look; the media file's size and hash don't change.
+10. **API 29.** The same on an API 29 emulator (the shaders are GLES 2).
+11. **Analytics (debug log).** A tile: `tool_use` `filter` with the filter id (`none` on removal); each slider release: its own `adjust_*`; Reset: the ids that changed.
+
+### 3. Numbers to take (release or benchmark, the owner's phone)
+- A filter plus Adjust on the 1080p main clip with one 1080p overlay: preview at 30 fps or more (Media3 logs); an Adjust drag for 3 s three times: janky frames under 5% (`dumpsys gfxinfo`); the first five tiles within 300 ms of opening the Filters tab. Sharpen is the costly one (25 texture fetches per pixel at 1080 short side; 81 at 2160): **measure the 1080 and 4K sharpen cost on the benchmark build (`installBenchmark`), never debug**. If the preview can't hold 30 fps, the spec's lower-resolution fallback is not built; report the device.
+- Editor equals export: a preview screenshot against the export frame, 99% of pixels within 3/255.
+- LeakCanary: open Filters from the main bar and from a clip, change tiles and sliders, Reset, close the editor, five times.
+
+### 4. Things that could not be verified
+- Everything on a GPU: both shaders (pass 1's table lookup orientation, pass 2's generated kernel and the vignette centre), the live holder, the rebuild on the first drag, the effect order with a key, a mask and Fit, 8-bit rounding between the passes, API 29. The parity numbers are for the CPU twin; the twin is the shaders' math written out, not the shaders.
+- The frame at the playhead for the tiles (read through the thumbnail reader), TalkBack, reduce motion, the pinned tabs at 360 x 640.
+- Delegated: on an overlay the look runs after the scaling pass; the sharpen radius is capped at 3.99 px; the lower-resolution fallback is not built; Filters is after Mask on the clip bars (P4-16's tools are not built).

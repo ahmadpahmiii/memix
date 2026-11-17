@@ -120,6 +120,7 @@ import app.memix.feature.videoeditor.captions.CaptionLayer
 import app.memix.feature.videoeditor.overlays.OverlayLayer
 import app.memix.feature.videoeditor.greenscreen.GreenScreenPanel
 import app.memix.feature.videoeditor.greenscreen.PickLayer
+import app.memix.feature.videoeditor.looks.LookPanel
 import app.memix.feature.videoeditor.masks.MaskPanel
 import app.memix.feature.videoeditor.masks.MaskStage
 import app.memix.feature.videoeditor.overlays.OverlayPanels
@@ -140,6 +141,8 @@ import app.memix.core.ui.text.TextEntryBar
 import app.memix.feature.videoeditor.captions.TextPanels
 import app.memix.feature.videoeditor.export.ExportSheet
 import app.memix.core.ui.panels.BackgroundUi
+import app.memix.core.ui.look.FilterThumbnails
+import app.memix.core.ui.scene.ImageToolRenderer
 import app.memix.core.ui.scene.SceneImageSource
 import app.memix.core.ui.scene.SceneThumbnails
 import app.memix.feature.mediaimport.ImportSheet
@@ -192,7 +195,10 @@ import memix.core.ui.generated.resources.canvas_pill_a11y
 import memix.feature.video_editor.generated.resources.edit_add_media
 import memix.feature.video_editor.generated.resources.edit_add_sound
 import memix.core.ui.generated.resources.edit_add_text
+import memix.core.ui.generated.resources.edit_adjust
 import memix.core.ui.generated.resources.edit_canvas_background
+import memix.core.ui.generated.resources.edit_filter
+import memix.core.ui.generated.resources.edit_photo_reset
 import memix.feature.video_editor.generated.resources.edit_canvas_fill
 import memix.feature.video_editor.generated.resources.edit_canvas_fit
 import memix.core.ui.generated.resources.edit_canvas_ratio
@@ -205,6 +211,7 @@ import memix.feature.video_editor.generated.resources.edit_move_text
 import memix.feature.video_editor.generated.resources.edit_mute_original
 import memix.core.ui.generated.resources.edit_reorder
 import memix.feature.video_editor.generated.resources.edit_replace
+import memix.feature.video_editor.generated.resources.edit_filter_all
 import memix.feature.video_editor.generated.resources.edit_split
 import memix.core.ui.generated.resources.edit_text_color
 import memix.core.ui.generated.resources.edit_text_font
@@ -331,6 +338,7 @@ fun VideoEditorScreen(
     previewSurface: @Composable (PreviewSession, Modifier) -> Unit,
     captionStandIn: CaptionStandInSlot,
     imageSource: SceneImageSource,
+    imageTools: ImageToolRenderer,
     soundPicker: SoundPickerSlot,
     microphone: MicrophoneHooks,
     onFreeUpSpace: (requestedBytes: Long) -> Unit,
@@ -360,7 +368,8 @@ fun VideoEditorScreen(
     val freeUpSpaceForSave = remember(onFreeUpSpace) { { onFreeUpSpace(ImportMediaUseCase.HEADROOM_BYTES) } }
     val focusTargets = remember { EditorFocusTargets() }
     val backgroundThumbnails = rememberBackgroundThumbnails(imageSource, state.canvas?.background, onIntent)
-    val panelOpen = state.volumePanel != null || state.audioEffects != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null || state.overlayPanel != null || state.greenScreen != null || state.maskPanel != null || state.keyframeBar?.easingOpen == true
+    val lookTiles = rememberLookTiles(imageTools)
+    val panelOpen = state.volumePanel != null || state.audioEffects != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null || state.overlayPanel != null || state.greenScreen != null || state.maskPanel != null || state.lookPanel != null || state.keyframeBar?.easingOpen == true
     val sheetOpen = state.sounds.isOpen || state.unsavedSheetOpen || state.exportSheet != null || importSheetShown(state.mediaImport)
     ReturnFocus(state.returnFocus, focusTargets)
     // Typing (spec P1-10 → Typing): the field's words live here, so only the field and the stand-in redraw per key.
@@ -428,6 +437,7 @@ fun VideoEditorScreen(
                     EasingPanel(state.keyframeBar, onIntent, Modifier.fillMaxSize())
                     GreenScreenPanel(state.greenScreen, onIntent, Modifier.fillMaxSize())
                     MaskPanel(state.maskPanel, onIntent, Modifier.fillMaxSize())
+                    LookPanel(state.lookPanel, lookTiles, onIntent, Modifier.fillMaxSize())
                     OverlayPanels(state.overlayPanel, { timeUs -> selectedOverlayTransform(state, timeUs) }, panelPlayhead, onIntent, Modifier.fillMaxSize())
                     CanvasPanel(state.canvasPanel, state.canvas, backgroundThumbnails, onIntent, Modifier.fillMaxSize())
                 },
@@ -453,6 +463,13 @@ fun VideoEditorScreen(
  * The small pictures of the Canvas panel's Image swatch, and the watch on the background picture's file: when its thumbnail
  * can't be decoded the editor is told once, so the swatch, the panel and a toast say it is missing (spec P2-12 → States).
  */
+// The Filters panel's 21 tiles, made from a frame of the clip (spec P4-07 → The panel); they live as long as the screen and are emptied when the panel closes.
+@Composable
+private fun rememberLookTiles(imageTools: ImageToolRenderer): FilterThumbnails {
+    val scope = rememberCoroutineScope()
+    return remember(imageTools) { FilterThumbnails(source = null, tools = imageTools, scope = scope) }
+}
+
 @Composable
 private fun rememberBackgroundThumbnails(imageSource: SceneImageSource, background: BackgroundUi?, onIntent: (VideoEditorIntent) -> Unit): SceneThumbnails {
     val scope = rememberCoroutineScope()
@@ -1152,6 +1169,10 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.GREEN_SCREEN -> Res.string.tool_green_screen
         VideoEdit.GREEN_SCREEN_OFF -> Res.string.edit_green_screen_off
         VideoEdit.MASK, VideoEdit.MASK_ADJUST -> Res.string.tool_mask
+        VideoEdit.FILTER -> UiRes.string.edit_filter
+        VideoEdit.FILTER_ALL -> Res.string.edit_filter_all
+        VideoEdit.ADJUST_BRIGHTNESS, VideoEdit.ADJUST_CONTRAST, VideoEdit.ADJUST_SATURATION, VideoEdit.ADJUST_WARMTH, VideoEdit.ADJUST_SHARPEN, VideoEdit.ADJUST_VIGNETTE -> UiRes.string.edit_adjust
+        VideoEdit.RESET_LOOK -> UiRes.string.edit_photo_reset
         VideoEdit.MASK_POSITION -> Res.string.edit_mask_position
         VideoEdit.KEYFRAME_ADD -> Res.string.keyframe_add
         VideoEdit.KEYFRAME_REMOVE -> Res.string.keyframe_remove

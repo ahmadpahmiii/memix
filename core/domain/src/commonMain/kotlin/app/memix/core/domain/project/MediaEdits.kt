@@ -8,6 +8,7 @@ import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.TimelineItem
 import app.memix.core.model.project.TrackKind
+import app.memix.core.model.project.withLook
 
 /*
  * The video editor's media edits (spec docs/ux/specs/P1-06-clip-edits-and-audio.md → Add media, Replace). Like the
@@ -30,7 +31,7 @@ sealed interface MediaPlace {
 /**
  * Puts [media] on the main video track at [place], back to back in pick order, as new clips named by [clipIds] (one
  * id per item, in the same order): videos at full length with their own sound, photos for the import's photo length.
- * They take the fit every main clip shares, Fit when the clips differ (spec P1-11 → Interactions). Later main clips move
+ * They take the fit every main clip shares, Fit when the clips differ (spec P1-11 → Interactions), and the look every main clip shares, none when they differ (P4-07). Later main clips move
  * right by the added length. An empty project gets them from 0:00.
  */
 fun Project.insertMedia(media: List<MediaRef>, clipIds: List<String>, place: MediaPlace): Project {
@@ -40,7 +41,8 @@ fun Project.insertMedia(media: List<MediaRef>, clipIds: List<String>, place: Med
     val clips = mainClipsInOrder(track)
     val index = insertionIndex(clips, place)
     val fit = sharedClipsFit() ?: FrameFit.FIT
-    val newClips = media.zip(clipIds) { ref, id -> newMainClip(ref, id, startUs = 0).copy(fit = fit) }
+    val look = lookForNewMainClip()
+    val newClips = media.zip(clipIds) { ref, id -> newMainClip(ref, id, startUs = 0).copy(fit = fit).withLook(look) }
     return replaceTrack(track.copy(items = repacked(clips.subList(0, index) + newClips + clips.subList(index, clips.size))))
 }
 

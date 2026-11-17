@@ -16,3 +16,4 @@ description: Add or change a Memix video/photo effect, filter, transition, text 
 8. **Performance.** Preview still ≥ 30 fps at 1080p with 6 tracks on the reference phone; put the number in the PR.
 9. **UI.** Listed in its tool with a thumbnail and an intensity slider; on the timeline it's an `EFFECT` item in `track-effect` violet.
 - Masks (P4-03b) are specs on the clip (`ClipMask`) with a CPU twin (`MaskMath`) and references in `docs/qa/references/P4-03-masks/`; the shader mirrors the twin line by line.
+- Video filters (P4-07) reuse the photo editor's specs and data (`FilterRef`, `ImageAdjust`, the 20 `.lut` files) through `ClipLook`; the GPU passes mirror `VideoLookMath` (CPU twin), which a harness compares with `ImagePipeline` (the photo path) for parity; references in `docs/qa/references/P4-07-video-filters/` show photo and video side by side.

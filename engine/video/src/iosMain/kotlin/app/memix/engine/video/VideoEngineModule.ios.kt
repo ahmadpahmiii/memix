@@ -30,6 +30,7 @@ import app.memix.core.model.project.CaptionCatalog
 import app.memix.core.model.project.CaptionLook
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.ChromaKey
+import app.memix.core.model.project.ClipLook
 import app.memix.core.model.project.ClipMask
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaOrigin
@@ -170,6 +171,9 @@ private class UnavailablePreviewSession : PreviewSession {
     override fun previewChromaKey(itemId: String, key: ChromaKey) = Unit
     // TODO(P7-04): shape masks as a Core Image kernel with the shader's math (MaskMath, docs/qa/references/P4-03-masks/). Same stub rule as the key.
     override fun previewMask(itemId: String, mask: ClipMask) = Unit
+    // TODO(P7-04): the AVFoundation compositor draws the look (filter and adjustments) from the same ClipLook; until then a video shows no look on iOS.
+    override fun previewLook(itemId: String, look: ClipLook) = Unit
+
     override fun setSilent(silent: Boolean) = Unit
     override fun sampleClock(): ClockSample? = null
     override fun close() = Unit

@@ -519,6 +519,8 @@ private fun VideoEditorDestination(projectId: String, madeFromPhoto: Boolean, st
     val captionMeasurer = koinInject<CaptionMeasurer>()
     // Decodes the Canvas panel's background picture for its swatch (P2-12).
     val imageSource = koinInject<SceneImageSource>()
+    // The Filters panel's tiles run the photo editor's color pass (P4-07); iOS binds an unsupported one until P7-09.
+    val imageTools = koinInject<ImageToolRenderer>()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val freeUpSpace = rememberFreeUpSpaceLauncher()
     // The sound picker's lists, downloads and previews: its own instance of the Sounds tab's ViewModel (P3-05).
@@ -560,6 +562,7 @@ private fun VideoEditorDestination(projectId: String, madeFromPhoto: Boolean, st
             CaptionStandIn(captionMeasurer, text, style, transform, canvasWidthPx, canvasHeightPx, modifier)
         },
         imageSource = imageSource,
+        imageTools = imageTools,
         microphone = microphone,
         soundPicker = { visible, title, onDismiss, onPick, onUnplayable ->
             EditorSoundPicker(soundPicker, visible, title, mySoundPickers, onDismiss, onPick, onUnplayable) {

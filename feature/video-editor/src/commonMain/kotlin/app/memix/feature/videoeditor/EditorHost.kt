@@ -34,9 +34,9 @@ internal interface EditorHost {
 
     /**
      * Applies [change] as one [edit] step and shows it at once; false when it changed nothing (no step, no `tool_use`).
-     * [font] goes with `tool_use` for the caption tools that name one, [value] for the canvas tools.
+     * [font] goes with `tool_use` for the caption tools that name one, [value] for the canvas tools, [filter] (a filter id, `none` when removed) for `filter`.
      */
-    fun commit(edit: VideoEdit, pausesPlayback: Boolean = true, font: String? = null, value: String? = null, loggedAs: List<EditorTool>? = null, change: (Project) -> Project): Boolean
+    fun commit(edit: VideoEdit, pausesPlayback: Boolean = true, font: String? = null, value: String? = null, filter: String? = null, loggedAs: List<EditorTool>? = null, change: (Project) -> Project): Boolean
 
     /** Whether every edit of [itemId] is a keyframe edit now: it has keyframes, or its keyframe bar is open (spec P4-02b → Auto-keying). */
     fun routesThroughKeyframes(itemId: String): Boolean

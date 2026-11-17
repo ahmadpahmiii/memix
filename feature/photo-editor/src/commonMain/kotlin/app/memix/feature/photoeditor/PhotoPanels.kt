@@ -19,6 +19,7 @@ import app.memix.core.designsystem.component.Button
 import app.memix.core.designsystem.component.Slider
 import app.memix.core.designsystem.component.ToolPanel
 import app.memix.core.model.project.PhotoCatalog
+import app.memix.core.ui.look.FilterThumbnails
 import app.memix.core.ui.panels.BackgroundActions
 import app.memix.core.ui.panels.BackgroundGroup
 import app.memix.core.ui.panels.BackgroundUi

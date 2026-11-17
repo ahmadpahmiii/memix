@@ -66,4 +66,9 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     // 16 → 17 (P4-03b): MediaClip gained the nullable "mask" (shape, center, size, turn, softness, invert, corner roundness; null is none). Version-16
     // JSON has none, which decodes as null: a clip saved before is unmasked and looks as saved. The step only moves the version on.
     ProjectMigration(fromVersion = 16) { json -> json },
+    // 17 → 18 (P4-07): a clip's "edit" now carries a look: its "adjust" (six adjustments) and "filter" are read by both engines. The fields
+    // were already part of ImageEdit since P2-04 and nothing wrote them on a clip, so version-17 JSON decodes as it is: a clip saved before is
+    // unfiltered and looks as saved. The step only moves the version on; the bump keeps an older build from opening a draft whose look it
+    // would draw without (see Project.needsNewerApp).
+    ProjectMigration(fromVersion = 17) { json -> json },
 )

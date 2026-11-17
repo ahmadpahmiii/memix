@@ -4,6 +4,7 @@ import app.memix.core.model.project.AudioClip
 import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.Keyframe
 import app.memix.core.model.project.MediaClip
+import app.memix.core.model.project.look
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
@@ -101,6 +102,7 @@ internal object CompositionPlanner {
         keyframes = keyframes,
         chromaKey = chromaKey,
         mask = mask,
+        look = look,
     )
 
     // With keyframes they carry the level (P4-02), so the fixed volume stays at 1 and never switches the clip off or on by itself.
@@ -201,6 +203,7 @@ internal object CompositionPlanner {
             keyframes = keyframes.shiftedBy(headCutUs),
             chromaKey = chromaKey,
             mask = mask,
+            look = look,
         )
         return CutOverlay(clip, cutStartUs)
     }

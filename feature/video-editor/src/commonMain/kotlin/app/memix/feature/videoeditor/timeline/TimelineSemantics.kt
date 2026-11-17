@@ -35,6 +35,7 @@ import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import app.memix.core.ui.look.filterNames
 import app.memix.core.designsystem.MemixSize
 import app.memix.core.domain.project.TrimEdge
 import app.memix.core.domain.project.TrimRange
@@ -55,6 +56,8 @@ import memix.core.ui.generated.resources.import_item_video
 import memix.feature.video_editor.generated.resources.a11y_back_1s
 import memix.feature.video_editor.generated.resources.a11y_clip_media
 import memix.feature.video_editor.generated.resources.tool_green_screen
+import memix.feature.video_editor.generated.resources.a11y_state_adjusted
+import memix.feature.video_editor.generated.resources.a11y_state_filtered
 import memix.feature.video_editor.generated.resources.a11y_state_masked
 import memix.feature.video_editor.generated.resources.mask_circle
 import memix.feature.video_editor.generated.resources.mask_linear
@@ -412,10 +415,19 @@ private fun itemDescription(track: TrackUi, item: ItemUi, clipCount: Int): Strin
     val base = baseDescription(track, item, clipCount)
     // After the clip's own words, never in its state description (spec P4-02b → Accessibility; P4-04 adds "Green screen", before the keyframes).
     val keyed = if (item.keyed) base + ". " + stringResource(Res.string.tool_green_screen) else base
-    // Then the mask (P4-03b: Green screen, Mask, Keyframes).
-    val masked = item.masked?.let { keyed + ". " + stringResource(Res.string.a11y_state_masked, stringResource(maskShapeName(it))) } ?: keyed
+    // Then the filter or the adjustments (P4-07), then the mask (P4-03b: Green screen, Filter or Adjusted, Mask, Keyframes).
+    val filtered = lookDescription(item)?.let { keyed + ". " + it } ?: keyed
+    val masked = item.masked?.let { filtered + ". " + stringResource(Res.string.a11y_state_masked, stringResource(maskShapeName(it))) } ?: filtered
     if (item.keyframeCount == 0) return masked
     return masked + ". " + stringResource(Res.string.a11y_state_keyframed, item.keyframeCount)
+}
+
+// "Filter: Vivid", or "Adjusted" when only sliders are set; null for a clip with no look.
+@Composable
+private fun lookDescription(item: ItemUi): String? {
+    val filterId = item.filterId
+    if (filterId != null) return stringResource(Res.string.a11y_state_filtered, stringResource(filterNames().getValue(filterId)))
+    return if (item.adjusted) stringResource(Res.string.a11y_state_adjusted) else null
 }
 
 @Composable

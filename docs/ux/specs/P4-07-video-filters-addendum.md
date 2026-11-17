@@ -5,7 +5,7 @@
 ## Job
 "Put a look on my meme video": a filter on the whole video in two taps, or on one clip, or on an overlay. **Done when** (TICKETS): same ids and looks as the photo filters. Made checkable in Measured. **One main action: none**; Export is the one blue action; Done is Ghost (ToolPanel).
 
-**Fast path, with tap counts:**
+**Fast path, with tap counts** (amended after review: the main bar scrolls, so on phones under about 400 dp wide every count that starts with "Filters (1)" is a swipe of the bar plus a tap; Filters is 9th in the final order; the order is not changed, Meme sounds stays 2nd):
 - **A filter on the whole video:** Filters (1, on the main bar), a tile (2), Done (3). Every main clip gets it.
 - **One clip only:** the clip (1), Filters (2, one swipe of the bar), a tile (3).
 - **Brighten:** Filters (1), Adjust (2), drag Brightness (3).
@@ -25,7 +25,7 @@
 ### 2. The panel
 - **Tabs: Filters · Adjust** (SegmentedTabs, two tabs); it opens on Filters. P2-04's third tab, Deep-fry, is absent.
 - **Reset** (Quiet, header) resets the open tab for the **panel's scope** (all main clips from the main bar, or the one clip).
-- **Playback keeps running** if it was running; the look is live on the playing video, and a slider drag is live (Volume precedent, P1-06). If the phone can't hold 30 fps with the look on, the preview drops to a lower resolution rather than frames (the Blur precedent, P1-11 build note); export is always full quality; no message.
+- **Playback keeps running** if it was running; the look is live on the playing video, and a slider drag is live (Volume precedent, P1-06). If the phone can't hold 30 fps with the look on, the preview drops to a lower resolution rather than frames (the Blur precedent, P1-11 build note); export is always full quality; no message. (Amended after review: contingent on the first device measurement, QA item D1 in `docs/ux/reviews/P4-07/REVIEW.md`; built only if the owner's phone can't hold 30 fps.)
 - **Playhead rule** (P4-01b): from a clip bar, if the playhead is outside the clip, it jumps to the clip's start when the panel opens. From the main bar it stays.
 - **Strip thumbnails** are the user's video: the **frame at the playhead** (the clip under it, with its crop and turn but not its color edits; the first frame of that clip if the playhead is outside it, as P4-16's crop frame), made on demand at the strip's size and cached for the panel's visit. They are **not refreshed as the playhead moves** while the panel is open: a strip that re-renders 21 tiles on every scrub would cost more than it tells (a refresh is a close and a reopen). A tile not yet made is a `surface-raised` square, static, as P2-04.
 - **Budget** (the panel is the editor's **fixed region**, not P2-04's content-sized panel: 229 / 302 / 348 dp at 360 × 640 / 360 × 800 / 412 × 915; content = region − 96 = **133 / 206 / 252 dp**; rows measured from the component code and the P2-04 sizes: the tabs 48, a filter tile 72 plus `space-1` plus a one-line `caption` name 14 = **90 dp**, a Slider row 68 as the safe figure (a 16 dp label over the 48 dp rail), gaps 16):

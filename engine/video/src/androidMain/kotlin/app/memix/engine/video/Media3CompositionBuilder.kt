@@ -13,6 +13,7 @@ import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
+import app.memix.core.model.project.ClipLook
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.PixelSize
 import java.io.File
@@ -50,6 +51,10 @@ internal class Media3CompositionBuilder(
     private val liveKeys: Map<String, LiveChromaKey> = emptyMap(),
     /** The preview's live mask per masked clip (a finger or a slider moves the mask); a clip not listed gets its own fixed mask. */
     private val liveMasks: Map<String, LiveMask> = emptyMap(),
+    /** The preview's live look per clip with one (P4-07: an Intensity or Adjust slider moves it); a clip not listed gets its own fixed look. */
+    private val liveLooks: Map<String, LiveLook> = emptyMap(),
+    /** The filters' color tables, read once per filter (P4-07). */
+    private val lutTables: LutTables? = null,
     /** The plan's captions over the composited video; null when the plan has none. */
     private val captionOverlay: CaptionOverlay? = null,
     /** The "Memix" mark of a free export, drawn above the captions; null in previews and watermark-free exports (P1-13). */
@@ -75,12 +80,19 @@ internal class Media3CompositionBuilder(
     private fun framingOf(clip: VisualClip): CanvasFraming {
         val key = clip.chromaKey?.let { liveKeys[clip.itemId] ?: LiveChromaKey(it) }
         val mask = clip.mask?.let { liveMasks[clip.itemId] ?: LiveMask(it) }
-        return CanvasFraming(clip, frame, plan.background, pictureBars, key, mask)
+        return CanvasFraming(clip, frame, plan.background, pictureBars, key, mask, lookEffects(clip.itemId, clip.look))
+    }
+
+    // A clip's look passes (P4-07), made from its live look when the preview has one and from the plan's fixed look otherwise.
+    private fun lookEffects(itemId: String, look: ClipLook): List<Effect> {
+        val tables = lutTables ?: return emptyList()
+        if (look.isNeutral) return emptyList()
+        return lookEffectsOf(liveLooks[itemId] ?: LiveLook(look), tables)
     }
 
     fun build(): Composition {
         // With overlays, the video is several sequences composited in a fixed order (OverlaySequences); without, just the main one.
-        val overlays = if (plan.hasOverlays) OverlaySequences(plan, uriByMedia, frame, frameRate, liveGains, liveKeys, liveMasks) else null
+        val overlays = if (plan.hasOverlays) OverlaySequences(plan, uriByMedia, frame, frameRate, liveGains, liveKeys, liveMasks, liveLooks, lutTables) else null
         val main = mainVideoSequence()
         val videoSequences = overlays?.videoSequences(main) ?: listOf(main)
         val composition = Composition.Builder(videoSequences + plan.audioLanes.map(::audioSequence))

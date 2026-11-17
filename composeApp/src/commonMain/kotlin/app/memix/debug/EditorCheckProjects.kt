@@ -16,6 +16,9 @@ import app.memix.core.model.project.MaskCatalog
 import app.memix.core.model.project.MaskShape
 import app.memix.core.model.project.EffectItem
 import app.memix.core.model.project.Easing
+import app.memix.core.model.project.FilterRef
+import app.memix.core.model.project.ImageAdjust
+import app.memix.core.model.project.ImageEdit
 import app.memix.core.model.project.ItemLook
 import app.memix.core.model.project.Keyframe
 import app.memix.core.model.project.EffectSpec
@@ -59,11 +62,11 @@ internal class EditorCheckProjects : KoinComponent {
     suspend fun save(name: String): DebugEditor? {
         if (name == PhotoCheckProjects.EMPTY) return DebugEditor(Uuid.random().toString(), ProjectType.PHOTO, blank = true)
         // The photo scenes' pictures are generated on first use.
-        if (name in PhotoCheckProjects.NAMES || name == CANVAS_IMAGE_CHECK || name == GREENSCREEN_MAIN || name == MASK_MAIN) writeDebugPhotos()
+        if (name in PhotoCheckProjects.NAMES || name == CANVAS_IMAGE_CHECK || name == GREENSCREEN_MAIN || name == MASK_MAIN || name in FILTER_SCENES) writeDebugPhotos()
         // The green screen scenes' pictures are drawn on first use (ChromaCheckFixture).
         if (name == GREENSCREEN_CHECK || name == GREENSCREEN_MAIN) writeChromaCheckPictures()
         // The mask scenes' grid picture is drawn on first use (MaskCheckFixture).
-        if (name == MASK_CHECK || name == MASK_MAIN) writeMaskCheckPicture()
+        if (name == MASK_CHECK || name == MASK_MAIN || name in FILTER_SCENES) writeMaskCheckPicture()
         val project = build(name)
         if (project == null) {
             logger.error(TAG, "Unknown memix.openEditor '$name'. Use ${NAMES.joinToString()}.")
@@ -102,6 +105,8 @@ internal class EditorCheckProjects : KoinComponent {
         GREENSCREEN_MAIN -> greenScreenMain()
         MASK_CHECK -> maskCheck()
         MASK_MAIN -> maskMain()
+        FILTERS_CHECK -> filtersCheck(withLooks = false)
+        FILTERS_MIXED -> filtersCheck(withLooks = true)
         else -> null
     }
 
@@ -420,6 +425,27 @@ internal class EditorCheckProjects : KoinComponent {
         return project(MASK_CHECK, listOf(MediaClip("mask-main", 0, clip1080pMeasured, trimInUs = 0, trimOutUs = 10_000_000, volume = 0f)), layers)
     }
 
+    /**
+     * The P4-07 filters check (spec docs/ux/specs/P4-07-video-filters-addendum.md; steps in docs/qa/phase-4/engineer-hand-checks.md → P4-07): three
+     * main clips (the 1080p video, the grid picture, the patterned 3:2 picture) and one overlay video over them, none with a look, to open Filters from the
+     * main bar (every main clip) and from each clip's bar (that clip). With [withLooks] (`filters-mixed`) the clips already differ: the video has
+     * Cinema at 80% and a vignette, the photo has Mono, the grid none, and the overlay has Vivid, so the mixed state shows at once.
+     */
+    private fun filtersCheck(withLooks: Boolean): Project {
+        fun look(filter: FilterRef?, adjust: ImageAdjust = ImageAdjust()) = if (withLooks) ImageEdit(adjust = adjust, filter = filter) else null
+        val main = listOf(
+            MediaClip("filters-video", 0, clip1080pMeasured, trimInUs = 0, trimOutUs = 4_000_000, volume = 0f, edit = look(FilterRef("cinema", 0.8f), ImageAdjust(vignette = 0.6f))),
+            MediaClip("filters-grid", 4_000_000, maskGrid, trimInUs = 0, trimOutUs = 3_000_000),
+            MediaClip("filters-photo", 7_000_000, PhotoCheckProjects.backgroundMedia(missing = false), trimInUs = 0, trimOutUs = 3_000_000, edit = look(FilterRef("mono"))),
+        )
+        val overlay = Track(
+            "filters-overlay-layer",
+            TrackKind.OVERLAY,
+            listOf(MediaClip("filters-overlay", 1_000_000, clipAMeasured, trimInUs = 0, trimOutUs = 5_000_000, volume = 0f, transform = Transform(0.5f, 0.75f, 0.5f, 0f), edit = look(FilterRef("vivid")))),
+        )
+        return project(if (withLooks) FILTERS_MIXED else FILTERS_CHECK, main, listOf(overlay))
+    }
+
     /** The P4-03b main-clip check: the grid picture as the main clip (3 s), a Circle at its defaults, over the canvas Image background of P2-12. */
     private fun maskMain(): Project {
         val clip = MediaClip("mask-main-picture", 0, maskGrid, trimInUs = 0, trimOutUs = 3_000_000, mask = MaskCatalog.starting(MaskShape.CIRCLE))
@@ -510,9 +536,12 @@ internal class EditorCheckProjects : KoinComponent {
         const val GREENSCREEN_MAIN = "greenscreen-main"
         const val MASK_CHECK = "mask-check"
         const val MASK_MAIN = "mask-main"
+        const val FILTERS_CHECK = "filters-check"
+        const val FILTERS_MIXED = "filters-mixed"
+        private val FILTER_SCENES = setOf(FILTERS_CHECK, FILTERS_MIXED)
         private val NAMES = listOf(
             EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK,
-            TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK, OVERLAY_CHECK, OVERLAY_PERF, KEYFRAME_CHECK, GREENSCREEN_CHECK, GREENSCREEN_MAIN, MASK_CHECK, MASK_MAIN,
+            TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK, OVERLAY_CHECK, OVERLAY_PERF, KEYFRAME_CHECK, GREENSCREEN_CHECK, GREENSCREEN_MAIN, MASK_CHECK, MASK_MAIN, FILTERS_CHECK, FILTERS_MIXED,
         ) + PhotoCheckProjects.NAMES
         private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20

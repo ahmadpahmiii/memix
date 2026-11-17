@@ -2,6 +2,7 @@ package app.memix.core.domain.video
 
 import app.memix.core.domain.voiceover.ClockSample
 import app.memix.core.model.project.ChromaKey
+import app.memix.core.model.project.ClipLook
 import app.memix.core.model.project.ClipMask
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.PixelSize
@@ -97,6 +98,13 @@ interface PreviewSession : AutoCloseable {
      * draws the same mask by itself.
      */
     fun previewMask(itemId: String, mask: ClipMask)
+
+    /**
+     * While an Intensity or Adjust slider drags (P4-07): draws clip [itemId] with [look] at once, paused or playing. The first drag on a clip
+     * the composition draws without a look (or without that filter) builds a new composition once, with the look in it; later moves are live.
+     * The [update] that commits the change draws the same look by itself.
+     */
+    fun previewLook(itemId: String, look: ClipLook)
 
     /**
      * While the Volume panel's slider moves (P1-08, P1-09): plays sound or clip [itemId] at [volume] (1 = its own

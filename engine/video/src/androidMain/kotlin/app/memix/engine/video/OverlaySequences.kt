@@ -39,6 +39,9 @@ internal class OverlaySequences(
     private val liveKeys: Map<String, LiveChromaKey> = emptyMap(),
     /** The preview's live mask per masked overlay; an overlay not listed gets its own fixed mask. */
     private val liveMasks: Map<String, LiveMask> = emptyMap(),
+    /** The preview's live look per overlay with one; an overlay not listed gets its own fixed look. */
+    private val liveLooks: Map<String, LiveLook> = emptyMap(),
+    private val lutTables: LutTables? = null,
 ) {
     private val layersTopFirst: List<OverlayLayer> = plan.overlays.asReversed()
 
@@ -75,10 +78,18 @@ internal class OverlaySequences(
         val item = EditedMediaItem.Builder(mediaItem.build())
             .setRemoveAudio(!clip.playsOwnAudio)
             .setFrameRate(frameRate)
-            // The mask comes after the scaling: its numbers are fractions of the box, so it costs a pass over the drawn size, not the video's.
-            .setEffects(Effects(audioProcessors, keyEffects(clip) + scaled + maskEffects(clip)))
+            // The look and the mask come after the scaling: its numbers are fractions of the box, so it costs a pass over the drawn size, not the video's.
+            .setEffects(Effects(audioProcessors, keyEffects(clip) + scaled + lookEffects(clip) + maskEffects(clip)))
         if (!clip.isStill) item.setSourceDuration(clip.source, clip.trimOutUs)
         return item.build()
+    }
+
+    // The look runs on the picture at the size it is drawn at, as the photo path does, and its vignette and sharpen radius are shares of that
+    // picture's own size, so it is the look the spec puts before the scaling, at the cost of a frame-sized pass instead of the video's (P4-07).
+    private fun lookEffects(clip: OverlayClip): List<Effect> {
+        val tables = lutTables ?: return emptyList()
+        if (clip.look.isNeutral) return emptyList()
+        return lookEffectsOf(liveLooks[clip.itemId] ?: LiveLook(clip.look), tables)
     }
 
     private fun maskEffects(clip: OverlayClip): List<Effect> =

@@ -242,6 +242,9 @@ enum class EditorTool(val eventValue: String?) {
     ADJUST_SHARPEN("adjust_sharpen"),
     ADJUST_VIGNETTE("adjust_vignette"),
     FILTER("filter"),
+
+    /** Filter on every main clip at once (P4-07): names that undo step ("Filter, all clips"); the event logged is [FILTER] (no event of its own). */
+    FILTER_ALL(null),
     DEEP_FRY("deep_fry"),
 
     /** A tab's Reset in the Edit photo panel: names the undo step; the events logged are the parts it changed (no event of its own). */

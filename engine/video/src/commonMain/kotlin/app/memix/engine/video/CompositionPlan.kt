@@ -4,6 +4,7 @@ import app.memix.core.domain.project.interpolatedLook
 import app.memix.core.model.project.AudioEffects
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.ChromaKey
+import app.memix.core.model.project.ClipLook
 import app.memix.core.model.project.ClipMask
 import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.ItemLook
@@ -62,6 +63,13 @@ internal data class CompositionPlan(
         get() = buildMap {
             mainVideo.filterIsInstance<VisualClip>().forEach { clip -> clip.mask?.let { put(clip.itemId, it) } }
             overlays.flatMap { it.segments }.filterIsInstance<OverlayClip>().forEach { clip -> clip.mask?.let { put(clip.itemId, it) } }
+        }
+
+    /** Every main clip and overlay the plan draws with a look (P4-07: filter or adjustments), by item id. */
+    val looks: Map<String, ClipLook>
+        get() = buildMap {
+            mainVideo.filterIsInstance<VisualClip>().forEach { clip -> if (!clip.look.isNeutral) put(clip.itemId, clip.look) }
+            overlays.flatMap { it.segments }.filterIsInstance<OverlayClip>().forEach { clip -> if (!clip.look.isNeutral) put(clip.itemId, clip.look) }
         }
 
     /** Every item the plan plays from a media file, with that file. */
@@ -166,6 +174,8 @@ internal data class VisualClip(
     val chromaKey: ChromaKey? = null,
     /** The shape mask (P4-03b): after the key and Fit or Fill, before the background goes behind the frame. Null is none. */
     val mask: ClipMask? = null,
+    /** The filter and adjustments (P4-07): after the key, on the clip's own picture, before Fit or Fill. Neutral is none. */
+    val look: ClipLook = ClipLook.NONE,
 ) : MainVideoSegment {
     override val durationUs: Long get() = trimOutUs - trimInUs
 
@@ -196,6 +206,8 @@ internal data class OverlayClip(
     val chromaKey: ChromaKey? = null,
     /** The shape mask (P4-03b): after the key, in the clip's own box, before the compositor moves, scales and turns it. Null is none. */
     val mask: ClipMask? = null,
+    /** The filter and adjustments (P4-07): after the key and the scaling to the drawn size, before the mask. Neutral is none. */
+    val look: ClipLook = ClipLook.NONE,
 ) : OverlaySegment {
     override val durationUs: Long get() = trimOutUs - trimInUs
 

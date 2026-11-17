@@ -307,4 +307,13 @@
     <string name="a11y_mask_width">Lebar, %1$d persen</string>
     <string name="a11y_mask_height">Tinggi, %1$d persen</string>
     <string name="a11y_mask_rotation">Rotasi, %1$d derajat</string>
+    <!-- Filters and adjustments on video clips (P4-07). The 20 filter names, adjustments and tabs are shared with the photo editor in :core:ui. -->
+    <string name="tool_filters">Filter</string>
+    <string name="tool_filters_click_all">Ubah tampilan videomu</string>
+    <string name="tool_filters_click_clip">Ubah tampilan klip ini</string>
+    <string name="filters_title_all">Filter, semua klip</string>
+    <string name="filters_mixed_hint">Tampilan klip berbeda-beda. Perubahan berlaku untuk semua.</string>
+    <string name="a11y_state_filtered">Filter: %1$s</string>
+    <string name="a11y_state_adjusted">Disesuaikan</string>
+    <string name="edit_filter_all">Filter, semua klip</string>
 </resources>

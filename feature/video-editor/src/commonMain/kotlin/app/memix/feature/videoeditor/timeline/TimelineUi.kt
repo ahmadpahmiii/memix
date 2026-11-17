@@ -4,6 +4,8 @@ import androidx.compose.runtime.Immutable
 import app.memix.core.domain.project.videoLengthUs
 import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.project.AudioClip
+import app.memix.core.model.project.ImageAdjust
+import app.memix.core.model.project.look
 import app.memix.core.model.project.EffectItem
 import app.memix.core.model.project.MaskShape
 import app.memix.core.model.project.MediaClip
@@ -98,6 +100,10 @@ data class ItemUi(
     val keyed: Boolean = false,
     /** The shape of the clip's mask (P4-03b), or null when it has none: its spoken description says so. */
     val masked: MaskShape? = null,
+    /** The clip's filter id (P4-07), or null when it has none: its spoken description says "Filter: Vivid". */
+    val filterId: String? = null,
+    /** The clip has adjustments set and no filter (P4-07): its spoken description says "Adjusted". */
+    val adjusted: Boolean = false,
 ) {
     val endUs: Long get() = startUs + durationUs
 }
@@ -156,7 +162,7 @@ private fun trackUiOf(track: Track, soundTitles: Map<String, LocalizedText>): Tr
     var clipNumber = 0
     val items = sorted.map { item ->
         if (track.kind == TrackKind.MAIN_VIDEO) clipNumber++
-        itemUiOf(item, track.kind, if (track.kind == TrackKind.MAIN_VIDEO) clipNumber else 0, soundTitles).copy(keyframeCount = item.keyframeList().size, keyed = (item as? MediaClip)?.chromaKey != null, masked = (item as? MediaClip)?.mask?.shape)
+        itemUiOf(item, track.kind, if (track.kind == TrackKind.MAIN_VIDEO) clipNumber else 0, soundTitles).copy(keyframeCount = item.keyframeList().size, keyed = (item as? MediaClip)?.chromaKey != null, masked = (item as? MediaClip)?.mask?.shape).withLookOf(item)
     }
     return TrackUi(track.id, track.kind, items.toImmutableList(), track.muted)
 }
@@ -216,4 +222,10 @@ internal inline fun TrackUi.forEachItemBetween(startUs: Long, endUs: Long, actio
         if (item.startUs > endUs) break
         if (item.endUs >= startUs) action(item)
     }
+}
+
+// The clip's look as the spoken description needs it: the filter's id when there is one, else whether adjustments are set (P4-07).
+private fun ItemUi.withLookOf(item: TimelineItem): ItemUi {
+    val look = (item as? MediaClip)?.look ?: return this
+    return copy(filterId = look.filter?.takeIf { it.intensity > 0f }?.id, adjusted = look.adjust != ImageAdjust())
 }

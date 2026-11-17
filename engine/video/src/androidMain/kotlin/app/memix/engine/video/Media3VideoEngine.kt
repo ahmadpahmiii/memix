@@ -51,10 +51,11 @@ internal class Media3VideoEngine(
     private val transformerExport = TransformerExport(context)
     private val peaksReader = AudioPeaksReader(context.filesDir, context.cacheDir, ioDispatcher, logger)
     private val decoderBudget = VideoDecoderBudget(logger)
+    private val lutTables = LutTables(logger)
     private val capabilityScanner = ExportCapabilityScanner(ioDispatcher, GalleryVideoFile.WRITES_STRAIGHT_TO_GALLERY)
 
     override fun createPreview(project: Project): PreviewSession =
-        Media3PreviewSession(context, sourceResolver, captionRenderer, decoderBudget, logger, ioDispatcher, project, measureSoundOnsets)
+        Media3PreviewSession(context, sourceResolver, captionRenderer, decoderBudget, logger, ioDispatcher, lutTables, project, measureSoundOnsets)
 
     override fun openThumbnails(): ThumbnailReader = MediaThumbnailReader(context.filesDir, ioDispatcher, logger)
 
@@ -126,6 +127,7 @@ internal class Media3VideoEngine(
                     frameShortSidePx = settings.shortSidePx,
                     frameSizePx = settings.frameSize,
                     backgroundFile = backgroundFile,
+                    lutTables = lutTables,
                 ).build()
             }
             val result = transformerExport.run(

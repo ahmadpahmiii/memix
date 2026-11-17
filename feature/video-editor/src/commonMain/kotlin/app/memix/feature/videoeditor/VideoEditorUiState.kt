@@ -16,6 +16,8 @@ import app.memix.core.domain.video.VideoCodec
 import app.memix.core.domain.voiceover.VoiceRoute
 import app.memix.core.domain.sound.PickedSound
 import app.memix.core.model.catalog.LocalizedText
+import app.memix.core.domain.project.AdjustPart
+import app.memix.core.domain.project.EditPhotoTab
 import app.memix.core.domain.project.MaskStep
 import app.memix.core.model.project.ChromaKey
 import app.memix.core.model.project.ClipMask
@@ -135,6 +137,8 @@ data class VideoEditorUiState(
     val greenScreen: GreenScreenUi? = null,
     /** The Mask panel of the selected main clip or overlay (P4-03b), or null when it is closed. */
     val maskPanel: MaskUi? = null,
+    /** The Filters panel (P4-07), from the main bar (every main clip) or a clip's bar (that clip), or null when it is closed. */
+    val lookPanel: LookUi? = null,
     /**
      * An overlay a finger or a held arrow moved, or a commit the preview hasn't shown yet: the editor's stand-in draws it from
      * there until the preview's new frame takes over, so it never shows twice or jumps (spec P4-01b → Live feedback). Null otherwise.
@@ -466,6 +470,9 @@ enum class FocusTarget {
 
     /** The selected clip's Mask tool, after its panel closes (P4-03b). */
     MASK_TOOL,
+
+    /** The Filters tool, on the main bar or the selected clip's bar, after its panel closes (P4-07). */
+    FILTERS_TOOL,
 }
 
 /** What a spoken mask step reads out: the width or height in percent, or the turn in degrees (a move is read as a place). */
@@ -1054,6 +1061,31 @@ sealed interface VideoEditorIntent {
 
     /** A mask slider was let go (or stepped): one step, none if unchanged. */
     data object MaskSliderReleased : VideoEditorIntent
+
+    /** Filters on the main bar: the panel opens for every main clip (spec P4-07 → The tool and its scope). */
+    data object FiltersAllTool : VideoEditorIntent
+
+    /** Filters on the selected clip's bar: the panel opens for that clip. */
+    data object FiltersTool : VideoEditorIntent
+
+    /** Done, system back or Escape on the Filters panel. */
+    data object CloseLook : VideoEditorIntent
+
+    data class LookTabSelected(val tab: EditPhotoTab) : VideoEditorIntent
+
+    /** A filter tile (null is None): one "Filter" step. */
+    data class LookFilterPicked(val id: String?) : VideoEditorIntent
+
+    /** The Intensity slider moved: seen at once, nothing committed yet. */
+    data class LookIntensityChanged(val intensity: Float) : VideoEditorIntent
+    data object LookIntensityReleased : VideoEditorIntent
+
+    /** An Adjust slider moved or was let go: seen at once, then one step on release. */
+    data class LookAdjustChanged(val part: AdjustPart, val value: Float) : VideoEditorIntent
+    data class LookAdjustReleased(val part: AdjustPart) : VideoEditorIntent
+
+    /** Reset in the Filters panel's header: the open tab's part goes back to normal, one step. */
+    data object LookReset : VideoEditorIntent
 
     data class MaskInvertChanged(val invert: Boolean) : VideoEditorIntent
 
