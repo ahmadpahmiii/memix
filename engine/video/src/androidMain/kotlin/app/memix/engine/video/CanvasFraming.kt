@@ -45,9 +45,11 @@ internal class CanvasFraming(
     private val pictureBars: BackgroundBars? = null,
     /** The clip's green screen (P4-04), when it has one: the key runs first, then the framing, then the background goes behind the whole frame. */
     private val liveKey: LiveChromaKey? = null,
+    /** The clip's shape mask (P4-03b), when it has one: it runs after the framing, on the clip's own box, before the background goes behind the frame. */
+    private val liveMask: LiveMask? = null,
 ) {
     fun effects(): List<Effect> {
-        if (liveKey != null) return keyedEffects(liveKey)
+        if (liveKey != null || liveMask != null) return layeredEffects(liveKey, liveMask)
         if (clip.fit == FrameFit.FILL) return listOf(presentation(frame, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP))
         val picture = clip.pixelSize?.takeIf { it.widthPx > 0 && it.heightPx > 0 }
             ?: return listOf(presentation(frame, Presentation.LAYOUT_SCALE_TO_FIT))
@@ -60,10 +62,10 @@ internal class CanvasFraming(
         }
     }
 
-    // A keyed clip is transparent where the key (or Fit's bars) leaves it, so the background can't be bars drawn over the fitted clip:
-    // it goes behind the whole frame instead. A color and the picture do; a blur of the clip itself would blur its green, so Blur is
-    // black under a keyed clip (delegated decision, P4-04).
-    private fun keyedEffects(key: LiveChromaKey): List<Effect> {
+    // A keyed or masked clip is transparent where the key, the mask (or Fit's bars) leaves it, so the background can't be bars drawn over
+    // the fitted clip: it goes behind the whole frame instead. A color and the picture do; a blur of the clip itself would blur its green or
+    // show what the mask cut away, so Blur is black under a keyed or masked clip (delegated decisions, P4-04 and P4-03b).
+    private fun layeredEffects(key: LiveChromaKey?, mask: LiveMask?): List<Effect> {
         val picture = clip.pixelSize?.takeIf { it.widthPx > 0 && it.heightPx > 0 }
         val framing = when {
             clip.fit == FrameFit.FILL -> presentation(frame, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP)
@@ -76,8 +78,12 @@ internal class CanvasFraming(
             is PlanBackground.Image -> BackdropEffect(BLACK_ARGB, pictureBars?.whole())
             PlanBackground.Blur -> BackdropEffect(BLACK_ARGB, null)
         }
-        return listOf(ChromaKeyEffect(key), framing, backdrop)
+        return listOfNotNull(key?.let(::ChromaKeyEffect), framing, mask?.let { MaskEffect(it, maskBoxPicture(picture)) }, backdrop)
     }
+
+    // The mask's box is the picture fitted in the frame (what Fit leaves around it is not the clip); Fill, the frame's own shape and an unknown size use the whole frame.
+    private fun maskBoxPicture(picture: PixelSize?): PixelSize? =
+        picture?.takeIf { clip.fit == FrameFit.FIT && !hasSameShape(it, frame) }
 
     private fun fittedOn(argb: Long, geometry: FitGeometry): List<Effect> {
         val fitted = presentation(frame, Presentation.LAYOUT_SCALE_TO_FIT)

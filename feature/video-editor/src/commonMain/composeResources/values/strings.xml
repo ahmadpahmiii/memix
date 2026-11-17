@@ -287,4 +287,27 @@
     <string name="green_screen_nothing">Nothing to remove here. Pick the color you want gone.</string>
     <string name="a11y_green_screen_picked">Color picked</string>
     <string name="edit_green_screen_off">Turn off green screen</string>
+    <!-- Shape masks (P4-03b). Budgets and translator notes: docs/ux/specs/P4-03b-shape-masks-and-blend.md -> Copy. -->
+    <string name="tool_mask">Mask</string>
+    <string name="tool_mask_click">Show only part of this clip</string>
+    <string name="mask_tab_shape">Shape</string>
+    <string name="mask_shape_group">Mask shape</string>
+    <string name="mask_none">None</string>
+    <string name="mask_rectangle">Rectangle</string>
+    <string name="mask_circle">Circle</string>
+    <string name="mask_linear">Linear</string>
+    <string name="mask_mirror">Mirror</string>
+    <string name="mask_feather">Edge softness</string>
+    <string name="mask_invert">Invert mask</string>
+    <string name="mask_corners">Rounded corners</string>
+    <string name="mask_linear_hint">The arrow points to the side that stays.</string>
+    <string name="explain_mask_none">Pick a shape first.</string>
+    <string name="explain_mask_min">This is the smallest the mask gets.</string>
+    <string name="explain_mask_max">This is the biggest the mask gets.</string>
+    <string name="explain_mask_edge">The mask can't go further this way.</string>
+    <string name="a11y_state_masked">Mask: %1$s</string>
+    <string name="edit_mask_position">Mask position</string>
+    <string name="a11y_mask_width">Width, %1$d percent</string>
+    <string name="a11y_mask_height">Height, %1$d percent</string>
+    <string name="a11y_mask_rotation">Rotation, %1$d degrees</string>
 </resources>

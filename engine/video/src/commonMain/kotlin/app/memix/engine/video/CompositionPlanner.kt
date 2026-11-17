@@ -100,6 +100,7 @@ internal object CompositionPlanner {
         volume = plannedVolume(),
         keyframes = keyframes,
         chromaKey = chromaKey,
+        mask = mask,
     )
 
     // With keyframes they carry the level (P4-02), so the fixed volume stays at 1 and never switches the clip off or on by itself.
@@ -199,6 +200,7 @@ internal object CompositionPlanner {
             volume = plannedVolume(),
             keyframes = keyframes.shiftedBy(headCutUs),
             chromaKey = chromaKey,
+            mask = mask,
         )
         return CutOverlay(clip, cutStartUs)
     }

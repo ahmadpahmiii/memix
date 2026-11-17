@@ -201,4 +201,11 @@
     <string name="a11y_layer_order">Layer %1$d of %2$d</string>
     <string name="edit_transform_layer">Position and size</string>
     <string name="edit_layer_opacity">Opacity</string>
+    <!-- Width and Height steppers, shared by the photo editor's censor and the video editor's mask (P2-05, P4-03b). -->
+    <string name="position_width">Width</string>
+    <string name="position_height">Height</string>
+    <string name="position_width_less">Make narrower</string>
+    <string name="position_width_more">Make wider</string>
+    <string name="position_height_less">Make shorter</string>
+    <string name="position_height_more">Make taller</string>
 </resources>

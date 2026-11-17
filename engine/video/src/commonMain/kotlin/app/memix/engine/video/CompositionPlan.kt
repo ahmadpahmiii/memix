@@ -4,6 +4,7 @@ import app.memix.core.domain.project.interpolatedLook
 import app.memix.core.model.project.AudioEffects
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.ChromaKey
+import app.memix.core.model.project.ClipMask
 import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.ItemLook
 import app.memix.core.model.project.Keyframe
@@ -54,6 +55,13 @@ internal data class CompositionPlan(
         get() = buildMap {
             mainVideo.filterIsInstance<VisualClip>().forEach { clip -> clip.chromaKey?.let { put(clip.itemId, it) } }
             overlays.flatMap { it.segments }.filterIsInstance<OverlayClip>().forEach { clip -> clip.chromaKey?.let { put(clip.itemId, it) } }
+        }
+
+    /** Every main clip and overlay the plan draws through a mask, by item id. */
+    val masks: Map<String, ClipMask>
+        get() = buildMap {
+            mainVideo.filterIsInstance<VisualClip>().forEach { clip -> clip.mask?.let { put(clip.itemId, it) } }
+            overlays.flatMap { it.segments }.filterIsInstance<OverlayClip>().forEach { clip -> clip.mask?.let { put(clip.itemId, it) } }
         }
 
     /** Every item the plan plays from a media file, with that file. */
@@ -156,6 +164,8 @@ internal data class VisualClip(
     val keyframes: List<Keyframe> = emptyList(),
     /** The green screen (P4-04): removed from the picture first, before it is scaled; the canvas background shows through it. Null is off. */
     val chromaKey: ChromaKey? = null,
+    /** The shape mask (P4-03b): after the key and Fit or Fill, before the background goes behind the frame. Null is none. */
+    val mask: ClipMask? = null,
 ) : MainVideoSegment {
     override val durationUs: Long get() = trimOutUs - trimInUs
 
@@ -184,6 +194,8 @@ internal data class OverlayClip(
     val keyframes: List<Keyframe> = emptyList(),
     /** The green screen (P4-04): removed from the picture before it is scaled to its drawn size, so the layers beneath show through. Null is off. */
     val chromaKey: ChromaKey? = null,
+    /** The shape mask (P4-03b): after the key, in the clip's own box, before the compositor moves, scales and turns it. Null is none. */
+    val mask: ClipMask? = null,
 ) : OverlaySegment {
     override val durationUs: Long get() = trimOutUs - trimInUs
 

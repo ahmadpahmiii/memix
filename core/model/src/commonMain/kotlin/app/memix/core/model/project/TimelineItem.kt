@@ -56,6 +56,11 @@ data class MediaClip(
      * clips and overlays alike, video and photo. Split and Duplicate copy it, Replace keeps it.
      */
     val chromaKey: ChromaKey? = null,
+    /**
+     * The clip's shape mask (P4-03b, schema 17): only the part inside the shape shows (or outside, inverted); null is none. Applied after the
+     * key and before framing, so it moves with the clip. Main clips and overlays alike. Split and Duplicate copy it, Replace keeps it.
+     */
+    val mask: ClipMask? = null,
 ) : TimelineItem {
     // Derived, not saved, so it can never disagree with the trim points.
     override val durationUs: Long get() = trimOutUs - trimInUs

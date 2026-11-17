@@ -5,6 +5,7 @@ import app.memix.core.domain.project.videoLengthUs
 import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.model.project.AudioClip
 import app.memix.core.model.project.EffectItem
+import app.memix.core.model.project.MaskShape
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaOrigin
@@ -95,6 +96,8 @@ data class ItemUi(
     val keyframeCount: Int = 0,
     /** The clip has a green screen on (P4-04): its spoken description says so. */
     val keyed: Boolean = false,
+    /** The shape of the clip's mask (P4-03b), or null when it has none: its spoken description says so. */
+    val masked: MaskShape? = null,
 ) {
     val endUs: Long get() = startUs + durationUs
 }
@@ -153,7 +156,7 @@ private fun trackUiOf(track: Track, soundTitles: Map<String, LocalizedText>): Tr
     var clipNumber = 0
     val items = sorted.map { item ->
         if (track.kind == TrackKind.MAIN_VIDEO) clipNumber++
-        itemUiOf(item, track.kind, if (track.kind == TrackKind.MAIN_VIDEO) clipNumber else 0, soundTitles).copy(keyframeCount = item.keyframeList().size, keyed = (item as? MediaClip)?.chromaKey != null)
+        itemUiOf(item, track.kind, if (track.kind == TrackKind.MAIN_VIDEO) clipNumber else 0, soundTitles).copy(keyframeCount = item.keyframeList().size, keyed = (item as? MediaClip)?.chromaKey != null, masked = (item as? MediaClip)?.mask?.shape)
     }
     return TrackUi(track.id, track.kind, items.toImmutableList(), track.muted)
 }

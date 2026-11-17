@@ -198,4 +198,11 @@
     <string name="a11y_layer_order">Capa %1$d de %2$d</string>
     <string name="edit_transform_layer">Posición y tamaño</string>
     <string name="edit_layer_opacity">Opacidad</string>
+    <!-- Width and Height steppers, shared by the photo editor's censor and the video editor's mask (P2-05, P4-03b). -->
+    <string name="position_width">Ancho</string>
+    <string name="position_height">Alto</string>
+    <string name="position_width_less">Hacer más estrecho</string>
+    <string name="position_width_more">Hacer más ancho</string>
+    <string name="position_height_less">Hacer más bajo</string>
+    <string name="position_height_more">Hacer más alto</string>
 </resources>

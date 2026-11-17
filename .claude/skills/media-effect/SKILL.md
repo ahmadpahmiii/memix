@@ -15,3 +15,4 @@ description: Add or change a Memix video/photo effect, filter, transition, text 
 7. **Reference render.** Render the fixed sample project with the effect and save a frame (or short strip) to `docs/qa/references/<effect-id>.png`. QA and the iOS port compare against it by eye.
 8. **Performance.** Preview still ≥ 30 fps at 1080p with 6 tracks on the reference phone; put the number in the PR.
 9. **UI.** Listed in its tool with a thumbnail and an intensity slider; on the timeline it's an `EFFECT` item in `track-effect` violet.
+- Masks (P4-03b) are specs on the clip (`ClipMask`) with a CPU twin (`MaskMath`) and references in `docs/qa/references/P4-03-masks/`; the shader mirrors the twin line by line.

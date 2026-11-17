@@ -48,6 +48,8 @@ internal class Media3CompositionBuilder(
     private val liveBass: Map<String, LiveBass> = emptyMap(),
     /** The preview's live green screen per keyed clip (the Strength and Edge softness sliders move the matte); a clip not listed gets its own fixed key. */
     private val liveKeys: Map<String, LiveChromaKey> = emptyMap(),
+    /** The preview's live mask per masked clip (a finger or a slider moves the mask); a clip not listed gets its own fixed mask. */
+    private val liveMasks: Map<String, LiveMask> = emptyMap(),
     /** The plan's captions over the composited video; null when the plan has none. */
     private val captionOverlay: CaptionOverlay? = null,
     /** The "Memix" mark of a free export, drawn above the captions; null in previews and watermark-free exports (P1-13). */
@@ -70,9 +72,15 @@ internal class Media3CompositionBuilder(
     // The background picture at the frame's size, decoded once for every clip (P2-12). Reads the file: build() runs off the main thread.
     private val pictureBars: BackgroundBars? = if (plan.background is PlanBackground.Image) BackgroundBars(backgroundFile, frame) else null
 
+    private fun framingOf(clip: VisualClip): CanvasFraming {
+        val key = clip.chromaKey?.let { liveKeys[clip.itemId] ?: LiveChromaKey(it) }
+        val mask = clip.mask?.let { liveMasks[clip.itemId] ?: LiveMask(it) }
+        return CanvasFraming(clip, frame, plan.background, pictureBars, key, mask)
+    }
+
     fun build(): Composition {
         // With overlays, the video is several sequences composited in a fixed order (OverlaySequences); without, just the main one.
-        val overlays = if (plan.hasOverlays) OverlaySequences(plan, uriByMedia, frame, frameRate, liveGains, liveKeys) else null
+        val overlays = if (plan.hasOverlays) OverlaySequences(plan, uriByMedia, frame, frameRate, liveGains, liveKeys, liveMasks) else null
         val main = mainVideoSequence()
         val videoSequences = overlays?.videoSequences(main) ?: listOf(main)
         val composition = Composition.Builder(videoSequences + plan.audioLanes.map(::audioSequence))
@@ -124,7 +132,7 @@ internal class Media3CompositionBuilder(
             .setRemoveAudio(!clip.playsOwnAudio)
             // The output rate for photos; a ceiling that drops extra frames from faster videos.
             .setFrameRate(frameRate)
-            .setEffects(Effects(audioProcessors, CanvasFraming(clip, frame, plan.background, pictureBars, clip.chromaKey?.let { liveKeys[clip.itemId] ?: LiveChromaKey(it) }).effects()))
+            .setEffects(Effects(audioProcessors, framingOf(clip).effects()))
         // A photo's length comes from its image duration.
         if (!clip.isStill) item.setSourceDuration(clip.source, clip.trimOutUs)
         return item.build()

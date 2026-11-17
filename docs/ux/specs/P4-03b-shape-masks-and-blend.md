@@ -8,6 +8,10 @@ Fifth Phase 4 spec. P4-03a builds the 10 blend modes (engine) and P4-03b the mas
 - `P2-04-image-tools.md` and `P3-09-audio-effects.md`: the panel with tabs and a header button.
 - Component READMEs: ToolPanel, OptionTile, SegmentedTabs, Slider, Toggle, Toast.
 
+> **Status (17 Nov 2026):** P4-03b (masks) is built and design-reviewed: `docs/ux/reviews/P4-03b/REVIEW.md`. **The Blend part (P4-03a: the Blend tool and panel, the 10 modes, `blend_*` copy, the `blend` icon, its reference renders and QA items) is not built.** Media3's compositor can't blend per overlay in both preview and export (docs/pm/STATUS.md), so it **waits for the owner's route decision**. The Blend sections below stay as the intended design and are not to be built until then; the route may change the panel or the pipeline position. When it lands, put the Blend tool after Crop and before Mask on overlays.
+>
+> **Amendments from the mask review:** (1) With None selected, the Position tab shows `explain_mask_none` as text on the tab, not a toast (nothing else is there to see). (2) `explain_mask_edge` id is "Masker tidak bisa lebih jauh ke arah ini." (41 characters; the "trim bisa" note is dropped). (3) The flush snap applies only when the axes line up and the guides show the centre lines only. (4) The None tile is a stroked square glyph. (5) Known limit: the Blur background shows black under a masked or keyed main clip until a follow-up ticket.
+
 ## Job
 "Show only part of this clip": a circle around a face, a rectangle to crop a window out of a clip, a half-and-half split, a mirrored strip. And "blend": a smoke or glitch overlay that lights up the clip beneath instead of covering it. PRD → Video editor → Layers: blend modes, shape masks (rectangle, circle, linear, mirror). **One main action: none.** Export stays the one blue action; the panels' Done is Ghost (ToolPanel).
 

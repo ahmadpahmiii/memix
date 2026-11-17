@@ -278,6 +278,16 @@ enum class EditorTool(val eventValue: String?) {
     GREEN_SCREEN_OFF("green_screen_off"),
 
     /**
+     * P4-03b: shape masks (spec docs/ux/specs/P4-03b-shape-masks-and-blend.md → Analytics), once per committed step. `mask` is a shape tile that
+     * changes the mask (None too) and sends `value` = `none`, `rectangle`, `circle`, `linear` or `mirror`; `mask_adjust` is a slider release,
+     * Invert, a stage gesture's release or a Position tab step, with no `value`. The undo history names them Mask (the shape tile, a slider
+     * release, Invert) and Mask position (a stage gesture, a Position tab step), so a Position step has its own entry sending the same `mask_adjust`.
+     */
+    MASK("mask"),
+    MASK_ADJUST("mask_adjust"),
+    MASK_POSITION("mask_adjust"),
+
+    /**
      * P1-11: the Canvas panel (PM, 20 Oct), each with a `value`. Fit and Fill are one event, `canvas_fit` with `value`
      * `fit` or `fill`, but two entries, so the undo history can say "Undo: Fill".
      */

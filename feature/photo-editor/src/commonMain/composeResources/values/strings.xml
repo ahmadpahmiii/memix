@@ -175,12 +175,6 @@
     <string name="censor_rect">Rectangle</string>
     <string name="censor_ellipse">Ellipse</string>
     <string name="censor_strength">Strength</string>
-    <string name="position_width">Width</string>
-    <string name="position_height">Height</string>
-    <string name="position_width_less">Make narrower</string>
-    <string name="position_width_more">Make wider</string>
-    <string name="position_height_less">Make shorter</string>
-    <string name="position_height_more">Make taller</string>
     <string name="explain_censor_min">A censor can't be smaller than this.</string>
     <string name="explain_censor_max">A censor can't be bigger than this.</string>
     <string name="a11y_layer_censor_added">Censor added</string>

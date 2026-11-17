@@ -16,7 +16,10 @@ import app.memix.core.domain.video.VideoCodec
 import app.memix.core.domain.voiceover.VoiceRoute
 import app.memix.core.domain.sound.PickedSound
 import app.memix.core.model.catalog.LocalizedText
+import app.memix.core.domain.project.MaskStep
 import app.memix.core.model.project.ChromaKey
+import app.memix.core.model.project.ClipMask
+import app.memix.core.model.project.MaskShape
 import app.memix.core.model.project.AudioEffects
 import app.memix.core.model.project.AudioEffectsCatalog
 import app.memix.core.model.project.CanvasRatio
@@ -130,6 +133,8 @@ data class VideoEditorUiState(
     val overlayPanel: OverlayPanelUi? = null,
     /** The Green screen panel of the selected main clip or overlay (P4-04), or null when it is closed. */
     val greenScreen: GreenScreenUi? = null,
+    /** The Mask panel of the selected main clip or overlay (P4-03b), or null when it is closed. */
+    val maskPanel: MaskUi? = null,
     /**
      * An overlay a finger or a held arrow moved, or a commit the preview hasn't shown yet: the editor's stand-in draws it from
      * there until the preview's new frame takes over, so it never shows twice or jumps (spec P4-01b → Live feedback). Null otherwise.
@@ -458,7 +463,13 @@ enum class FocusTarget {
 
     /** The selected item's Green screen tool, after its panel closes (P4-04). */
     GREEN_SCREEN_TOOL,
+
+    /** The selected clip's Mask tool, after its panel closes (P4-03b). */
+    MASK_TOOL,
 }
+
+/** What a spoken mask step reads out: the width or height in percent, or the turn in degrees (a move is read as a place). */
+enum class MaskReading { WIDTH, HEIGHT, ROTATION }
 
 /** Why a tool explains instead of acting (spec P1-06 → Clip tool bar: tools stay enabled and explain on tap). */
 enum class Explanation {
@@ -492,6 +503,12 @@ enum class Explanation {
 
     /** Overlays (P4-01b): a Move arrow with the center at that edge; Bring forward or Send back with no overlay in that direction sharing a moment. */
     OVERLAY_EDGE,
+
+    /** Mask Position tab (P4-03b): no shape picked yet, the smallest and biggest size, a Move arrow with the center at the box's edge. */
+    MASK_NONE,
+    MASK_MIN,
+    MASK_MAX,
+    MASK_EDGE,
     LAYER_ORDER_FRONT,
     LAYER_ORDER_BACK,
 
@@ -566,6 +583,9 @@ sealed interface ToastMessage {
 
     /** Spoken only, after Previous, Next or a tap picked keyframe number [position] of [count]: "Keyframe 2 of 3, at 0:02.0, Smooth". */
     data class KeyframePicked(val position: Int, val count: Int, val atUs: Long, val easing: app.memix.core.model.project.Easing) : ToastMessage
+
+    /** Spoken only, after a Position tab step on the mask (P4-03b): [value] is the new width or height in percent, or the turn in degrees. */
+    data class MaskStepped(val reading: MaskReading, val value: Int) : ToastMessage
 
     /** Spoken only, after the eyedropper picked a color (P4-04). */
     data object GreenScreenPicked : ToastMessage
@@ -1016,6 +1036,37 @@ sealed interface VideoEditorIntent {
 
     /** The Green screen tool of the selected clip: keying turns on at the defaults when it isn't on (spec P4-04 → Entry and exit). */
     data object GreenScreenTool : VideoEditorIntent
+
+    /** The Mask tool of the selected clip: the panel opens on its Shape tab (spec P4-03b → Entry and exit). */
+    data object MaskTool : VideoEditorIntent
+
+    /** Done, system back or Escape on the Mask panel. */
+    data object CloseMask : VideoEditorIntent
+
+    data class MaskTabSelected(val tab: MaskTab) : VideoEditorIntent
+
+    /** A shape tile (null is None): one "Mask" step. */
+    data class MaskShapePicked(val shape: MaskShape?) : VideoEditorIntent
+
+    /** Edge softness or Rounded corners moved: seen at once, nothing committed yet. */
+    data class MaskSoftnessChanged(val softness: Float) : VideoEditorIntent
+    data class MaskCornersChanged(val roundness: Float) : VideoEditorIntent
+
+    /** A mask slider was let go (or stepped): one step, none if unchanged. */
+    data object MaskSliderReleased : VideoEditorIntent
+
+    data class MaskInvertChanged(val invert: Boolean) : VideoEditorIntent
+
+    /** A Position tab tap or a held arrow's release: one "Mask position" step ([repeats] taps), or an explanation. */
+    data class MaskStepped(val step: MaskStep, val repeats: Int) : VideoEditorIntent
+
+    /** A held Position tab arrow, [repeats] taps along: shown, not committed. */
+    data class MaskStepHeld(val step: MaskStep, val repeats: Int) : VideoEditorIntent
+
+    /** A finger went down on the stage's mask; the mask under the fingers, drawn at once; the fingers lifted with the mask where they left it. */
+    data object MaskGestureStarted : VideoEditorIntent
+    data class MaskGestureMoved(val mask: ClipMask) : VideoEditorIntent
+    data class MaskGestureEnded(val mask: ClipMask) : VideoEditorIntent
 
     /** Done, system back or Escape on the Green screen panel (in pick mode the first back ends the mode). */
     data object CloseGreenScreen : VideoEditorIntent

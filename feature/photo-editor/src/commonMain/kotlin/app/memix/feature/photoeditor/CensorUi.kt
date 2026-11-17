@@ -63,12 +63,12 @@ import memix.feature.photo_editor.generated.resources.censor_rect
 import memix.feature.photo_editor.generated.resources.censor_shape
 import memix.feature.photo_editor.generated.resources.censor_strength
 import memix.feature.photo_editor.generated.resources.censor_title
-import memix.feature.photo_editor.generated.resources.position_height
-import memix.feature.photo_editor.generated.resources.position_height_less
-import memix.feature.photo_editor.generated.resources.position_height_more
-import memix.feature.photo_editor.generated.resources.position_width
-import memix.feature.photo_editor.generated.resources.position_width_less
-import memix.feature.photo_editor.generated.resources.position_width_more
+import memix.core.ui.generated.resources.position_height
+import memix.core.ui.generated.resources.position_height_less
+import memix.core.ui.generated.resources.position_height_more
+import memix.core.ui.generated.resources.position_width
+import memix.core.ui.generated.resources.position_width_less
+import memix.core.ui.generated.resources.position_width_more
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -172,9 +172,9 @@ internal fun CensorSizeRows(layer: SceneLayerUi, live: PhotoLive, onIntent: (Pho
         (censor.widthS + widthSteps * CensorCatalog.SIZE_STEP_S).coerceIn(CensorCatalog.SIZE_RANGE),
         (censor.heightS + heightSteps * CensorCatalog.SIZE_STEP_S).coerceIn(CensorCatalog.SIZE_RANGE),
     )
-    SizeRow(Res.string.position_width, Res.string.position_width_less, Res.string.position_width_more, width, { held(-it, 0) }, { held(it, 0) },
+    SizeRow(UiRes.string.position_width, UiRes.string.position_width_less, UiRes.string.position_width_more, width, { held(-it, 0) }, { held(it, 0) },
         { onIntent(PhotoEditorIntent.CensorSizeStepped(layer.id, -it, 0)) }, { onIntent(PhotoEditorIntent.CensorSizeStepped(layer.id, it, 0)) })
-    SizeRow(Res.string.position_height, Res.string.position_height_less, Res.string.position_height_more, height, { held(0, -it) }, { held(0, it) },
+    SizeRow(UiRes.string.position_height, UiRes.string.position_height_less, UiRes.string.position_height_more, height, { held(0, -it) }, { held(0, it) },
         { onIntent(PhotoEditorIntent.CensorSizeStepped(layer.id, 0, -it)) }, { onIntent(PhotoEditorIntent.CensorSizeStepped(layer.id, 0, it)) })
 }
 

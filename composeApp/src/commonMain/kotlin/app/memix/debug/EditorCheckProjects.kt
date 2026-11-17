@@ -11,6 +11,9 @@ import app.memix.core.model.project.ChromaKey
 import app.memix.core.model.project.ChromaKeyCatalog
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.CaptionStyle
+import app.memix.core.model.project.ClipMask
+import app.memix.core.model.project.MaskCatalog
+import app.memix.core.model.project.MaskShape
 import app.memix.core.model.project.EffectItem
 import app.memix.core.model.project.Easing
 import app.memix.core.model.project.ItemLook
@@ -56,9 +59,11 @@ internal class EditorCheckProjects : KoinComponent {
     suspend fun save(name: String): DebugEditor? {
         if (name == PhotoCheckProjects.EMPTY) return DebugEditor(Uuid.random().toString(), ProjectType.PHOTO, blank = true)
         // The photo scenes' pictures are generated on first use.
-        if (name in PhotoCheckProjects.NAMES || name == CANVAS_IMAGE_CHECK || name == GREENSCREEN_MAIN) writeDebugPhotos()
+        if (name in PhotoCheckProjects.NAMES || name == CANVAS_IMAGE_CHECK || name == GREENSCREEN_MAIN || name == MASK_MAIN) writeDebugPhotos()
         // The green screen scenes' pictures are drawn on first use (ChromaCheckFixture).
         if (name == GREENSCREEN_CHECK || name == GREENSCREEN_MAIN) writeChromaCheckPictures()
+        // The mask scenes' grid picture is drawn on first use (MaskCheckFixture).
+        if (name == MASK_CHECK || name == MASK_MAIN) writeMaskCheckPicture()
         val project = build(name)
         if (project == null) {
             logger.error(TAG, "Unknown memix.openEditor '$name'. Use ${NAMES.joinToString()}.")
@@ -95,6 +100,8 @@ internal class EditorCheckProjects : KoinComponent {
         KEYFRAME_CHECK -> keyframeCheck()
         GREENSCREEN_CHECK -> greenScreenCheck()
         GREENSCREEN_MAIN -> greenScreenMain()
+        MASK_CHECK -> maskCheck()
+        MASK_MAIN -> maskMain()
         else -> null
     }
 
@@ -391,6 +398,35 @@ internal class EditorCheckProjects : KoinComponent {
         return base.copy(canvas = base.canvas.copy(background = CanvasBackground.Image(PhotoCheckProjects.backgroundMedia(missing = false))))
     }
 
+    /**
+     * The P4-03b mask check (spec docs/ux/specs/P4-03b-shape-masks-and-blend.md → Requests 6; the blend half waits for P4-03a): the 10 s
+     * 1080p clip with four `mask-grid` overlays at the corners, each masked with one shape at its defaults (a Rectangle with 50% rounded corners,
+     * a Circle with 50% edge softness, a Linear turned 30 degrees and inverted, a Mirror turned 45 degrees with 25% edge softness), and a fifth, unmasked
+     * one in the middle to pick shapes on by hand. Steps: docs/qa/phase-4/engineer-hand-checks.md → P4-03b.
+     */
+    private fun maskCheck(): Project {
+        fun layer(name: String, centerX: Float, centerY: Float, mask: ClipMask?) = Track(
+            "mask-$name-layer",
+            TrackKind.OVERLAY,
+            listOf(MediaClip("mask-$name", 1_000_000, maskGrid, trimInUs = 0, trimOutUs = 8_000_000, volume = 0f, transform = Transform(centerX, centerY, 0.4f, 0f), mask = mask)),
+        )
+        val layers = listOf(
+            layer("rect", 0.27f, 0.2f, MaskCatalog.starting(MaskShape.RECTANGLE).copy(cornerRoundness = 0.5f)),
+            layer("circle", 0.73f, 0.2f, MaskCatalog.starting(MaskShape.CIRCLE, softness = 0.5f)),
+            layer("linear", 0.27f, 0.8f, MaskCatalog.starting(MaskShape.LINEAR, invert = true).copy(rotationDegrees = 30f)),
+            layer("mirror", 0.73f, 0.8f, MaskCatalog.starting(MaskShape.MIRROR, softness = 0.25f).copy(rotationDegrees = 45f)),
+            layer("free", 0.5f, 0.5f, null),
+        )
+        return project(MASK_CHECK, listOf(MediaClip("mask-main", 0, clip1080pMeasured, trimInUs = 0, trimOutUs = 10_000_000, volume = 0f)), layers)
+    }
+
+    /** The P4-03b main-clip check: the grid picture as the main clip (3 s), a Circle at its defaults, over the canvas Image background of P2-12. */
+    private fun maskMain(): Project {
+        val clip = MediaClip("mask-main-picture", 0, maskGrid, trimInUs = 0, trimOutUs = 3_000_000, mask = MaskCatalog.starting(MaskShape.CIRCLE))
+        val base = project(MASK_MAIN, listOf(clip))
+        return base.copy(canvas = base.canvas.copy(background = CanvasBackground.Image(PhotoCheckProjects.backgroundMedia(missing = false))))
+    }
+
     private fun overlayCheck(): Project {
         val layers = listOf(
             overlayLayer("a", clipAMeasured, startUs = 1_000_000, lengthUs = 6_000_000, Transform(0.30f, 0.25f, 0.5f, 0f), opacity = 1f),
@@ -472,9 +508,11 @@ internal class EditorCheckProjects : KoinComponent {
         const val KEYFRAME_CHECK = "keyframe-check"
         const val GREENSCREEN_CHECK = "greenscreen-check"
         const val GREENSCREEN_MAIN = "greenscreen-main"
+        const val MASK_CHECK = "mask-check"
+        const val MASK_MAIN = "mask-main"
         private val NAMES = listOf(
             EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK,
-            TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK, OVERLAY_CHECK, OVERLAY_PERF, KEYFRAME_CHECK, GREENSCREEN_CHECK, GREENSCREEN_MAIN,
+            TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK, OVERLAY_CHECK, OVERLAY_PERF, KEYFRAME_CHECK, GREENSCREEN_CHECK, GREENSCREEN_MAIN, MASK_CHECK, MASK_MAIN,
         ) + PhotoCheckProjects.NAMES
         private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20
@@ -502,6 +540,7 @@ internal class EditorCheckProjects : KoinComponent {
         private val chromaGreen = media("chroma-check.png", MediaKind.IMAGE).copy(pixelSize = chromaSize, hasAudio = false)
         private val chromaBlue = media("chroma-check-blue.png", MediaKind.IMAGE).copy(pixelSize = chromaSize, hasAudio = false)
         private val chromaOffGreen = media("chroma-check-offgreen.png", MediaKind.IMAGE).copy(pixelSize = chromaSize, hasAudio = false)
+        private val maskGrid = media("mask-grid.png", MediaKind.IMAGE).copy(pixelSize = PixelSize(MaskCheckFixture.SIZE_PX, MaskCheckFixture.SIZE_PX), hasAudio = false)
         private val grid = media("grid-12.png", MediaKind.IMAGE)
         private val gridMeasured = grid.copy(pixelSize = PixelSize(1080, 1080), hasAudio = false)
         private val toneMeasured = MediaRef(

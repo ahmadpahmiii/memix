@@ -87,7 +87,7 @@ fun Slider(
     Column(modifier) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(label, MemixTheme.type.label, Modifier.weight(1f))
-            Text(valueText, MemixTheme.type.timecode, color = MemixColors.textSecondary)
+            Text(valueText, MemixTheme.type.timecode, color = MemixColors.textSecondary, maxLines = 1)
         }
         Column(
             Modifier

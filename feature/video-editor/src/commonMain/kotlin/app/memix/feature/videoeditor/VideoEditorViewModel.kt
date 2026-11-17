@@ -153,6 +153,7 @@ class VideoEditorViewModel(
     private val overlays = OverlayControl(host)
     private val keyframes = KeyframeControl(host)
     private val greenScreen = GreenScreenControl(host, startThumbnails, decodeDispatcher)
+    private val masks = MaskControl(host)
     private val canvasPanel = CanvasPanelControl(host) { text, style, widthPx, heightPx, look -> captionRendering.measure(text, style, widthPx, heightPx, look) }
     private val exportSheet = ExportSheetControl(host, export)
     // The canvas size of the picture on screen, as the preview last reported it.
@@ -180,8 +181,9 @@ class VideoEditorViewModel(
         if (voiceoverControl.isRecording && intent.waitsForStop()) return showToast(ToastMessage.Explain(Explanation.VOICEOVER_STOP_FIRST))
         when (intent) {
             VideoEditorIntent.PlayPause -> togglePlayback()
-            VideoEditorIntent.Undo -> undo()
-            VideoEditorIntent.Redo -> redo()
+            // Undo and Redo wait while a finger is down on the stage's mask (spec P4-03b → Gestures).
+            VideoEditorIntent.Undo -> if (!masks.fingerDown) undo()
+            VideoEditorIntent.Redo -> if (!masks.fingerDown) redo()
             VideoEditorIntent.Close -> requestClose()
             VideoEditorIntent.LeaveAnyway -> updateState { it.copy(unsavedSheetOpen = false, isClosing = true) }
             VideoEditorIntent.StayInEditor -> updateState { it.copy(unsavedSheetOpen = false) }
@@ -331,6 +333,19 @@ class VideoEditorViewModel(
             VideoEditorIntent.GreenScreenReleased -> greenScreen.released()
             VideoEditorIntent.GreenScreenPickToggled -> greenScreen.togglePick()
             is VideoEditorIntent.GreenScreenPickReleased -> greenScreen.pickReleased(intent.canvasFx, intent.canvasFy)
+            VideoEditorIntent.MaskTool -> masks.open()
+            VideoEditorIntent.CloseMask -> masks.close()
+            is VideoEditorIntent.MaskTabSelected -> masks.selectTab(intent.tab)
+            is VideoEditorIntent.MaskShapePicked -> masks.pickShape(intent.shape)
+            is VideoEditorIntent.MaskSoftnessChanged -> masks.softnessChanged(intent.softness)
+            is VideoEditorIntent.MaskCornersChanged -> masks.cornersChanged(intent.roundness)
+            VideoEditorIntent.MaskSliderReleased -> masks.sliderReleased()
+            is VideoEditorIntent.MaskInvertChanged -> masks.invertChanged(intent.invert)
+            is VideoEditorIntent.MaskStepped -> masks.step(intent.step, intent.repeats)
+            is VideoEditorIntent.MaskStepHeld -> masks.stepHeld(intent.step, intent.repeats)
+            VideoEditorIntent.MaskGestureStarted -> masks.gestureStarted()
+            is VideoEditorIntent.MaskGestureMoved -> masks.gestureMoved(intent.mask)
+            is VideoEditorIntent.MaskGestureEnded -> masks.gestureEnded(intent.mask)
             is VideoEditorIntent.OpenOverlayPanel -> overlays.openPanel(intent.panel)
             VideoEditorIntent.CloseOverlayPanel -> overlays.closePanel()
             is VideoEditorIntent.OverlayOpacityChanged -> overlays.opacityChanged(intent.opacity)
@@ -397,6 +412,7 @@ class VideoEditorViewModel(
         // Reorder mode can't outlive a change to the clips it's ordering (an undo pressed meanwhile): it closes unapplied.
         // The Volume panel closes when its item goes (an undo).
         val clipIds = project.mainClipIds().toSet()
+        val overlayUis = project.overlayUis()
         updateState {
             it.copy(
                 canvas = canvasUiOf(project),
@@ -405,10 +421,11 @@ class VideoEditorViewModel(
                 timeline = timeline,
                 reorder = it.reorder?.takeIf { reorder -> reorder.originalOrder.toSet() == clipIds },
                 volumePanel = it.volumePanel?.takeIf { panel -> timeline.item(panel.itemId) != null },
-                overlays = project.overlayUis(),
+                overlays = overlayUis,
                 overlayPanel = it.overlayPanel?.takeIf { panel -> timeline.item(panel.itemId) != null },
                 // Follows the project, so an undo shows in the sliders; closes with its key (Undo of the opening step, Turn off) or its clip.
                 greenScreen = greenScreen.syncedWith(it.greenScreen, project),
+                maskPanel = masks.syncedWith(it.maskPanel, project, overlayUis),
                 // The bar follows the keyframes through edits and undo; it closes with its item.
                 keyframeBar = it.keyframeBar?.let { bar -> project.keyframeBarOf(bar.itemId, bar) },
                 // Follows the project, so an undo shows in the sliders; closes with its sound.
@@ -551,6 +568,7 @@ class VideoEditorViewModel(
             state.value.exportSheet != null -> exportSheet.close()
             state.value.textPanel != null -> captions.closePanel()
             state.value.greenScreen != null -> greenScreen.closePanel()
+            state.value.maskPanel != null -> masks.close()
             state.value.overlayPanel != null -> overlays.closePanel()
             state.value.keyframeBar?.easingOpen == true -> keyframes.closeEasing()
             state.value.volumePanel != null -> volumePanel.close()
@@ -1067,14 +1085,15 @@ internal fun VideoEditorUiState.withSelection(itemId: String?, project: Project?
     val panel = textPanel?.takeIf { itemId != null && itemId == selectedItemId }
     val overlay = overlayPanel?.takeIf { itemId != null && itemId == selectedItemId }
     val green = greenScreen?.takeIf { itemId != null && itemId == selectedItemId }
+    val maskOpen = maskPanel?.takeIf { itemId != null && itemId == selectedItemId }
     // The keyframe bar belongs to its item: selecting another one shows that item's own bar.
     val keyframes = keyframeBar?.takeIf { itemId != null && itemId == it.itemId }
-    val track = itemId?.let(timeline::trackOf) ?: return copy(selectedItemId = null, clipTools = null, trimRanges = null, textPanel = null, overlayPanel = null, greenScreen = null, keyframeBar = null)
+    val track = itemId?.let(timeline::trackOf) ?: return copy(selectedItemId = null, clipTools = null, trimRanges = null, textPanel = null, overlayPanel = null, greenScreen = null, maskPanel = null, keyframeBar = null)
     val start = project?.trimRange(itemId, TrimEdge.START)
     val end = project?.trimRange(itemId, TrimEdge.END)
     val ranges = if (start != null && end != null) TrimRanges(start, end) else null
     val mediaKind = timeline.item(itemId)?.media?.kind
-    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind), trimRanges = ranges, textPanel = panel, overlayPanel = overlay, greenScreen = green, keyframeBar = keyframes)
+    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind), trimRanges = ranges, textPanel = panel, overlayPanel = overlay, greenScreen = green, maskPanel = maskOpen, keyframeBar = keyframes)
 }
 
 private fun clipToolsFor(kind: TrackKind, mediaKind: MediaKind?): ClipTools = when (kind) {

@@ -30,6 +30,7 @@ import app.memix.core.model.project.CaptionCatalog
 import app.memix.core.model.project.CaptionLook
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.ChromaKey
+import app.memix.core.model.project.ClipMask
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.MediaRef
@@ -167,6 +168,8 @@ private class UnavailablePreviewSession : PreviewSession {
     // TODO(P7-04): green screen as a Core Image kernel with the shader's math (ChromaKeyMath, docs/qa/references/P4-04-green-screen/). Until then
     // this whole preview is the unavailable stub, so a keyed clip is not drawn on iOS at all rather than drawn wrong.
     override fun previewChromaKey(itemId: String, key: ChromaKey) = Unit
+    // TODO(P7-04): shape masks as a Core Image kernel with the shader's math (MaskMath, docs/qa/references/P4-03-masks/). Same stub rule as the key.
+    override fun previewMask(itemId: String, mask: ClipMask) = Unit
     override fun setSilent(silent: Boolean) = Unit
     override fun sampleClock(): ClockSample? = null
     override fun close() = Unit

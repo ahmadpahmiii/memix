@@ -175,12 +175,6 @@
     <string name="censor_rect">आयत</string>
     <string name="censor_ellipse">अंडाकार</string>
     <string name="censor_strength">ताकत</string>
-    <string name="position_width">चौड़ाई</string>
-    <string name="position_height">ऊँचाई</string>
-    <string name="position_width_less">चौड़ाई घटाएँ</string>
-    <string name="position_width_more">चौड़ाई बढ़ाएँ</string>
-    <string name="position_height_less">ऊँचाई घटाएँ</string>
-    <string name="position_height_more">ऊँचाई बढ़ाएँ</string>
     <string name="explain_censor_min">सेंसर इससे छोटा नहीं हो सकता।</string>
     <string name="explain_censor_max">सेंसर इससे बड़ा नहीं हो सकता।</string>
     <string name="a11y_layer_censor_added">सेंसर जोड़ा गया</string>

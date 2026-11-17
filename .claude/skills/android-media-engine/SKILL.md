@@ -65,3 +65,4 @@ Never guess class names or signatures from memory. If an API you expected doesn'
 - Release every player, codec and GL resource on dispose.
 - Hit the budgets in `mobile-performance`; measure on the reference phone and put the numbers in the PR.
 - For each new effect, save a reference render to `docs/qa/references/<effect-id>.png` (frame from the fixed sample project) so QA and the iOS port can compare by eye.
+- Shape masks (P4-03b): `MaskEffect` (a `BaseGlShaderProgram`, straight alpha, `GL_BLEND` off, uniforms only on change) with `LiveMask`; overlays run key, scale, mask, main clips key, `Presentation`, mask, `BackdropEffect` (`CanvasFraming.layeredEffects`); `PreviewSession.previewMask`; CPU twin `MaskMath`; references `docs/qa/references/P4-03-masks/` (TECHNICAL_DESIGN → Shape masks).

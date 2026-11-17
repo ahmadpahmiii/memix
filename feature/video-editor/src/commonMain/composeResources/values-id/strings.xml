@@ -284,4 +284,27 @@
     <string name="green_screen_nothing">Tidak ada yang dihapus di sini. Pilih warna yang ingin dihilangkan.</string>
     <string name="a11y_green_screen_picked">Warna dipilih</string>
     <string name="edit_green_screen_off">Matikan layar hijau</string>
+    <!-- Shape masks (P4-03b). Budgets and translator notes: docs/ux/specs/P4-03b-shape-masks-and-blend.md -> Copy. -->
+    <string name="tool_mask">Masker</string>
+    <string name="tool_mask_click">Tampilkan hanya sebagian klip ini</string>
+    <string name="mask_tab_shape">Bentuk</string>
+    <string name="mask_shape_group">Bentuk masker</string>
+    <string name="mask_none">Tidak ada</string>
+    <string name="mask_rectangle">Persegi panjang</string>
+    <string name="mask_circle">Lingkaran</string>
+    <string name="mask_linear">Linier</string>
+    <string name="mask_mirror">Cermin</string>
+    <string name="mask_feather">Kelembutan tepi</string>
+    <string name="mask_invert">Balikkan masker</string>
+    <string name="mask_corners">Sudut membulat</string>
+    <string name="mask_linear_hint">Panah menunjuk ke sisi yang tetap terlihat.</string>
+    <string name="explain_mask_none">Pilih bentuk dulu.</string>
+    <string name="explain_mask_min">Ini ukuran masker terkecil.</string>
+    <string name="explain_mask_max">Ini ukuran masker terbesar.</string>
+    <string name="explain_mask_edge">Masker tidak bisa lebih jauh ke arah ini.</string>
+    <string name="a11y_state_masked">Masker: %1$s</string>
+    <string name="edit_mask_position">Posisi masker</string>
+    <string name="a11y_mask_width">Lebar, %1$d persen</string>
+    <string name="a11y_mask_height">Tinggi, %1$d persen</string>
+    <string name="a11y_mask_rotation">Rotasi, %1$d derajat</string>
 </resources>

@@ -175,12 +175,6 @@
     <string name="censor_rect">Rectángulo</string>
     <string name="censor_ellipse">Elipse</string>
     <string name="censor_strength">Intensidad</string>
-    <string name="position_width">Ancho</string>
-    <string name="position_height">Alto</string>
-    <string name="position_width_less">Hacer más estrecho</string>
-    <string name="position_width_more">Hacer más ancho</string>
-    <string name="position_height_less">Hacer más bajo</string>
-    <string name="position_height_more">Hacer más alto</string>
     <string name="explain_censor_min">Un censurador no puede ser más pequeño.</string>
     <string name="explain_censor_max">Un censurador no puede ser más grande.</string>
     <string name="a11y_layer_censor_added">Censura añadida</string>

@@ -120,6 +120,8 @@ import app.memix.feature.videoeditor.captions.CaptionLayer
 import app.memix.feature.videoeditor.overlays.OverlayLayer
 import app.memix.feature.videoeditor.greenscreen.GreenScreenPanel
 import app.memix.feature.videoeditor.greenscreen.PickLayer
+import app.memix.feature.videoeditor.masks.MaskPanel
+import app.memix.feature.videoeditor.masks.MaskStage
 import app.memix.feature.videoeditor.overlays.OverlayPanels
 import memix.core.ui.generated.resources.edit_layer_opacity
 import memix.core.ui.generated.resources.edit_transform_layer
@@ -276,6 +278,15 @@ import memix.core.ui.generated.resources.position_size_value
 import memix.core.ui.generated.resources.sound_dl_storage_toast
 import memix.feature.video_editor.generated.resources.a11y_keyframe_node
 import memix.feature.video_editor.generated.resources.a11y_green_screen_picked
+import memix.feature.video_editor.generated.resources.a11y_mask_height
+import memix.feature.video_editor.generated.resources.a11y_mask_rotation
+import memix.feature.video_editor.generated.resources.a11y_mask_width
+import memix.feature.video_editor.generated.resources.edit_mask_position
+import memix.feature.video_editor.generated.resources.explain_mask_edge
+import memix.feature.video_editor.generated.resources.explain_mask_max
+import memix.feature.video_editor.generated.resources.explain_mask_min
+import memix.feature.video_editor.generated.resources.explain_mask_none
+import memix.feature.video_editor.generated.resources.tool_mask
 import memix.feature.video_editor.generated.resources.a11y_keyframe_removed
 import memix.feature.video_editor.generated.resources.edit_green_screen_off
 import memix.feature.video_editor.generated.resources.green_screen_nothing
@@ -349,7 +360,7 @@ fun VideoEditorScreen(
     val freeUpSpaceForSave = remember(onFreeUpSpace) { { onFreeUpSpace(ImportMediaUseCase.HEADROOM_BYTES) } }
     val focusTargets = remember { EditorFocusTargets() }
     val backgroundThumbnails = rememberBackgroundThumbnails(imageSource, state.canvas?.background, onIntent)
-    val panelOpen = state.volumePanel != null || state.audioEffects != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null || state.overlayPanel != null || state.greenScreen != null || state.keyframeBar?.easingOpen == true
+    val panelOpen = state.volumePanel != null || state.audioEffects != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null || state.overlayPanel != null || state.greenScreen != null || state.maskPanel != null || state.keyframeBar?.easingOpen == true
     val sheetOpen = state.sounds.isOpen || state.unsavedSheetOpen || state.exportSheet != null || importSheetShown(state.mediaImport)
     ReturnFocus(state.returnFocus, focusTargets)
     // Typing (spec P1-10 → Typing): the field's words live here, so only the field and the stand-in redraw per key.
@@ -416,6 +427,7 @@ fun VideoEditorScreen(
                     TextPanels(state.textPanel, panelCaption?.style, panelCaption?.let { caption -> { timeUs: Long -> caption.atTime(timeUs).transform } }, panelPlayhead, panelCaption != null && (panelCaption.keyframes.isNotEmpty() || state.keyframeBar?.itemId == panelCaption.itemId), onIntent, Modifier.fillMaxSize())
                     EasingPanel(state.keyframeBar, onIntent, Modifier.fillMaxSize())
                     GreenScreenPanel(state.greenScreen, onIntent, Modifier.fillMaxSize())
+                    MaskPanel(state.maskPanel, onIntent, Modifier.fillMaxSize())
                     OverlayPanels(state.overlayPanel, { timeUs -> selectedOverlayTransform(state, timeUs) }, panelPlayhead, onIntent, Modifier.fillMaxSize())
                     CanvasPanel(state.canvasPanel, state.canvas, backgroundThumbnails, onIntent, Modifier.fillMaxSize())
                 },
@@ -647,7 +659,8 @@ private fun PreviewStage(
     BoxWithConstraints(Modifier.fillMaxSize().clipToBounds().background(MemixColors.stage).semantics { isTraversalGroup = true }) {
         val frame = rememberCanvasFrame(canvas, constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat(), typing = state.textEntry != null, captionLayer, typingFrame)
         // With the Canvas panel open, a tap anywhere on the stage plays or pauses, even over a caption (spec P1-11).
-        val gesturesOn = canvas != null && state.textEntry == null && state.stage == StageContent.VIDEO && state.canvasPanel == null
+        // With the Mask panel open, the stage's touches edit the mask, not the clip (spec P4-03b → The mask on the stage).
+        val gesturesOn = canvas != null && state.textEntry == null && state.stage == StageContent.VIDEO && state.canvasPanel == null && state.maskPanel == null
         Box(
             Modifier
                 .matchParentSize()
@@ -672,7 +685,7 @@ private fun PreviewStage(
             }
         }
         if (canvas != null) {
-            FrameEdge({ frame }, visible = state.canvasPanel != null || captionLayer.gesture != null)
+            FrameEdge({ frame }, visible = state.canvasPanel != null || captionLayer.gesture != null || state.maskPanel?.mask != null)
             // Under the captions, which are in front of every overlay (spec P4-01b → Rendering rules).
             OverlayLayer(
                 captionLayer,
@@ -686,7 +699,7 @@ private fun PreviewStage(
                 state.overlayFrames,
                 state.preview,
                 focusTargets.selectedOverlay,
-                interactive = state.canvasPanel == null && state.textEntry == null,
+                interactive = state.canvasPanel == null && state.textEntry == null && state.maskPanel == null,
                 playheadUs = playheadUs,
                 onIntent = onIntent,
             )
@@ -707,6 +720,8 @@ private fun PreviewStage(
             )
             // The eyedropper (spec P4-04 → Pick mode) takes every touch on the preview, over the clips and captions.
             state.greenScreen?.takeIf { it.picking }?.let { PickLayer(frame, it.colorAt, onIntent) }
+            // The mask's frame and handles, over the clips and captions, only while its panel is open and a shape is picked.
+            state.maskPanel?.let { MaskStage(it, canvas, frame, playheadUs, state.canPlay, onIntent) }
             FrameMessage(state.stage, frame, onRetry = { onIntent(VideoEditorIntent.RetryPreview) })
         }
         StageMessages(
@@ -973,6 +988,13 @@ private fun StageMessages(
 }
 
 @Composable
+private fun maskStepText(message: ToastMessage.MaskStepped): String = when (message.reading) {
+    MaskReading.WIDTH -> stringResource(Res.string.a11y_mask_width, message.value)
+    MaskReading.HEIGHT -> stringResource(Res.string.a11y_mask_height, message.value)
+    MaskReading.ROTATION -> stringResource(Res.string.a11y_mask_rotation, message.value)
+}
+
+@Composable
 private fun greenScreenHintText(hint: GreenScreenHint): String = stringResource(
     when (hint) {
         GreenScreenHint.PICK -> Res.string.green_screen_pick_hint
@@ -1004,7 +1026,7 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
     LaunchedEffect(toast.id) {
         val baseMillis = when (toast.message) {
             is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition, is ToastMessage.SoundAdded,
-            is ToastMessage.MediaAdded, ToastMessage.OverlayAdded, is ToastMessage.OverlayOpacity, is ToastMessage.OverlayLayer, ToastMessage.NothingToReset, ToastMessage.AudioEffectsReset, is ToastMessage.VoiceoverAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned, is ToastMessage.KeyframeAdded, is ToastMessage.KeyframePicked, ToastMessage.GreenScreenPicked, ToastMessage.KeyframeRemoved, is ToastMessage.EasingChanged,
+            is ToastMessage.MediaAdded, ToastMessage.OverlayAdded, is ToastMessage.OverlayOpacity, is ToastMessage.OverlayLayer, ToastMessage.NothingToReset, ToastMessage.AudioEffectsReset, is ToastMessage.VoiceoverAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned, is ToastMessage.MaskStepped, is ToastMessage.KeyframeAdded, is ToastMessage.KeyframePicked, ToastMessage.GreenScreenPicked, ToastMessage.KeyframeRemoved, is ToastMessage.EasingChanged,
             -> WHAT_HAPPENED_TOAST_MILLIS
             is ToastMessage.RatioStepped, ToastMessage.ExportStopped, ToastMessage.BackgroundImageSet, ToastMessage.BackgroundImageRemoved -> WHAT_HAPPENED_TOAST_MILLIS
             is ToastMessage.ExportFrameRateLowered, is ToastMessage.ExportResolutionLowered, is ToastMessage.ExportCantDo,
@@ -1050,6 +1072,7 @@ private fun toastText(message: ToastMessage): String = when (message) {
     ToastMessage.KeyframesOn -> stringResource(Res.string.keyframe_on)
     ToastMessage.KeyframeRemoved -> stringResource(Res.string.a11y_keyframe_removed)
     ToastMessage.GreenScreenPicked -> stringResource(Res.string.a11y_green_screen_picked)
+    is ToastMessage.MaskStepped -> maskStepText(message)
     is ToastMessage.KeyframePicked -> stringResource(Res.string.a11y_keyframe_node, message.position, message.count, spokenTime(message.atUs), stringResource(easingNameOf(message.easing)))
     is ToastMessage.EasingChanged -> stringResource(easingNameOf(message.easing))
     is ToastMessage.Edited -> stringResource(UiRes.string.a11y_edit_on_item, editName(message.edit), spokenName(message.item))
@@ -1128,6 +1151,8 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.OVERLAY_ORDER -> Res.string.edit_overlay_order
         VideoEdit.GREEN_SCREEN -> Res.string.tool_green_screen
         VideoEdit.GREEN_SCREEN_OFF -> Res.string.edit_green_screen_off
+        VideoEdit.MASK, VideoEdit.MASK_ADJUST -> Res.string.tool_mask
+        VideoEdit.MASK_POSITION -> Res.string.edit_mask_position
         VideoEdit.KEYFRAME_ADD -> Res.string.keyframe_add
         VideoEdit.KEYFRAME_REMOVE -> Res.string.keyframe_remove
         VideoEdit.KEYFRAME_MOVE -> Res.string.edit_keyframe_move
@@ -1167,6 +1192,10 @@ private fun explanationText(explanation: Explanation): String = stringResource(
         Explanation.TEXT_BIGGEST -> UiRes.string.explain_text_biggest
         Explanation.TEXT_EDGE -> Res.string.explain_text_edge
         Explanation.OVERLAY_EDGE -> Res.string.explain_overlay_edge
+        Explanation.MASK_NONE -> Res.string.explain_mask_none
+        Explanation.MASK_MIN -> Res.string.explain_mask_min
+        Explanation.MASK_MAX -> Res.string.explain_mask_max
+        Explanation.MASK_EDGE -> Res.string.explain_mask_edge
         Explanation.LAYER_ORDER_FRONT -> Res.string.explain_layer_order_front
         Explanation.LAYER_ORDER_BACK -> Res.string.explain_layer_order_back
         Explanation.CANVAS_WIDEST -> UiRes.string.explain_canvas_widest

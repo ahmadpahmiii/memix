@@ -222,3 +222,27 @@ JVM harnesses (not in the repo): 37 checks on the key math, edits, JSON round tr
 ### 4. Things that could not be verified
 - Everything on a phone: the GL pass (orientation, `Presentation` alpha through the compositor, the picture backdrop's flip), the pick's loupe, haptics-free gestures, TalkBack, reduce motion.
 - Delegated: Blur background under a keyed main clip is black; a keyed overlay has no drag stand-in; the pick reads a 960 px frame from the thumbnail reader rather than the decoder's own frame; "nothing found" uses the whole source frame.
+
+## P4-03b · shape masks
+
+Spec: `docs/ux/specs/P4-03b-shape-masks-and-blend.md` (mask half; blend is P4-03a, deferred). Notes: `docs/TECHNICAL_DESIGN.md` → Shape masks. Screenshots (desktop renders, not a phone): `docs/ux/reviews/P4-03b/`. Reference renders: `docs/qa/references/P4-03-masks/`. Scenes: `--es memix.openEditor mask-check` (the 10 s 1080p clip with four masked `mask-grid` overlays at the corners and an unmasked one in the middle) and `mask-main` (the grid as the main clip, a Circle, over the canvas Image background). The grid is drawn on first use into `files/debug-media/`.
+
+### 1. What was checked without a device
+JVM harnesses (not in the repo): 64 checks on `MaskMath` (each shape's edge, softness, Invert, rounded corners, portrait boxes), the edits, Position steps and limits, box geometry, the JSON round trip and the 16 to 17 migration (a draft's JSON without `mask` opens unmasked); 60 checks on `MaskControl` (one undo step each, value ids, held steps, explanations, panel sync), the gesture arithmetic (move, handle, edges, band, pinch, snaps) and the stage's hit testing. The reference renders were drawn from the same arithmetic; the Done when's edge numbers were measured on them (edge within 1% of the box width, soft edge band within 2% of the shorter side).
+
+### 2. The Done when, on a phone
+1. Open `mask-check`: each corner overlay shows its mask as in the references (rounded rectangle, soft circle, inverted turned Linear, soft turned Mirror). Export 1080p30, frame at 1.0 s: edge within 1% of the box width on three samples, inside 253/255 or more, outside 2/255 or less away from the edge band, preview and export within 3/255 on 99% of pixels. The top risks: the shader's y flip (the Linear arrow's side), the turn direction, and the main clip's box on Fit.
+2. Tap the middle overlay, Mask (after Green screen): the panel opens on Shape with None selected. Pick each shape: it appears at its defaults with its frame and handles; one undo step each. Edge softness, Invert, Rounded corners: live while dragging, one step on release.
+3. Stage: drag inside moves 1:1; the corner handle sizes and turns; the edge handles size one side; two fingers pinch, twist and pan; SegmentTick at the centre, the flush side and 0/90/180/270 degrees; a tap outside the clip's box plays or pauses; no stand-in flash; Undo is ignored while a finger is down.
+4. Position tab: Width, Height, Rotation, Move, Center; the limit toasts; a hold repeats and is one step.
+5. Done: the frame goes, the mask stays. Undo after each edit takes exactly that edit away. An old draft opens unmasked.
+6. `mask-main`: the Circle on the main clip shows the canvas picture around it; with a Color background the color; with Blur: black (delegated). A keyed clip plus a Circle: the mask cuts the keyed subject.
+7. TalkBack: tiles read "Circle, 3 of 5, selected"; the Position tab is the whole no-drag route; the spoken result after a step; the clip's description gains "Mask: Circle".
+
+### 3. Numbers to take (release or benchmark, the owner's phone)
+- A masked 1080p overlay over the 1080p main video at 30 fps or more; janky frames under 5% for three 3 s mask drags.
+- LeakCanary: open the panel, pick shapes, drag, Invert, switch tabs, Done, close the editor, five times.
+
+### 4. Things that could not be verified
+- Everything on a phone: the GL pass (orientation, the main clip's box through `Presentation` and `BackdropEffect`), the gestures and haptics, TalkBack, reduce motion, the panel's pinned tabs at 360 x 640.
+- Delegated: Blur background under a masked main clip is black; the flush snap needs the shape's axes aligned with the box's; the guides draw the centre lines only; mask parameters are not keyframed.

@@ -2,6 +2,7 @@ package app.memix.core.domain.video
 
 import app.memix.core.domain.voiceover.ClockSample
 import app.memix.core.model.project.ChromaKey
+import app.memix.core.model.project.ClipMask
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
@@ -89,6 +90,13 @@ interface PreviewSession : AutoCloseable {
      * rebuild. Ignored for a clip the composition doesn't key. The [update] that commits the change draws the same key by itself.
      */
     fun previewChromaKey(itemId: String, key: ChromaKey)
+
+    /**
+     * While a mask moves on the stage or a Mask slider drags (P4-03b): draws clip [itemId] with [mask] at once, paused or playing, with no
+     * rebuild. Ignored for a clip the composition doesn't mask (picking the first shape rebuilds it). The [update] that commits the change
+     * draws the same mask by itself.
+     */
+    fun previewMask(itemId: String, mask: ClipMask)
 
     /**
      * While the Volume panel's slider moves (P1-08, P1-09): plays sound or clip [itemId] at [volume] (1 = its own

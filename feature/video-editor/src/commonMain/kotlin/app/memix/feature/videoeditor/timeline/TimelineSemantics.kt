@@ -55,6 +55,11 @@ import memix.core.ui.generated.resources.import_item_video
 import memix.feature.video_editor.generated.resources.a11y_back_1s
 import memix.feature.video_editor.generated.resources.a11y_clip_media
 import memix.feature.video_editor.generated.resources.tool_green_screen
+import memix.feature.video_editor.generated.resources.a11y_state_masked
+import memix.feature.video_editor.generated.resources.mask_circle
+import memix.feature.video_editor.generated.resources.mask_linear
+import memix.feature.video_editor.generated.resources.mask_mirror
+import memix.feature.video_editor.generated.resources.mask_rectangle
 import memix.feature.video_editor.generated.resources.a11y_forward_1s
 import memix.feature.video_editor.generated.resources.a11y_go_end
 import memix.feature.video_editor.generated.resources.a11y_go_start
@@ -407,8 +412,10 @@ private fun itemDescription(track: TrackUi, item: ItemUi, clipCount: Int): Strin
     val base = baseDescription(track, item, clipCount)
     // After the clip's own words, never in its state description (spec P4-02b → Accessibility; P4-04 adds "Green screen", before the keyframes).
     val keyed = if (item.keyed) base + ". " + stringResource(Res.string.tool_green_screen) else base
-    if (item.keyframeCount == 0) return keyed
-    return keyed + ". " + stringResource(Res.string.a11y_state_keyframed, item.keyframeCount)
+    // Then the mask (P4-03b: Green screen, Mask, Keyframes).
+    val masked = item.masked?.let { keyed + ". " + stringResource(Res.string.a11y_state_masked, stringResource(maskShapeName(it))) } ?: keyed
+    if (item.keyframeCount == 0) return masked
+    return masked + ". " + stringResource(Res.string.a11y_state_keyframed, item.keyframeCount)
 }
 
 @Composable
@@ -577,4 +584,11 @@ internal fun KeyframeSemantics(controller: TimelineController, bar: KeyframeBarU
         }
         layout(constraints.maxWidth, constraints.maxHeight) { placed.forEach { (placeable, x) -> placeable.place(x, 0) } }
     }
+}
+
+private fun maskShapeName(shape: app.memix.core.model.project.MaskShape): org.jetbrains.compose.resources.StringResource = when (shape) {
+    app.memix.core.model.project.MaskShape.RECTANGLE -> Res.string.mask_rectangle
+    app.memix.core.model.project.MaskShape.CIRCLE -> Res.string.mask_circle
+    app.memix.core.model.project.MaskShape.LINEAR -> Res.string.mask_linear
+    app.memix.core.model.project.MaskShape.MIRROR -> Res.string.mask_mirror
 }

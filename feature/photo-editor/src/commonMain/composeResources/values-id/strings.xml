@@ -175,12 +175,6 @@
     <string name="censor_rect">Persegi panjang</string>
     <string name="censor_ellipse">Elips</string>
     <string name="censor_strength">Kekuatan</string>
-    <string name="position_width">Lebar</string>
-    <string name="position_height">Tinggi</string>
-    <string name="position_width_less">Perkecil lebar</string>
-    <string name="position_width_more">Perlebar</string>
-    <string name="position_height_less">Perpendek</string>
-    <string name="position_height_more">Pertinggi</string>
     <string name="explain_censor_min">Sensor tidak bisa lebih kecil dari ini.</string>
     <string name="explain_censor_max">Sensor tidak bisa lebih besar dari ini.</string>
     <string name="a11y_layer_censor_added">Sensor ditambahkan</string>

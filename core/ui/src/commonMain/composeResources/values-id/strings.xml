@@ -197,4 +197,11 @@
     <string name="a11y_layer_order">Lapisan %1$d dari %2$d</string>
     <string name="edit_transform_layer">Posisi dan ukuran</string>
     <string name="edit_layer_opacity">Opasitas</string>
+    <!-- Width and Height steppers, shared by the photo editor's censor and the video editor's mask (P2-05, P4-03b). -->
+    <string name="position_width">Lebar</string>
+    <string name="position_height">Tinggi</string>
+    <string name="position_width_less">Perkecil lebar</string>
+    <string name="position_width_more">Perlebar</string>
+    <string name="position_height_less">Perpendek</string>
+    <string name="position_height_more">Pertinggi</string>
 </resources>

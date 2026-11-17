@@ -22,6 +22,7 @@ import app.memix.core.domain.video.PreviewSession
 import app.memix.core.domain.video.PreviewStatus
 import app.memix.core.domain.voiceover.ClockSample
 import app.memix.core.model.project.ChromaKey
+import app.memix.core.model.project.ClipMask
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.PixelSize
@@ -131,6 +132,10 @@ internal class Media3PreviewSession(
     // The green screen sliders' newest key (P4-04): kept for a composition still being built, and written to the shown one's shaders.
     private var requestedLiveKey: Pair<String, ChromaKey>? = null
     private var shownKeys: Map<String, LiveChromaKey> = emptyMap()
+
+    // The same for the mask's live moves (P4-03b).
+    private var requestedLiveMask: Pair<String, ClipMask>? = null
+    private var shownMasks: Map<String, LiveMask> = emptyMap()
     private val positionTicker = FrameTicker(::publishPlayerPosition)
     private val headphonesUnplugged = HeadphonesUnpluggedReceiver(context, onUnplugged = ::pause)
     private val playSpan = PlaySpanLog(logger)
@@ -219,6 +224,7 @@ internal class Media3PreviewSession(
         requestedHiddenOverlay = null
         requestedLiveOpacity = null
         requestedLiveKey = null
+        requestedLiveMask = null
         showTiming.start(ShowTimingLog.Change.EDIT)
         lengthUs = project.videoLengthUs()
         updateCount++
@@ -318,6 +324,15 @@ internal class Media3PreviewSession(
         if (!playerShowsTrim && !mutablePlayback.value.isPlaying) mutablePlayer.value?.let { player -> player.seekTo(player.currentPosition) }
     }
 
+    override fun previewMask(itemId: String, mask: ClipMask) {
+        if (closed) return
+        requestedLiveMask = itemId to mask
+        val live = shownMasks[itemId] ?: return
+        live.mask = mask
+        // Playing, the next frame draws it; paused, a seek to where it is draws the frame again through the shader.
+        if (!playerShowsTrim && !mutablePlayback.value.isPlaying) mutablePlayer.value?.let { player -> player.seekTo(player.currentPosition) }
+    }
+
     override fun endTrimFrames() {
         if (closed || trimClip.value == null) return
         // The project's composition is rebuilt at positionUs, the trim's commit included when it came first (the
@@ -358,6 +373,7 @@ internal class Media3PreviewSession(
             val liveFades = sounds.associate { it.itemId to LiveFades(it.effects.fadeInUs, it.effects.fadeOutUs) }
             val liveBass = sounds.associate { it.itemId to LiveBass(it.effects.bassBoost, it.effects.distortion) }
             val liveKeys = playablePlan.chromaKeys.mapValues { (_, key) -> LiveChromaKey(key) }
+            val liveMasks = playablePlan.masks.mapValues { (_, mask) -> LiveMask(mask) }
             val visibility = CaptionVisibility()
             var overlayVisibility: OverlayVisibility? = null
             val captions = playablePlan.captions.takeIf { it.isNotEmpty() }?.let {
@@ -372,6 +388,7 @@ internal class Media3PreviewSession(
                 liveFades,
                 liveBass,
                 liveKeys = liveKeys,
+                liveMasks = liveMasks,
                 captionOverlay = captions,
                 frameShortSidePx = if (playablePlan.background == PlanBackground.Blur) BLUR_PREVIEW_SHORT_SIDE_PX else null,
                 backgroundFile = resolved.backgroundFile,
@@ -389,6 +406,7 @@ internal class Media3PreviewSession(
                 compositesOverlays = playablePlan.hasOverlays,
                 skippedOverlayIds = plan.skippedOverlayIds,
                 liveKeys = liveKeys,
+                liveMasks = liveMasks,
             )
         } catch (e: RuntimeException) {
             // Media3's own argument checks.
@@ -416,6 +434,8 @@ internal class Media3PreviewSession(
         shownOverlays = prepared.overlays
         requestedLiveKey?.let { (itemId, key) -> prepared.liveKeys[itemId]?.key = key }
         shownKeys = prepared.liveKeys
+        requestedLiveMask?.let { (itemId, mask) -> prepared.liveMasks[itemId]?.mask = mask }
+        shownMasks = prepared.liveMasks
         try {
             // Rebuilds every decoder (Media3 1.11.1), so it costs a re-prepare; the position and play state carry on.
             player.setComposition(prepared.composition, startUs / MICROS_PER_MILLI)
@@ -549,6 +569,8 @@ internal class Media3PreviewSession(
             val skippedOverlayIds: List<String>,
             /** The green screen's live key of every keyed clip in this composition. */
             val liveKeys: Map<String, LiveChromaKey>,
+            /** The mask's live value of every masked clip in this composition. */
+            val liveMasks: Map<String, LiveMask>,
         ) : PreparedPreview
 
         class Failed(val reason: String, val cause: Throwable?) : PreparedPreview

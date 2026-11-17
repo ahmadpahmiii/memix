@@ -284,4 +284,27 @@
     <string name="green_screen_nothing">Nada a remover aqui. Escolha a cor que quer tirar.</string>
     <string name="a11y_green_screen_picked">Cor escolhida</string>
     <string name="edit_green_screen_off">Desativar tela verde</string>
+    <!-- Shape masks (P4-03b). Budgets and translator notes: docs/ux/specs/P4-03b-shape-masks-and-blend.md -> Copy. -->
+    <string name="tool_mask">Máscara</string>
+    <string name="tool_mask_click">Mostrar só uma parte deste clipe</string>
+    <string name="mask_tab_shape">Forma</string>
+    <string name="mask_shape_group">Forma da máscara</string>
+    <string name="mask_none">Nenhuma</string>
+    <string name="mask_rectangle">Retângulo</string>
+    <string name="mask_circle">Círculo</string>
+    <string name="mask_linear">Linear</string>
+    <string name="mask_mirror">Espelho</string>
+    <string name="mask_feather">Suavidade da borda</string>
+    <string name="mask_invert">Inverter máscara</string>
+    <string name="mask_corners">Cantos arredondados</string>
+    <string name="mask_linear_hint">A seta aponta para o lado que fica.</string>
+    <string name="explain_mask_none">Escolha antes uma forma.</string>
+    <string name="explain_mask_min">Este é o menor tamanho da máscara.</string>
+    <string name="explain_mask_max">Este é o maior tamanho da máscara.</string>
+    <string name="explain_mask_edge">A máscara não pode ir mais longe assim.</string>
+    <string name="a11y_state_masked">Máscara: %1$s</string>
+    <string name="edit_mask_position">Posição da máscara</string>
+    <string name="a11y_mask_width">Largura, %1$d por cento</string>
+    <string name="a11y_mask_height">Altura, %1$d por cento</string>
+    <string name="a11y_mask_rotation">Rotação, %1$d graus</string>
 </resources>

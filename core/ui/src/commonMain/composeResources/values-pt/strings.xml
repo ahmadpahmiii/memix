@@ -198,4 +198,11 @@
     <string name="a11y_layer_order">Camada %1$d de %2$d</string>
     <string name="edit_transform_layer">Posição e tamanho</string>
     <string name="edit_layer_opacity">Opacidade</string>
+    <!-- Width and Height steppers, shared by the photo editor's censor and the video editor's mask (P2-05, P4-03b). -->
+    <string name="position_width">Largura</string>
+    <string name="position_height">Altura</string>
+    <string name="position_width_less">Deixar mais estreito</string>
+    <string name="position_width_more">Deixar mais largo</string>
+    <string name="position_height_less">Deixar mais baixo</string>
+    <string name="position_height_more">Deixar mais alto</string>
 </resources>

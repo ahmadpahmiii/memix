@@ -284,4 +284,27 @@
     <string name="green_screen_nothing">यहाँ हटाने को कुछ नहीं है। जो रंग हटाना है उसे चुनें।</string>
     <string name="a11y_green_screen_picked">रंग चुना गया</string>
     <string name="edit_green_screen_off">ग्रीन स्क्रीन बंद</string>
+    <!-- Shape masks (P4-03b). Budgets and translator notes: docs/ux/specs/P4-03b-shape-masks-and-blend.md -> Copy. -->
+    <string name="tool_mask">मास्क</string>
+    <string name="tool_mask_click">इस क्लिप का सिर्फ़ एक हिस्सा दिखाएं</string>
+    <string name="mask_tab_shape">आकार</string>
+    <string name="mask_shape_group">मास्क का आकार</string>
+    <string name="mask_none">कोई नहीं</string>
+    <string name="mask_rectangle">आयत</string>
+    <string name="mask_circle">वृत्त</string>
+    <string name="mask_linear">रेखीय</string>
+    <string name="mask_mirror">मिरर</string>
+    <string name="mask_feather">किनारे की कोमलता</string>
+    <string name="mask_invert">मास्क उलटें</string>
+    <string name="mask_corners">गोल कोने</string>
+    <string name="mask_linear_hint">तीर उस तरफ़ है जो बना रहता है।</string>
+    <string name="explain_mask_none">पहले कोई आकार चुनें।</string>
+    <string name="explain_mask_min">मास्क इससे छोटा नहीं होता।</string>
+    <string name="explain_mask_max">मास्क इससे बड़ा नहीं होता।</string>
+    <string name="explain_mask_edge">मास्क इस तरफ़ और आगे नहीं जा सकता।</string>
+    <string name="a11y_state_masked">मास्क: %1$s</string>
+    <string name="edit_mask_position">मास्क की जगह</string>
+    <string name="a11y_mask_width">चौड़ाई, %1$d प्रतिशत</string>
+    <string name="a11y_mask_height">ऊँचाई, %1$d प्रतिशत</string>
+    <string name="a11y_mask_rotation">घुमाव, %1$d डिग्री</string>
 </resources>

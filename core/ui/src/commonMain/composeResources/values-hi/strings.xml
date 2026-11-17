@@ -198,4 +198,11 @@
     <string name="a11y_layer_order">लेयर %1$d / %2$d</string>
     <string name="edit_transform_layer">स्थिति और आकार</string>
     <string name="edit_layer_opacity">पारदर्शिता</string>
+    <!-- Width and Height steppers, shared by the photo editor's censor and the video editor's mask (P2-05, P4-03b). -->
+    <string name="position_width">चौड़ाई</string>
+    <string name="position_height">ऊँचाई</string>
+    <string name="position_width_less">चौड़ाई घटाएँ</string>
+    <string name="position_width_more">चौड़ाई बढ़ाएँ</string>
+    <string name="position_height_less">ऊँचाई घटाएँ</string>
+    <string name="position_height_more">ऊँचाई बढ़ाएँ</string>
 </resources>

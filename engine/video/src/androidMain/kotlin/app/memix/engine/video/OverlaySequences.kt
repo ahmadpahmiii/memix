@@ -37,6 +37,8 @@ internal class OverlaySequences(
     private val liveGains: Map<String, LiveGainProcessor> = emptyMap(),
     /** The preview's live green screen per keyed overlay; an overlay not listed gets its own fixed key. */
     private val liveKeys: Map<String, LiveChromaKey> = emptyMap(),
+    /** The preview's live mask per masked overlay; an overlay not listed gets its own fixed mask. */
+    private val liveMasks: Map<String, LiveMask> = emptyMap(),
 ) {
     private val layersTopFirst: List<OverlayLayer> = plan.overlays.asReversed()
 
@@ -73,10 +75,14 @@ internal class OverlaySequences(
         val item = EditedMediaItem.Builder(mediaItem.build())
             .setRemoveAudio(!clip.playsOwnAudio)
             .setFrameRate(frameRate)
-            .setEffects(Effects(audioProcessors, keyEffects(clip) + scaled))
+            // The mask comes after the scaling: its numbers are fractions of the box, so it costs a pass over the drawn size, not the video's.
+            .setEffects(Effects(audioProcessors, keyEffects(clip) + scaled + maskEffects(clip)))
         if (!clip.isStill) item.setSourceDuration(clip.source, clip.trimOutUs)
         return item.build()
     }
+
+    private fun maskEffects(clip: OverlayClip): List<Effect> =
+        clip.mask?.let { listOf(MaskEffect(liveMasks[clip.itemId] ?: LiveMask(it))) }.orEmpty()
 
     private fun keyEffects(clip: OverlayClip): List<Effect> =
         clip.chromaKey?.let { listOf(ChromaKeyEffect(liveKeys[clip.itemId] ?: LiveChromaKey(it))) }.orEmpty()
