@@ -2,6 +2,12 @@
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: Design decisions and their reasons, patterns that worked or failed, recurring review issues, competitor insights.
 
+- 2026-11-17 · Phase 4 specs P4-06 effects, P4-08 transitions, P4-09 speed, P4-10 reverse/freeze (rewritten after a lost session; save each file the moment it is done). Decisions and reasons:
+  - **Effects:** 30 in six tabs of five; 06a = Motion, Light, Color (cheap single-pass, zoom punch inside), 06b = Glitch, Blur, Retro. Sheet with 3-column grid of the user's frame (`grid-tile-min`) and Tabs so one tab = two rows fits 70% sheet at 640. Whole-frame scope, max 3 overlapping, four fixed envelopes, hash-based randomness, flashing capped at 3/s (WCAG 2.3.1).
+  - **Transitions:** length-preserving, centered on the cut, audio never touched (sample-identical) = the "audio continuous" proof; door is a clip-bar tool plus a cue badge, not a per-cut button (48 dp targets would eat 40 dp clips).
+  - **Speed:** log slider (10^(2p-1)), tiles, Sound Keep/Mute with pitch kept like P3-09; sound clips stay 0.5-2x; Detach only at 0.5-2x with Keep; keyframes keep their share of length; main-clip bar now Split, Volume, Delete, Speed, Freeze frame, Reverse, Crop...
+  - **Reverse/freeze:** reverse = switch with active look, prepared copy with percent status after 1 s, 60 s cap; freeze = split + 2 s still on main clips only, silent.
+  - No Bash: token JSON edited by hand in both files, not machine-validated; ask for a parse.
 - 2026-11-17 · Phase 4 pro-tool specs P4-04 green screen, P4-02b keyframes, P4-03b masks plus Blend panel, P4-07 addendum. Decisions and reasons:
   - **Clip pipeline order fixed once (P4-04):** turn, mirror, crop, key, color edits, Fit or Fill, mask, framing, opacity, blend. Mask sits before framing so it moves with the clip; key before color so a filter never re-keys. Any later effect spec must say where it sits.
   - **Green screen:** opening the tool turns keying on at defaults (one step); Swatch row = Eyedropper, Green, Blue, Picked, heading beside it to save 24 dp; spill removal is fixed (PRD asks three controls); pick = drag with a loupe above the finger, samples the clip's source, not the composite.

@@ -179,6 +179,13 @@ Memix draws its own icons (owner's decision, 7 Oct 2026; the proposed Lucide set
   - `mask`: a stroked 20 × 20px square (2px stroke, 1px corners) holding a solid 12px circle (the core), 2px clear of the stroke. The Mask tool. The mask shape tiles (Rectangle, Circle, Linear, Mirror) are drawn from data.
   - `blend`: two stroked 14px circles overlapping by 6px horizontally, their overlap solid (the core, a lens 6px wide). It must not read as `duplicate` or `opacity`. The Blend tool.
   - Previous and Next keyframe reuse `arrow` (turned left and right); Clear all reuses `delete` in `text-secondary`; the Filters tool in video reuses `adjust`.
+- Effects, transitions, speed, reverse and freeze (P4-06, P4-08, P4-09, P4-10, specs `docs/ux/specs/P4-06-video-effects.md`, `P4-08-transitions.md`, `P4-09-speed.md`, `P4-10-reverse-and-freeze.md`; to draw with the tickets; the engineer draws, the designer approves in the review):
+  - `effects`: a solid 7px circle (the core) at the right with three stroked arcs trailing to its left (2px, flat caps, 6, 9 and 12px long, 2.5px apart): a thing in motion. Must not read as `blur` (a dot with four strokes, no trail) or `audio_effects` (a wave with a dot). The Effects tool. Intensity reuses `adjust`, Change effect reuses `replace`.
+  - `transition`: a stroked 9 × 14px clip (2px, 1px corners) at the left and a solid 9 × 14px clip (the core) at the right, 4px apart, joined by a 2px stroke with a solid 4px arrowhead pointing right, 1.4px or more of air to the solid clip. Must not read as `split` or `replace`. The Transition tool and the cue on a cut (at `icon-small`).
+  - `speed`: a stroked half-dial arc (20px wide, 10px tall, 2px, flat caps) on a 2px baseline with a solid needle wedge (5px, the core) rising from the center to the upper right, 2px clear of the arc. Must not read as `volume` or `audio_effects`. The Speed tool and the retime chip for a curve.
+  - `reverse`: two solid left-pointing triangles (9 × 12px, 1px corners; all core, like `play`), 1.4px or more of air between them. Must not read as `flip` or `undo`. The Reverse tool and the retime chip.
+  - `freeze`: a stroked 20 × 16px frame (2px, 1px corners) holding two solid bars (3 × 8px, the core), 3px apart, 1.4px or more of air to the frame. Must not read as `pause` or `mask`. The Freeze frame tool and the freeze clip's chip.
+  - The Effects sheet's tile pictures and the Transition strip's tile pictures are the user's own frames, not icon files; the speed curve graph and its points are drawn from data.
 - Drawn shapes (P2-02): the format tiles' pictures (Classic, Caption bar, Panels, Demotivational, Bubbles), the Panels layout and count tiles and the bubble shape tiles are **drawn from data** like the ratio shapes (solid, 1px corners, long side 20px), not icon files. The bubble's tail handle reuses `position` at `icon-small`; the pick tile in an empty cell reuses `create`.
 
 Source files are Android vector drawables in `:core:designsystem` `composeResources/drawable/` (`ic_<name>.xml`), path-only so Compose Multiplatform renders them the same on Android and iOS. There is no Memix logo yet: until one exists, write the name "Memix" in Anton; the launcher icon is a plain placeholder built from that wordmark, not a logo.
@@ -335,6 +342,16 @@ Green screen, keyframes, blend modes, shape masks and the video Filters tool cha
 - **Blend and masks (P4-03):** Blend is a tile row of Normal plus 10 modes for overlays; Mask is a panel with Shape and Position tabs (None, Rectangle, Circle, Linear, Mirror; edge softness, invert, rounded corners; the Position tab is the single-pointer route for the stage frame).
 - **Video Filters (P4-07):** the photo editor's Edit photo panel without Deep-fry; from the main bar it applies to every main clip, from a clip's bar to that clip.
 - **Chrome:** no new color, radius or motion token. Selection stays white (the selected keyframe, the selected tile); the only new sizes are the two keyframe diamonds.
+
+### Effects, transitions, speed, reverse and freeze (user content, P4-06, P4-08, P4-09, P4-10)
+
+How an effect, a transition, a speed or a reverse looks and sounds is the user's meme, not chrome: it lives in `design/tokens.json` → `effects`, `transitions`, `speed` and `freezeReverse`, each kept in one commonMain place (`EffectCatalog`, `TransitionCatalog`, `SpeedCatalog`, `FreezeReverseCatalog`) next to `OverlayCatalog`, never in `MemixTheme`. Full rules: `docs/ux/specs/P4-06-video-effects.md`, `P4-08-transitions.md`, `P4-09-speed.md`, `P4-10-reverse-and-freeze.md`.
+
+- **Effects (P4-06):** 30 effects in six tabs (Motion, Glitch, Light, Color, Blur, Retro), placed as items on the violet Effects lane from a Sheet with a 3-column grid (`grid-tile-min`) of the user's own frame; Intensity in a ToolPanel; they act on the whole frame, up to 3 at once, and no effect flashes more than 3 times a second. Zoom punch is the first Motion effect.
+- **Transitions (P4-08):** 20 transitions chosen from a strip of tiles (the user's two frames at 50%) in a ToolPanel; they change the picture around a cut only, keep the project's length and never touch the sound.
+- **Speed (P4-09):** constant 0.1x to 10x on a logarithmic slider with tiles, Sound Keep or Mute, speed curves with 6 presets and up to 8 points; a retime chip (`scrim`, `caption`) shows speed and direction on the clip.
+- **Reverse and freeze (P4-10):** Reverse is a per-clip switch (active look when on); Freeze frame inserts a 2 s still at the playhead.
+- **Chrome:** no new color, size, radius or motion token. Reused: `grid-tile-min`, `filter-tile-size`, `badge-size`, `icon-small`, `duration-bonk`, `scrim`.
 
 ### Watermark (user content, P1-13)
 
