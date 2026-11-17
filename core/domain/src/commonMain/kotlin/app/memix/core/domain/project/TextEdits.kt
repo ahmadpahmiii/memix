@@ -94,9 +94,9 @@ fun Project.textsAt(atUs: Long): List<TextItem> =
  * The center stays on the canvas (0…1), the scale within [CaptionCatalog.MIN_SCALE]…[CaptionCatalog.MAX_SCALE], and the
  * turn within −180°…180°.
  */
-fun Transform.clampedForText(): Transform = Transform(
-    centerX = centerX.coerceIn(0f, 1f),
-    centerY = centerY.coerceIn(0f, 1f),
+fun Transform.clampedForText(centerRange: ClosedFloatingPointRange<Float> = 0f..1f): Transform = Transform(
+    centerX = centerX.coerceIn(centerRange),
+    centerY = centerY.coerceIn(centerRange),
     scale = scale.coerceIn(CaptionCatalog.MIN_SCALE, CaptionCatalog.MAX_SCALE),
     rotationDegrees = normalizedDegrees(rotationDegrees),
 )

@@ -261,6 +261,16 @@ enum class EditorTool(val eventValue: String?) {
     TRANSFORM_TEXT("transform_text"),
 
     /**
+     * P4-02b: keyframes (PRD, PM 17 Nov 2026), once per committed step. `keyframe_add` is the Add tool or any edit that creates a
+     * keyframe; an edit that only updates one logs its own id. No parameters.
+     */
+    KEYFRAME_ADD("keyframe_add"),
+    KEYFRAME_REMOVE("keyframe_remove"),
+    KEYFRAME_MOVE("keyframe_move"),
+    KEYFRAME_EASING("keyframe_easing"),
+    KEYFRAME_CLEAR("keyframe_clear"),
+
+    /**
      * P1-11: the Canvas panel (PM, 20 Oct), each with a `value`. Fit and Fill are one event, `canvas_fit` with `value`
      * `fit` or `fill`, but two entries, so the undo history can say "Undo: Fill".
      */

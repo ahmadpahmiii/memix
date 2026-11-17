@@ -51,7 +51,11 @@ import org.jetbrains.compose.resources.stringResource
 
 /** The two-tone selection frame around [target], following its gesture. Fills the stage it is placed on. */
 @Composable
-fun BoxScope.LayerSelectionFrame(state: LayerStageState, target: GestureTarget, canvasWidthPx: Int) {
+fun BoxScope.LayerSelectionFrame(state: LayerStageState, target: GestureTarget, canvasWidthPx: Int) = LayerSelectionFrame(state, { target }, canvasWidthPx)
+
+/** The same, for a layer whose place changes with time: [targetOf] is read while drawing, so the frame follows it without recomposing. */
+@Composable
+fun BoxScope.LayerSelectionFrame(state: LayerStageState, targetOf: () -> GestureTarget, canvasWidthPx: Int) {
     val density = LocalDensity.current
     val outsetPx = with(density) { MemixSpacing.space1.toPx() }
     val selectionPx = with(density) { MemixStroke.strokeSelection.toPx() }
@@ -59,6 +63,7 @@ fun BoxScope.LayerSelectionFrame(state: LayerStageState, target: GestureTarget, 
     Spacer(
         Modifier.matchParentSize().drawBehind {
             // Read here, so a gesture frame redraws the frame without recomposing.
+            val target = targetOf()
             val transform = state.gesture?.takeIf { it.layerId == target.id }?.transform ?: target.transform
             drawTwoToneFrame(target.boxIn(state.frame, canvasWidthPx, transform), outsetPx, selectionPx, hairlinePx)
         },
@@ -82,7 +87,11 @@ fun DrawScope.drawTwoToneFrame(box: LayerBox, outset: Float, selectionWidth: Flo
 
 // The scale-and-rotate handle: drag-only, so it's hidden from accessibility services; the Position panel does the same.
 @Composable
-fun BoxScope.LayerTurnHandle(state: LayerStageState, target: GestureTarget, canvasWidthPx: Int) {
+fun BoxScope.LayerTurnHandle(state: LayerStageState, target: GestureTarget, canvasWidthPx: Int) = LayerTurnHandle(state, { target }, canvasWidthPx)
+
+/** The same, for a layer whose place changes with time: [targetOf] is read while placing. */
+@Composable
+fun BoxScope.LayerTurnHandle(state: LayerStageState, targetOf: () -> GestureTarget, canvasWidthPx: Int) {
     val density = LocalDensity.current
     val outsetPx = with(density) { MemixSpacing.space1.toPx() }
     val handlePx = with(density) { MemixSize.canvasHandleSize.toPx() }
@@ -90,6 +99,7 @@ fun BoxScope.LayerTurnHandle(state: LayerStageState, target: GestureTarget, canv
         Modifier
             // Placed from the gesture's transform, so it follows the finger without recomposing.
             .offset {
+                val target = targetOf()
                 val transform = state.gesture?.takeIf { it.layerId == target.id }?.transform ?: target.transform
                 val box = target.boxIn(state.frame, canvasWidthPx, transform)
                 val center = handleCenterOf(box, state.stageWidth, state.stageHeight, outsetPx, if (target.keepsHandleOnStage) handlePx / 2 else 0f)

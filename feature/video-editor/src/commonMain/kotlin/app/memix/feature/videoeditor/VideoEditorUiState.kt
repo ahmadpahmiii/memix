@@ -140,6 +140,8 @@ data class VideoEditorUiState(
     val hiddenOverlayId: String? = null,
     /** The pictures the stand-in draws overlays with, once the draft has opened. Compared by identity. */
     val overlayFrames: OverlayFrames? = null,
+    /** The keyframe bar of the selected item (P4-02b), or null when it isn't open; it replaces the tool bar. */
+    val keyframeBar: KeyframeBarUi? = null,
     /** The thumbnail tiles of the timeline's strips, once the draft has opened. Compared by identity. */
     val thumbnails: TimelineThumbnails? = null,
     /** The waveforms of the timeline's sounds, once the draft has opened. Compared by identity. */
@@ -281,11 +283,11 @@ data class SoundsSheetUi(val isOpen: Boolean = false)
  * that row belongs to the main track); sounds read "This sound".
  */
 @Immutable
-data class VolumePanelUi(val itemId: String, val volume: Float, val isVideoClip: Boolean = false, val isOverlay: Boolean = false)
+data class VolumePanelUi(val itemId: String, val volume: Float, val isVideoClip: Boolean = false, val isOverlay: Boolean = false, val keyed: Boolean = false)
 
-/** The Position, Opacity or Layer order [panel] of overlay [itemId]; [opacity] follows the slider while it moves (1 = fully drawn). */
+/** The Position, Opacity or Layer order [panel] of overlay [itemId]; [opacity] follows the slider while it moves (1 = fully drawn); [keyed]: the overlay has keyframes, so the panel says so and its ranges widen (P4-02b). */
 @Immutable
-data class OverlayPanelUi(val panel: OverlayPanel, val itemId: String, val opacity: Float)
+data class OverlayPanelUi(val panel: OverlayPanel, val itemId: String, val opacity: Float, val keyed: Boolean = false)
 
 /**
  * The Audio effects panel of sound [itemId] (spec P3-09): the open [tab] (kept for the visit), and the [effects] as the sliders
@@ -428,6 +430,11 @@ enum class FocusTarget {
     /** The selected overlay's Opacity and Layer order tools, after their panels close. */
     OPACITY_TOOL,
     LAYER_ORDER_TOOL,
+
+    /** The selected item's Keyframes tool (after the keyframe bar closes) and the bar's Add keyframe tool and Easing tool (P4-02b). */
+    KEYFRAMES_TOOL,
+    ADD_KEYFRAME_TOOL,
+    EASING_TOOL,
 }
 
 /** Why a tool explains instead of acting (spec P1-06 → Clip tool bar: tools stay enabled and explain on tap). */
@@ -464,6 +471,16 @@ enum class Explanation {
     OVERLAY_EDGE,
     LAYER_ORDER_FRONT,
     LAYER_ORDER_BACK,
+
+    /** Keyframes (P4-02b): the limit, Add outside the item, Previous or Next with none that way, Easing with nothing to ease, Move here with nothing selected or blocked. */
+    KEYFRAME_MAX,
+    KEYFRAME_OUTSIDE,
+    KEYFRAME_NONE_PREVIOUS,
+    KEYFRAME_NONE_NEXT,
+    EASING_NONE,
+    EASING_LAST,
+    KEYFRAME_MOVE_NONE,
+    KEYFRAME_MOVE_BLOCKED,
 
     /** Custom ratio limits (P1-11): past 2.39:1 either way, below 1, above 99. */
     CANVAS_WIDEST,
@@ -518,6 +535,20 @@ sealed interface ToastMessage {
 
     /** When overlay videos are left out because the phone can't play that many at once (P4-01b); once for each new set. */
     data object OverlaysSkipped : ToastMessage
+
+    /** A keyframe was made by an edit, at [atUs] (2 s); or the first one of this item this visit (4 s, [KeyframesOn]). */
+    data class KeyframeAdded(val atUs: Long) : ToastMessage
+
+    data object KeyframesOn : ToastMessage
+
+    /** Spoken only, after Previous, Next or a tap picked keyframe number [position] of [count]: "Keyframe 2 of 3, at 0:02.0, Smooth". */
+    data class KeyframePicked(val position: Int, val count: Int, val atUs: Long, val easing: app.memix.core.model.project.Easing) : ToastMessage
+
+    /** Spoken only, after Remove keyframe. */
+    data object KeyframeRemoved : ToastMessage
+
+    /** Spoken only, after a keyframe's easing changed: its name. */
+    data class EasingChanged(val easing: app.memix.core.model.project.Easing) : ToastMessage
 
     /** Spoken only, after an overlay landed. */
     data object OverlayAdded : ToastMessage
@@ -748,6 +779,42 @@ sealed interface VideoEditorIntent {
 
     /** The picker handed over a sound with its file ready (a row's Add block, or "Add to video"): it lands at the playhead. */
     data class AddSound(val sound: PickedSound) : VideoEditorIntent
+
+    /** The Keyframes tool of the selected item: opens the keyframe bar (P4-02b). */
+    data object KeyframesTool : VideoEditorIntent
+
+    /** The keyframe bar's Close, or system back with it open. */
+    data object CloseKeyframeBar : VideoEditorIntent
+
+    data object KeyframePrevious : VideoEditorIntent
+
+    data object KeyframeNext : VideoEditorIntent
+
+    /** The bar's Add keyframe / Remove keyframe tool: one tool, which removes when the playhead is on a keyframe. */
+    data object KeyframeToggle : VideoEditorIntent
+
+    data object KeyframeEasingTool : VideoEditorIntent
+
+    data object CloseEasingPanel : VideoEditorIntent
+
+    /** An Easing tile: one step if it changes the easing, and the segment plays either way. */
+    data class KeyframeEasingChosen(val easing: app.memix.core.model.project.Easing) : VideoEditorIntent
+
+    /** Move here in the keyframe bar: the selected keyframe goes to the playhead. */
+    data object KeyframeMoveHere : VideoEditorIntent
+
+    data object KeyframeClear : VideoEditorIntent
+
+    /** A tap on the diamond at [timeUs] (the timeline moves the playhead): it is the selected keyframe. */
+    data class KeyframeSelected(val timeUs: Long) : VideoEditorIntent
+
+    /** A diamond's drag released: the keyframe at [fromUs] goes to [toUs], one step. */
+    data class KeyframeMoved(val fromUs: Long, val toUs: Long) : VideoEditorIntent
+
+    /** A diamond's screen-reader actions: Remove and Easing for the keyframe at [timeUs]. */
+    data class KeyframeRemoveAt(val timeUs: Long) : VideoEditorIntent
+
+    data class KeyframeEasingAt(val timeUs: Long) : VideoEditorIntent
 
     /** The Volume tool of the selected sound: opens the Volume panel. */
     data object VolumeTool : VideoEditorIntent

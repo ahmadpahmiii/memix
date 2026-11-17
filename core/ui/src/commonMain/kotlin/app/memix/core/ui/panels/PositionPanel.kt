@@ -61,31 +61,31 @@ val PositionStep.limit: PositionLimit
  * [this] transform after [repeats] taps of [step], sizes taken from [ladder]; null when the first tap already hits a
  * limit. A hold that reaches a limit midway stops there.
  */
-fun Transform.steppedBy(step: PositionStep, repeats: Int, ladder: SizeLadder): Transform? {
+fun Transform.steppedBy(step: PositionStep, repeats: Int, ladder: SizeLadder, centerRange: ClosedFloatingPointRange<Float> = 0f..1f): Transform? {
     var current = this
     repeat(repeats) { index ->
-        val next = current.steppedOnce(step, ladder)
+        val next = current.steppedOnce(step, ladder, centerRange)
         if (next == null) return if (index == 0) null else current
         current = next
     }
     return current
 }
 
-private fun Transform.steppedOnce(step: PositionStep, ladder: SizeLadder): Transform? = when (step) {
+private fun Transform.steppedOnce(step: PositionStep, ladder: SizeLadder, range: ClosedFloatingPointRange<Float>): Transform? = when (step) {
     PositionStep.SMALLER -> ladder.below(scale)?.let { copy(scale = it) }
     PositionStep.BIGGER -> ladder.above(scale)?.let { copy(scale = it) }
     PositionStep.ROTATE_LEFT -> copy(rotationDegrees = nextRotation(rotationDegrees, clockwise = false))
     PositionStep.ROTATE_RIGHT -> copy(rotationDegrees = nextRotation(rotationDegrees, clockwise = true))
-    PositionStep.MOVE_LEFT -> movedBy(-MOVE_STEP, 0f)
-    PositionStep.MOVE_RIGHT -> movedBy(MOVE_STEP, 0f)
-    PositionStep.MOVE_UP -> movedBy(0f, -MOVE_STEP)
-    PositionStep.MOVE_DOWN -> movedBy(0f, MOVE_STEP)
+    PositionStep.MOVE_LEFT -> movedBy(-MOVE_STEP, 0f, range)
+    PositionStep.MOVE_RIGHT -> movedBy(MOVE_STEP, 0f, range)
+    PositionStep.MOVE_UP -> movedBy(0f, -MOVE_STEP, range)
+    PositionStep.MOVE_DOWN -> movedBy(0f, MOVE_STEP, range)
     PositionStep.CENTER -> copy(centerX = CENTER, centerY = CENTER)
 }
 
 // Null when the center is already at that edge: the layer can't go further.
-private fun Transform.movedBy(dx: Float, dy: Float): Transform? {
-    val moved = copy(centerX = (centerX + dx).coerceIn(0f, 1f), centerY = (centerY + dy).coerceIn(0f, 1f))
+private fun Transform.movedBy(dx: Float, dy: Float, range: ClosedFloatingPointRange<Float>): Transform? {
+    val moved = copy(centerX = (centerX + dx).coerceIn(range), centerY = (centerY + dy).coerceIn(range))
     return if (moved == this) null else moved
 }
 

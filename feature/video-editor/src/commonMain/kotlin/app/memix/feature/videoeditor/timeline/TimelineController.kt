@@ -10,6 +10,8 @@ import app.memix.core.designsystem.MemixMotion
 import app.memix.core.domain.project.TrimEdge
 import app.memix.core.domain.project.TrimRange
 import app.memix.core.model.project.TrackKind
+import app.memix.feature.videoeditor.KeyframeBarUi
+import app.memix.feature.videoeditor.KeyframeMarkerUi
 import app.memix.feature.videoeditor.VideoEditorIntent
 import kotlin.math.roundToLong
 import kotlinx.coroutines.CoroutineScope
@@ -28,6 +30,12 @@ internal class TimelineController(val state: TimelineState, private val scope: C
             // A released trim or move keeps its drawn place until the edited timeline arrives, so nothing jumps back.
             if (field !== value && state.trim?.isReleased == true) state.trim = null
             if (field !== value && state.move?.isReleased == true) state.move = null
+            field = value
+        }
+    /** The selected item's keyframe bar, a released diamond keeps its drawn place until the edited bar arrives. */
+    var keyframeBar: KeyframeBarUi? = null
+        set(value) {
+            if (field !== value && state.keyframeDrag?.isReleased == true) state.keyframeDrag = null
             field = value
         }
     var onIntent: (VideoEditorIntent) -> Unit = {}
@@ -175,6 +183,50 @@ internal class TimelineController(val state: TimelineState, private val scope: C
         edgeScroll?.cancel()
         state.trim = null
         onIntent(VideoEditorIntent.TrimCancelled(settleInside(timeline.lengthUs)))
+    }
+
+    /** A tap on a diamond: the playhead goes there and the keyframe is selected (spec P4-02b → On the timeline). */
+    fun tapKeyframe(marker: KeyframeMarkerUi) {
+        seekAnimated(marker.timeUs)
+        onIntent(VideoEditorIntent.KeyframeSelected(marker.timeUs))
+    }
+
+    /** A finger took [marker]'s diamond of [bar] in [row] and moved: the drag starts, with the pick-up buzz. */
+    fun startKeyframeDrag(bar: KeyframeBarUi, marker: KeyframeMarkerUi, row: LaneRow, fingerX: Float) {
+        val pxPerUs = pxPerUs(state.dpPerSecond, density)
+        if (pxPerUs <= 0f) return
+        val markerX = xOf(marker.timeUs, state.playheadUs, state.widthPx / 2f, pxPerUs)
+        state.keyframeDrag = KeyframeDrag(marker, row, keyframeSnapTargets(bar, marker), grabOffsetPx = markerX - fingerX)
+        haptics?.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
+
+    /** The finger moved to [fingerX]: the diamond follows, snapping and stopping at its neighbors. */
+    fun dragKeyframe(fingerX: Float) {
+        val drag = state.keyframeDrag?.takeUnless { it.isReleased } ?: return
+        val pxPerUs = pxPerUs(state.dpPerSecond, density)
+        if (pxPerUs <= 0f) return
+        val fingerTimeUs = timeAt(fingerX + drag.grabOffsetPx, state.playheadUs, state.widthPx / 2f, pxPerUs)
+        val engaged = drag.moveTo(fingerTimeUs, state.playheadUs, snapRangeUs = (snapDistancePx / pxPerUs).roundToLong())
+        // One tick per snap and per stop (spec P4-02b → On the timeline).
+        if (engaged) haptics?.performHapticFeedback(HapticFeedbackType.SegmentTick)
+    }
+
+    /** The finger lifted: the move is committed as one step, unless the diamond is where it began. */
+    fun endKeyframeDrag() {
+        val drag = state.keyframeDrag?.takeUnless { it.isReleased } ?: return
+        drag.isReleased = true
+        if (drag.timeUs != drag.marker.timeUs) onIntent(VideoEditorIntent.KeyframeMoved(drag.marker.timeUs, drag.timeUs))
+        // A move that changed nothing brings no new timeline; let it go after two frames.
+        scope.launch {
+            repeat(FRAMES_TO_WAIT_FOR_EDIT) { withFrameNanos { } }
+            if (state.keyframeDrag === drag) state.keyframeDrag = null
+        }
+    }
+
+    /** System back or a lost gesture: the diamond goes back and nothing is committed. */
+    fun cancelKeyframeDrag() {
+        state.keyframeDrag?.takeUnless { it.isReleased } ?: return
+        state.keyframeDrag = null
     }
 
     /**

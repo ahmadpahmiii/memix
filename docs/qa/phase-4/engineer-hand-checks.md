@@ -115,7 +115,7 @@ Nothing here was run on a device or emulator (this machine has neither). The Gra
 
 ## P4-02a · keyframes, model and interpolation
 
-Spec of the editor half: `docs/ux/specs/P4-02b-keyframes.md`. Design notes: `docs/TECHNICAL_DESIGN.md` → Keyframes. Reference renders: `docs/qa/references/P4-02-keyframes/`. There is no keyframe UI yet (P4-02b): the draft `keyframe-check` is opened by a debug hook (`installDebug` or `installBenchmark`; the export hooks need debug). Nothing here has run on a phone or emulator.
+Spec of the editor half: `docs/ux/specs/P4-02b-keyframes.md`. Design notes: `docs/TECHNICAL_DESIGN.md` → Keyframes. Reference renders: `docs/qa/references/P4-02-keyframes/`. The keyframe UI is P4-02b (below): the draft `keyframe-check` is opened by a debug hook (`installDebug` or `installBenchmark`; the export hooks need debug). Nothing here has run on a phone or emulator.
 
 ### 0. Test media
 
@@ -169,3 +169,31 @@ ffmpeg -v error -y -i export.mp4 -vn -af "astats=metadata=1:reset=24000,ametadat
 - **Main clip's framing keys.** A keyed main clip's position, size and turn aren't drawn until P4-16 (logcat line "Not rendered yet: keyframed position, size and turn of main clip"); its volume plays.
 - **Sticker keys.** Stickers in a video are drawn from P4-12 on; their keyframes are only stored.
 - **Old drafts.** Open any draft saved before this build: it opens and looks the same. A draft saved from here opens in the previous build? No: schema 15 says "Needs a newer version of Memix" there, as designed.
+
+## P4-02b · keyframes, editor
+
+Spec: `docs/ux/specs/P4-02b-keyframes.md`. Notes: `docs/TECHNICAL_DESIGN.md` → Keyframes, editor half. Screenshots (desktop renders, not a phone): `docs/ux/reviews/P4-02b/`. Use the `keyframe-check` draft (P4-02a section) on the owner's phone, release or benchmark build. Nothing here has run on a phone or emulator.
+
+### 1. What was checked without a device
+A JVM harness (not in the repo; it compiles the real feature module on the JVM with a fake edit host): 43 checks, all pass. Covered: add, remove, move (Move here and a drag release), Easing and Clear all are one undo step each and Undo takes exactly that; Previous and Next with and without a neighbor; the toasts for Add outside, Move blocked, nothing selected, Easing with none or on the last; the first edit with the bar open makes two keyframes in one step, named after the edit and logged `keyframe_add`; an edit on a keyframe updates it and logs its own id; the static fields (`transform`, `opacity`, `volume`) are never written while keyed (overlay gesture, Position step, Opacity to 0%, sound Volume, caption gesture); a keyed center may leave the frame; which properties each item's bar offers. Desktop renders of the bars, marker row, Easing panel, notes, status lines, es and hi, 200% font.
+
+### 2. Add, move, delete, each one undo step (the Done when)
+1. Open `keyframe-check`, tap the overlay, scroll the bar to Keyframes, tap it. The bar replaces the tool bar; the overlay's lane grows a marker row (lanes slide 200 ms); at 360 x 640 the lanes scroll to show it.
+2. Scrub to 1 s, tap Add keyframe: a diamond appears within 100 ms, white and large; the tool now reads Remove keyframe in blue. Undo once: it goes.
+3. Scrub to 3 s, drag a diamond: the time bubble shows, snaps tick at the playhead and other keyframes, it stops one frame before a neighbor, one buzz at pick-up. Release, Undo once: it goes back.
+4. Select a diamond (tap, Previous or Next), scrub elsewhere, Move here: one step. Remove keyframe on a keyframe: one step. Clear all: one step, Undo brings all back.
+5. Auto-key: Keyframes, scrub to 1.5 s, drag the overlay on the stage: two diamonds (start and 1.5 s) and "Keyframes on..."; drag at 3 s: a third and "Keyframe added at 0:03.0". Undo takes the edit and its keyframes together. Play: the overlay glides.
+6. Opacity panel on a keyed overlay: the note, the slider reaches 0%; Position panel arrows move the overlay at the playhead; a sound clip's Volume at two times ducks it (listen).
+7. Easing: put the playhead on the first keyframe, Easing, tap each tile: the segment plays once and stops at the next keyframe (tap the stage to stop it); the tapped tile is one step; a tile already chosen only replays. Easing on the last keyframe or with none explains.
+8. Badge: close the bar, select another item: the keyed overlay wears a small diamond at its top-right corner.
+
+### 3. Numbers to take (release or benchmark, the owner's phone)
+- Janky frames below 5% for three 3 s drags of a keyed overlay on the stage (`dumpsys gfxinfo`). The stage follows the keyframes through a derived state, so a keyed overlay recomposes the stage per frame while playing: check this is smooth.
+- Time from the Add tap to the diamond on screen (under 100 ms).
+- LeakCanary: open the bar, add, drag a diamond, change easing, clear, close the editor, five times.
+
+### 4. Things that could not be verified
+- Everything on a phone: gestures, haptics, TalkBack (marker group and actions, announcements), reduce motion, 360 x 640 and 800 lanes.
+- The lanes' scroll-into-view when the bar opens, and the slide, are only seen in the renders as their end state.
+- Playing a segment from the Easing panel (seek, play, stop at the next keyframe).
+- Delegated: the diamond fade, the selected diamond's size animation, edge auto-scroll while dragging, the spoken new node after Previous or Next, and `explain_fit_keyed` (needs P4-16's per-clip Fit tool) are not built; see the TECHNICAL_DESIGN limits.

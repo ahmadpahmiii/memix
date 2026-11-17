@@ -109,7 +109,8 @@ internal fun AnimateLanes(motion: EditMotion, lanes: LaneLayout) {
     LaunchedEffect(lanes) {
         val before = motion.lastLanes
         motion.lastLanes = lanes
-        if (before == null || reduceMotion || before.rows.size == lanes.rows.size) return@LaunchedEffect
+        // A marker row opening or closing under a lane changes the lanes' height, and the lanes below slide with it.
+        if (before == null || reduceMotion || (before.rows.size == lanes.rows.size && before.heightPx == lanes.heightPx)) return@LaunchedEffect
         val shifts = HashMap<String, Float>()
         for (row in lanes.rows) {
             val old = before.rows.firstOrNull { it.track.id == row.track.id } ?: continue

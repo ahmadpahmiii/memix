@@ -31,7 +31,7 @@ Always measure release (or `benchmark`, which is minified by R8 like release sin
 
 - Virtualize: only compose clips in the visible time window (+1 screen of buffer).
 - Thumbnail strips decoded off the main thread at strip height, cached by (source, time bucket, height); waveforms precomputed once and cached.
-- Drag and trim update a lightweight in-memory state at frame rate; commit a new `Project` (undo step) on gesture end only.
+- Drag and trim update a lightweight in-memory state at frame rate; commit a new `Project` (undo step) on gesture end only. A keyframe diamond's drag is the same (`KeyframeDrag`, committed on release); the marker row and badges are drawn in the draw phase, and whether the playhead is on a keyframe is read in a derived state (P4-02b).
 
 ## Media (Android)
 

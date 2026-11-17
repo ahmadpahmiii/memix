@@ -12,6 +12,9 @@ import memix.core.designsystem.generated.resources.Res
 import memix.core.designsystem.generated.resources.ic_adjust
 import memix.core.designsystem.generated.resources.ic_arrow
 import memix.core.designsystem.generated.resources.ic_arrow_back
+import memix.core.designsystem.generated.resources.ic_arrow_left
+import memix.core.designsystem.generated.resources.ic_easing
+import memix.core.designsystem.generated.resources.ic_keyframe
 import memix.core.designsystem.generated.resources.ic_audio_effects
 import memix.core.designsystem.generated.resources.ic_blur
 import memix.core.designsystem.generated.resources.ic_bubble
@@ -84,6 +87,9 @@ object MemixIcons {
     val Adjust = Res.drawable.ic_adjust
     val Arrow = Res.drawable.ic_arrow
     val ArrowBack = Res.drawable.ic_arrow_back
+    val ArrowLeft = Res.drawable.ic_arrow_left
+    val Keyframe = Res.drawable.ic_keyframe
+    val Easing = Res.drawable.ic_easing
     val Blur = Res.drawable.ic_blur
     val Bubble = Res.drawable.ic_bubble
     val Check = Res.drawable.ic_check

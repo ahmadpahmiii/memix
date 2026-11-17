@@ -217,6 +217,13 @@ Part of every draft's look, so fixed; in `design/tokens.json` → `keyframes`. T
 | First run | The first auto-key shows `keyframe_on`; no coach mark | `keyframe_on` |
 | An old draft (before P4-02a) | No keyframes, as before | none |
 
+## Review amendments (17 Nov 2026, see `docs/ux/reviews/P4-02b/REVIEW.md`)
+- Opacity and Volume panels of a keyed item **pause playback on open** (replaces "readouts refresh 10 times a second"). Keyed Volume is not heard live while sliding (deferred, phone check).
+- The diamond's 120 ms fade-in, the selected-size animation and edge auto-scroll during a drag are **deferred** (polish); the Motion rows below describe the target.
+- Main photo clip: no Keyframes tool until P4-16; `explain_fit_keyed` is built with P4-16's Fit or Fill tool.
+- pt uses "cursor" for the playhead (the shipped word), not "posição atual". Keys folded into existing ones: `easing_title`, `edit_keyframe_add`, `edit_keyframe_remove`, `edit_keyframe_easing`, `a11y_keyframe_added`. New: `keyframe_select_node` ("Go to"), `a11y_keyframes_group`. Icon `arrow_left` added for Previous.
+- Must-fix: announce the selected keyframe (`a11y_keyframe_node`) after Previous, Next and a diamond tap.
+
 ## Motion
 | What | Motion | Reduce motion |
 | --- | --- | --- |

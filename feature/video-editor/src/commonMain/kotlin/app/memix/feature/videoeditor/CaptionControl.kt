@@ -15,6 +15,7 @@ import app.memix.core.model.project.CaptionCatalog
 import app.memix.core.model.project.CaptionBox
 import app.memix.core.model.project.CaptionShadow
 import app.memix.core.model.project.CaptionStyle
+import app.memix.core.model.project.KeyframeCatalog
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.Transform
 import app.memix.core.ui.text.TextEntryUi
@@ -108,7 +109,7 @@ internal class CaptionControl(private val host: EditorHost) {
     /** A Position panel tap, or a held arrow's release ([repeats] steps): one step, or an explanation at a limit. */
     fun step(step: PositionStep, repeats: Int) {
         val item = selectedText() ?: return
-        val stepped = item.transform.steppedBy(step, repeats, TEXT_SIZE_LADDER)
+        val stepped = placeNow(item).steppedBy(step, repeats, TEXT_SIZE_LADDER, centerRangeOf(item.id))
         if (stepped == null) return host.showToast(ToastMessage.Explain(explanationOf(step.limit)))
         val edit = if (step.changesPlace) VideoEdit.POSITION_TEXT else VideoEdit.TRANSFORM_TEXT
         if (!commitTransform(item, stepped, edit)) return
@@ -124,7 +125,7 @@ internal class CaptionControl(private val host: EditorHost) {
     /** A held Move arrow: the caption shows [repeats] steps along in the stand-in; the release commits. */
     fun stepHeld(step: PositionStep, repeats: Int) {
         val item = selectedText() ?: return
-        val stepped = item.transform.steppedBy(step, repeats, TEXT_SIZE_LADDER) ?: return
+        val stepped = placeNow(item).steppedBy(step, repeats, TEXT_SIZE_LADDER, centerRangeOf(item.id)) ?: return
         host.preview?.hideCaption(item.id)
         showStandIn(item.copy(transform = stepped), awaitingCommit = false)
     }
@@ -146,8 +147,9 @@ internal class CaptionControl(private val host: EditorHost) {
     /** The gesture ended at [transform]: "Position" when only the place changed, else "Size and rotation". */
     fun endGesture(itemId: String, transform: Transform) {
         val item = host.currentProject()?.textItem(itemId) ?: return
-        val clamped = transform.clampedForText()
-        val onlyMoved = clamped.scale == item.transform.scale && clamped.rotationDegrees == item.transform.rotationDegrees
+        val clamped = transform.clampedForText(centerRangeOf(itemId))
+        val before = placeNow(item)
+        val onlyMoved = clamped.scale == before.scale && clamped.rotationDegrees == before.rotationDegrees
         commitTransform(item, clamped, if (onlyMoved) VideoEdit.POSITION_TEXT else VideoEdit.TRANSFORM_TEXT)
     }
 
@@ -209,12 +211,19 @@ internal class CaptionControl(private val host: EditorHost) {
 
     // False when it changed nothing (no step).
     private fun commitTransform(item: TextItem, transform: Transform, edit: VideoEdit): Boolean {
-        if (!host.commit(edit) { it.setTextTransform(item.id, transform) }) {
+        val clamped = transform.clampedForText(centerRangeOf(item.id))
+        // A keyed item's every edit is a keyframe edit; the static setter would write fields its engine ignores (spec D4).
+        val recorded = if (host.routesThroughKeyframes(item.id)) {
+            host.commitLook(edit, item.id) { it.copy(centerX = clamped.centerX, centerY = clamped.centerY, scale = clamped.scale, rotationDegrees = transform.rotationDegrees) }
+        } else {
+            host.commit(edit) { it.setTextTransform(item.id, transform) }
+        }
+        if (!recorded) {
             clearStandIn()
             host.preview?.hideCaption(null)
             return false
         }
-        showCommittedStandIn(item.copy(transform = transform.clampedForText()))
+        showCommittedStandIn(item.copy(transform = clamped))
         return true
     }
 
@@ -253,6 +262,13 @@ internal class CaptionControl(private val host: EditorHost) {
         if (atUs >= item.startUs && atUs < item.startUs + item.durationUs) return
         host.preview?.seekTo(item.startUs)
     }
+
+    // The caption's place under the playhead: its own, or the keyframes' (spec P4-02b).
+    private fun placeNow(item: TextItem): Transform = host.lookNow(item.id)?.transform ?: item.transform
+
+    // A keyed item may leave the frame by half a frame (spec Question 1).
+    private fun centerRangeOf(itemId: String): ClosedFloatingPointRange<Float> =
+        if (host.routesThroughKeyframes(itemId)) KeyframeCatalog.CENTER_RANGE else 0f..1f
 
     private fun selectedText(): TextItem? {
         val itemId = host.uiState.selectedItemId ?: return null

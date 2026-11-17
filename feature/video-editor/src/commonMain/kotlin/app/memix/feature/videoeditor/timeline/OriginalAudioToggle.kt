@@ -80,7 +80,7 @@ internal fun BoxScope.OriginalAudioToggle(
                 .offset {
                     val pxPerUs = pxPerUs(state.dpPerSecond, density.density)
                     val tileRight = xOf(0, state.playheadUs, state.widthPx / 2f, pxPerUs) - gapPx
-                    val top = mainRow.topPx + (mainRow.heightPx - targetPx) / 2 - laneScroll.value
+                    val top = mainRow.topPx + (mainRow.contentHeightPx - targetPx) / 2 - laneScroll.value
                     IntOffset((tileRight - tilePx - (targetPx - tilePx) / 2).roundToInt(), top.roundToInt())
                 }
                 .size(MemixSize.touchTarget)

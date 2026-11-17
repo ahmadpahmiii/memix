@@ -33,6 +33,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -111,6 +112,7 @@ import app.memix.core.ui.layers.LayerStageState
 import app.memix.core.ui.layers.LayerTouchSizes
 import app.memix.core.ui.layers.detectLayerGestures
 import app.memix.core.ui.appLanguageCode
+import app.memix.core.ui.layers.GestureTarget
 import app.memix.core.ui.spokenTime
 import app.memix.core.ui.spokenTimeOf
 import app.memix.feature.videoeditor.canvas.CanvasPanel
@@ -139,6 +141,8 @@ import app.memix.core.ui.scene.SceneThumbnails
 import app.memix.feature.mediaimport.ImportSheet
 import app.memix.feature.mediaimport.ImportWording
 import app.memix.feature.mediaimport.showsSheet
+import app.memix.feature.videoeditor.keyframes.EasingPanel
+import app.memix.feature.videoeditor.keyframes.easingNameOf
 import app.memix.feature.videoeditor.timeline.Timeline
 import app.memix.feature.videoeditor.timeline.TimelineThumbnails
 import app.memix.feature.videoeditor.timeline.spokenName
@@ -146,12 +150,15 @@ import app.memix.feature.videoeditor.timeline.timelineMinHeight
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.sample
 import memix.feature.video_editor.generated.resources.Res
 import memix.core.ui.generated.resources.Res as UiRes
 import memix.core.ui.generated.resources.a11y_canvas_image_removed
@@ -265,9 +272,27 @@ import memix.feature.video_editor.generated.resources.export_fps
 import memix.core.ui.generated.resources.export_stopped_toast
 import memix.core.ui.generated.resources.position_size_value
 import memix.core.ui.generated.resources.sound_dl_storage_toast
+import memix.feature.video_editor.generated.resources.a11y_keyframe_node
+import memix.feature.video_editor.generated.resources.a11y_keyframe_removed
+import memix.feature.video_editor.generated.resources.edit_keyframe_clear
+import memix.feature.video_editor.generated.resources.edit_keyframe_move
+import memix.feature.video_editor.generated.resources.explain_easing_last
+import memix.feature.video_editor.generated.resources.explain_easing_none
+import memix.feature.video_editor.generated.resources.explain_keyframe_max
+import memix.feature.video_editor.generated.resources.explain_keyframe_move_blocked
+import memix.feature.video_editor.generated.resources.explain_keyframe_move_none
+import memix.feature.video_editor.generated.resources.explain_keyframe_none_next
+import memix.feature.video_editor.generated.resources.explain_keyframe_none_prev
+import memix.feature.video_editor.generated.resources.explain_keyframe_outside
+import memix.feature.video_editor.generated.resources.keyframe_add
+import memix.feature.video_editor.generated.resources.keyframe_added
+import memix.feature.video_editor.generated.resources.keyframe_easing
+import memix.feature.video_editor.generated.resources.keyframe_on
+import memix.feature.video_editor.generated.resources.keyframe_remove
 import memix.feature.video_editor.generated.resources.toast_export_fps_lowered
 import memix.feature.video_editor.generated.resources.toast_export_res_lowered
 import memix.feature.video_editor.generated.resources.use_sound_missing_toast
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -316,7 +341,7 @@ fun VideoEditorScreen(
     val freeUpSpaceForSave = remember(onFreeUpSpace) { { onFreeUpSpace(ImportMediaUseCase.HEADROOM_BYTES) } }
     val focusTargets = remember { EditorFocusTargets() }
     val backgroundThumbnails = rememberBackgroundThumbnails(imageSource, state.canvas?.background, onIntent)
-    val panelOpen = state.volumePanel != null || state.audioEffects != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null || state.overlayPanel != null
+    val panelOpen = state.volumePanel != null || state.audioEffects != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null || state.overlayPanel != null || state.keyframeBar?.easingOpen == true
     val sheetOpen = state.sounds.isOpen || state.unsavedSheetOpen || state.exportSheet != null || importSheetShown(state.mediaImport)
     ReturnFocus(state.returnFocus, focusTargets)
     // Typing (spec P1-10 → Typing): the field's words live here, so only the field and the stand-in redraw per key.
@@ -353,6 +378,7 @@ fun VideoEditorScreen(
                         Timeline(
                             state.timeline,
                             state.selectedItemId,
+                            state.keyframeBar,
                             state.trimRanges,
                             state.reorder,
                             state.landed,
@@ -369,16 +395,19 @@ fun VideoEditorScreen(
                 },
                 tools = {
                     Box(Modifier.coveredByModal(panelOpen), propagateMinConstraints = true) {
-                        ToolBarRegion(state.clipTools, state.reorder, state.timeline.isEmpty, selectedIsMissing(state), focusTargets, onIntent)
+                        ToolBarRegion(state.clipTools, state.reorder, state.keyframeBar, state.preview, state.timeline.isEmpty, selectedIsMissing(state), focusTargets, onIntent)
                     }
                 },
                 panel = {
                     VolumePanel(state.volumePanel, state.originalAudio?.muted == true, onIntent, Modifier.fillMaxSize())
                     AudioEffectsPanel(state.audioEffects, onIntent, Modifier.fillMaxSize())
                     VoiceoverPanel(state.voiceover, microphone, onIntent, Modifier.fillMaxSize())
+                    // A keyed item's Position panel reads its place under the playhead, sampled at most ten times a second and only for a keyed item.
+                    val panelPlayhead = rememberSampledPlayhead(state.preview, enabled = selectedIsKeyed(state))
                     val panelCaption = selectedCaption(state)
-                    TextPanels(state.textPanel, panelCaption?.style, panelCaption?.transform, onIntent, Modifier.fillMaxSize())
-                    OverlayPanels(state.overlayPanel, selectedOverlayTransform(state), onIntent, Modifier.fillMaxSize())
+                    TextPanels(state.textPanel, panelCaption?.style, panelCaption?.let { caption -> { timeUs: Long -> caption.atTime(timeUs).transform } }, panelPlayhead, panelCaption != null && (panelCaption.keyframes.isNotEmpty() || state.keyframeBar?.itemId == panelCaption.itemId), onIntent, Modifier.fillMaxSize())
+                    EasingPanel(state.keyframeBar, onIntent, Modifier.fillMaxSize())
+                    OverlayPanels(state.overlayPanel, { timeUs -> selectedOverlayTransform(state, timeUs) }, panelPlayhead, onIntent, Modifier.fillMaxSize())
                     CanvasPanel(state.canvasPanel, state.canvas, backgroundThumbnails, onIntent, Modifier.fillMaxSize())
                 },
                 entryBar = entry?.let { { TextEntryBar(it, entryField, onChanged = { text -> onIntent(VideoEditorIntent.TextEntryChanged(text)) }, onDone = { onIntent(VideoEditorIntent.TextEntryDone) }) } },
@@ -597,6 +626,9 @@ private fun PreviewStage(
         Modifier
     }
     val visibleCaptions = rememberVisibleCaptions(state.captions, state.preview)
+    // A keyed overlay or caption follows its keyframes under the playhead: read in draw and layout lambdas only, never in composition.
+    val playheadState = state.preview?.positionUs?.collectAsState()
+    val playheadUs: () -> Long = remember(playheadState) { { playheadState?.value ?: 0L } }
     // Overlays left out of the preview are on their lane only: no frame, handle, touch area, node or picture on the stage.
     val stageOverlays = remember(state.overlays, state.skippedOverlayIds) { state.overlays.filter { it.itemId !in state.skippedOverlayIds }.toImmutableList() }
     val visibleOverlays = rememberVisibleOverlays(stageOverlays, state.preview, state.thumbnails)
@@ -612,7 +644,7 @@ private fun PreviewStage(
                 .matchParentSize()
                 .then(playOnTap)
                 // Inside the stage's tap, so a touch on a caption is the caption's (spec P1-10 → On the preview).
-                .stageGestures(gesturesOn, captionLayer, visibleOverlays, visibleCaptions, state, onIntent)
+                .stageGestures(gesturesOn, captionLayer, visibleOverlays, visibleCaptions, playheadUs, state, onIntent)
                 .clearAndSetSemantics { contentDescription = previewLabel },
         ) {
             if (canvas != null) {
@@ -645,6 +677,7 @@ private fun PreviewStage(
                 state.preview,
                 focusTargets.selectedOverlay,
                 interactive = state.canvasPanel == null && state.textEntry == null,
+                playheadUs = playheadUs,
                 onIntent = onIntent,
             )
             CaptionLayer(
@@ -659,6 +692,7 @@ private fun PreviewStage(
                 captionStandIn,
                 focusTargets.selectedCaption,
                 interactive = state.canvasPanel == null,
+                playheadUs = playheadUs,
                 onIntent = onIntent,
             )
             FrameMessage(state.stage, frame, onRetry = { onIntent(VideoEditorIntent.RetryPreview) })
@@ -731,6 +765,7 @@ private fun Modifier.stageGestures(
     layer: LayerStageState,
     overlays: State<List<OverlayUi>>,
     captions: State<List<CaptionUi>>,
+    playheadUs: () -> Long,
     state: VideoEditorUiState,
     onIntent: (VideoEditorIntent) -> Unit,
 ): Modifier = composed {
@@ -748,12 +783,21 @@ private fun Modifier.stageGestures(
     // pointerInput block started once would keep the first ones (a new overlay would not be hit).
     val currentOverlays by rememberUpdatedState(overlays)
     val currentCaptions by rememberUpdatedState(captions)
+    val currentPlayheadUs by rememberUpdatedState(playheadUs)
     val isOverlay = { layerId: String -> currentOverlays.value.any { it.itemId == layerId } }
     val events = remember { StageGestureEvents(isOverlay) { currentOnIntent(it) } }
     pointerInput(layer, sizes) {
         // Back to front: the overlays, then the captions in front of them, so a touch finds a caption first (spec P4-01b → Gestures).
-        detectLayerGestures(layer, { currentOverlays.value + currentCaptions.value }, { selected }, { canvasWidth }, sizes, { currentHaptics }, events)
+        detectLayerGestures(layer, { currentTargets(currentOverlays.value, currentCaptions.value, currentPlayheadUs()) }, { selected }, { canvasWidth }, sizes, { currentHaptics }, events)
     }
+}
+
+// Back to front, each as it looks under the playhead, so a gesture starts from where a keyed item is drawn.
+private fun currentTargets(overlays: List<OverlayUi>, captions: List<CaptionUi>, timeUs: Long): List<GestureTarget> {
+    val targets = ArrayList<GestureTarget>(overlays.size + captions.size)
+    for (overlay in overlays) targets += overlay.atTime(timeUs)
+    for (caption in captions) targets += caption.atTime(timeUs)
+    return targets
 }
 
 /** The stage's gestures as the video editor's intents for captions and overlays; [isOverlay] says which a layer id is. */
@@ -789,10 +833,32 @@ private fun CancelCaptionGestureOnBack(layer: LayerStageState, onIntent: (VideoE
     )
 }
 
+/** The preview's position, refreshed at most ten times a second while [enabled]; for panels that show a keyed item's values under the playhead. */
+@OptIn(FlowPreview::class)
+@Composable
+private fun rememberSampledPlayhead(preview: EditorPreview?, enabled: Boolean): State<Long> {
+    val sampled = remember(preview) { mutableLongStateOf(preview?.positionUs?.value ?: 0L) }
+    LaunchedEffect(preview, enabled) {
+        if (!enabled || preview == null) return@LaunchedEffect
+        sampled.longValue = preview.positionUs.value
+        preview.positionUs.sample(PANEL_REFRESH).collect { sampled.longValue = it }
+    }
+    return sampled
+}
+
+private val PANEL_REFRESH = 100.milliseconds
+
 /** The selected overlay's place as the Position panel shows it: a held arrow's or a commit's stand-in while one is on its way. */
-private fun selectedOverlayTransform(state: VideoEditorUiState): Transform? {
+private fun selectedIsKeyed(state: VideoEditorUiState): Boolean {
+    val itemId = state.selectedItemId ?: return false
+    if (state.keyframeBar?.itemId == itemId) return true
+    return state.overlays.firstOrNull { it.itemId == itemId }?.keyframes?.isNotEmpty() == true ||
+        state.captions.firstOrNull { it.itemId == itemId }?.keyframes?.isNotEmpty() == true
+}
+
+private fun selectedOverlayTransform(state: VideoEditorUiState, playheadUs: Long): Transform? {
     val itemId = state.selectedItemId ?: return null
-    return state.overlayStandIn?.takeIf { it.itemId == itemId }?.transform ?: state.overlays.firstOrNull { it.itemId == itemId }?.transform
+    return state.overlayStandIn?.takeIf { it.itemId == itemId }?.transform ?: state.overlays.firstOrNull { it.itemId == itemId }?.atTime(playheadUs)?.transform
 }
 
 /** The selected caption as its panels show it: the stand-in's values while a hold or a commit is on its way. */
@@ -915,14 +981,14 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
     LaunchedEffect(toast.id) {
         val baseMillis = when (toast.message) {
             is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition, is ToastMessage.SoundAdded,
-            is ToastMessage.MediaAdded, ToastMessage.OverlayAdded, is ToastMessage.OverlayOpacity, is ToastMessage.OverlayLayer, ToastMessage.NothingToReset, ToastMessage.AudioEffectsReset, is ToastMessage.VoiceoverAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned,
+            is ToastMessage.MediaAdded, ToastMessage.OverlayAdded, is ToastMessage.OverlayOpacity, is ToastMessage.OverlayLayer, ToastMessage.NothingToReset, ToastMessage.AudioEffectsReset, is ToastMessage.VoiceoverAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned, is ToastMessage.KeyframeAdded, is ToastMessage.KeyframePicked, ToastMessage.KeyframeRemoved, is ToastMessage.EasingChanged,
             -> WHAT_HAPPENED_TOAST_MILLIS
             is ToastMessage.RatioStepped, ToastMessage.ExportStopped, ToastMessage.BackgroundImageSet, ToastMessage.BackgroundImageRemoved -> WHAT_HAPPENED_TOAST_MILLIS
             is ToastMessage.ExportFrameRateLowered, is ToastMessage.ExportResolutionLowered, is ToastMessage.ExportCantDo,
             is ToastMessage.ExportShapeCantDo,
             -> EXPLANATION_TOAST_MILLIS
             // An unexpected move, so it stays as long as an explanation.
-            ToastMessage.MissingMedia, ToastMessage.MissingOverlay, ToastMessage.OverlaysSkipped, is ToastMessage.Explain, is ToastMessage.ReplaceTooShort, ToastMessage.LayersMoved, ToastMessage.SoundMovedLane, is ToastMessage.SoundPastEnd, is ToastMessage.BackgroundMissing -> EXPLANATION_TOAST_MILLIS
+            ToastMessage.KeyframesOn, ToastMessage.MissingMedia, ToastMessage.MissingOverlay, ToastMessage.OverlaysSkipped, is ToastMessage.Explain, is ToastMessage.ReplaceTooShort, ToastMessage.LayersMoved, ToastMessage.SoundMovedLane, is ToastMessage.SoundPastEnd, is ToastMessage.BackgroundMissing -> EXPLANATION_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
         onTimedOut(toast.id)
@@ -957,6 +1023,11 @@ private fun toastText(message: ToastMessage): String = when (message) {
     is ToastMessage.OverlayOpacity -> stringResource(Res.string.a11y_overlay_opacity, message.percent)
     is ToastMessage.OverlayLayer -> stringResource(UiRes.string.a11y_layer_order, message.layer, message.count)
     is ToastMessage.Explain -> explanationText(message.explanation)
+    is ToastMessage.KeyframeAdded -> stringResource(Res.string.keyframe_added, formatTimecode(message.atUs))
+    ToastMessage.KeyframesOn -> stringResource(Res.string.keyframe_on)
+    ToastMessage.KeyframeRemoved -> stringResource(Res.string.a11y_keyframe_removed)
+    is ToastMessage.KeyframePicked -> stringResource(Res.string.a11y_keyframe_node, message.position, message.count, spokenTime(message.atUs), stringResource(easingNameOf(message.easing)))
+    is ToastMessage.EasingChanged -> stringResource(easingNameOf(message.easing))
     is ToastMessage.Edited -> stringResource(UiRes.string.a11y_edit_on_item, editName(message.edit), spokenName(message.item))
     is ToastMessage.ReorderPosition -> stringResource(Res.string.a11y_reorder_position, message.position, message.count)
     is ToastMessage.SoundAdded -> soundAddedText(message.title, message.atUs)
@@ -1031,6 +1102,11 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.TRANSFORM_OVERLAY, VideoEdit.POSITION_OVERLAY -> UiRes.string.edit_transform_layer
         VideoEdit.OVERLAY_OPACITY -> UiRes.string.edit_layer_opacity
         VideoEdit.OVERLAY_ORDER -> Res.string.edit_overlay_order
+        VideoEdit.KEYFRAME_ADD -> Res.string.keyframe_add
+        VideoEdit.KEYFRAME_REMOVE -> Res.string.keyframe_remove
+        VideoEdit.KEYFRAME_MOVE -> Res.string.edit_keyframe_move
+        VideoEdit.KEYFRAME_EASING -> Res.string.keyframe_easing
+        VideoEdit.KEYFRAME_CLEAR -> Res.string.edit_keyframe_clear
         VideoEdit.CANVAS_RATIO -> UiRes.string.edit_canvas_ratio
         VideoEdit.CANVAS_FIT -> Res.string.edit_canvas_fit
         VideoEdit.CANVAS_FILL -> Res.string.edit_canvas_fill
@@ -1042,6 +1118,14 @@ private fun editName(edit: VideoEdit): String = stringResource(
 private fun explanationText(explanation: Explanation): String = stringResource(
     when (explanation) {
         Explanation.SPLIT_OUTSIDE -> Res.string.explain_split
+        Explanation.KEYFRAME_MAX -> Res.string.explain_keyframe_max
+        Explanation.KEYFRAME_OUTSIDE -> Res.string.explain_keyframe_outside
+        Explanation.KEYFRAME_NONE_PREVIOUS -> Res.string.explain_keyframe_none_prev
+        Explanation.KEYFRAME_NONE_NEXT -> Res.string.explain_keyframe_none_next
+        Explanation.EASING_NONE -> Res.string.explain_easing_none
+        Explanation.EASING_LAST -> Res.string.explain_easing_last
+        Explanation.KEYFRAME_MOVE_NONE -> Res.string.explain_keyframe_move_none
+        Explanation.KEYFRAME_MOVE_BLOCKED -> Res.string.explain_keyframe_move_blocked
         Explanation.LAST_CLIP -> Res.string.explain_last_clip
         Explanation.REORDER_ONE_CLIP -> Res.string.explain_reorder_one
         Explanation.ALREADY_FIRST -> Res.string.explain_reorder_first

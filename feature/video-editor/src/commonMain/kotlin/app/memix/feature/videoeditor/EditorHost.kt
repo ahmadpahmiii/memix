@@ -1,6 +1,9 @@
 package app.memix.feature.videoeditor
 
+import app.memix.core.domain.EditorTool
+import app.memix.core.domain.project.lookOf
 import app.memix.core.domain.video.PreviewSession
+import app.memix.core.model.project.ItemLook
 import app.memix.core.model.project.Project
 import app.memix.feature.videoeditor.timeline.ItemName
 import kotlinx.collections.immutable.ImmutableSet
@@ -33,7 +36,20 @@ internal interface EditorHost {
      * Applies [change] as one [edit] step and shows it at once; false when it changed nothing (no step, no `tool_use`).
      * [font] goes with `tool_use` for the caption tools that name one, [value] for the canvas tools.
      */
-    fun commit(edit: VideoEdit, pausesPlayback: Boolean = true, font: String? = null, value: String? = null, change: (Project) -> Project): Boolean
+    fun commit(edit: VideoEdit, pausesPlayback: Boolean = true, font: String? = null, value: String? = null, loggedAs: List<EditorTool>? = null, change: (Project) -> Project): Boolean
+
+    /** Whether every edit of [itemId] is a keyframe edit now: it has keyframes, or its keyframe bar is open (spec P4-02b → Auto-keying). */
+    fun routesThroughKeyframes(itemId: String): Boolean
+
+    /**
+     * Applies an edit of [itemId]'s look at the playhead as one [edit] step through the auto-keying `setLookAt`: [change] gets the look
+     * there and returns the wanted one. False when it changes nothing. Use it, never the static setters, for an item that
+     * [routesThroughKeyframes]; a step that makes a keyframe logs `keyframe_add` and says so.
+     */
+    fun commitLook(edit: VideoEdit, itemId: String, pausesPlayback: Boolean = true, change: (ItemLook) -> ItemLook): Boolean
+
+    /** The look of [itemId] under the playhead: interpolated for a keyed item, else its own. */
+    fun lookNow(itemId: String): ItemLook? = currentProject()?.lookOf(itemId, currentPositionUs())
 
     /** Selects [itemId] with its tools, or clears the selection when it's null or gone. */
     fun select(itemId: String?)

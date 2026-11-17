@@ -1,7 +1,10 @@
 package app.memix.feature.videoeditor
 
 import androidx.compose.runtime.Immutable
+import app.memix.core.domain.project.interpolatedLook
 import app.memix.core.domain.project.overlayBoxAtScaleOne
+import app.memix.core.model.project.Keyframe
+import app.memix.core.model.project.KeyframeCatalog
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaRef
@@ -12,6 +15,7 @@ import app.memix.core.model.project.TrackKind
 import app.memix.core.model.project.Transform
 import app.memix.core.ui.layers.GestureTarget
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 
 /**
@@ -31,16 +35,26 @@ data class OverlayUi(
     val media: MediaRef,
     /** Where the clip starts inside its source file; a photo has no time. */
     val trimInUs: Long,
+    /** The clip's keyframes (counted from its start); empty when it has none. The stage follows them under the playhead (P4-02b). */
+    val keyframes: ImmutableList<Keyframe> = persistentListOf(),
 ) : GestureTarget {
     override val id: String get() = itemId
     override val scaleRange: ClosedFloatingPointRange<Float> get() = OverlayCatalog.SCALE_RANGE
 
     // The video editor has no locked layers.
     override val locked: Boolean get() = false
+    override val centerRange: ClosedFloatingPointRange<Float> get() = if (keyframes.isEmpty()) 0f..1f else KeyframeCatalog.CENTER_RANGE
     override val snapsToEdges: Boolean get() = true
     override val keepsHandleOnStage: Boolean get() = true
 
     val isPhoto: Boolean get() = media.kind == MediaKind.IMAGE
+
+    /** This overlay as it looks at [timeUs]: its place and opacity from the keyframes when it has them. */
+    fun atTime(timeUs: Long): OverlayUi {
+        if (keyframes.isEmpty()) return this
+        val look = interpolatedLook(keyframes, timeUs - startUs) ?: return this
+        return copy(transform = look.transform, opacity = look.opacity)
+    }
 
     /** Whether it shows at [timeUs]. */
     fun isShownAt(timeUs: Long): Boolean = timeUs >= startUs && timeUs < endUs
@@ -65,7 +79,7 @@ internal fun Project.overlayUis(): ImmutableList<OverlayUi> {
         .mapNotNull { clip ->
             val box = overlayBoxAtScaleOne(clip, size)
             if (box.width <= 0f || box.height <= 0f) return@mapNotNull null
-            OverlayUi(clip.id, clip.startUs, clip.startUs + clip.durationUs, clip.transform, clip.opacity, box.width, box.height, clip.source, clip.trimInUs)
+            OverlayUi(clip.id, clip.startUs, clip.startUs + clip.durationUs, clip.transform, clip.opacity, box.width, box.height, clip.source, clip.trimInUs, clip.keyframes.toImmutableList())
         }
         .toImmutableList()
 }

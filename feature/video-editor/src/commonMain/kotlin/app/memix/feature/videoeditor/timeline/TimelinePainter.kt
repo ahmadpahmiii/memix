@@ -33,10 +33,14 @@ import app.memix.core.designsystem.MemixStroke
 import app.memix.core.designsystem.component.waveformDisplayLevel
 import app.memix.core.domain.project.LaneTarget
 import app.memix.core.domain.project.TrimEdge
+import app.memix.core.model.project.KeyframeCatalog
 import app.memix.core.model.project.MediaRef
+import app.memix.feature.videoeditor.KeyframeBarUi
+import app.memix.feature.videoeditor.KeyframeMarkerUi
 import app.memix.core.model.project.TrackKind
 import kotlin.math.ceil
 import kotlin.math.floor
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -89,6 +93,12 @@ internal class TimelinePainter(
     /** An overlay clip's tiles are squares `track-height` tall (28 dp, spec P4-01b → Overlay lanes): the main strip's pictures, drawn smaller. */
     val overlayTileSizePx: Int = with(density) { MemixSize.trackHeight.roundToPx() }
 
+    private val markerSizePx = with(density) { MemixSize.keyframeMarkerSize.toPx() }
+    private val markerSelectedSizePx = with(density) { MemixSize.keyframeMarkerSizeSelected.toPx() }
+    private val markerBandPx = with(density) { MemixSize.trackHeight.toPx() }
+    private val markerLinePx = with(density) { MemixStroke.strokeHairline.toPx() }
+    private val badgeMinClipWidthPx = with(density) { MemixSpacing.space8.toPx() }
+    private val diamondPath = Path()
     private val itemPath = Path()
     private val place = ItemPlace()
     private val layerPaint = Paint()
@@ -255,9 +265,12 @@ internal class TimelinePainter(
                 val hasBars = drawWaveform(row, item, startUs, endUs, trimInUs, left, right, place, skipPatch = hasPatch)
                 if (hasBars && hasPatch) drawRoundRect(color, Offset(patchLeft, patchTop), Size(patchRight - patchLeft, patchHeight), CornerRadius(cornerPx))
                 if (pastEnd) drawPastEndWash(row, left, right, place.endX)
-                labelOf(item)?.let { drawItemLabel(item.id, it, row, left, right, place.endX, MemixColors.onTrack) }
+                // The label is cut before the badge (spec P4-02b).
+                val labelRight = if (item.keyframeCount > 0 && right - left >= badgeMinClipWidthPx) right - 2 * (markerSizePx + 2 * markerLinePx) * HALF_DIAGONAL - badgeInsetPx else right
+                labelOf(item)?.let { drawItemLabel(item.id, it, row, left, labelRight, place.endX, MemixColors.onTrack) }
             }
         }
+        drawKeyframeBadge(row, item, left, right)
     }
 
     private fun DrawScope.drawBand(row: LaneRow, zeroX: Float, endX: Float) {
@@ -634,6 +647,62 @@ internal class TimelinePainter(
         drawCircle(MemixColors.selection, radius = playheadHeadPx / 2, center = Offset(x, playheadHeadPx / 2), alpha = alpha)
     }
 
+    // ---- Keyframes (P4-02b) ---------------------------------------------------------------------------------------
+
+    /**
+     * The marker row under the selected item (spec P4-02b → Markers on the timeline): a `surface-raised` band over the item's time range,
+     * a 1 dp `text-muted` line from the first diamond to the last, and the diamonds: `text-secondary` at `keyframe-marker-size`, the one at the
+     * playhead (or selected, or being dragged) white and larger. The part past the end of the video is washed with `scrim`. Nothing is allocated.
+     */
+    fun DrawScope.drawKeyframeMarkers(row: LaneRow, bar: KeyframeBarUi, drag: KeyframeDrag?, playheadUs: Long, pxPerUs: Float, lengthUs: Long) {
+        if (row.markerHeightPx <= 0f || pxPerUs <= 0f) return
+        val centerPx = size.width / 2
+        val left = xOf(bar.startUs, playheadUs, centerPx, pxPerUs)
+        val right = left + widthPx(bar.endUs - bar.startUs, pxPerUs)
+        val top = row.markerTopPx + (row.markerHeightPx - markerBandPx) / 2
+        drawRoundRect(MemixColors.surfaceRaised, Offset(left, top), Size(right - left, markerBandPx), CornerRadius(cornerPx))
+        val endX = xOf(lengthUs, playheadUs, centerPx, pxPerUs)
+        if (bar.endUs > lengthUs && endX < right) {
+            clipPath(itemShape(left, top, right, top + markerBandPx)) { drawRect(MemixColors.scrim, Offset(max(left, endX), top), Size(right - max(left, endX), markerBandPx)) }
+        }
+        val middle = top + markerBandPx / 2
+        val first = bar.markers.firstOrNull() ?: return
+        val last = bar.markers.last()
+        drawLine(MemixColors.textMuted, Offset(xOf(timeOf(first, drag), playheadUs, centerPx, pxPerUs), middle), Offset(xOf(timeOf(last, drag), playheadUs, centerPx, pxPerUs), middle), markerLinePx)
+        for (index in bar.markers.indices) {
+            val marker = bar.markers[index]
+            val timeUs = timeOf(marker, drag)
+            val x = xOf(timeUs, playheadUs, centerPx, pxPerUs)
+            if (x < -markerSelectedSizePx || x > size.width + markerSelectedSizePx) continue
+            val selected = drag?.marker === marker || abs(timeUs - playheadUs) <= KeyframeCatalog.ON_KEYFRAME_US || marker.timeUs == bar.selectedUs
+            fillDiamond(x, middle, if (selected) markerSelectedSizePx else markerSizePx, if (selected) MemixColors.selection else MemixColors.textSecondary)
+        }
+    }
+
+    private fun timeOf(marker: KeyframeMarkerUi, drag: KeyframeDrag?): Long = if (drag?.marker === marker) drag.timeUs else marker.timeUs
+
+    // A square turned 45°, [sideDp] on a side.
+    private fun DrawScope.fillDiamond(centerX: Float, centerY: Float, side: Float, color: Color) {
+        val half = side * HALF_DIAGONAL
+        diamondPath.reset()
+        diamondPath.moveTo(centerX, centerY - half)
+        diamondPath.lineTo(centerX + half, centerY)
+        diamondPath.lineTo(centerX, centerY + half)
+        diamondPath.lineTo(centerX - half, centerY)
+        diamondPath.close()
+        drawPath(diamondPath, color)
+    }
+
+    /** The cue on a keyed clip (spec P4-02b → A keyed item's badge): a `text` diamond with an `on-primary` edge, 2 dp from the top-right corner; only on a clip 32 dp wide or more. */
+    private fun DrawScope.drawKeyframeBadge(row: LaneRow, item: ItemUi, left: Float, right: Float) {
+        if (item.keyframeCount <= 0 || right - left < badgeMinClipWidthPx) return
+        val half = (markerSizePx + 2 * markerLinePx) * HALF_DIAGONAL
+        val centerX = right - badgeInsetPx - half
+        val centerY = row.itemTopPx + badgeInsetPx + half
+        fillDiamond(centerX, centerY, markerSizePx + 2 * markerLinePx, MemixColors.onPrimary)
+        fillDiamond(centerX, centerY, markerSizePx, MemixColors.text)
+    }
+
     private fun itemShape(left: Float, top: Float, right: Float, bottom: Float): Path {
         itemPath.rewind()
         itemPath.addRoundRect(RoundRect(left, top, right, bottom, CornerRadius(cornerPx)))
@@ -659,3 +728,6 @@ internal fun trackColorOf(kind: TrackKind): Color = when (kind) {
     TrackKind.AUDIO -> MemixColors.trackAudio
     TrackKind.EFFECT -> MemixColors.trackEffect
 }
+
+/** Half the diagonal of a square with side 1: a diamond of side `s` reaches `s` × this from its center. */
+private const val HALF_DIAGONAL = 0.70710677f

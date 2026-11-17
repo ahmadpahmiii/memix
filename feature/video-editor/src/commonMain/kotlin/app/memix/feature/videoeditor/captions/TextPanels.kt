@@ -1,6 +1,7 @@
 package app.memix.feature.videoeditor.captions
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import app.memix.core.designsystem.component.ToolPanel
@@ -13,6 +14,7 @@ import app.memix.core.ui.text.StyleActions
 import app.memix.core.ui.text.StylePanel
 import app.memix.feature.videoeditor.TextPanel
 import app.memix.feature.videoeditor.VideoEditorIntent
+import app.memix.feature.videoeditor.keyframes.KeyframeNote
 import memix.core.ui.generated.resources.Res as UiRes
 import memix.core.ui.generated.resources.panel_done
 import memix.core.ui.generated.resources.position_title
@@ -24,7 +26,7 @@ import org.jetbrains.compose.resources.stringResource
  * The Style panel is the shared one (`:core:ui`, also the photo editor's).
  */
 @Composable
-internal fun TextPanels(panel: TextPanel?, style: CaptionStyle?, transform: Transform?, onIntent: (VideoEditorIntent) -> Unit, modifier: Modifier = Modifier) {
+internal fun TextPanels(panel: TextPanel?, style: CaptionStyle?, transformAt: ((playheadUs: Long) -> Transform)?, playhead: State<Long>, keyed: Boolean, onIntent: (VideoEditorIntent) -> Unit, modifier: Modifier = Modifier) {
     val done = stringResource(UiRes.string.panel_done)
     val close = { onIntent(VideoEditorIntent.CloseTextPanel) }
     val styleActions = remember(onIntent) {
@@ -38,10 +40,12 @@ internal fun TextPanels(panel: TextPanel?, style: CaptionStyle?, transform: Tran
         }
     }
     StylePanel(panel == TextPanel.STYLE, style, styleActions, modifier)
-    ToolPanel(panel == TextPanel.POSITION && transform != null, stringResource(UiRes.string.position_title), done, close, modifier) {
-        if (transform != null) {
+    ToolPanel(panel == TextPanel.POSITION && transformAt != null, stringResource(UiRes.string.position_title), done, close, modifier) {
+        if (transformAt != null) {
+            if (keyed) KeyframeNote()
+            // Read here, so the sampled playhead recomposes only these rows.
             PositionRows(
-                transform,
+                transformAt(playhead.value),
                 onStep = { step, repeats -> onIntent(VideoEditorIntent.PositionStepped(step, repeats)) },
                 onHeld = { step, repeats -> onIntent(VideoEditorIntent.PositionStepHeld(step, repeats)) },
             )

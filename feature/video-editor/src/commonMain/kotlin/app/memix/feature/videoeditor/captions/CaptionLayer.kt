@@ -19,6 +19,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import app.memix.core.designsystem.MemixSize
 import app.memix.core.designsystem.MemixSpacing
@@ -82,6 +84,7 @@ internal fun BoxScope.CaptionLayer(
     standInSlot: CaptionStandInSlot,
     selectedFocus: FocusRequester,
     interactive: Boolean,
+    playheadUs: () -> Long,
     onIntent: (VideoEditorIntent) -> Unit,
 ) {
     val frame = state.frame
@@ -100,12 +103,13 @@ internal fun BoxScope.CaptionLayer(
     }
     if (entry == null) {
         val selected = visible.lastOrNull { it.itemId == selectedItemId }
-        val framed = selected?.let { caption -> if (standIn?.itemId == caption.itemId) standIn else caption }
+        // A keyed caption's frame follows the keyframes, read while drawing and placing so a playing frame never recomposes the stage.
+        val framed: (() -> CaptionUi)? = selected?.let { caption -> { if (standIn?.itemId == caption.itemId) standIn else caption.atTime(playheadUs()) } }
         if (framed != null) LayerSelectionFrame(state, framed, canvas.widthPx)
         if (framed != null) LayerTurnHandle(state, framed, canvas.widthPx)
         LayerSnapGuides(state)
         LayerTransformBubble(state)
-        CaptionNodes(state, visible, selectedItemId, canvas, selectedFocus, interactive, onIntent)
+        CaptionNodes(state, visible, selectedItemId, canvas, selectedFocus, interactive, playheadUs, onIntent)
     }
 }
 
@@ -152,24 +156,23 @@ private fun BoxScope.CaptionNodes(
     canvas: CanvasUi,
     selectedFocus: FocusRequester,
     interactive: Boolean,
+    playheadUs: () -> Long,
     onIntent: (VideoEditorIntent) -> Unit,
 ) {
-    val density = LocalDensity.current
     val styleLabel = stringResource(UiRes.string.tool_style)
     val positionLabel = stringResource(UiRes.string.tool_position)
     for (caption in visible.sortedBy { it.transform.centerY }) {
         val label = stringResource(UiRes.string.a11y_text_on_canvas, caption.text)
-        val box = caption.boxIn(state.frame, canvas.widthPx)
-        val corners = listOf(box.corner(-1, -1, 0f), box.corner(1, -1, 0f), box.corner(1, 1, 0f), box.corner(-1, 1, 0f))
-        val left = corners.minOf { it.x }
-        val top = corners.minOf { it.y }
-        val right = max(corners.maxOf { it.x }, left + 1f)
-        val bottom = max(corners.maxOf { it.y }, top + 1f)
         val isSelected = caption.itemId == selectedItemId
         Box(
             Modifier
-                .offset { IntOffset(left.roundToInt(), top.roundToInt()) }
-                .size(with(density) { (right - left).toDp() }, with(density) { (bottom - top).toDp() })
+                // Placed and sized from the keyframes' look under the playhead, in layout, so a keyed caption's node follows it.
+                .offset { nodeBounds(caption.atTime(playheadUs()), state.frame, canvas.widthPx).let { IntOffset(it.left.roundToInt(), it.top.roundToInt()) } }
+                .layout { measurable, _ ->
+                    val bounds = nodeBounds(caption.atTime(playheadUs()), state.frame, canvas.widthPx)
+                    val placeable = measurable.measure(Constraints.fixed(bounds.width.roundToInt().coerceAtLeast(1), bounds.height.roundToInt().coerceAtLeast(1)))
+                    layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                }
                 .then(if (isSelected) Modifier.focusRequester(selectedFocus) else Modifier)
                 .clearAndSetSemantics {
                     contentDescription = label
@@ -183,6 +186,15 @@ private fun BoxScope.CaptionNodes(
                 },
         )
     }
+}
+
+// The bounds of the turned block, for a screen-reader node.
+private fun nodeBounds(caption: CaptionUi, frame: CanvasFrameRect, canvasWidthPx: Int): androidx.compose.ui.geometry.Rect {
+    val box = caption.boxIn(frame, canvasWidthPx)
+    val corners = listOf(box.corner(-1, -1, 0f), box.corner(1, -1, 0f), box.corner(1, 1, 0f), box.corner(-1, 1, 0f))
+    val left = corners.minOf { it.x }
+    val top = corners.minOf { it.y }
+    return androidx.compose.ui.geometry.Rect(left, top, max(corners.maxOf { it.x }, left + 1f), max(corners.maxOf { it.y }, top + 1f))
 }
 
 private fun openPanel(itemId: String, panel: TextPanel, onIntent: (VideoEditorIntent) -> Unit): Boolean {

@@ -74,6 +74,10 @@ object MemixSize {
     val iconSmall = 16.dp
     val railHeight = 4.dp
 
+    /** A keyframe's diamond on the timeline's marker row and its badge; the selected one is larger (P4-02b). */
+    val keyframeMarkerSize = 10.dp
+    val keyframeMarkerSizeSelected = 14.dp
+
     /** The white scale-and-rotate handle on a selected caption on the preview; its target is still [touchTarget]. */
     val canvasHandleSize = 24.dp
     /** A censor's edge handle: a white bar 20 dp long and 6 dp thick in the middle of each edge (P2-05). */

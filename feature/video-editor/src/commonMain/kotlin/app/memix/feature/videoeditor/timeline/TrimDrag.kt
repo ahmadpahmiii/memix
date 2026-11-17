@@ -157,8 +157,9 @@ internal fun nearestIn(values: LongArray, timeUs: Long): Long? {
 internal fun snapGuideX(state: TimelineState, density: Float, widthPx: Float): Float? {
     val trim = state.trim?.takeUnless { it.isReleased }
     val move = state.move?.takeUnless { it.isReleased }
-    val snappedUs = trim?.snappedToUs ?: move?.snappedToUs ?: return null
-    if (snappedUs == TrimDrag.NOT_SNAPPED || snappedUs == MoveDrag.NOT_SNAPPED || snappedUs == state.playheadUs) return null
+    val keyframe = state.keyframeDrag?.takeUnless { it.isReleased }
+    val snappedUs = trim?.snappedToUs ?: move?.snappedToUs ?: keyframe?.snappedToUs ?: return null
+    if (snappedUs == TrimDrag.NOT_SNAPPED || snappedUs == MoveDrag.NOT_SNAPPED || snappedUs == KeyframeDrag.NOT_SNAPPED || snappedUs == state.playheadUs) return null
     return xOf(snappedUs, state.playheadUs, widthPx / 2, pxPerUs(state.dpPerSecond, density))
 }
 
@@ -173,6 +174,17 @@ internal fun CancelTrimOnBack(controller: TimelineController) {
     )
 }
 
+/** System back while a diamond is dragged cancels the drag (spec P4-02b → Entry and exit: a gesture in progress is cancelled first). */
+@Composable
+internal fun CancelKeyframeDragOnBack(controller: TimelineController) {
+    val dragging = controller.state.keyframeDrag?.isReleased == false
+    NavigationBackHandler(
+        rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = dragging,
+        onBackCompleted = controller::cancelKeyframeDrag,
+    )
+}
+
 /**
  * The value bubble of a drag (spec P1-06 → Bubbles and guides): a trim's new length, centered on the moving edge, or a
  * move's new start, centered on the item's start. A `surface-raised` pill (no shadow: the value step sets it apart),
@@ -184,7 +196,9 @@ internal fun EditValueBubble(controller: TimelineController, rulerHeightPx: Floa
     val state = controller.state
     val trim = state.trim?.takeUnless { it.isReleased }
     val move = state.move?.takeUnless { it.isReleased }
+    val keyframe = state.keyframeDrag?.takeUnless { it.isReleased }
     when {
+        keyframe != null -> ValueBubble(keyframe, { formatTimecode(keyframe.timeUs) }, { keyframe.timeUs }, { keyframe.row.markerTopPx }, controller, rulerHeightPx, laneScroll)
         trim != null -> ValueBubble(trim, { formatTimecode(trim.endUs - trim.startUs) }, { trim.edgeUs }, { trim.row.topPx }, controller, rulerHeightPx, laneScroll)
         move != null -> ValueBubble(move, { formatTimecode(move.startUs) }, { move.startUs }, { move.row.topPx }, controller, rulerHeightPx, laneScroll)
     }

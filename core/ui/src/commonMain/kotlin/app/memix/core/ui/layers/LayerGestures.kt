@@ -68,6 +68,9 @@ interface GestureTarget {
 
     /** Whether the scale-and-rotate handle is kept whole on the stage: its center never nearer to the stage's edge than half its size (spec P4-01b → Frame, handle). */
     val keepsHandleOnStage: Boolean get() = false
+
+    /** Where the layer's center may go, as fractions of the canvas: inside the frame, or a keyed item's half a frame beyond it (P4-02b). */
+    val centerRange: ClosedFloatingPointRange<Float> get() = 0f..1f
 }
 
 /** [this] layer's box on the stage frame [frame], for a canvas [canvasWidthPx] wide. */
@@ -271,8 +274,8 @@ private suspend fun AwaitPointerEventScope.runGesture(
 
 private fun moveBy(gesture: LayerGesture, delta: Offset, frame: CanvasFrameRect) {
     gesture.rawCenter = Offset(
-        (gesture.rawCenter.x + delta.x / frame.width).coerceIn(0f, 1f),
-        (gesture.rawCenter.y + delta.y / frame.height).coerceIn(0f, 1f),
+        (gesture.rawCenter.x + delta.x / frame.width).coerceIn(gesture.target.centerRange),
+        (gesture.rawCenter.y + delta.y / frame.height).coerceIn(gesture.target.centerRange),
     )
 }
 

@@ -6,6 +6,7 @@ import app.memix.core.domain.AppError
 import app.memix.core.domain.Outcome
 import app.memix.core.domain.drafts.UpdateDraftThumbnailUseCase
 import app.memix.core.domain.media.ImportMediaUseCase
+import app.memix.core.domain.EditorTool
 import app.memix.core.domain.project.MediaPlace
 import app.memix.core.domain.photo.VideoMemeNoteUseCase
 import app.memix.core.domain.project.OpenVideoDraftUseCase
@@ -40,6 +41,7 @@ import app.memix.core.domain.video.StartPreviewUseCase
 import app.memix.core.domain.video.ReadWaveformUseCase
 import app.memix.core.domain.video.StartThumbnailsUseCase
 import app.memix.core.model.project.CanvasBackground
+import app.memix.core.model.project.ItemLook
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaOrigin
@@ -149,6 +151,7 @@ class VideoEditorViewModel(
     private val voiceoverControl = VoiceoverControl(host, projectId, voiceover)
     private val captions = CaptionControl(host)
     private val overlays = OverlayControl(host)
+    private val keyframes = KeyframeControl(host)
     private val canvasPanel = CanvasPanelControl(host) { text, style, widthPx, heightPx, look -> captionRendering.measure(text, style, widthPx, heightPx, look) }
     private val exportSheet = ExportSheetControl(host, export)
     // The canvas size of the picture on screen, as the preview last reported it.
@@ -245,6 +248,20 @@ class VideoEditorViewModel(
                 soundTools.add(intent.sound)
                 showVideoMemeNoteOnce()
             }
+            VideoEditorIntent.KeyframesTool -> keyframes.open()
+            VideoEditorIntent.CloseKeyframeBar -> keyframes.close()
+            VideoEditorIntent.KeyframePrevious -> keyframes.previous()
+            VideoEditorIntent.KeyframeNext -> keyframes.next()
+            VideoEditorIntent.KeyframeToggle -> keyframes.toggle()
+            VideoEditorIntent.KeyframeEasingTool -> keyframes.openEasing()
+            VideoEditorIntent.CloseEasingPanel -> keyframes.closeEasing()
+            is VideoEditorIntent.KeyframeEasingChosen -> keyframes.chooseEasing(intent.easing)
+            VideoEditorIntent.KeyframeMoveHere -> keyframes.moveHere()
+            VideoEditorIntent.KeyframeClear -> keyframes.clear()
+            is VideoEditorIntent.KeyframeSelected -> keyframes.select(intent.timeUs)
+            is VideoEditorIntent.KeyframeMoved -> keyframes.moved(intent.fromUs, intent.toUs)
+            is VideoEditorIntent.KeyframeRemoveAt -> keyframes.removeAt(intent.timeUs)
+            is VideoEditorIntent.KeyframeEasingAt -> keyframes.openEasingAt(intent.timeUs)
             VideoEditorIntent.VolumeTool -> volumePanel.open()
             is VideoEditorIntent.VolumeChanged -> volumePanel.change(intent.volume)
             VideoEditorIntent.VolumeReleased -> volumePanel.commit()
@@ -379,6 +396,8 @@ class VideoEditorViewModel(
                 volumePanel = it.volumePanel?.takeIf { panel -> timeline.item(panel.itemId) != null },
                 overlays = project.overlayUis(),
                 overlayPanel = it.overlayPanel?.takeIf { panel -> timeline.item(panel.itemId) != null },
+                // The bar follows the keyframes through edits and undo; it closes with its item.
+                keyframeBar = it.keyframeBar?.let { bar -> project.keyframeBarOf(bar.itemId, bar) },
                 // Follows the project, so an undo shows in the sliders; closes with its sound.
                 audioEffects = audioEffects.syncedWith(it.audioEffects, project),
                 originalAudio = if (project.hasOriginalAudio()) OriginalAudioUi(muted = project.isOriginalMuted()) else null,
@@ -519,11 +538,13 @@ class VideoEditorViewModel(
             state.value.exportSheet != null -> exportSheet.close()
             state.value.textPanel != null -> captions.closePanel()
             state.value.overlayPanel != null -> overlays.closePanel()
+            state.value.keyframeBar?.easingOpen == true -> keyframes.closeEasing()
             state.value.volumePanel != null -> volumePanel.close()
             state.value.audioEffects != null -> audioEffects.close()
             state.value.voiceover != null -> voiceoverControl.close()
             state.value.canvasPanel != null -> canvasPanel.close()
             state.value.reorder != null -> updateState { it.copy(reorder = null) }
+            state.value.keyframeBar != null -> keyframes.close()
             state.value.selectedItemId != null -> updateState { it.withSelection(null, null) }
             else -> requestClose()
         }
@@ -777,8 +798,13 @@ class VideoEditorViewModel(
         override fun currentProject() = this@VideoEditorViewModel.currentProject()
         override fun currentPositionUs() = this@VideoEditorViewModel.currentPositionUs()
 
-        override fun commit(edit: VideoEdit, pausesPlayback: Boolean, font: String?, value: String?, change: (Project) -> Project) =
-            this@VideoEditorViewModel.commit(edit, pausesPlayback, font, value, change)
+        override fun commit(edit: VideoEdit, pausesPlayback: Boolean, font: String?, value: String?, loggedAs: List<EditorTool>?, change: (Project) -> Project) =
+            this@VideoEditorViewModel.commit(edit, pausesPlayback, font, value, loggedAs, change)
+
+        override fun routesThroughKeyframes(itemId: String) = keyframes.routes(itemId)
+
+        override fun commitLook(edit: VideoEdit, itemId: String, pausesPlayback: Boolean, change: (ItemLook) -> ItemLook) =
+            keyframes.commitLook(edit, itemId, pausesPlayback, change)
 
         override fun select(itemId: String?) = updateState { it.withSelection(itemId, currentProject()) }
         override fun announce(edit: VideoEdit, item: ItemName?) = this@VideoEditorViewModel.announce(edit, item)
@@ -859,11 +885,12 @@ class VideoEditorViewModel(
         pausesPlayback: Boolean = true,
         font: String? = null,
         value: String? = null,
+        loggedAs: List<EditorTool>? = null,
         change: (Project) -> Project,
     ): Boolean {
         val session = editSession ?: return false
         if (pausesPlayback) preview?.pause()
-        val recorded = session.commit(edit.tool, font, value, edit = change)
+        val recorded = session.commit(edit.tool, font, value, loggedAs = loggedAs ?: listOf(edit.tool), edit = change)
         if (recorded) showEditState(session.state.value)
         return recorded
     }
@@ -1025,12 +1052,14 @@ internal fun VideoEditorUiState.withSelection(itemId: String?, project: Project?
     // A caption's panel belongs to it: it closes when the selection moves on or goes.
     val panel = textPanel?.takeIf { itemId != null && itemId == selectedItemId }
     val overlay = overlayPanel?.takeIf { itemId != null && itemId == selectedItemId }
-    val track = itemId?.let(timeline::trackOf) ?: return copy(selectedItemId = null, clipTools = null, trimRanges = null, textPanel = null, overlayPanel = null)
+    // The keyframe bar belongs to its item: selecting another one shows that item's own bar.
+    val keyframes = keyframeBar?.takeIf { itemId != null && itemId == it.itemId }
+    val track = itemId?.let(timeline::trackOf) ?: return copy(selectedItemId = null, clipTools = null, trimRanges = null, textPanel = null, overlayPanel = null, keyframeBar = null)
     val start = project?.trimRange(itemId, TrimEdge.START)
     val end = project?.trimRange(itemId, TrimEdge.END)
     val ranges = if (start != null && end != null) TrimRanges(start, end) else null
     val mediaKind = timeline.item(itemId)?.media?.kind
-    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind), trimRanges = ranges, textPanel = panel, overlayPanel = overlay)
+    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind), trimRanges = ranges, textPanel = panel, overlayPanel = overlay, keyframeBar = keyframes)
 }
 
 private fun clipToolsFor(kind: TrackKind, mediaKind: MediaKind?): ClipTools = when (kind) {

@@ -26,8 +26,11 @@ internal class VolumePanelControl(private val host: EditorHost) {
             OriginalSound.DETACHED -> return host.showToast(ToastMessage.Explain(Explanation.DETACHED))
             OriginalSound.PLAYS, null -> Unit
         }
-        val volume = project.volumeOf(itemId) ?: return
-        host.updateUiState { it.copy(volumePanel = VolumePanelUi(itemId, volume, isVideoClip = originalSound == OriginalSound.PLAYS, isOverlay = project.overlayClip(itemId) != null)) }
+        val volume = host.lookNow(itemId)?.volume ?: project.volumeOf(itemId) ?: return
+        val keyed = host.routesThroughKeyframes(itemId)
+        // A keyed item's panel shows its level under the playhead, so the playhead waits.
+        if (keyed) host.preview?.pause()
+        host.updateUiState { it.copy(volumePanel = VolumePanelUi(itemId, volume, isVideoClip = originalSound == OriginalSound.PLAYS, isOverlay = project.overlayClip(itemId) != null, keyed = keyed)) }
     }
 
     /** Done, back or Escape: the item stays selected and focus goes back to its Volume tool. */
@@ -38,14 +41,20 @@ internal class VolumePanelControl(private val host: EditorHost) {
 
     fun change(volume: Float) {
         val panel = host.uiState.volumePanel ?: return
-        host.preview?.previewVolume(panel.itemId, volume)
+        // A keyed item's level is its curve: the slider is heard once released, never as a gain on top of it.
+        if (!host.routesThroughKeyframes(panel.itemId)) host.preview?.previewVolume(panel.itemId, volume)
         host.updateUiState { it.copy(volumePanel = panel.copy(volume = volume)) }
     }
 
     /** The slider's last change is already in the panel, whichever way it came (drag, tap, key, TalkBack). */
     fun commit() {
         val panel = host.uiState.volumePanel ?: return
-        if (!host.commit(VideoEdit.VOLUME, pausesPlayback = false) { it.setVolume(panel.itemId, panel.volume) }) return
+        val recorded = if (host.routesThroughKeyframes(panel.itemId)) {
+            host.commitLook(VideoEdit.VOLUME, panel.itemId, pausesPlayback = false) { it.copy(volume = panel.volume) }
+        } else {
+            host.commit(VideoEdit.VOLUME, pausesPlayback = false) { it.setVolume(panel.itemId, panel.volume) }
+        }
+        if (!recorded) return
         host.announce(VideoEdit.VOLUME, host.uiState.timeline.nameOf(panel.itemId))
     }
 }

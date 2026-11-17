@@ -106,9 +106,9 @@ fun Project.overlaysAt(atUs: Long): List<MediaClip> =
     }
 
 /** The center stays on the canvas, the scale within [OverlayCatalog.SCALE_RANGE] and the turn within −180°…180°. */
-fun Transform.clampedForOverlay(): Transform = Transform(
-    centerX = centerX.coerceIn(0f, 1f),
-    centerY = centerY.coerceIn(0f, 1f),
+fun Transform.clampedForOverlay(centerRange: ClosedFloatingPointRange<Float> = 0f..1f): Transform = Transform(
+    centerX = centerX.coerceIn(centerRange),
+    centerY = centerY.coerceIn(centerRange),
     scale = scale.coerceIn(OverlayCatalog.SCALE_RANGE),
     rotationDegrees = normalizedDegrees(rotationDegrees),
 )

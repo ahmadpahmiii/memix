@@ -16,6 +16,7 @@ import app.memix.core.model.project.TimelineItem
 import app.memix.core.model.project.Track
 import app.memix.core.model.project.TrackKind
 import app.memix.core.model.project.isVoiceover
+import app.memix.core.model.project.keyframeList
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -90,6 +91,8 @@ data class ItemUi(
     val silenced: Boolean = false,
     /** A meme sound or an audio clip: what its waveform and its spoken name need (P3-09); null for every other item. */
     val sound: SoundLook? = null,
+    /** How many keyframes the item has; above 0 it wears the keyframe badge (P4-02b). */
+    val keyframeCount: Int = 0,
 ) {
     val endUs: Long get() = startUs + durationUs
 }
@@ -148,7 +151,7 @@ private fun trackUiOf(track: Track, soundTitles: Map<String, LocalizedText>): Tr
     var clipNumber = 0
     val items = sorted.map { item ->
         if (track.kind == TrackKind.MAIN_VIDEO) clipNumber++
-        itemUiOf(item, track.kind, if (track.kind == TrackKind.MAIN_VIDEO) clipNumber else 0, soundTitles)
+        itemUiOf(item, track.kind, if (track.kind == TrackKind.MAIN_VIDEO) clipNumber else 0, soundTitles).copy(keyframeCount = item.keyframeList().size)
     }
     return TrackUi(track.id, track.kind, items.toImmutableList(), track.muted)
 }

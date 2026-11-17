@@ -43,7 +43,9 @@ import app.memix.core.model.project.TrackKind
 import app.memix.core.ui.appLanguageCode
 import app.memix.core.ui.spokenTime
 import app.memix.core.ui.spokenTimeOf
+import app.memix.feature.videoeditor.KeyframeBarUi
 import app.memix.feature.videoeditor.VideoEditorIntent
+import app.memix.feature.videoeditor.keyframes.easingNameOf
 import kotlin.math.max
 import kotlin.math.roundToInt
 import memix.feature.video_editor.generated.resources.Res
@@ -56,6 +58,12 @@ import memix.feature.video_editor.generated.resources.a11y_forward_1s
 import memix.feature.video_editor.generated.resources.a11y_go_end
 import memix.feature.video_editor.generated.resources.a11y_go_start
 import memix.feature.video_editor.generated.resources.a11y_item
+import memix.feature.video_editor.generated.resources.a11y_state_keyframed
+import memix.feature.video_editor.generated.resources.keyframe_easing
+import memix.feature.video_editor.generated.resources.keyframe_remove
+import memix.feature.video_editor.generated.resources.a11y_keyframe_node
+import memix.feature.video_editor.generated.resources.keyframe_select_node
+import memix.feature.video_editor.generated.resources.a11y_keyframes_group
 import memix.feature.video_editor.generated.resources.a11y_item_unnamed
 import memix.feature.video_editor.generated.resources.a11y_overlay_item
 import memix.feature.video_editor.generated.resources.a11y_playhead
@@ -78,6 +86,7 @@ import memix.feature.video_editor.generated.resources.timeline_zoom_fit
 import memix.feature.video_editor.generated.resources.timeline_zoom_in
 import memix.feature.video_editor.generated.resources.timeline_zoom_out
 import memix.core.ui.generated.resources.tool_delete
+import memix.feature.video_editor.generated.resources.tool_move_here
 import memix.core.ui.generated.resources.tool_duplicate
 import memix.feature.video_editor.generated.resources.tool_move_here_a11y
 import memix.feature.video_editor.generated.resources.tool_split
@@ -394,6 +403,14 @@ private fun rememberItemActions(controller: TimelineController, isMainClip: Bool
 
 @Composable
 private fun itemDescription(track: TrackUi, item: ItemUi, clipCount: Int): String {
+    val base = baseDescription(track, item, clipCount)
+    // After the clip's own words, never in its state description (spec P4-02b → Accessibility).
+    if (item.keyframeCount == 0) return base
+    return base + ". " + stringResource(Res.string.a11y_state_keyframed, item.keyframeCount)
+}
+
+@Composable
+private fun baseDescription(track: TrackUi, item: ItemUi, clipCount: Int): String {
     val duration = spokenTime(item.durationUs)
     val start = spokenTime(item.startUs)
     if (track.kind == TrackKind.MAIN_VIDEO) {
@@ -496,4 +513,66 @@ private fun TileSemantics(controller: TimelineController, clip: ItemUi?, isMovin
             traversalIndex = position.toFloat()
         },
     )
+}
+
+/**
+ * The marker row for screen readers (spec P4-02b → Accessibility): a group "Keyframes" whose nodes are the diamonds in time order, each
+ * "Keyframe 2 of 3, at 1.5 seconds, Smooth", where it is drawn. Double-tap goes to it and selects it; the actions are Go to, Move here (to
+ * the playhead), Remove and Easing, so no drag is needed. Where each node sits is read at placement, so a scroll frame moves them without
+ * recomposing.
+ */
+@Composable
+internal fun KeyframeSemantics(controller: TimelineController, bar: KeyframeBarUi, row: LaneRow) {
+    val state = controller.state
+    val density = LocalDensity.current
+    val group = stringResource(Res.string.a11y_keyframes_group)
+    val goTo = stringResource(Res.string.keyframe_select_node)
+    val moveHere = stringResource(Res.string.tool_move_here)
+    val remove = stringResource(Res.string.keyframe_remove)
+    val easing = stringResource(Res.string.keyframe_easing)
+    Layout(
+        content = {
+            bar.markers.forEachIndexed { index, marker ->
+                key(marker.timeUs) {
+                    val description = stringResource(
+                        Res.string.a11y_keyframe_node, index + 1, bar.markers.size, spokenTime(marker.timeUs), stringResource(easingNameOf(marker.easing)),
+                    )
+                    Box(
+                        Modifier.semantics {
+                            contentDescription = description
+                            selected = marker.timeUs == bar.selectedUs
+                            traversalIndex = index.toFloat()
+                            onClick { controller.tapKeyframe(marker); true }
+                            customActions = listOf(
+                                CustomAccessibilityAction(goTo) { controller.tapKeyframe(marker); true },
+                                CustomAccessibilityAction(moveHere) {
+                                    controller.tapKeyframe(marker)
+                                    controller.onIntent(VideoEditorIntent.KeyframeMoveHere)
+                                    true
+                                },
+                                CustomAccessibilityAction(remove) { controller.onIntent(VideoEditorIntent.KeyframeRemoveAt(marker.timeUs)); true },
+                                CustomAccessibilityAction(easing) { controller.onIntent(VideoEditorIntent.KeyframeEasingAt(marker.timeUs)); true },
+                            )
+                        },
+                    )
+                }
+            }
+        },
+        modifier = Modifier
+            .offset { IntOffset(0, row.markerTopPx.roundToInt()) }
+            .fillMaxWidth()
+            .height(with(density) { row.markerHeightPx.toDp() })
+            .semantics {
+                isTraversalGroup = true
+                contentDescription = group
+            },
+    ) { measurables, constraints ->
+        val pxPerUs = pxPerUs(state.dpPerSecond, density.density)
+        val targetPx = with(density) { MemixSize.touchTarget.roundToPx() }
+        val placed = measurables.mapIndexed { index, measurable ->
+            val centerX = xOf(bar.markers[index].timeUs, state.playheadUs, constraints.maxWidth / 2f, pxPerUs)
+            measurable.measure(Constraints.fixed(targetPx, constraints.maxHeight)) to (centerX - targetPx / 2f).roundToInt()
+        }
+        layout(constraints.maxWidth, constraints.maxHeight) { placed.forEach { (placeable, x) -> placeable.place(x, 0) } }
+    }
 }

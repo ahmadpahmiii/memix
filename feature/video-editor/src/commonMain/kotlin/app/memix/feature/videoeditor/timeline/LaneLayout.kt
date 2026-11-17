@@ -43,25 +43,35 @@ internal class LaneRow(
     val heightPx: Float,
     val itemTopPx: Float,
     val itemHeightPx: Float,
-)
+    /** The keyframe marker row under the item (P4-02b), which [heightPx] includes; 0 for a row without one. */
+    val markerHeightPx: Float = 0f,
+) {
+    /** The row without its marker row: where the item's own touches (handles, reorder, move) land. */
+    val contentHeightPx: Float get() = heightPx - markerHeightPx
+
+    /** Where the marker row starts, from the top of the first row. */
+    val markerTopPx: Float get() = topPx + contentHeightPx
+}
 
 /**
  * Where each lane and the "Add a meme sound" row sit, top to bottom. [labelLineHeightPx] is one item label's line;
  * [addPillLabelHeightPx] is the pill label's height, one or two lines ([rememberAddPillLabelHeightPx]).
  */
-internal fun laneLayoutOf(timeline: TimelineUi, density: Density, labelLineHeightPx: Float, addPillLabelHeightPx: Float, availableHeightPx: Float = 0f): LaneLayout {
-    val inline = laneLayoutOf(timeline, density, labelLineHeightPx, addPillLabelHeightPx, pinAddRow = false)
+internal fun laneLayoutOf(timeline: TimelineUi, density: Density, labelLineHeightPx: Float, addPillLabelHeightPx: Float, availableHeightPx: Float = 0f, markerItemId: String? = null): LaneLayout {
+    val inline = laneLayoutOf(timeline, density, labelLineHeightPx, addPillLabelHeightPx, pinAddRow = false, markerItemId)
     if (availableHeightPx <= 0f || inline.addSoundRow == null || inline.heightPx <= availableHeightPx) return inline
-    return laneLayoutOf(timeline, density, labelLineHeightPx, addPillLabelHeightPx, pinAddRow = true)
+    return laneLayoutOf(timeline, density, labelLineHeightPx, addPillLabelHeightPx, pinAddRow = true, markerItemId)
 }
 
-private fun laneLayoutOf(timeline: TimelineUi, density: Density, labelLineHeightPx: Float, addPillLabelHeightPx: Float, pinAddRow: Boolean): LaneLayout = with(density) {
+private fun laneLayoutOf(timeline: TimelineUi, density: Density, labelLineHeightPx: Float, addPillLabelHeightPx: Float, pinAddRow: Boolean, markerItemId: String?): LaneLayout = with(density) {
     val itemHeightPx = max(MemixSize.trackHeight.toPx(), labelLineHeightPx + 2 * MemixSpacing.space1.toPx())
     val rowHeightPx = itemHeightPx + MemixSpacing.space1.toPx()
     val mainRowHeightPx = MemixSize.touchTarget.toPx()
     val mainItemHeightPx = MemixSize.trackHeightVideo.toPx()
     // Grows with the pill's label (one or two lines, at any text size), so it's never cut: `space-1` inside the pill
     // above and below it, and the row's `space-1` margins.
+    // `track-height` + `space-1`: the band under the item that holds a keyframe bar's diamonds (spec P4-02b → Markers on the timeline).
+    val markerRowHeightPx = (MemixSize.trackHeight + MemixSpacing.space1).toPx()
     val addRowHeightPx = max(MemixSize.touchTarget.toPx(), addPillLabelHeightPx + 4 * MemixSpacing.space1.toPx())
     val addRowGoesBefore = if (pinAddRow) -1 else addSoundRowPosition(timeline)
     var topPx = 0f
@@ -71,10 +81,11 @@ private fun laneLayoutOf(timeline: TimelineUi, density: Density, labelLineHeight
             addSoundRow = AddSoundRow(topPx, addRowHeightPx)
             topPx += addRowHeightPx
         }
+        val markerHeightPx = if (markerItemId != null && track.items.any { it.id == markerItemId }) markerRowHeightPx else 0f
         val row = if (track.kind == TrackKind.MAIN_VIDEO) {
-            LaneRow(track, topPx, mainRowHeightPx, topPx + (mainRowHeightPx - mainItemHeightPx) / 2, mainItemHeightPx)
+            LaneRow(track, topPx, mainRowHeightPx + markerHeightPx, topPx + (mainRowHeightPx - mainItemHeightPx) / 2, mainItemHeightPx, markerHeightPx)
         } else {
-            LaneRow(track, topPx, rowHeightPx, topPx + (rowHeightPx - itemHeightPx) / 2, itemHeightPx)
+            LaneRow(track, topPx, rowHeightPx + markerHeightPx, topPx + (rowHeightPx - itemHeightPx) / 2, itemHeightPx, markerHeightPx)
         }
         topPx += row.heightPx
         row

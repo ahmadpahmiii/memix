@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import app.memix.feature.videoeditor.keyframes.KeyframeNote
 import app.memix.core.designsystem.MemixSpacing
 import app.memix.core.designsystem.component.Slider
 import app.memix.core.designsystem.component.Toggle
@@ -43,6 +44,7 @@ internal fun VolumePanel(
     ) {
         // The panel's last value stays on screen while it slides away.
         val volume = panel?.volume ?: DEFAULT_VOLUME
+        if (panel?.keyed == true) KeyframeNote()
         val isVideoClip = panel?.isVideoClip == true
         Slider(
             label = stringResource(if (isVideoClip) Res.string.volume_this_clip else Res.string.volume_this_sound),

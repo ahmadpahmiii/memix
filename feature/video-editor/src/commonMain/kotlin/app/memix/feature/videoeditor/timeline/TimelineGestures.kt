@@ -12,6 +12,7 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.positionChange
 import app.memix.core.domain.project.TrimEdge
+import app.memix.feature.videoeditor.KeyframeMarkerUi
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.abs
 
@@ -185,4 +186,44 @@ private suspend fun AwaitPointerEventScope.tapUntilUp(down: PointerInputChange, 
         if (!finger.pressed) break
     }
     if (isTap) onTap(down.position.x)
+}
+
+/**
+ * Keyframe diamonds (spec P4-02b → On the timeline). A finger that lands on a diamond ([markerAt] says which) owns the touch on the
+ * Initial pass: released within the touch slop it is a tap ([onTap]); moved past it the drag starts ([onDragStart]) with no long-press,
+ * then [onDrag] gets the finger's x until it lifts ([onEnd]) or is lost ([onCancel]). Nothing else sees the touch, so the lanes don't scroll.
+ */
+internal suspend fun PointerInputScope.detectKeyframeGestures(
+    markerAt: (Offset) -> KeyframeMarkerUi?,
+    onTap: (KeyframeMarkerUi) -> Unit,
+    onDragStart: (marker: KeyframeMarkerUi, x: Float) -> Unit,
+    onDrag: (x: Float) -> Unit,
+    onEnd: () -> Unit,
+    onCancel: () -> Unit,
+) = awaitEachGesture {
+    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+    val marker = markerAt(down.position) ?: return@awaitEachGesture
+    down.consume()
+    var dragging = false
+    try {
+        while (true) {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            val finger = event.changes.firstOrNull { it.id == down.id }
+            event.changes.forEach { it.consume() }
+            if (finger == null) break
+            if (!finger.pressed) {
+                if (dragging) onEnd() else onTap(marker)
+                return@awaitEachGesture
+            }
+            if (!dragging && (finger.position - down.position).getDistance() > viewConfiguration.touchSlop) {
+                dragging = true
+                onDragStart(marker, down.position.x)
+            }
+            if (dragging) onDrag(finger.position.x)
+        }
+        if (dragging) onCancel()
+    } catch (e: CancellationException) {
+        if (dragging) onCancel()
+        throw e
+    }
 }

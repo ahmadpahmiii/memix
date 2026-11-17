@@ -6,6 +6,7 @@ import app.memix.core.domain.project.reorderOverlay
 import app.memix.core.domain.project.setOverlayOpacity
 import app.memix.core.domain.project.setOverlayTransform
 import app.memix.core.domain.project.clampedForOverlay
+import app.memix.core.model.project.KeyframeCatalog
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.OverlayCatalog
 import app.memix.core.model.project.SizeLadder
@@ -68,9 +69,11 @@ internal class OverlayControl(private val host: EditorHost) {
     fun openPanel(panel: OverlayPanel) {
         val overlay = selectedOverlay() ?: return
         // Opacity keeps playing, so the blend is seen (spec → Opacity panel); the others wait for a still frame.
-        if (panel != OverlayPanel.OPACITY) host.preview?.pause()
+        // A keyed item's panel shows its values under the playhead, so the playhead waits too.
+        val keyed = host.routesThroughKeyframes(overlay.id)
+        if (panel != OverlayPanel.OPACITY || keyed) host.preview?.pause()
         showAtPlayhead(overlay)
-        host.updateUiState { it.copy(overlayPanel = OverlayPanelUi(panel, overlay.id, overlay.opacity)) }
+        host.updateUiState { it.copy(overlayPanel = OverlayPanelUi(panel, overlay.id, opacityNow(overlay), keyed)) }
     }
 
     /** A held arrow that never got its release (panel closed, selection changed): the overlay shows where it was. */
@@ -96,7 +99,7 @@ internal class OverlayControl(private val host: EditorHost) {
     /** The opacity slider moved to [opacity]: the preview shows it at once; nothing is committed yet. */
     fun opacityChanged(opacity: Float) {
         val panel = host.uiState.overlayPanel ?: return
-        val value = opacity.coerceIn(OverlayCatalog.OPACITY_RANGE)
+        val value = opacity.coerceIn(if (host.routesThroughKeyframes(panel.itemId)) KeyframeCatalog.OPACITY_RANGE else OverlayCatalog.OPACITY_RANGE)
         host.preview?.previewOpacity(panel.itemId, value)
         host.updateUiState { it.copy(overlayPanel = panel.copy(opacity = value)) }
     }
@@ -104,7 +107,12 @@ internal class OverlayControl(private val host: EditorHost) {
     /** The slider was let go (or stepped): one "Opacity" step, none if it is where it began. */
     fun opacityReleased() {
         val panel = host.uiState.overlayPanel ?: return
-        if (!host.commit(VideoEdit.OVERLAY_OPACITY, pausesPlayback = false) { it.setOverlayOpacity(panel.itemId, panel.opacity) }) {
+        val recorded = if (host.routesThroughKeyframes(panel.itemId)) {
+            host.commitLook(VideoEdit.OVERLAY_OPACITY, panel.itemId, pausesPlayback = false) { it.copy(opacity = panel.opacity) }
+        } else {
+            host.commit(VideoEdit.OVERLAY_OPACITY, pausesPlayback = false) { it.setOverlayOpacity(panel.itemId, panel.opacity) }
+        }
+        if (!recorded) {
             host.preview?.previewOpacity(panel.itemId, null)
             return
         }
@@ -114,7 +122,7 @@ internal class OverlayControl(private val host: EditorHost) {
     /** A Position panel tap, or a held arrow's release ([repeats] steps): one step, or an explanation at a limit. */
     fun step(step: PositionStep, repeats: Int) {
         val overlay = selectedOverlay() ?: return
-        val stepped = overlay.transform.steppedBy(step, repeats, SIZE_LADDER)
+        val stepped = placeNow(overlay).steppedBy(step, repeats, SIZE_LADDER, centerRangeOf(overlay.id))
             ?: return host.showToast(ToastMessage.Explain(explanationOf(step.limit)))
         val edit = if (step.changesPlace) VideoEdit.POSITION_OVERLAY else VideoEdit.TRANSFORM_OVERLAY
         if (!commitTransform(overlay, stepped, edit)) return
@@ -130,10 +138,10 @@ internal class OverlayControl(private val host: EditorHost) {
     /** A held Move arrow: the overlay shows [repeats] steps along in the stand-in; the release commits. */
     fun stepHeld(step: PositionStep, repeats: Int) {
         val overlay = selectedOverlay() ?: return
-        val stepped = overlay.transform.steppedBy(step, repeats, SIZE_LADDER) ?: return
+        val stepped = placeNow(overlay).steppedBy(step, repeats, SIZE_LADDER, centerRangeOf(overlay.id)) ?: return
         if (!hideForStandIn(overlay.id)) return
         holdingArrow = true
-        showStandIn(OverlayStandInUi(overlay.id, stepped.clampedForOverlay(), overlay.opacity), awaitingCommit = false)
+        showStandIn(OverlayStandInUi(overlay.id, stepped.clampedForOverlay(centerRangeOf(overlay.id)), opacityNow(overlay)), awaitingCommit = false)
     }
 
     /** Bring forward ([forward]) or Send back: one "Layer order" step, or an explanation when no overlay shares a moment in that direction. */
@@ -162,17 +170,32 @@ internal class OverlayControl(private val host: EditorHost) {
 
     // False when it changed nothing (no step).
     private fun commitTransform(overlay: MediaClip, transform: Transform, edit: VideoEdit): Boolean {
-        val clamped = transform.clampedForOverlay()
+        val clamped = transform.clampedForOverlay(centerRangeOf(overlay.id))
         val hidden = hideForStandIn(overlay.id)
-        if (!host.commit(edit) { it.setOverlayTransform(overlay.id, clamped) }) {
+        // A keyed item's every edit is a keyframe edit; the static setter would write fields its engine ignores (spec D4).
+        val recorded = if (host.routesThroughKeyframes(overlay.id)) {
+            host.commitLook(edit, overlay.id) { it.copy(centerX = clamped.centerX, centerY = clamped.centerY, scale = clamped.scale, rotationDegrees = transform.rotationDegrees) }
+        } else {
+            host.commit(edit) { it.setOverlayTransform(overlay.id, clamped) }
+        }
+        if (!recorded) {
             clearStandIn()
             showPreviewsOverlay()
             return false
         }
         // The committed overlay stays drawn by the editor until the preview's new frame shows it.
-        if (hidden) showStandIn(OverlayStandInUi(overlay.id, clamped, overlay.opacity), awaitingCommit = true)
+        if (hidden) showStandIn(OverlayStandInUi(overlay.id, clamped, opacityNow(overlay)), awaitingCommit = true)
         return true
     }
+
+    // The overlay's place and opacity under the playhead: its own, or the keyframes' (spec P4-02b → Value panels while the item has keyframes).
+    private fun placeNow(overlay: MediaClip): Transform = host.lookNow(overlay.id)?.transform ?: overlay.transform
+
+    private fun opacityNow(overlay: MediaClip): Float = host.lookNow(overlay.id)?.opacity ?: overlay.opacity
+
+    // A keyed item may leave the frame by half a frame (spec Question 1).
+    private fun centerRangeOf(itemId: String): ClosedFloatingPointRange<Float> =
+        if (host.routesThroughKeyframes(itemId)) KeyframeCatalog.CENTER_RANGE else 0f..1f
 
     // The preview draws an overlay invisible only when the editor can draw it in its place: no picture, no hiding.
     private fun hideForStandIn(itemId: String): Boolean {

@@ -62,10 +62,14 @@ import app.memix.core.model.project.TrackKind
 import app.memix.core.ui.formatTimecode
 import app.memix.core.ui.appLanguageCode
 import app.memix.feature.videoeditor.EditorPreview
+import app.memix.feature.videoeditor.KeyframeBarUi
+import app.memix.feature.videoeditor.KeyframeMarkerUi
 import app.memix.feature.videoeditor.LandedItems
 import app.memix.feature.videoeditor.OriginalAudioUi
 import app.memix.feature.videoeditor.ReorderUi
 import app.memix.feature.videoeditor.VideoEditorIntent
+import kotlin.math.abs
+import kotlinx.collections.immutable.persistentSetOf
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.time.Duration.Companion.milliseconds
@@ -109,6 +113,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun Timeline(
     timeline: TimelineUi,
     selectedItemId: String?,
+    keyframeBar: KeyframeBarUi?,
     trimRanges: TrimRanges?,
     reorder: ReorderUi?,
     landed: LandedItems?,
@@ -124,7 +129,7 @@ internal fun Timeline(
 ) {
     // Time always runs left to right, whatever the language (spec → Structure).
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        TimelineContent(timeline, selectedItemId, trimRanges, reorder, landed, revealed, preview, thumbnails, waveforms, originalAudio, addSoundPillFocus, addMediaTileFocus, onIntent, modifier)
+        TimelineContent(timeline, selectedItemId, keyframeBar, trimRanges, reorder, landed, revealed, preview, thumbnails, waveforms, originalAudio, addSoundPillFocus, addMediaTileFocus, onIntent, modifier)
     }
 }
 
@@ -140,6 +145,7 @@ private fun rulerHeight(): Dp = with(LocalDensity.current) { MemixTheme.type.tim
 private fun TimelineContent(
     timeline: TimelineUi,
     selectedItemId: String?,
+    keyframeBar: KeyframeBarUi?,
     trimRanges: TrimRanges?,
     reorder: ReorderUi?,
     landed: LandedItems?,
@@ -162,6 +168,7 @@ private fun TimelineContent(
     SideEffect {
         controller.timeline = timeline
         controller.onIntent = onIntent
+        controller.keyframeBar = keyframeBar
         controller.reduceMotion = reduceMotion
         controller.density = density.density
         controller.haptics = haptics
@@ -181,9 +188,12 @@ private fun TimelineContent(
     // The whole timeline's height: when the lanes and the add row don't fit under the ruler, the row is pinned (P4-01b).
     var timelineHeightPx by remember { mutableIntStateOf(0) }
     val lanesAvailablePx = (timelineHeightPx - rulerHeightPx).coerceAtLeast(0f)
-    val lanes = remember(timeline, density, labelLineHeightPx, addPillLabelHeightPx, lanesAvailablePx) {
-        laneLayoutOf(timeline, density, labelLineHeightPx, addPillLabelHeightPx, lanesAvailablePx)
+    // The selected item's marker row opens under its lane while its keyframe bar is open (P4-02b); the lanes below slide.
+    val markerItemId = keyframeBar?.itemId
+    val lanes = remember(timeline, density, labelLineHeightPx, addPillLabelHeightPx, lanesAvailablePx, markerItemId) {
+        laneLayoutOf(timeline, density, labelLineHeightPx, addPillLabelHeightPx, lanesAvailablePx, markerItemId)
     }
+    val currentBar by rememberUpdatedState(keyframeBar)
     val labelSpacingPx = rememberRulerLabelSpacing(textMeasurer, timeline.lengthUs)
     val selection = rememberSelection(textMeasurer, timeline, lanes, selectedItemId)
     val currentSelectedId by rememberUpdatedState(selection.selected?.item?.id)
@@ -194,6 +204,8 @@ private fun TimelineContent(
     var fadeFrame by remember { mutableLongStateOf(0L) }
     // How tall the scrolling lanes' window is, for bringing a landed sound's lane into view.
     var lanesViewportPx by remember { mutableIntStateOf(0) }
+    // Asked again once the lanes' window is measured (the serial differs), so a bar open from the first frame still scrolls.
+    val markerReveal = remember(markerItemId, lanesViewportPx > 0) { markerItemId?.let { LandedItems(persistentSetOf(it), serial = if (lanesViewportPx > 0) 1 else 0) } }
     var zoomMenuOpen by remember { mutableStateOf(false) }
     // Kept after closing, so the menu fades out where it was.
     var zoomMenuAt by remember { mutableStateOf(IntOffset.Zero) }
@@ -218,6 +230,17 @@ private fun TimelineContent(
             }
             .timelineSemantics(stringResource(Res.string.timeline_a11y), rememberZoomActions(controller))
             .pointerInput(controller) { detectTouchAndPinch(controller::onTouchDown, controller::zoomBy, controller::onTouchUp) }
+            // A diamond on the marker row is taken first: a tap selects it, a drag moves it (P4-02b).
+            .pointerInput(controller, painter, lanes, rulerHeightPx) {
+                detectKeyframeGestures(
+                    markerAt = { offset -> currentBar?.let { diamondUnder(controller, lanes, it, TimelineHit(rulerHeightPx, laneScroll.value, offset)) } },
+                    onTap = controller::tapKeyframe,
+                    onDragStart = { marker, x -> currentBar?.let { bar -> lanes.rowOf(bar.itemId)?.let { controller.startKeyframeDrag(bar, marker, it, x) } } },
+                    onDrag = controller::dragKeyframe,
+                    onEnd = controller::endKeyframeDrag,
+                    onCancel = controller::cancelKeyframeDrag,
+                )
+            }
             // Before the scroll and the taps, so a finger on a handle trims instead of scrubbing.
             .pointerInput(controller, painter, rulerHeightPx) {
                 detectTrimDrag(
@@ -315,6 +338,13 @@ private fun TimelineContent(
                             with(painter) {
                                 drawLanes(timeline, lanes, playheadUs, pxPerUs, thumbnails, waveforms, missingSources, trim, move, motion, hideMainClips = strip != null)
                             }
+                            keyframeBar?.let { bar ->
+                                lanes.rowOf(bar.itemId)?.let { row ->
+                                    translate(top = motion.laneShiftPx(row.track.id)) {
+                                        with(painter) { drawKeyframeMarkers(row, bar, state.keyframeDrag, playheadUs, pxPerUs, timeline.lengthUs) }
+                                    }
+                                }
+                            }
                             // A carried item draws its own outline where it goes.
                             if (strip == null && move == null) {
                                 selection.selected?.let { selected ->
@@ -325,10 +355,13 @@ private fun TimelineContent(
                             }
                         },
                 )
+                if (!reordering) keyframeBar?.let { bar -> lanes.rowOf(bar.itemId)?.takeIf { it.markerHeightPx > 0f }?.let { KeyframeSemantics(controller, bar, it) } }
                 if (!reordering) TrackSemantics(controller, painter, timeline, lanes, selection.selected?.item?.id, trimRanges, thumbnails?.missingSources.orEmpty())
                 ShowLandedLane(landed, lanes, laneScroll, viewportHeightPx = { lanesViewportPx })
                 // After Layer order the clip's lane may have moved: the lanes scroll to keep it in view.
                 ShowLandedLane(revealed, lanes, laneScroll, viewportHeightPx = { lanesViewportPx })
+                // Opening a keyframe bar brings its item's lane and marker row into view (spec P4-02b → Lane budget).
+                ShowLandedLane(markerReveal, lanes, laneScroll, viewportHeightPx = { lanesViewportPx })
             }
             // The pinned "Add a meme sound" row takes its own height under the scrolling lanes (the pill itself is drawn over it).
             lanes.addSoundRow?.takeIf { it.pinned }?.let { Spacer(Modifier.fillMaxWidth().height(with(density) { it.heightPx.toDp() })) }
@@ -384,13 +417,37 @@ private fun TimelineContent(
     }
     CancelTrimOnBack(controller)
     CancelMoveOnBack(controller)
+    CancelKeyframeDragOnBack(controller)
 }
 
 /** True when [hit] is in the main video row's band (48 dp: the reorder tiles' targets), below the ruler. */
 private fun isOnMainRow(lanes: LaneLayout, hit: TimelineHit): Boolean {
     val mainRow = lanes.rows.firstOrNull { it.track.kind == TrackKind.MAIN_VIDEO } ?: return false
     val laneY = hit.offset.y - hit.rulerHeightPx + hit.laneScrollPx
-    return hit.offset.y >= hit.rulerHeightPx && laneY >= mainRow.topPx && laneY < mainRow.topPx + mainRow.heightPx
+    return hit.offset.y >= hit.rulerHeightPx && laneY >= mainRow.topPx && laneY < mainRow.topPx + mainRow.contentHeightPx
+}
+
+/** The diamond of [bar] under [hit], within `touch-target` wide of its center, in the marker row; null elsewhere. */
+private fun diamondUnder(controller: TimelineController, lanes: LaneLayout, bar: KeyframeBarUi, hit: TimelineHit): KeyframeMarkerUi? {
+    if (hit.offset.y < hit.rulerHeightPx) return null
+    val row = lanes.rowOf(bar.itemId)?.takeIf { it.markerHeightPx > 0f } ?: return null
+    val laneY = hit.offset.y - hit.rulerHeightPx + hit.laneScrollPx
+    if (laneY < row.markerTopPx || laneY >= row.markerTopPx + row.markerHeightPx) return null
+    val state = controller.state
+    val pxPerUs = pxPerUs(state.dpPerSecond, controller.density)
+    if (pxPerUs <= 0f) return null
+    val halfTargetPx = controller.edgeZonePx / 2
+    var nearest: KeyframeMarkerUi? = null
+    var nearestDistance = Float.MAX_VALUE
+    for (index in bar.markers.indices) {
+        val marker = bar.markers[index]
+        val distance = abs(xOf(marker.timeUs, state.playheadUs, state.widthPx / 2f, pxPerUs) - hit.offset.x)
+        if (distance <= halfTargetPx && distance < nearestDistance) {
+            nearest = marker
+            nearestDistance = distance
+        }
+    }
+    return nearest
 }
 
 /** The item under [hit] on any lane but the main track, with its row, for a long-press move; null elsewhere. */
@@ -444,7 +501,8 @@ private fun handleUnder(controller: TimelineController, painter: TimelinePainter
     if (y < hit.rulerHeightPx) return null
     val laneY = y - hit.rulerHeightPx + hit.laneScrollPx
     val row = selected.row
-    if (laneY < row.topPx || laneY >= row.topPx + row.heightPx) return null
+    // The item's own row: a diamond under it is the marker row's, never a trim handle's.
+    if (laneY < row.topPx || laneY >= row.topPx + row.contentHeightPx) return null
     val state = controller.state
     val pxPerUs = pxPerUs(state.dpPerSecond, controller.density)
     return painter.trimHandleAt(selected.item.startUs, selected.item.endUs, x, state.playheadUs, pxPerUs, state.widthPx.toFloat())
@@ -609,7 +667,10 @@ private fun onTap(controller: TimelineController, painter: TimelinePainter, lane
         if (pxPerUs > 0f) controller.seekAnimated(timeAt(x, state.playheadUs, centerPx, pxPerUs))
         return
     }
-    val row = lanes.rowAt(y - hit.rulerHeightPx + hit.laneScrollPx)
+    val laneY = y - hit.rulerHeightPx + hit.laneScrollPx
+    // The marker row answers only to its diamonds, which the keyframe detector took; an empty part of it does nothing.
+    if (lanes.rows.any { it.markerHeightPx > 0f && laneY >= it.markerTopPx && laneY < it.markerTopPx + it.markerHeightPx }) return
+    val row = lanes.rowAt(laneY)
     val item = row?.let { painter.itemAt(it, x, state.playheadUs, centerPx, pxPerUs) }
     when {
         item == null -> controller.onIntent(VideoEditorIntent.ClearSelection)

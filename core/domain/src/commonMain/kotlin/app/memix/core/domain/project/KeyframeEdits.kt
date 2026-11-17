@@ -136,6 +136,13 @@ fun Project.setLookAt(itemId: String, atUs: Long, look: ItemLook): Project {
     return withKeyframesOf(track, item, (keyframes + Keyframe(relativeUs, wanted)).sortedBy { it.timeUs })
 }
 
+/** Whether [setLookAt] at [atUs] would make a keyframe (rather than update one), so the step can be counted as an add. */
+fun Project.setLookAtAddsKeyframe(itemId: String, atUs: Long): Boolean {
+    val item = findItem(itemId)?.item ?: return false
+    val relativeUs = atUs - item.startUs
+    return item.keyframeList().none { abs(it.timeUs - relativeUs) < KeyframeCatalog.MIN_SPACING_US }
+}
+
 private fun firstKeyframes(item: TimelineItem, track: Track, relativeUs: Long, wanted: ItemLook): List<Keyframe> {
     if (relativeUs <= KeyframeCatalog.AUTO_START_WITHIN_US) return listOf(Keyframe(relativeUs, wanted))
     val before = item.staticLook(track.isOverlay()).restrictedTo(item, track)

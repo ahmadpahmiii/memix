@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.ui.Modifier
 import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixSpacing
@@ -14,12 +15,14 @@ import app.memix.core.designsystem.Text
 import app.memix.core.designsystem.component.Button
 import app.memix.core.designsystem.component.Slider
 import app.memix.core.designsystem.component.ToolPanel
+import app.memix.core.model.project.KeyframeCatalog
 import app.memix.core.model.project.OverlayCatalog
 import app.memix.core.model.project.Transform
 import app.memix.core.ui.panels.PositionRows
 import app.memix.feature.videoeditor.OverlayPanel
 import app.memix.feature.videoeditor.OverlayPanelUi
 import app.memix.feature.videoeditor.VideoEditorIntent
+import app.memix.feature.videoeditor.keyframes.KeyframeNote
 import kotlin.math.roundToInt
 import memix.core.ui.generated.resources.Res as UiRes
 import memix.core.ui.generated.resources.layers_opacity
@@ -38,19 +41,20 @@ import org.jetbrains.compose.resources.stringResource
  * shown when [panel] says so. [transform] is the overlay's place now, with a held arrow's or a commit's stand-in applied.
  */
 @Composable
-internal fun OverlayPanels(panel: OverlayPanelUi?, transform: Transform?, onIntent: (VideoEditorIntent) -> Unit, modifier: Modifier = Modifier) {
+internal fun OverlayPanels(panel: OverlayPanelUi?, transformAt: (playheadUs: Long) -> Transform?, playhead: State<Long>, onIntent: (VideoEditorIntent) -> Unit, modifier: Modifier = Modifier) {
     val done = stringResource(UiRes.string.panel_done)
     val close = { onIntent(VideoEditorIntent.CloseOverlayPanel) }
     val shown = panel?.panel
     ToolPanel(shown == OverlayPanel.OPACITY, stringResource(UiRes.string.layers_opacity), done, close, modifier) {
         // The slider's last value stays on screen while the panel slides away.
         val opacity = panel?.opacity ?: 1f
+        if (panel?.keyed == true) KeyframeNote()
         Slider(
             label = stringResource(UiRes.string.layers_opacity),
             value = opacity,
             onValueChange = { onIntent(VideoEditorIntent.OverlayOpacityChanged(it)) },
             valueText = stringResource(UiRes.string.position_size_value, (opacity * PERCENT).roundToInt()),
-            valueRange = OverlayCatalog.OPACITY_RANGE,
+            valueRange = if (panel?.keyed == true) KeyframeCatalog.OPACITY_RANGE else OverlayCatalog.OPACITY_RANGE,
             defaultValue = 1f,
             step = OPACITY_STEP,
             onValueChangeFinished = { onIntent(VideoEditorIntent.OverlayOpacityReleased) },
@@ -58,8 +62,11 @@ internal fun OverlayPanels(panel: OverlayPanelUi?, transform: Transform?, onInte
             snapDistance = OPACITY_SNAP,
         )
     }
-    ToolPanel(shown == OverlayPanel.POSITION && transform != null, stringResource(UiRes.string.position_title), done, close, modifier) {
+    ToolPanel(shown == OverlayPanel.POSITION && transformAt(0L) != null, stringResource(UiRes.string.position_title), done, close, modifier) {
+        // Read here, so the sampled playhead recomposes only these rows.
+        val transform = transformAt(playhead.value)
         if (transform != null) {
+            if (panel?.keyed == true) KeyframeNote()
             PositionRows(
                 transform,
                 onStep = { step, repeats -> onIntent(VideoEditorIntent.PositionStepped(step, repeats)) },

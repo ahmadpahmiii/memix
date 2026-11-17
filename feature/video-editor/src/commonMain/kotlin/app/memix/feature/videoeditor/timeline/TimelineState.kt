@@ -31,6 +31,9 @@ internal class TimelineState {
     /** The trim handle being dragged, or null (P1-06). Its edge moves at frame rate; only draw and gesture code read it. */
     var trim by mutableStateOf<TrimDrag?>(null)
 
+    /** The keyframe diamond being dragged, or null (P4-02b). Its time moves at frame rate; only draw and gesture code read it. */
+    var keyframeDrag by mutableStateOf<KeyframeDrag?>(null)
+
     /** Reorder mode's tiles, from entering until they've expanded back after it ended; null otherwise (P1-06). */
     var reorder by mutableStateOf<ReorderStrip?>(null)
 
