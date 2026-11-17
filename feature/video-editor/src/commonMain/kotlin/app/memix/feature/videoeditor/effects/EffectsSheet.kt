@@ -33,6 +33,8 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.Hyphens
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextOverflow
 import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixShapes
@@ -105,6 +107,9 @@ private fun EffectTile(def: EffectDef, position: Int, count: Int, tiles: EffectT
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val name = effectNameOf(def.id)?.let { stringResource(it) }.orEmpty()
+    val caption = MemixTheme.type.caption
+    // Auto hyphens and heading line breaks keep a long Spanish or Portuguese name from splitting mid-word at 200% font.
+    val nameStyle = remember(caption) { caption.copy(hyphens = Hyphens.Auto, lineBreak = LineBreak.Heading) }
     val spoken = stringResource(if (ringed) Res.string.a11y_effect_tile_selected else Res.string.a11y_effect_tile, name, position, count)
     Column(
         Modifier
@@ -127,7 +132,7 @@ private fun EffectTile(def: EffectDef, position: Int, count: Int, tiles: EffectT
         }
         Text(
             name,
-            MemixTheme.type.caption,
+            nameStyle,
             Modifier.padding(top = MemixSpacing.space1).clearAndSetSemantics { },
             maxLines = MAX_NAME_LINES,
             overflow = TextOverflow.Ellipsis,

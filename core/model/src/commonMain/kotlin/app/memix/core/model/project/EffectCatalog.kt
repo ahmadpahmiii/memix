@@ -20,7 +20,7 @@ enum class EffectEnvelope {
 
 /**
  * One effect of the catalog: the id saved in every project, where the sheet lists it, its envelope, and what a new item starts with.
- * [isBuilt] is false for the effects of P4-06b: their ids are saved from now on, but no engine draws them and the sheet doesn't list them yet.
+ * [isBuilt] is false for an effect no engine draws yet and the sheet doesn't list; all 30 are built since P4-06b, the flag stays for ids added later.
  */
 data class EffectDef(
     val id: String,
@@ -72,11 +72,11 @@ object EffectCatalog {
         def("shake", EffectTab.MOTION, EffectEnvelope.STEADY, 1000, 0.6f, true, refMs = 120),
         def("wobble", EffectTab.MOTION, EffectEnvelope.STEADY, 2000, 0.6f, true, refMs = 208),
         def("bounce", EffectTab.MOTION, EffectEnvelope.STEADY, 2000, 0.6f, true, refMs = 125),
-        def("glitch", EffectTab.GLITCH, EffectEnvelope.STEADY, 1000, 0.7f, false),
-        def("rgb_split", EffectTab.GLITCH, EffectEnvelope.STEADY, 1500, 0.6f, false),
-        def("tear", EffectTab.GLITCH, EffectEnvelope.STEADY, 2000, 0.6f, false),
-        def("pixelate", EffectTab.GLITCH, EffectEnvelope.STEADY, 1000, 0.5f, false),
-        def("static", EffectTab.GLITCH, EffectEnvelope.STEADY, 1500, 0.5f, false),
+        def("glitch", EffectTab.GLITCH, EffectEnvelope.STEADY, 1000, 0.7f, true, refMs = 800),
+        def("rgb_split", EffectTab.GLITCH, EffectEnvelope.STEADY, 1500, 0.6f, true),
+        def("tear", EffectTab.GLITCH, EffectEnvelope.STEADY, 2000, 0.6f, true, refMs = 600),
+        def("pixelate", EffectTab.GLITCH, EffectEnvelope.STEADY, 1000, 0.5f, true),
+        def("static", EffectTab.GLITCH, EffectEnvelope.STEADY, 1500, 0.5f, true),
         def("flash", EffectTab.LIGHT, EffectEnvelope.DECAY, 250, 0.8f, true),
         def("light_pulse", EffectTab.LIGHT, EffectEnvelope.STEADY, 2000, 0.5f, true, refMs = 250),
         def("glow", EffectTab.LIGHT, EffectEnvelope.STEADY, 2000, 0.6f, true),
@@ -87,16 +87,16 @@ object EffectCatalog {
         def("negative", EffectTab.COLOR, EffectEnvelope.STEADY, 1000, 1f, true),
         def("duotone", EffectTab.COLOR, EffectEnvelope.STEADY, 2000, 0.7f, true),
         def("poster", EffectTab.COLOR, EffectEnvelope.STEADY, 2000, 0.6f, true),
-        def("blur", EffectTab.BLUR, EffectEnvelope.STEADY, 2000, 0.6f, false),
-        def("radial_blur", EffectTab.BLUR, EffectEnvelope.STEADY, 1000, 0.7f, false),
-        def("smear", EffectTab.BLUR, EffectEnvelope.STEADY, 1000, 0.6f, false),
-        def("tilt_blur", EffectTab.BLUR, EffectEnvelope.STEADY, 2000, 0.7f, false),
-        def("soft_focus", EffectTab.BLUR, EffectEnvelope.STEADY, 2000, 0.6f, false),
-        def("vhs", EffectTab.RETRO, EffectEnvelope.STEADY, 3000, 0.7f, false),
-        def("old_screen", EffectTab.RETRO, EffectEnvelope.STEADY, 2000, 0.6f, false),
-        def("film_grain", EffectTab.RETRO, EffectEnvelope.STEADY, 3000, 0.5f, false),
-        def("fisheye", EffectTab.RETRO, EffectEnvelope.STEADY, 2000, 0.6f, false),
-        def("mirror", EffectTab.RETRO, EffectEnvelope.STEADY, 2000, 1f, false),
+        def("blur", EffectTab.BLUR, EffectEnvelope.STEADY, 2000, 0.6f, true),
+        def("radial_blur", EffectTab.BLUR, EffectEnvelope.STEADY, 1000, 0.7f, true),
+        def("smear", EffectTab.BLUR, EffectEnvelope.STEADY, 1000, 0.6f, true),
+        def("tilt_blur", EffectTab.BLUR, EffectEnvelope.STEADY, 2000, 0.7f, true),
+        def("soft_focus", EffectTab.BLUR, EffectEnvelope.STEADY, 2000, 0.6f, true),
+        def("vhs", EffectTab.RETRO, EffectEnvelope.STEADY, 3000, 0.7f, true, refMs = 1000),
+        def("old_screen", EffectTab.RETRO, EffectEnvelope.STEADY, 2000, 0.6f, true),
+        def("film_grain", EffectTab.RETRO, EffectEnvelope.STEADY, 3000, 0.5f, true),
+        def("fisheye", EffectTab.RETRO, EffectEnvelope.STEADY, 2000, 0.6f, true),
+        def("mirror", EffectTab.RETRO, EffectEnvelope.STEADY, 2000, 1f, true),
     )
 
     private val byId: Map<String, EffectDef> = all.associateBy { it.id }

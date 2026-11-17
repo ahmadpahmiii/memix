@@ -1,6 +1,14 @@
 package app.memix.core.domain.image
 
 import app.memix.core.model.project.EffectCatalog
+import app.memix.core.domain.image.EffectPixels.OPAQUE
+import app.memix.core.domain.image.EffectPixels.bilinear
+import app.memix.core.domain.image.EffectPixels.blue
+import app.memix.core.domain.image.EffectPixels.green
+import app.memix.core.domain.image.EffectPixels.pack
+import app.memix.core.domain.image.EffectPixels.red
+import app.memix.core.domain.image.EffectPixels.rgbOf
+import app.memix.core.domain.image.EffectPixels.smoothstep
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -14,7 +22,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * The 15 effects of Motion, Light and Color (P4-06a; spec docs/ux/specs/P4-06-video-effects.md → The list) as numbers and as a CPU twin.
+ * The 15 effects of Motion, Light and Color (P4-06a; P4-06b's 15 follow in `GlitchMath`, `BlurMath` and `RetroMath`; spec docs/ux/specs/P4-06-video-effects.md → The list) as numbers and as a CPU twin.
  * The shaders (`EffectsProgram` in `:engine:video`) take every parameter from here ([motionPose], [colorTransform], the constants), so the
  * GPU and this twin are written from one source; the twin is what the reference renders in docs/qa/references/P4-06-effects/ and the sheet's
  * tiles are made with. Each effect is one pass over 8-bit pixels (the shader's RGBA8 target rounds the same way), except Deep-fry (a
@@ -213,9 +221,10 @@ object EffectMath {
 
     /**
      * Draws effect [effectId] at strength [strength], [tauUs] into its item, on [pixels] ([width] x [height] ARGB), in place. Strength 0 and
-     * ids this twin doesn't draw change nothing.
+     * ids this twin doesn't draw change nothing. [frameTimeUs] is the frame's presentation time, which the random effects hash (`EffectNoise`):
+     * pass the frame's real time; the default, [tauUs], is what the sheet's tiles and the reference renders use (an item that starts at 0).
      */
-    fun apply(effectId: String, strength: Float, tauUs: Long, pixels: IntArray, width: Int, height: Int) {
+    fun apply(effectId: String, strength: Float, tauUs: Long, pixels: IntArray, width: Int, height: Int, frameTimeUs: Long = tauUs) {
         if (strength <= 0f || width <= 0 || height <= 0 || !draws(effectId)) return
         val tau = tauUs / MICROS_PER_SECOND
         val pose = MotionPose()
@@ -228,6 +237,29 @@ object EffectMath {
             effectId == "sun_leak" -> sunLeak(pixels, width, height, strength, tau)
             effectId == "glow" -> glow(pixels, width, height, strength)
             effectId == "deep_fry" -> deepFry(pixels, width, height, strength)
+            else -> applySecondBatch(effectId, strength, tau, pixels, width, height, frameTimeUs)
+        }
+    }
+
+    // The 15 effects of P4-06b, whose numbers live in GlitchMath, BlurMath and RetroMath.
+    private fun applySecondBatch(effectId: String, strength: Float, tau: Float, pixels: IntArray, width: Int, height: Int, frameTimeUs: Long) {
+        val frame = EffectNoise.frameIndex(frameTimeUs)
+        when (effectId) {
+            "glitch" -> GlitchMath.glitch(pixels, width, height, strength, frame)
+            "rgb_split" -> GlitchMath.rgbSplit(pixels, width, height, strength)
+            "tear" -> GlitchMath.tear(pixels, width, height, strength, tau)
+            "pixelate" -> GlitchMath.pixelate(pixels, width, height, strength)
+            "static" -> GlitchMath.staticNoise(pixels, width, height, strength, frame)
+            "blur" -> BlurMath.blur(pixels, width, height, strength)
+            "radial_blur" -> BlurMath.radialBlur(pixels, width, height, strength)
+            "smear" -> BlurMath.smear(pixels, width, height, strength)
+            "tilt_blur" -> BlurMath.tiltBlur(pixels, width, height, strength)
+            "soft_focus" -> BlurMath.softFocus(pixels, width, height, strength)
+            "vhs" -> RetroMath.vhs(pixels, width, height, strength, tau, frame)
+            "old_screen" -> RetroMath.oldScreen(pixels, width, height, strength)
+            "film_grain" -> RetroMath.filmGrain(pixels, width, height, strength, EffectNoise.grainFrameIndex(frameTimeUs))
+            "fisheye" -> RetroMath.fisheye(pixels, width, height, strength)
+            "mirror" -> RetroMath.mirror(pixels, width, height, strength)
         }
     }
 
@@ -329,7 +361,7 @@ object EffectMath {
         }
     }
 
-    private fun blur(source: IntArray, width: Int, height: Int, reach: Int, sigma: Float, horizontal: Boolean): IntArray {
+    internal fun blur(source: IntArray, width: Int, height: Int, reach: Int, sigma: Float, horizontal: Boolean): IntArray {
         val weights = FloatArray(2 * reach + 1) { exp(-((it - reach) * (it - reach)) / (2f * sigma * sigma)) }
         val total = weights.sum()
         val out = IntArray(source.size)
@@ -376,46 +408,9 @@ object EffectMath {
         }
     }
 
-    // ---- Pixels ------------------------------------------------------------------------------------------------------
-
-    // The picture at the continuous point (x, y) (a pixel's center at +0.5) by bilinear filtering, the edge repeating: the sampler's linear filter and clamp-to-edge.
-    private fun bilinear(source: IntArray, width: Int, height: Int, x: Float, y: Float, out: FloatArray) {
-        val fx = x - 0.5f
-        val fy = y - 0.5f
-        val x0 = floor(fx).toInt()
-        val y0 = floor(fy).toInt()
-        val tx = fx - x0
-        val ty = fy - y0
-        val a = source[y0.coerceIn(0, height - 1) * width + x0.coerceIn(0, width - 1)]
-        val b = source[y0.coerceIn(0, height - 1) * width + (x0 + 1).coerceIn(0, width - 1)]
-        val c = source[(y0 + 1).coerceIn(0, height - 1) * width + x0.coerceIn(0, width - 1)]
-        val d = source[(y0 + 1).coerceIn(0, height - 1) * width + (x0 + 1).coerceIn(0, width - 1)]
-        out[0] = mix(mix(red(a), red(b), tx), mix(red(c), red(d), tx), ty)
-        out[1] = mix(mix(green(a), green(b), tx), mix(green(c), green(d), tx), ty)
-        out[2] = mix(mix(blue(a), blue(b), tx), mix(blue(c), blue(d), tx), ty)
-    }
-
-    private fun mix(a: Float, b: Float, t: Float): Float = a + (b - a) * t
-
-    private fun smoothstep(edge0: Float, edge1: Float, x: Float): Float {
-        val t = ((x - edge0) / (edge1 - edge0)).coerceIn(0f, 1f)
-        return t * t * (3f - 2f * t)
-    }
-
-    private fun red(p: Int): Float = ((p shr 16) and 0xFF) / 255f
-    private fun green(p: Int): Float = ((p shr 8) and 0xFF) / 255f
-    private fun blue(p: Int): Float = (p and 0xFF) / 255f
-
-    private fun pack(alphaFrom: Int, r: Float, g: Float, b: Float): Int = (alphaFrom and OPAQUE) or (to8(r) shl 16) or (to8(g) shl 8) or to8(b)
-
-    private fun to8(v: Float): Int = (v.coerceIn(0f, 1f) * 255f + 0.5f).toInt()
-
-    private fun rgbOf(rgb: Int): FloatArray = floatArrayOf(((rgb shr 16) and 0xFF) / 255f, ((rgb shr 8) and 0xFF) / 255f, (rgb and 0xFF) / 255f)
-
     private fun radians(degrees: Float): Float = degrees * (PI / 180.0).toFloat()
 
     private const val TAU = (2.0 * PI).toFloat()
     private const val MICROS_PER_SECOND = 1_000_000f
     private const val MATRIX_FLOATS = 12
-    private const val OPAQUE = 0xFF000000.toInt()
 }

@@ -324,3 +324,36 @@ Not checked: **everything on a GPU** (all the shaders, the ping-pong targets, th
 - Each of the 15 effects alone at 100% over the 1080p main clip with one overlay: preview at 30 fps or more (Media3 `MemixPreview` play-span lines); then three of the heaviest stacked (Glow, Deep-fry, Spotlight): 30 fps or more; janky frames under 5% (`dumpsys gfxinfo`) during a 3 s Intensity drag. **Glow (four passes, 16 reads per low-res pixel plus two 2 x reach + 1 tap blurs on a quarter-size copy) and Deep-fry (a 3 x 3 grain read per pixel and the 25-tap sharpen) are the costly ones.** If a phone can't hold 30 fps the spec's lower-resolution preview is not built: report the device and the effect.
 - Export 60 s at 1080p30 with a Deep-fry and a Glow item over the whole video: time against the same export without effects.
 - Memory: the three full-size targets and the grain texture (about 8 MB each at 1080 x 1920, plus 0.5 MB) are made on first use and released with the player.
+
+## P4-06b · video effects: Glitch, Blur and Retro
+
+Spec: `docs/ux/specs/P4-06-video-effects.md`. Notes: `docs/TECHNICAL_DESIGN.md` → Video effects, second batch. Screenshots (desktop renders, not a phone): `docs/ux/reviews/P4-06b/`. References (CPU twin, 540 x 960) and the luminance table and plots: `docs/qa/references/P4-06-effects/` (README there). Scene: `--es memix.openEditor effects-check` as in P4-06a (make the clip as in P4-06a → 0).
+
+### 1. What was checked without a device
+The same throwaway JVM harness as P4-06a (extended): 300 checks pass, including the luminance runs.
+- The twins: strength 0 changes nothing, deterministic, every one of the 30 changes the frame, opaque; 540 x 960 against 270 x 480 agree for the 06b effects except Old screen (its stripes are whole pixels).
+- Randomness: the frame index rounds the time to the nearest 1/30 s (0, 16 666 us, 16 667 us, 33 333 us, 1 s); Film grain's field changes 24 times a second; the same frame time gives the same Static frame whatever the time into the item; the next frame differs; Static's noise is zero-mean (mean luma within 3%).
+- Glitch: bursts are 3 frames, never more than 3 in any 30 frames (3000 frames checked), about 3 slots in 4 hold one; 6 to 10 slices 2 to 9% tall, shift up to 8% of the width; outside a burst the frame is untouched; burst frames differ from each other; 800 ms is the middle of a burst.
+- Shapes: RGB split moves red right of green and leaves green alone; Tear's band is 12% tall, centered at 600 ms and nearer the top at 300 ms; Pixelate's block is one colour and a tiny strength changes less than a big one; Blur, Radial blur, Smear, Soft focus remove detail; Tilt blur keeps the middle row sharp and blurs the top; Blur at strength 0.01 is nearly the sharp frame; Blur's numbers at 1080p (sigma 27 px, 6.75 in the copy, reach 21); Mirror at 100% is the left half mirrored, at 50% folds at three quarters; Fisheye keeps the corners.
+- **Shader safety**, with no validator: the generated sources of all 13 programs were written out and read by a script (every declared uniform is used, no bare integer literal in a float context, no int variable outside a loop header or `float()`, no reserved word as a name): clean; loop bounds are constants (the Gaussian's reach is written into the source).
+- **Photosensitivity:** every effect of the three tabs at 100% and with three stacked, and Glitch + Static + VHS: at most 1 flash in any second (table and plots in the references README).
+- Builds: `assembleDebug`, `lint`, `compileCommonMainKotlinMetadata`, `verifySqlDelightMigration`, `bundleRelease` green (see the commit message).
+
+Not checked: **everything on a GPU** (all 13 new programs, the noise texture's `GL_REPEAT` read, the four-pass quarter-size chain, the shift uniforms), the preview's frame rate, API 29, the export.
+
+### 2. The Done when, on a phone
+1. **The shaders compile.** `effects-check`, add each of the 15 effects once (Effects: Glitch, Blur, Retro tabs). Logcat tag `MemixPreview`: no shader or GL error; each shows. A blank or frozen picture means a failed shader: note which.
+2. **Each effect matches its reference.** For the 30 new reference files (`<id>-100-<ms>.png`, `<id>-50-<ms>.png`): add the effect as an item, set Intensity 100 or 50, **start the item at 0:00** for Glitch, Static, Film grain and VHS (so the hash sees the same time as the references), pause at the file's ms and compare; export 1080p30 and compare the frame scaled to 540 wide (99% of pixels within 3/255 for the effects with no noise; for Static, Film grain, VHS, Glitch the look and the amount of noise, not the grain; Old screen and VHS stripes can sit at another phase).
+3. **Glitch.** A 1 s item at 70%: short bursts (about 3 a second at most) of sideways slices with red and blue split, the picture clean between them; the same frames on a second play-through and in the export.
+4. **Tear.** A band 12% tall sweeps down every 1.2 s and shears sideways.
+5. **Blur family.** Blur, Tilt blur (the middle band stays sharp), Soft focus (brighter, dreamy), Radial blur (streaks out from the center), Smear (horizontal): drag Intensity through 0 to 100% while playing; the picture follows with no jump at the low end.
+6. **Retro.** VHS (scanlines, a band drifting up, noise, color fringes), Old screen (bent edges with a dark rim, scanlines, a vignette), Film grain (fine flicker 24 times a second), Fisheye (bulge, no edge shows), Mirror (the fold from the right edge to the middle with Intensity).
+7. **Stacking.** Three at once with the heaviest (Blur, Radial blur, VHS): lands; a fourth is refused as in 06a.
+8. **The sheet.** Six tabs: Motion, Glitch, Light, Color, Blur, Retro, each with five tiles; tiles are the frame at the playhead with the effect at its peak (Glitch at a burst's middle, Tear with the band at half height); at 360 x 640 the grid scrolls; Spanish and Hindi at 200%: names wrap (Desenfoque inclinado, Granulado de filme, Desfoque radial), tabs scroll sideways (desktop renders in `docs/ux/reviews/P4-06b/`).
+9. **Old draft with a 06b id** (none exist yet): n/a. A draft from this build opened on 06a code would keep the items and skip them (not checkable here).
+10. **LeakCanary:** open the sheet on each of the three new tabs, land, close the editor, five times: no leak. Also leave the editor with a Static or VHS item selected: the noise texture is released with the player (no GL error on re-entry).
+
+### 3. Numbers to take (release or benchmark, the owner's phone)
+- Each of the 15 new effects alone at 100% over the 1080p main clip with one overlay: preview at 30 fps or more (Media3 `MemixPreview` play-span lines); then three of the heaviest stacked (Blur x3: 12 passes; Radial blur + VHS + Blur): 30 fps or more; janky frames under 5% (`dumpsys gfxinfo`) during a 3 s Intensity drag. **Costs to expect** (per pixel of the full-size frame): Radial blur 16 reads, VHS 7, the Gaussian three 4 + 1 + the copy's 2 x 43 taps on a 270 x 480 copy, the rest 1 to 3. If a phone can't hold 30 fps, report the device and the effect (the lower-resolution preview is not built).
+- Export 60 s at 1080p30 with Blur over the whole video against the same without effects.
+- Memory: Blur, Tilt blur and Soft focus use the same two quarter-size targets as Glow; the noise texture is 64 KB; nothing else is new.

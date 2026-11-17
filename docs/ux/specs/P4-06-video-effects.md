@@ -82,7 +82,7 @@ Title row: the **effect's name** (`title`, heading), **Done** (Ghost). Content: 
 - **Intensity 0** is exactly "no effect": the frame is bit-identical to a render with the item deleted (checked, Measured).
 - **Deterministic:** every random-looking effect (glitch bursts, static, grain, shake) draws from a hash of **the frame's presentation time in microseconds rounded to 1/30 s and a per-effect constant**, never a live random number. So the preview, a seek, and the export show the same frame at the same time.
 - **Frame rate and size:** the effects work in the output size's pixels with parameters as shares of the shorter side, so a 720p preview and a 1080p export look the same, scaled. Preview may drop to a lower resolution rather than below 30 fps (the Blur precedent, P1-11 and P4-07); no message; export is always full quality.
-- **Photosensitivity (SC 2.3.1, Guidance).** No effect makes the whole frame, or a large part of it, flash more than **three times in any one second**: Flash is one burst per item (Decay), Light pulse runs at 2 Hz, Glitch bursts are at most 3 per second, nothing else has a brightness cycle. Two Flash items placed closer than 0.33 s are the user's choice and the spec can't police them; the Effects tab hints nothing. QA checks the ceiling with a frame-by-frame luminance plot of the references (Measured).
+- **Photosensitivity (SC 2.3.1, Guidance).** No effect makes the whole frame, or a large part of it, flash more than **three times in any one second**: Flash is one burst per item (Decay), Light pulse runs at 2 Hz, Glitch bursts are at most 3 per second, nothing else has a brightness cycle. The **flash guard** (no more than 3 Flash starts in any 1 s; a fourth refuses with `explain_effect_flash`) covers `flash` only. **Decided 17 Nov (06b review): it does not extend to Static or Old screen.** Their swing (0.10 to 0.19 of mean luminance) is a one-time level shift for a whole item when three are stacked, not an oscillation; a single item stays under 0.07; reaching 4 swings in a second would take about nine overlapping or back-to-back items, which the 3-overlap rule and the user's own effort make a deliberate choice, and a generic luminance guard would need per-frame analysis on the phone. QA still plots them (Measured). QA checks the ceiling with a frame-by-frame luminance plot of the references (Measured).
 - **Originality.** Names and looks are authored for Memix from the formulas below, not taken from another app's preset list; the engineer implements the formulas as written. The PRD's own words (zoom punch, shake, glitch, flash, RGB split, VHS, blur, deep-fry) are generic effect types.
 
 ### The list (ids saved forever)
@@ -102,10 +102,10 @@ Defaults: length (ms) and intensity (%). *Ref time* = the instant in the item th
 
 | Id | Name | Env | Length · Int. | What it does at 100% | Ref time |
 | --- | --- | --- | --- | --- | --- |
-| `glitch` | Glitch | Steady | 1000 · 70 | **Bursts**: up to 3 per second at hashed times, each 90 ms: 6 to 10 horizontal slices 2 to 9% of h tall displaced sideways by up to 8% of w, red and blue channels offset 1% of w | a burst's middle |
+| `glitch` | Glitch | Steady | 1000 · 70 | **Bursts**: up to 3 per second at hashed times, each 90 ms: 6 to 10 horizontal slices 2 to 9% of h tall displaced sideways by up to 8% of w, red and blue channels offset 1% of w (**over the whole frame for the burst's 90 ms**; bursts sit in 10-frame slots at 30 fps; amended 17 Nov) | a burst's middle |
 | `rgb_split` | RGB split | Steady | 1500 · 60 | Red shifted left and blue right by 1.5% of w; green stays | any |
-| `tear` | Tear | Steady | 2000 · 60 | A band 12% of h tall sweeps top to bottom every 1.2 s; inside it pixels shift sideways by 5% of w × sin of their height in the band | band at 50% height |
-| `pixelate` | Pixelate | Steady | 1000 · 50 | Mosaic with blocks of 1% + 9% × *s* of short (min 1% = off) | any |
+| `tear` | Tear | Steady | 2000 · 60 | A band 12% of h tall sweeps top to bottom every 1.2 s; inside it pixels shift sideways by 5% of w × sin of their height in the band (**one full sine period across the band**, amended 17 Nov) | band at 50% height |
+| `pixelate` | Pixelate | Steady | 1000 · 50 | Mosaic with blocks of 1% + 9% × *s* of short, **faded in by mix(picture, mosaic, min(1, *s* / 0.125))** (amended 17 Nov: a 1% block is already 10 px at 1080p, so without the fade the ramp pops) | any |
 | `static` | Static | Steady | 1500 · 50 | Additive luma noise, 60% × *s*, new per frame, grain size 1.5 px at 1080p | any |
 
 **Light** (06a)
@@ -132,7 +132,7 @@ Defaults: length (ms) and intensity (%). *Ref time* = the instant in the item th
 
 | Id | Name | Env | Length · Int. | What it does at 100% | Ref time |
 | --- | --- | --- | --- | --- | --- |
-| `blur` | Blur | Steady | 2000 · 60 | Gaussian, σ = 2.5% of short × *s* (27 px at 1080p) | any |
+| `blur` | Blur | Steady | 2000 · 60 | Gaussian, σ = 2.5% of short × *s* (27 px at 1080p); **below σ = 0.3% of short it fades in from the sharp picture** (amended 17 Nov, no pop in the ramp) | any |
 | `radial_blur` | Radial blur | Steady | 1000 · 70 | Zoom blur from the center: samples along the ray to the center, length 12% of the distance × *s*, 16 samples | any |
 | `smear` | Smear | Steady | 1000 · 60 | Horizontal motion blur, length 8% of w × *s*, 16 samples | any |
 | `tilt_blur` | Tilt blur | Steady | 2000 · 70 | A sharp horizontal band 25% of h tall (feather 15%) centered; blur σ = 2% of short × *s* elsewhere | any |
@@ -143,8 +143,8 @@ Defaults: length (ms) and intensity (%). *Ref time* = the instant in the item th
 | Id | Name | Env | Length · Int. | What it does at 100% | Ref time |
 | --- | --- | --- | --- | --- | --- |
 | `vhs` | VHS | Steady | 3000 · 70 | Chroma smear sideways 0.6% of w × *s*; scanlines darkening every other 2 px row (scaled to height / 1080) by 12% × *s*; a tracking band 6% of h drifting up 0.25 cycles a second with a 1.5% of w jitter; noise 4% × *s*; softening about 0.5 px | any |
-| `old_screen` | Old screen | Steady | 2000 · 60 | 3 px scanline pattern with an RGB stripe mask at 15% × *s*, barrel bend of 4% × *s*, a vignette | any |
-| `film_grain` | Film grain | Steady | 3000 · 50 | Luma noise σ = 10% × *s*, grain 1.5 px, new 24 times a second (the 1/30 s hash picks the nearest) | any |
+| `old_screen` | Old screen | Steady | 2000 · 60 | 3 px scanline pattern with an RGB stripe mask at 15% × *s*, barrel bend of 4% × *s* (**the bend leaves a black rim of up to 4%: intended, it reads as the screen's glass; no cover scale**), a vignette of 45% × *s* (amended 17 Nov) | any |
+| `film_grain` | Film grain | Steady | 3000 · 50 | Luma noise σ = 10% × *s* (uniform noise of amplitude 10% × √3 × *s*, so σ holds), grain 1.5 px, new 24 times a second (the 1/30 s hash picks the nearest); line patterns (VHS scanlines and softening, Old screen) use whole pixels (amended 17 Nov) | any |
 | `fisheye` | Fisheye | Steady | 2000 · 60 | Barrel distortion *k* = 0.45 × *s*, scaled to fill | any |
 | `mirror` | Mirror | Steady | 2000 · 100 | The left part mirrored over the right: the fold moves from the right edge (0%) to the center (100%) | any |
 

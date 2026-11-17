@@ -5,7 +5,7 @@ import app.memix.core.domain.image.SharpenTaps
 import app.memix.core.domain.image.EffectMath
 
 /**
- * The fragment shaders of the 15 effects of P4-06a (spec docs/ux/specs/P4-06-video-effects.md → The list), GLSL ES 1.00: the GPU twins of
+ * The fragment shaders of the 15 effects of P4-06a (P4-06b's are in `GlitchShaders`, `BlurShaders` and `RetroShaders`; spec docs/ux/specs/P4-06-video-effects.md → The list), GLSL ES 1.00: the GPU twins of
  * `EffectMath` (:core:domain), which gives them every number. Each pass reads `uTexSampler`, the frame so far, and writes opaque 8-bit
  * color with the alpha it read. Coordinates in pixels are y down from the top-left, as in the twin: `pixel()` turns the sampler's
  * coordinate into them. No loop has a variable bound (GLSL ES 1.00 can't), so a blur's reach and a sharpen's taps are written into the
@@ -21,7 +21,7 @@ void main() {
 }
 """
 
-    private const val HEADER = """
+    internal const val HEADER = """
 precision highp float;
 uniform sampler2D uTexSampler;
 varying vec2 vTexSamplingCoord;
@@ -169,8 +169,8 @@ void main() {
 }
 """
 
-    /** Glow, passes 2 and 3: a Gaussian along [uStep] (one texel along one axis) of [reach] texels each side, the edge repeating. */
-    fun glowBlur(reach: Int): String = HEADER + """
+    /** Glow's passes 2 and 3 and the blur effects' (`BlurShaders`): a Gaussian along [uStep] (one texel along one axis) of [reach] texels each side, the edge repeating. */
+    fun gaussianBlur(reach: Int): String = HEADER + """
 uniform vec2 uStep;
 uniform float uSigma;
 void main() {
