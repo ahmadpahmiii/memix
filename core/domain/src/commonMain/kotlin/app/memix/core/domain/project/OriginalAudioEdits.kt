@@ -1,6 +1,7 @@
 package app.memix.core.domain.project
 
 import app.memix.core.model.project.AudioClip
+import app.memix.core.model.project.ItemLook
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.Project
@@ -68,6 +69,8 @@ fun Project.detachAudio(itemId: String, audioClipId: String, newTrackId: String)
         trimInUs = clip.trimInUs,
         trimOutUs = clip.trimOutUs,
         volume = if (track.muted) 0f else clip.volume,
+        // The volume ramp goes with the sound; the clip's own motion stays on the picture.
+        keyframes = clip.keyframes.map { it.copy(look = ItemLook(volume = if (track.muted) 0f else it.look.volume)) },
     )
     val detached = replaceTrack(track.copy(items = track.items.map { if (it.id == itemId) clip.copy(audioDetached = true) else it }))
     return detached.withItemOnFreeLane(audio, TrackKind.AUDIO, detached.tracks().filter { it.kind == TrackKind.AUDIO }, newTrackId)

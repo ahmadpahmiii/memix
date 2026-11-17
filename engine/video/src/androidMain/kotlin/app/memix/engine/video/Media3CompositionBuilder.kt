@@ -117,7 +117,7 @@ internal class Media3CompositionBuilder(
         } else {
             mediaItem.setClippingConfiguration(clipping(clip.trimInUs, clip.trimOutUs))
         }
-        val audioProcessors = if (clip.playsOwnAudio) AudioChain.volume(clip.volume, liveGains[clip.itemId]) else emptyList()
+        val audioProcessors = if (clip.playsOwnAudio) AudioChain.volume(clip.volume, clip.keyframes, liveGains[clip.itemId]) else emptyList()
         val item = EditedMediaItem.Builder(mediaItem.build())
             .setRemoveAudio(!clip.playsOwnAudio)
             // The output rate for photos; a ceiling that drops extra frames from faster videos.

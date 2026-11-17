@@ -112,3 +112,60 @@ Nothing here was run on a device or emulator (this machine has neither). The Gra
 ### 9. Things that could not be verified
 - The overlay audio on a real phone (decoder count, sync), and that Media3's compositor honors a changed `OverlaySettings` alpha mid-clip while paused (the opacity slider and the stand-in's hiding depend on it; the re-render is a seek to the current position, as the caption switch does).
 - Haptics, TalkBack order and the focus after the picker closes; reduce motion.
+
+## P4-02a · keyframes, model and interpolation
+
+Spec of the editor half: `docs/ux/specs/P4-02b-keyframes.md`. Design notes: `docs/TECHNICAL_DESIGN.md` → Keyframes. Reference renders: `docs/qa/references/P4-02-keyframes/`. There is no keyframe UI yet (P4-02b): the draft `keyframe-check` is opened by a debug hook (`installDebug` or `installBenchmark`; the export hooks need debug). Nothing here has run on a phone or emulator.
+
+### 0. Test media
+
+On top of P4-01's files (`clip-1080p.mp4`) make two more on the desktop and push them into `files/debug-media/` like the others:
+
+```sh
+ffmpeg -v error -y -f lavfi -i "color=c=0x2B6EA8:s=1080x1080" \
+  -vf "drawgrid=w=90:h=90:t=3:c=white@0.8,drawtext=text='GRID':fontsize=220:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2" -frames:v 1 grid-12.png
+ffmpeg -v error -y -f lavfi -i "sine=frequency=1000:duration=10:sample_rate=48000" -af volume=0.5 -c:a aac -b:a 128k tone-1k.m4a
+```
+
+### 1. What was checked without a device
+
+A JVM harness (not in the repo; it compiles the repo's `:core:model`, `:core:domain`, the project codec and the engine planner and placement): 151 checks, all pass. Covered: schema 15 and the 14 to 15 migration (old JSON without `keyframes` opens at 15, no keyframes anywhere), the round trip of every easing and an unwrapped 720 degree turn, interpolation (each easing against an independent CSS cubic-bezier within 1e-5, geometric scale, linear rotation, hold, hold-before/after, a center outside the frame), `interpolatedVolume` equal to `interpolatedLook(...).volume`, every edit and that each is one undo step (add, remove, move with its range, easing, clear, the auto-key rule with one or two keyframes), the 50 limit, the 33 ms spacing, the clamps per kind of item, split (continuity across the cut; linear exact, smooth within 6%), trim of the start and end (motion unchanged), duplicate, move, Detach audio, the ratio change, the planner (keyframes, the head cut, sound played by the loudest keyframe, the P4-16 log line, captions), the drawn center, turn, scale and alpha through a copy of Media3's matrix chain, and the volume ramp (-12, -6 and -2.5 dB at 0.5, 1.0 and 1.5 s; the biggest step between two samples is under 2e-5; the gain is the curve at the edges of 64-frame blocks, joined linearly). The reference strips come from the same harness. `:androidApp:assembleDebug`, `lint`, `compileCommonMainKotlinMetadata`, `:core:data:verifySqlDelightMigration` and `:androidApp:bundleRelease` ran green. The Android-only code (`KeyframedGainProcessor`, the per-frame compositor settings, `CaptionOverlay`) is compiled but not run.
+
+### 2. The motion check draft, preview against export
+
+```sh
+adb shell am start -S -n app.memix/.android.MainActivity --es memix.openEditor keyframe-check
+adb logcat -s MemixPreview:* MemixVideoEngine:*
+```
+
+The draft: the 10 s 1080p clip (silent); the grid overlay from 1 s to 7 s whose keyframes sit at 1 s and 4 s on the timeline (center (0.2, 0.2) to (0.8, 0.8), scale 40% to 80%, turn 0 to 180 degrees, opacity 100% to 30%, smooth); a caption "POP" from 5 s to 9 s that grows from 50% to 100% in its first second; a 1 kHz tone (audio lane, 0 to 10 s) whose volume goes 0 to 100% by 2 s, holds to 6 s, then 25% at 8 s, all linear. Open the editor, press Play, watch: the overlay glides, grows, turns and fades between 1 s and 4 s, then holds; the caption pops at 5 to 6 s; the tone fades in over 2 s. Compare the preview frame at 1.5, 2.5, 3.25 s and 5.5 s with the strips in `docs/qa/references/P4-02-keyframes/` (`ease-smooth` is the same curve with other numbers: the center at 2.5 s must be halfway, (0.5, 0.5)).
+
+1. **Frame-stepped preview.** Pause, scrub to 1.0, 2.5 and 4.0 s: the overlay is at its first look, halfway, and at its last look. At 0.5 s it isn't there yet, at 5.0 s it holds the last look.
+2. **Export and compare.** Export, pull the file, take frames at 1.0, 1.5, 2.5, 3.25, 4.0, 5.5 s:
+
+```sh
+adb shell am start -S -n app.memix/.android.MainActivity --ez memix.exportLatestDraft true --ez memix.exportWatermarkFree true
+adb logcat -s MemixExportCheck:* MemixVideoEngine:*      # "export: done", pull the path it prints
+for t in 1.0 1.5 2.5 3.25 4.0 5.5; do ffmpeg -v error -y -ss $t -i export.mp4 -frames:v 1 frame-$t.png; done
+```
+
+   Pass (spec Measured): the overlay's position within 1% of the width, scale within 1%, turn within 1 degree, opacity within 3/255 of the preview frame at the same time, and the caption's size at 5.5 s the same in both. A visible step between a preview frame and the export frame at the same time is a failure: say which property.
+3. **Volume.** Play with headphones: the tone starts silent and rises over 2 s with no clicks, holds, and drops to a quarter by 8 s. Export and measure the levels:
+
+```sh
+ffmpeg -v error -y -i export.mp4 -vn -af "astats=metadata=1:reset=24000,ametadata=print:key=lavfi.astats.Overall.RMS_level:file=-" -f null - | grep RMS_level | head -60
+```
+
+   Pass: around 0.5, 1.0 and 1.5 s the RMS level is about -12, -6 and -2.5 dB below the level at 3 to 6 s (within 0.5 dB), in the preview (listen) and in the file. Seek to 1.5 s in the preview while paused, then press Play: the level continues from the ramp's value (the stream position after a seek is the thing most likely to go wrong, with a sound that has a tail).
+4. **Keyed volume on a clip that isn't first.** Make a draft whose main track has two clips with sound, give the second one a volume ramp (0 to 100% over 2 s) with the keyframe code or a copy of `keyframe-check` edited that way, and do the same on an overlay video that starts at 3 s. In the preview, seek into the ramp (second clip's 1 s) while paused, press Play: the level continues from the ramp's value there, not from 0 and not from the clip's end. Export and measure with the ffmpeg command in step 3: the ramp starts when the clip starts. (The source says the stream position Media3 flushes with is inside the item, so no correction is made; this is the check that proves it.)
+5. **Seek and loop.** Seek back and forth across 1 to 4 s several times while playing: the overlay always lands on the curve (no stale look), the tone's level follows the position.
+
+### 3. Things to look at because they could not be verified
+
+- **Per-frame overlay settings.** `getOverlaySettings(inputId, presentationTimeUs)` is read per frame; this ticket relies on the time being the composition's (the layer timeline already relied on it). If a keyed overlay jumps or sticks, tell the principal engineer.
+- **Caption cost while it moves.** A keyframed caption redraws the frame-sized canvas overlay each frame (a still caption doesn't). Play 5 to 6 s of `keyframe-check` in a `benchmark` build: `adb shell dumpsys gfxinfo app.memix framestats` and SurfaceFlinger fps as in P4-01a §3; write down the device, the median fps, and whether it stutters. If it does, the next step is a bitmap overlay per keyed caption (TECHNICAL_DESIGN → Keyframes).
+- **Allocation.** A keyed overlay builds its `OverlaySettings` per frame on the GL thread. Watch for GC pauses in `adb logcat -s art` while a keyed overlay plays.
+- **Volume after a tail.** `KeyframedGainProcessor` takes a sound's echo tail out of the position like `FadeGains` does (Media3 counts from the tail). Keyframe a sound that has Echo on, in the preview and the export, and look for the ramp starting late or early by the tail length.
+- **Main clip's framing keys.** A keyed main clip's position, size and turn aren't drawn until P4-16 (logcat line "Not rendered yet: keyframed position, size and turn of main clip"); its volume plays.
+- **Sticker keys.** Stickers in a video are drawn from P4-12 on; their keyframes are only stored.
+- **Old drafts.** Open any draft saved before this build: it opens and looks the same. A draft saved from here opens in the previous build? No: schema 15 says "Needs a newer version of Memix" there, as designed.

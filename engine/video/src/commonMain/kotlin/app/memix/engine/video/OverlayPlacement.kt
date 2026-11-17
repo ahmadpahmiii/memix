@@ -1,5 +1,6 @@
 package app.memix.engine.video
 
+import app.memix.core.model.project.ItemLook
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.fittedImageSize
 import kotlin.math.roundToInt
@@ -27,24 +28,37 @@ internal data class OverlayPlacement(
     val rotationDegrees: Float,
     /** 0 is invisible, 1 fully drawn. */
     val alpha: Float,
+    // The picture's fitted size over the texture's rounded one: what a scale is multiplied by, kept so a moving overlay needn't fit the picture again each frame.
+    private val fitX: Float = 1f,
+    private val fitY: Float = 1f,
 ) {
+    /** This placement for another [look] of the same overlay in the same frame: only the look's part changes, nothing is measured again. */
+    fun withLook(look: ItemLook): OverlayPlacement = copy(
+        anchorX = look.centerX * 2f - 1f,
+        anchorY = 1f - look.centerY * 2f,
+        scaleX = look.scale * fitX,
+        scaleY = look.scale * fitY,
+        rotationDegrees = -look.rotationDegrees,
+        alpha = look.opacity,
+    )
+
     companion object {
-        /** The drawing of [clip] in a frame of [frame] pixels (the canvas's shape, at the preview's or the export's resolution). */
-        fun of(clip: OverlayClip, frame: PixelSize): OverlayPlacement {
+        /**
+         * The drawing of [clip] in a frame of [frame] pixels (the canvas's shape, at the preview's or the export's resolution), looking
+         * as [look]: its keyframed look at some time ([OverlayClip.lookAt]), or its fixed one, which the default asks for. The same
+         * function serves every frame of a moving overlay, so the preview and the export draw alike.
+         */
+        fun of(clip: OverlayClip, frame: PixelSize, look: ItemLook = clip.lookAt(0)): OverlayPlacement {
             // The same size the editor draws the overlay's frame and hit area by (a picture within 1% of the frame's shape covers it).
             val fitted = fittedImageSize(clip.pixelSize, frame)
             val textureWidth = fitted.width.roundToInt().coerceAtLeast(1)
             val textureHeight = fitted.height.roundToInt().coerceAtLeast(1)
-            val transform = clip.transform
             return OverlayPlacement(
                 textureSize = PixelSize(textureWidth, textureHeight),
-                anchorX = transform.centerX * 2f - 1f,
-                anchorY = 1f - transform.centerY * 2f,
-                scaleX = transform.scale * fitted.width / textureWidth,
-                scaleY = transform.scale * fitted.height / textureHeight,
-                rotationDegrees = -transform.rotationDegrees,
-                alpha = clip.opacity,
-            )
+                anchorX = 0f, anchorY = 0f, scaleX = 1f, scaleY = 1f, rotationDegrees = 0f, alpha = 1f,
+                fitX = fitted.width / textureWidth,
+                fitY = fitted.height / textureHeight,
+            ).withLook(look)
         }
     }
 }

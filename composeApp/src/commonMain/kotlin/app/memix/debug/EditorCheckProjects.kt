@@ -10,6 +10,9 @@ import app.memix.core.model.project.CanvasBackground
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.EffectItem
+import app.memix.core.model.project.Easing
+import app.memix.core.model.project.ItemLook
+import app.memix.core.model.project.Keyframe
 import app.memix.core.model.project.EffectSpec
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
@@ -85,6 +88,7 @@ internal class EditorCheckProjects : KoinComponent {
         CANVAS_IMAGE_CHECK -> canvasImageCheck()
         OVERLAY_CHECK -> overlayCheck()
         OVERLAY_PERF -> overlayPerf()
+        KEYFRAME_CHECK -> keyframeCheck()
         else -> null
     }
 
@@ -317,6 +321,44 @@ internal class EditorCheckProjects : KoinComponent {
      * size, opacity and time. The media carry their measured sizes and lengths, so the export hook sees them without the editor
      * having opened the draft. `docs/qa/references/P4-01-overlays/` is this layout drawn from the planner's own numbers.
      */
+    /**
+     * The P4-02 motion check: the 10 s 1080p clip (silent), a grid picture overlay that moves, scales, turns and fades from 1 s to 4 s
+     * (smooth), a caption that pops from 50% to 100% in 1 s, and a 1 kHz tone whose volume ramps 0 to 100% over 2 s, holds, then dips to
+     * 25% (linear). Steps and the preview-versus-export comparison: docs/qa/phase-4/engineer-hand-checks.md → P4-02a.
+     */
+    private fun keyframeCheck(): Project {
+        val overlay = MediaClip(
+            "keyframe-overlay", startUs = 1_000_000, source = gridMeasured, trimInUs = 0, trimOutUs = 6_000_000, volume = 0f,
+            keyframes = listOf(
+                Keyframe(0, ItemLook(0.2f, 0.2f, 0.4f, 0f, 1f)),
+                Keyframe(3_000_000, ItemLook(0.8f, 0.8f, 0.8f, 180f, 0.3f)),
+            ),
+        )
+        val caption = TextItem(
+            "keyframe-caption", startUs = 5_000_000, durationUs = 4_000_000, text = "POP", style = CAPTION, transform = Transform(0.5f, 0.2f),
+            keyframes = listOf(Keyframe(0, ItemLook(0.5f, 0.2f, 0.5f)), Keyframe(1_000_000, ItemLook(0.5f, 0.2f, 1f))),
+        )
+        val toneClip = AudioClip(
+            "keyframe-tone", startUs = 0, source = toneMeasured, trimInUs = 0, trimOutUs = 10_000_000,
+            keyframes = listOf(
+                Keyframe(0, ItemLook(volume = 0f), Easing.LINEAR),
+                Keyframe(2_000_000, ItemLook(volume = 1f), Easing.LINEAR),
+                Keyframe(6_000_000, ItemLook(volume = 1f), Easing.LINEAR),
+                Keyframe(8_000_000, ItemLook(volume = 0.25f), Easing.LINEAR),
+            ),
+        )
+        return project(
+            KEYFRAME_CHECK,
+            // Silent, so only the tone is heard.
+            listOf(MediaClip("keyframe-main", 0, clip1080pMeasured, trimInUs = 0, trimOutUs = 10_000_000, volume = 0f)),
+            listOf(
+                Track("keyframe-overlay-layer", TrackKind.OVERLAY, listOf(overlay)),
+                Track("keyframe-text", TrackKind.TEXT, listOf(caption)),
+                Track("keyframe-sounds", TrackKind.AUDIO, listOf(toneClip)),
+            ),
+        )
+    }
+
     private fun overlayCheck(): Project {
         val layers = listOf(
             overlayLayer("a", clipAMeasured, startUs = 1_000_000, lengthUs = 6_000_000, Transform(0.30f, 0.25f, 0.5f, 0f), opacity = 1f),
@@ -395,9 +437,10 @@ internal class EditorCheckProjects : KoinComponent {
         const val CANVAS_IMAGE_CHECK = "canvas-image-check"
         const val OVERLAY_CHECK = "overlay-check"
         const val OVERLAY_PERF = "overlay-perf"
+        const val KEYFRAME_CHECK = "keyframe-check"
         private val NAMES = listOf(
             EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK,
-            TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK, OVERLAY_CHECK, OVERLAY_PERF,
+            TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK, OVERLAY_CHECK, OVERLAY_PERF, KEYFRAME_CHECK,
         ) + PhotoCheckProjects.NAMES
         private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20
@@ -420,6 +463,12 @@ internal class EditorCheckProjects : KoinComponent {
         private val clipAMeasured = clipA.copy(durationUs = 6_000_000, pixelSize = PixelSize(1280, 720), hasAudio = true)
         private val clipBMeasured = clipB.copy(durationUs = 6_000_000, pixelSize = PixelSize(720, 1280), hasAudio = true)
         private val photoMeasured = photo.copy(pixelSize = PixelSize(1080, 1080), hasAudio = false)
+        // The 12 x 12 lettered grid picture and the 1 kHz tone of P4-02 (desktop-made, steps in the hand checks); measured like the others.
+        private val grid = media("grid-12.png", MediaKind.IMAGE)
+        private val gridMeasured = grid.copy(pixelSize = PixelSize(1080, 1080), hasAudio = false)
+        private val toneMeasured = MediaRef(
+            MediaOrigin.CatalogItem("debug-tone-1k"), MediaKind.AUDIO, cachedCopyPath = "${ExportCheckProject.MEDIA_DIR}/tone-1k.m4a", durationUs = 10_000_000,
+        )
         private val photo4x3Measured = photo4x3.copy(pixelSize = PixelSize(1440, 1080), hasAudio = false)
         private val sound = MediaRef(MediaOrigin.CatalogItem("debug-beep"), MediaKind.AUDIO, cachedCopyPath = "${ExportCheckProject.MEDIA_DIR}/sound.m4a")
 

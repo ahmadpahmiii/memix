@@ -2,6 +2,7 @@ package app.memix.engine.video
 
 import app.memix.core.model.project.AudioClip
 import app.memix.core.model.project.CanvasBackground
+import app.memix.core.model.project.Keyframe
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.PixelSize
@@ -10,6 +11,7 @@ import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TimelineItem
 import app.memix.core.model.project.Track
 import app.memix.core.model.project.TrackKind
+import app.memix.core.model.project.peakVolume
 
 /** What [CompositionPlanner.plan] returns. */
 internal sealed interface PlanResult {
@@ -94,9 +96,13 @@ internal object CompositionPlanner {
         trimOutUs = trimOutUs,
         fit = fit,
         pixelSize = source.pixelSize,
-        playsOwnAudio = hasOwnSound() && !audioDetached && !trackMuted && (volume > 0f || keepSilent),
-        volume = volume,
+        playsOwnAudio = hasOwnSound() && !audioDetached && !trackMuted && (peakVolume() > 0f || keepSilent),
+        volume = plannedVolume(),
+        keyframes = keyframes,
     )
+
+    // With keyframes they carry the level (P4-02), so the fixed volume stays at 1 and never switches the clip off or on by itself.
+    private fun MediaClip.plannedVolume(): Float = if (keyframes.isEmpty()) volume else 1f
 
     // A video measured without a sound track this phone can decode (P1-02) is left silent. Media added before
     // schema 2 isn't measured (null); Media3 fills a sound track it can't find with silence.
@@ -105,7 +111,7 @@ internal object CompositionPlanner {
     private fun audioLanes(track: Track, timelineEndUs: Long, keepSilent: Boolean): List<AudioLane> {
         val clips = track.items
             .filterIsInstance<AudioClip>()
-            .filter { it.volume > 0f || keepSilent }
+            .filter { it.peakVolume() > 0f || keepSilent }
             .mapNotNull { it.cutTo(timelineEndUs) }
             .sortedBy { it.clip.startUs }
         return packIntoLanes(clips).map { laneClips ->
@@ -167,7 +173,7 @@ internal object CompositionPlanner {
                 skip(clip, "its picture size isn't known")
                 continue
             }
-            val cut = clip.cutTo(durationUs, pixelSize, plays = clip.hasOwnSound() && !clip.audioDetached && !track.muted && (clip.volume > 0f || keepSilent)) ?: continue
+            val cut = clip.cutTo(durationUs, pixelSize, plays = clip.hasOwnSound() && !clip.audioDetached && !track.muted && (clip.peakVolume() > 0f || keepSilent)) ?: continue
             if (cut.startUs < cursorUs) {
                 skip(clip, "it overlaps the clip before it on its layer")
                 continue
@@ -186,7 +192,12 @@ internal object CompositionPlanner {
         if (lengthUs <= 0) return null
         val isPhoto = source.kind == MediaKind.IMAGE
         val cutTrimInUs = if (isPhoto) 0L else trimInUs + headCutUs
-        val clip = OverlayClip(id, source, cutTrimInUs, cutTrimInUs + lengthUs, pixelSize, transform, opacity, playsOwnAudio = plays, volume = volume)
+        val clip = OverlayClip(
+            id, source, cutTrimInUs, cutTrimInUs + lengthUs, pixelSize, transform, opacity,
+            playsOwnAudio = plays,
+            volume = plannedVolume(),
+            keyframes = keyframes.shiftedBy(headCutUs),
+        )
         return CutOverlay(clip, cutStartUs)
     }
 
@@ -208,7 +219,9 @@ internal object CompositionPlanner {
             track.items.filterIsInstance<TextItem>()
                 .filter { it.text.isNotBlank() && it.startUs < timelineEndUs && it.durationUs > 0 }
                 .sortedBy { it.startUs }
-                .map { CaptionClip(it.id, it.startUs.coerceAtLeast(0), minOf(it.endUs, timelineEndUs), it.text, it.style, it.transform) }
+                .map {
+                    CaptionClip(it.id, it.startUs.coerceAtLeast(0), minOf(it.endUs, timelineEndUs), it.text, it.style, it.transform, it.keyframes.shiftedBy((-it.startUs).coerceAtLeast(0)))
+                }
         }
 
     /**
@@ -223,7 +236,15 @@ internal object CompositionPlanner {
         /** This clip with its tail cut so it is over by [limitUs]. */
         fun withTailEndingBy(limitUs: Long) = CutClip(clip, fullLengthUs, minOf(tailUs, (limitUs - clip.endUs).coerceAtLeast(0)))
 
-        fun toSoundClip() = SoundClip(clip.id, clip.source, clip.trimInUs, clip.trimOutUs, clip.volume, clip.effects, fullLengthUs, tailUs)
+        fun toSoundClip() = SoundClip(
+            clip.id, clip.source, clip.trimInUs, clip.trimOutUs,
+            // With keyframes they carry the level (P4-02), so the fixed volume stays at 1.
+            volume = if (clip.keyframes.isEmpty()) clip.volume else 1f,
+            effects = clip.effects,
+            clipLengthUs = fullLengthUs,
+            tailUs = tailUs,
+            keyframes = clip.keyframes,
+        )
     }
 
     /**
@@ -237,7 +258,7 @@ internal object CompositionPlanner {
         val cutTrimInUs = trimInUs + effects.sourceSpanOf(headCutUs)
         val cutTrimOutUs = minOf(trimOutUs, cutTrimInUs + effects.sourceSpanOf(timelineEndUs - cutStartUs))
         if (cutTrimOutUs <= cutTrimInUs) return null
-        val cut = copy(startUs = cutStartUs, trimInUs = cutTrimInUs, trimOutUs = cutTrimOutUs)
+        val cut = copy(startUs = cutStartUs, trimInUs = cutTrimInUs, trimOutUs = cutTrimOutUs, keyframes = keyframes.shiftedBy(headCutUs))
         val tailUs = minOf(effects.tailUs, timelineEndUs - cut.endUs).coerceAtLeast(0)
         return CutClip(cut, fullLengthUs = durationUs, tailUs = tailUs)
     }
@@ -286,11 +307,20 @@ internal object CompositionPlanner {
             }
         }
 
-    private fun notRendered(tracks: List<Track>): List<String> = tracks.mapNotNull { track ->
+    // Keyframes count from where the clip now starts: a cut head (an item that begins before 0, which the editor never makes) moves them back.
+    private fun List<Keyframe>.shiftedBy(headCutUs: Long): List<Keyframe> =
+        if (headCutUs == 0L || isEmpty()) this else map { it.copy(timeUs = it.timeUs - headCutUs) }
+
+    private fun notRendered(tracks: List<Track>): List<String> = mainMotionNotRendered(tracks) + tracks.mapNotNull { track ->
         val ticket = ticketThatAddsRendering(track.kind)
         if (ticket == null || track.items.isEmpty()) return@mapNotNull null
         "Not rendered yet: ${track.kind.name.lowercase()} track ${track.id} (${itemCount(track)}), arrives with $ticket"
     }
+
+    // A main clip's framing (position, size, turn) is drawn from P4-16 on; its keyframed volume already plays.
+    private fun mainMotionNotRendered(tracks: List<Track>): List<String> =
+        tracks.filter { it.kind == TrackKind.MAIN_VIDEO }.flatMap { it.items }.filterIsInstance<MediaClip>().filter { it.keyframes.isNotEmpty() }
+            .map { "Not rendered yet: keyframed position, size and turn of main clip ${it.id}, arrives with P4-16 (its keyframed volume plays)" }
 
     /** The ticket that renders a track kind this engine skips today, or null when it renders it. */
     private fun ticketThatAddsRendering(kind: TrackKind): String? = when (kind) {

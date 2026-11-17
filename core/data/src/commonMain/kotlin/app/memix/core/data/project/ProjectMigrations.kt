@@ -57,4 +57,7 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     // defaults (centered, scale 1, 0°, fully opaque, no edit) and the codec writes defaults, so version-13 JSON decodes as it is; a main clip
     // ignores both, and an overlay track saved before (only the debug hand-check projects had one) draws as a full-canvas Fit overlay.
     ProjectMigration(fromVersion = 13) { json -> json },
+    // 14 → 15 (P4-02a): MediaClip, AudioClip, TextItem and StickerItem gained "keyframes" (a list, empty by default). Version-14 JSON has no
+    // "keyframes", which decodes as none: an item saved before moves as it did. The step only moves the version on.
+    ProjectMigration(fromVersion = 14) { json -> json },
 )

@@ -65,7 +65,7 @@ internal class OverlaySequences(
         // Scaled to the size it is drawn at before it is composited, so a 4K video costs a frame-sized pass, not more.
         val size = OverlayPlacement.of(clip, frame).textureSize
         val scaled = Presentation.createForWidthAndHeight(size.widthPx, size.heightPx, Presentation.LAYOUT_STRETCH_TO_FIT)
-        val audioProcessors = if (clip.playsOwnAudio) AudioChain.volume(clip.volume, liveGains[clip.itemId]) else emptyList()
+        val audioProcessors = if (clip.playsOwnAudio) AudioChain.volume(clip.volume, clip.keyframes, liveGains[clip.itemId]) else emptyList()
         val item = EditedMediaItem.Builder(mediaItem.build())
             .setRemoveAudio(!clip.playsOwnAudio)
             .setFrameRate(frameRate)
@@ -80,6 +80,7 @@ internal class OverlaySequences(
         val settings = mutableListOf<OverlaySettings>()
         val itemIds = mutableListOf<String>()
         val placements = mutableListOf<OverlayPlacement>()
+        val clips = mutableListOf<OverlayClip>()
         var cursorUs = 0L
         for (segment in layer.segments) {
             if (segment is OverlayClip) {
@@ -88,11 +89,12 @@ internal class OverlaySequences(
                 val placement = OverlayPlacement.of(segment, frame)
                 settings += OverlayCompositorSettings.settingsOf(placement)
                 placements += placement
+                clips += segment
                 itemIds += segment.itemId
             }
             cursorUs += segment.durationUs
         }
-        return OverlayCompositorSettings.LayerTimeline(starts.toLongArray(), ends.toLongArray(), settings, itemIds, placements)
+        return OverlayCompositorSettings.LayerTimeline(starts.toLongArray(), ends.toLongArray(), settings, itemIds, placements, clips)
     }
 
     companion object {

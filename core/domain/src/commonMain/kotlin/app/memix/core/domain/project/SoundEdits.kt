@@ -53,7 +53,7 @@ fun Project.addSound(sound: MediaRef, clipId: String, atUs: Long, newTrackId: St
     return withItemOnFreeLane(clip, TrackKind.MEME_SOUND, tracks().filter { it.kind == TrackKind.MEME_SOUND }, newTrackId)
 }
 
-/** Sets a sound's or a clip's own volume, from 0 (silent) to [MAX_VOLUME]; 1 is the level it was recorded at. */
+/** Sets a sound's or a clip's own volume, from 0 (silent) to [MAX_VOLUME]; 1 is the level it was recorded at. On an item with keyframes use [setLookAt] instead. */
 fun Project.setVolume(itemId: String, volume: Float): Project {
     val (track, item) = findItem(itemId) ?: return this
     val level = volume.coerceIn(0f, MAX_VOLUME)

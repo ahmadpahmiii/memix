@@ -124,11 +124,16 @@ fun Project.backgroundShows(): Boolean {
  * smallest size and the 2% margin.
  */
 internal fun TextItem.keptInside(old: PixelSize, new: PixelSize, measure: CaptionBlockMeasure): TextItem {
-    val kept = transform.keptInside(old, new, CaptionCatalog.MIN_SCALE, CanvasCatalog.LAYER_MARGIN_OF_SHORT_SIDE) { canvas, scale ->
-        captionBoxOn(text, style, transform, canvas, scale, measure)
-    }
-    return if (kept == transform) this else copy(transform = kept)
+    val kept = keptTransform(transform, old, new, measure)
+    // Every keyframe's look follows the same rule, with its own turn (spec P4-02b → Ratio change).
+    val keptKeyframes = keyframes.withTransformsKept { at -> keptTransform(at, old, new, measure) }
+    return if (kept == transform && keptKeyframes == keyframes) this else copy(transform = kept, keyframes = keptKeyframes)
 }
+
+private fun TextItem.keptTransform(at: Transform, old: PixelSize, new: PixelSize, measure: CaptionBlockMeasure): Transform =
+    at.keptInside(old, new, CaptionCatalog.MIN_SCALE, CanvasCatalog.LAYER_MARGIN_OF_SHORT_SIDE) { canvas, scale ->
+        captionBoxOn(text, style, at, canvas, scale, measure)
+    }
 
 /**
  * A caption's box at [scale] on a canvas [canvasSize]: its turned block's bounds, in canvas pixels. Video captions and

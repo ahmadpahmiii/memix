@@ -77,7 +77,8 @@ private fun Project.landingSlot(atUs: Long): Pair<Float, Float> {
 
 /**
  * Overlay [itemId]'s place, size and turn, kept inside the limits: the center on the canvas (0…1), the scale within
- * [OverlayCatalog.SCALE_RANGE] and the turn within −180°…180°.
+ * [OverlayCatalog.SCALE_RANGE] and the turn within −180°…180°. On an item with keyframes use [setLookAt] instead: this sets the
+ * fixed look, which a keyed item doesn't use.
  */
 fun Project.setOverlayTransform(itemId: String, transform: Transform): Project {
     val overlay = overlayClip(itemId) ?: return this
@@ -85,7 +86,7 @@ fun Project.setOverlayTransform(itemId: String, transform: Transform): Project {
     return if (overlay.transform == clamped) this else replaceOverlay(overlay.copy(transform = clamped))
 }
 
-/** Overlay [itemId]'s opacity, within [OverlayCatalog.OPACITY_RANGE]. */
+/** Overlay [itemId]'s opacity, within [OverlayCatalog.OPACITY_RANGE]. On an item with keyframes use [setLookAt] instead. */
 fun Project.setOverlayOpacity(itemId: String, opacity: Float): Project {
     val overlay = overlayClip(itemId) ?: return this
     val clamped = opacity.coerceIn(OverlayCatalog.OPACITY_RANGE)
@@ -186,6 +187,11 @@ internal fun MediaClip.overlayBoundsOn(canvas: PixelSize, scale: Float): BoxSize
  */
 internal fun MediaClip.keptInside(old: PixelSize, new: PixelSize): MediaClip {
     if (source.pixelSize == null) return this
-    val kept = transform.keptInside(old, new, OverlayCatalog.RATIO_CHANGE_SHRINK_FLOOR, marginOfShortSide = 0f) { canvas, scale -> overlayBoundsOn(canvas, scale) }
-    return if (kept == transform) this else copy(transform = kept)
+    val kept = keptTransform(old, new)
+    // Every keyframe's look follows the same rule, with its own turn (spec P4-02b → Ratio change).
+    val keptKeyframes = keyframes.withTransformsKept { at -> copy(transform = at).keptTransform(old, new) }
+    return if (kept == transform && keptKeyframes == keyframes) this else copy(transform = kept, keyframes = keptKeyframes)
 }
+
+private fun MediaClip.keptTransform(old: PixelSize, new: PixelSize): Transform =
+    transform.keptInside(old, new, OverlayCatalog.RATIO_CHANGE_SHRINK_FLOOR, marginOfShortSide = 0f) { canvas, scale -> overlayBoundsOn(canvas, scale) }

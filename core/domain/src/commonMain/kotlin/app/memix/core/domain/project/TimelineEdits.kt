@@ -2,6 +2,7 @@ package app.memix.core.domain.project
 
 import app.memix.core.model.project.AudioClip
 import app.memix.core.model.project.EffectItem
+import app.memix.core.model.project.Keyframe
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaRef
@@ -11,6 +12,7 @@ import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TimelineItem
 import app.memix.core.model.project.Track
 import app.memix.core.model.project.TrackKind
+import app.memix.core.model.project.withKeyframes
 
 /*
  * The video editor's clip edits (spec docs/ux/specs/P1-06-clip-edits-and-audio.md → Edits). Each one returns a new
@@ -47,8 +49,9 @@ fun Project.splitItem(itemId: String, atUs: Long, newItemId: String): Project {
     if (!canSplit(itemId, atUs)) return this
     val (track, item) = findItem(itemId) ?: return this
     val leftLengthUs = atUs - item.startUs
-    val left = item.withLength(leftLengthUs).withoutFade(FadeEdge.OUT).withFadesFitted()
-    val right = item.withId(newItemId).withStart(atUs).trimmedFromStart(leftLengthUs).withoutFade(FadeEdge.IN).withFadesFitted()
+    val (leftKeyframes, rightKeyframes) = item.keyframesAfterSplit(leftLengthUs)
+    val left = item.withLength(leftLengthUs).withoutFade(FadeEdge.OUT).withFadesFitted().withKeyframesIfAny(leftKeyframes)
+    val right = item.withId(newItemId).withStart(atUs).trimmedFromStart(leftLengthUs).withoutFade(FadeEdge.IN).withFadesFitted().withKeyframesIfAny(rightKeyframes)
     return replaceTrack(track.copy(items = track.items.flatMap { if (it.id == itemId) listOf(left, right) else listOf(it) }))
 }
 
@@ -85,7 +88,8 @@ fun Project.trimItem(itemId: String, edge: TrimEdge, edgeUs: Long): Project {
     val (track, item) = findItem(itemId) ?: return this
     val clampedUs = edgeUs.coerceIn(range.minUs, range.maxUs)
     val trimmed = when (edge) {
-        TrimEdge.START -> item.withStart(clampedUs).trimmedFromStart(clampedUs - item.startUs)
+        // The keyframes stay where they were on the timeline, so trimming never changes how the rest moves (spec P4-02b → How other edits treat keyframes).
+        TrimEdge.START -> item.withStart(clampedUs).trimmedFromStart(clampedUs - item.startUs).withKeyframesShifted(clampedUs - item.startUs)
         TrimEdge.END -> item.withLength(clampedUs - item.startUs)
     }.withFadesFitted()
     if (track.kind != TrackKind.MAIN_VIDEO) return replaceTrack(track.copy(items = track.items.map { if (it.id == itemId) trimmed else it }))
@@ -262,6 +266,9 @@ private fun TimelineItem.trimmedFromStart(deltaUs: Long): TimelineItem = when (t
     is StickerItem -> copy(durationUs = durationUs - deltaUs)
     is EffectItem -> copy(durationUs = durationUs - deltaUs)
 }
+
+// A piece of a split gets its keyframes; an item that had none stays without.
+private fun TimelineItem.withKeyframesIfAny(keyframes: List<Keyframe>): TimelineItem = if (keyframes.isEmpty()) this else withKeyframes(keyframes)
 
 private enum class FadeEdge { IN, OUT }
 

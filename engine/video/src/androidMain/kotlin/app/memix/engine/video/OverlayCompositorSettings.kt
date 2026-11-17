@@ -55,6 +55,8 @@ internal class OverlayCompositorSettings(
         private val settings: List<OverlaySettings>,
         private val itemIds: List<String>,
         private val placements: List<OverlayPlacement>,
+        // The clips themselves, for the ones that move: a keyframed clip's settings are made per frame (P4-02), a still one's are ready above.
+        private val clips: List<OverlayClip>,
     ) {
         fun settingsAt(timeUs: Long, visibility: OverlayVisibility): OverlaySettings {
             // The last clip that starts at or before the time; clips don't overlap, so it's the only candidate.
@@ -73,7 +75,14 @@ internal class OverlayCompositorSettings(
             if (found < 0 || timeUs >= endsUs[found] || itemIds[found] == visibility.hiddenItemId) return HIDDEN
             // The Opacity slider is moving this overlay: its drawing with the slider's value, built only while it moves.
             val live = visibility.liveOpacity
-            if (live != null && itemIds[found] == live.itemId) return settingsOf(placements[found].copy(alpha = live.opacity))
+            val liveOpacity = if (live != null && itemIds[found] == live.itemId) live.opacity else null
+            val clip = clips[found]
+            // A moving overlay is placed from the same look function as the export's frames, at this frame's time within the clip.
+            if (clip.keyframes.isNotEmpty()) {
+                val placement = placements[found].withLook(clip.lookAt(timeUs - startsUs[found]))
+                return settingsOf(if (liveOpacity != null) placement.copy(alpha = liveOpacity) else placement)
+            }
+            if (liveOpacity != null) return settingsOf(placements[found].copy(alpha = liveOpacity))
             return settings[found]
         }
     }

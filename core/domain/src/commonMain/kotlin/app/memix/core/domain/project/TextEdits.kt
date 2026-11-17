@@ -74,7 +74,7 @@ fun Project.setCaptionStyle(itemId: String, style: CaptionStyle): Project {
     return if (item.style == style) this else replaceText(item.copy(style = style))
 }
 
-/** Caption [itemId]'s place, size and turn on the frame, kept inside the limits ([clampedForText]). */
+/** Caption [itemId]'s place, size and turn on the frame, kept inside the limits ([clampedForText]). On an item with keyframes use [setLookAt] instead. */
 fun Project.setTextTransform(itemId: String, transform: Transform): Project {
     val item = textItem(itemId) ?: return this
     val clamped = transform.clampedForText()

@@ -11,12 +11,14 @@ import androidx.media3.common.util.UnstableApi
 import app.memix.core.model.project.AudioEffectStage
 import app.memix.core.model.project.AudioEffects
 import app.memix.core.model.project.AudioEffectsCatalog
+import app.memix.core.model.project.Keyframe
 import app.memix.core.model.project.VoiceRecipe
 import app.memix.core.model.project.VoiceRecipes
 import app.memix.engine.video.audio.DistortionProcessor
 import app.memix.engine.video.audio.EchoProcessor
 import app.memix.engine.video.audio.FilterProcessor
 import app.memix.engine.video.audio.GainSource
+import app.memix.engine.video.audio.KeyframedGainProcessor
 import app.memix.engine.video.audio.PeakLimiterProcessor
 import app.memix.engine.video.audio.RingModulationProcessor
 import app.memix.engine.video.audio.TailProcessor
@@ -37,7 +39,7 @@ internal object AudioChain {
      * sliders (null in an export, which builds a stage only when its effect is set).
      */
     fun forSound(clip: SoundClip, liveGain: LiveGainProcessor?, liveFades: LiveFades? = null, liveBass: LiveBass? = null): List<AudioProcessor> =
-        effects(clip.effects, clip.clipLengthUs, clip.tailUs, liveFades, liveBass) + volume(clip.volume, liveGain)
+        effects(clip.effects, clip.clipLengthUs, clip.tailUs, liveFades, liveBass) + volume(clip.volume, clip.keyframes, liveGain, clip.tailUs)
 
     /**
      * The processors for [effects] on a clip that lasts [clipLengthUs] on the timeline and rings out for [tailUs] after it, in
@@ -68,6 +70,15 @@ internal object AudioChain {
     fun volume(volume: Float, liveGain: LiveGainProcessor?): List<AudioProcessor> {
         if (liveGain == null) return volumeProcessors(volume)
         return if (volume == 0f) listOf(liveGain) else volumeProcessors(volume) + liveGain
+    }
+
+    /**
+     * [volume] with [keyframes] (P4-02): with none it is [volume] as above; with some, the keyframed level ([KeyframedGainProcessor], per
+     * sample) replaces the fixed one, and the preview's live gain still multiplies it. [tailUs] as in [KeyframedGainProcessor].
+     */
+    fun volume(volume: Float, keyframes: List<Keyframe>, liveGain: LiveGainProcessor?, tailUs: Long = 0): List<AudioProcessor> {
+        if (keyframes.isEmpty()) return volume(volume, liveGain)
+        return listOf(KeyframedGainProcessor(keyframes, tailUs)) + listOfNotNull(liveGain)
     }
 
     // Sonic changes speed and pitch independently; the pitch factor of a semitone step is the twelfth root of two. Media3 knows

@@ -46,6 +46,11 @@ data class MediaClip(
      * needs no second bump, and ignored by every engine until that ticket; null is none.
      */
     val edit: ImageEdit? = null,
+    /**
+     * The clip's motion over time (P4-02); empty means [transform], [opacity] and [volume] hold for the whole clip. With keyframes
+     * they take over and those three fields are not used (see [Keyframe]). A main clip has no opacity to key.
+     */
+    val keyframes: List<Keyframe> = emptyList(),
 ) : TimelineItem {
     // Derived, not saved, so it can never disagree with the trim points.
     override val durationUs: Long get() = trimOutUs - trimInUs
@@ -74,6 +79,8 @@ data class AudioClip(
     val volume: Float = 1f,
     /** The Audio effects panel's settings (P3-09); all off by default. The source file is never changed. */
     val effects: AudioEffects = AudioEffects(),
+    /** The volume over time (P4-02); empty means [volume] holds. Only the volume of a keyframe's look is used. */
+    val keyframes: List<Keyframe> = emptyList(),
 ) : TimelineItem {
     /** How much of the source plays, µs. */
     val sourceSpanUs: Long get() = trimOutUs - trimInUs
@@ -91,6 +98,8 @@ data class TextItem(
     val text: String,
     val style: CaptionStyle,
     val transform: Transform = Transform(),
+    /** The caption's place, size and turn over time (P4-02); empty means [transform] holds. */
+    val keyframes: List<Keyframe> = emptyList(),
 ) : TimelineItem
 
 @Serializable
@@ -101,6 +110,8 @@ data class StickerItem(
     override val durationUs: Long,
     val source: MediaRef,
     val transform: Transform = Transform(),
+    /** The sticker's look over time (P4-02); empty means [transform] holds. Rendered with the sticker lane (P4-12). */
+    val keyframes: List<Keyframe> = emptyList(),
 ) : TimelineItem
 
 /** An effect applied to the whole canvas for as long as the item lasts. */

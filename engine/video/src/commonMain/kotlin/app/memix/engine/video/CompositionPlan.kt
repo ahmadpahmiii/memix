@@ -1,8 +1,11 @@
 package app.memix.engine.video
 
+import app.memix.core.domain.project.interpolatedLook
 import app.memix.core.model.project.AudioEffects
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.FrameFit
+import app.memix.core.model.project.ItemLook
+import app.memix.core.model.project.Keyframe
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.PixelSize
@@ -136,8 +139,13 @@ internal data class VisualClip(
      * in a preview's plan, which keeps silent items so a raise is heard live.
      */
     val playsOwnAudio: Boolean,
-    /** 1 is the original loudness; only used when [playsOwnAudio]. */
+    /** 1 is the original loudness; only used when [playsOwnAudio]. 1 when the clip has [keyframes]: they carry the level then. */
     val volume: Float,
+    /**
+     * The clip's motion over time (P4-02), counted from its start. Only the volume is drawn so far: a main clip's position, size and
+     * turn arrive with P4-16 (the planner logs it).
+     */
+    val keyframes: List<Keyframe> = emptyList(),
 ) : MainVideoSegment {
     override val durationUs: Long get() = trimOutUs - trimInUs
 
@@ -160,10 +168,16 @@ internal data class OverlayClip(
     val opacity: Float,
     /** True for an overlay video with its own sound that plays: not a photo, a silent file, detached sound or a muted layer; at 0% only in a preview's plan. */
     val playsOwnAudio: Boolean = false,
-    /** 1 is the original loudness; only used when [playsOwnAudio]. */
+    /** 1 is the original loudness; only used when [playsOwnAudio]. 1 when the clip has [keyframes]. */
     val volume: Float = 1f,
+    /** The overlay's motion over time (P4-02), counted from where this clip starts showing; they take over [transform] and [opacity] (and the volume). */
+    val keyframes: List<Keyframe> = emptyList(),
 ) : OverlaySegment {
     override val durationUs: Long get() = trimOutUs - trimInUs
+
+    /** How the overlay looks [relativeUs] after it starts showing: the keyframes' look, or [transform] and [opacity]. */
+    fun lookAt(relativeUs: Long): ItemLook =
+        interpolatedLook(keyframes, relativeUs) ?: ItemLook(transform.centerX, transform.centerY, transform.scale, transform.rotationDegrees, opacity)
 
     /** A photo: shown for [durationUs] instead of being trimmed. */
     val isStill: Boolean get() = source.kind == MediaKind.IMAGE
@@ -198,6 +212,8 @@ internal data class SoundClip(
      * first. The sound is built that long, so its lane is busy for [durationUs].
      */
     val tailUs: Long = 0,
+    /** The volume over time (P4-02), counted from the clip's start; [volume] is 1 when there are any. */
+    val keyframes: List<Keyframe> = emptyList(),
 ) : AudioSegment {
     // Timeline length: the part of the source that plays, at the effects' speed, plus the tail that rings after it.
     override val durationUs: Long get() = effects.timelineLengthOf(trimOutUs - trimInUs) + tailUs
@@ -214,9 +230,14 @@ internal data class CaptionClip(
     val text: String,
     val style: CaptionStyle,
     val transform: Transform,
+    /** The caption's motion over time (P4-02), counted from [startUs]; it takes over [transform]. */
+    val keyframes: List<Keyframe> = emptyList(),
 ) {
     /** Whether it shows at composition time [timeUs]. */
     fun isShownAt(timeUs: Long): Boolean = timeUs >= startUs && timeUs < endUs
+
+    /** Where, how big and how turned the caption is at composition time [timeUs]. */
+    fun transformAt(timeUs: Long): Transform = interpolatedLook(keyframes, timeUs - startUs)?.transform ?: transform
 }
 
 /** Sounds that play one after another, from one meme sound or audio track. */
