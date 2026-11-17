@@ -130,17 +130,17 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 | P4-01a | Overlay layers, engine and model: picture-in-picture video and photo, opacity, stacking order, transform; schema bump | Overlays render in preview and export with the same opacity, order and transform; old drafts open | M | P1-05 |
 | P4-01b | Overlay layers, editor: on-frame gestures, overlay lane, picker | Five overlays at 1080p preview at 30 fps or more; each edit is one undo step | M | P4-01a |
 | P4-02a | Keyframes, model and interpolation: position, scale, rotation, opacity, volume, easing | Motion matches between preview and export | M | P4-01a |
-| P4-02b | Keyframes, editor: markers on the timeline and the panel | A keyframe is added, moved and deleted, each as one undo step | M | P4-02a, P4-01b |
-| P4-03a | 10 blend modes | Each mode matches its reference render | M | P4-01a |
+| P4-02b | Keyframes, editor: markers on the timeline and the panel (spec `P4-02b-keyframes.md`; one keyframe holds every property; a keyframed item's centre may leave the frame, -0.5 to 1.5; main clips get no opacity keyframes because they have no opacity, PM 17 Nov) | A keyframe is added, moved and deleted, each as one undo step | M | P4-02a, P4-01b |
+| P4-03a | 10 blend modes, with the Blend tool and its panel (overlays only; spec `P4-03b-shape-masks-and-blend.md`; the picker is built here and uses P4-01b's overlay bar, which the build order already puts first; PM 17 Nov) | Each mode matches its reference render | M | P4-01a |
 | P4-03b | Shape masks (rectangle, circle, linear, mirror) | Each mask matches its reference render | M | P4-03a |
 | P4-04 | Green screen keying on clips and overlays: pick color, strength, edge softness | A standard green screen clip keys cleanly at default settings | M | P4-01 |
 | P4-05a | Templates: repository, Templates screen (Video / Photo switch, categories, previews) | Templates list and preview from the cache, offline too | M | P3-01, P4-04 |
 | P4-05b | Templates: slot-fill flow, open in editor; 3 original fixture templates (debug builds only; P0-06 seeds never existed) | A user fills a 2-slot preset and exports it | M | P4-05a |
 | P4-06a | Video effects, framework and first batch as timeline items with intensity (list of about 30 fixed in the spec; includes zoom punch) | Each effect matches its reference render and preview stays at 30 fps or more | M | P1-05 |
 | P4-06b | Video effects, the rest of the list | Same as 06a | M | P4-06a |
-| P4-07 | About 20 LUT filters and adjustments for video | Same ids and looks as the photo filters | M | P2-04 |
+| P4-07 | About 20 LUT filters and the six adjustments (brightness, contrast, saturation, warmth, sharpen, vignette) for video; Filters from the main bar applies to every main clip, from a clip's own bar to that clip (spec `P4-07-video-filters-addendum.md`; tint and grain dropped for v1, PM 17 Nov) | Same ids and looks as the photo filters | M | P2-04 |
 | P4-08 | About 20 transitions between clips | Transitions keep audio continuous | M | P1-06 |
-| P4-09a | Speed: constant 0.1x to 10x | Audio follows the speed or mutes, per the user's choice | M | P1-06 |
+| P4-09a | Speed: constant 0.1x to 10x (keyframes scale with the clip when its speed changes, P4-02b spec; PM 17 Nov) | Audio follows the speed or mutes, per the user's choice | M | P1-06 |
 | P4-09b | Speed curves with presets (cut list) | A curve plays the same in preview and export | M | P4-09a |
 | P4-10 | Reverse and freeze frame | Reversed clips play smoothly in preview | M | P1-06 |
 | P4-16 | Clip crop, rotate, flip and per-clip Fit or Fill in the video editor (reuses P4-01's on-frame gestures and P2-04's crop screen); declarative params with a reference render | A cropped, rotated and flipped clip looks the same in preview and export and matches its reference render; Fit or Fill set on one clip changes only that clip; each change is one undo step | M | P4-01b, P2-04 |
