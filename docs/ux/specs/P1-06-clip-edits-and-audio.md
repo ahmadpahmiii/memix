@@ -77,6 +77,9 @@ The tools stay in thumb reach, at the bottom where the main tools were. This rep
 | Video clip (main track) | Split · Volume · Delete · Duplicate · Detach audio · Reorder · Replace (P1-16) |
 | Photo clip (main track) | Split · Delete · Duplicate · Reorder · Replace (P1-16) |
 | Main clip whose file is missing (P1-16 on) | **Replace first**, then the clip's usual tools in their order without Replace. Replace is the only tool that fixes it, and P1-04's toast names it, so it must show without scrolling. |
+| Video overlay (P4-01b) | Position · Opacity · Delete · Split · Volume · Layer order · Move here · Duplicate · Detach audio (P4-16 inserts **Crop** after Volume). No Replace. `P4-01b-overlay-layers.md` |
+| Photo overlay (P4-01b) | Position · Opacity · Delete · Split · Layer order · Move here · Duplicate (P4-16 inserts **Crop** after Split) |
+| Main video or photo clip (P4-16) | **Crop · Fill or Fit · Position** are inserted after Delete: Split · Volume · Delete · Crop · Fill or Fit · Position · Duplicate · Detach audio · Reorder · Replace (photos have no Volume or Detach audio). `P4-16-clip-crop-rotate-flip-fit.md` |
 | Meme sound | Volume · Split · Delete · Move here · Duplicate (P3-09 inserts **Audio effects** fourth, before Move here) |
 | Audio clip (detached original audio; later voiceover and imported audio) | Volume · Split · Delete · Move here · Duplicate (P3-09: Audio effects fourth) |
 | Text item | Edit text · Style · Position · Delete · Split · Move here · Duplicate (P1-10: Delete ahead of Split, because captions are deleted more often than cut) |
@@ -420,7 +423,7 @@ P1-16's Done when (TICKETS, worded by the PM on 13 Oct): "Media added with the A
 - A missing clip is fixed: its "File missing" label and state go, because the new copy exists. Its tool bar returns to the usual order, with Replace last again; that change confirms the fix, and keyboard focus follows Replace to its place (P1-16 review).
 - **Undo** is one step ("Replace", `edit_replace`). TalkBack hears "Replace: clip 2" (`a11y_edit_on_item`). It fires `tool_use` `replace_clip`. The old copy stays on disk while undo can still bring it back.
 
-**Meme sounds: no Replace (owner, 8 Oct).** In P1, swapping a sound is Delete plus add at the playhead; revisit with the P3-05 picker spec. The board shows Replace on a selected sound; that's dropped. Text and overlays (P4-01) have no Replace either.
+**Meme sounds: no Replace (owner, 8 Oct).** In P1, swapping a sound is Delete plus add at the playhead; revisit with the P3-05 picker spec. The board shows Replace on a selected sound; that's dropped. Text and overlays (P4-01) have no Replace either. **A replaced main clip** (P4-16) keeps its Fit or Fill and its framing and clears its crop, turns and mirrors, which described the old picture.
 
 ## States
 | State | What shows | Copy |

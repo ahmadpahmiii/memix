@@ -64,7 +64,7 @@ Title "Edit photo", **Reset** (Quiet button: resets the open tab) and **Done**. 
 - **What it does** (one recipe, scaled by the amount, fixed rules): boosts saturation and contrast, adds a warm-red tint, hard-sharpens, and adds a fixed grain; the numbers are in How it draws.
 
 ## The Crop screen (a mode, reusable)
-Opens over the editor (200 ms slide up; reduce motion: 120 ms fade). It shows **the layer's whole picture**, with its rotation, flip and straighten applied, centered on the black stage, with a crop frame on it. P4-16 (video clip crop) **reuses this screen** as a component: it takes a picture (a bitmap or a video frame), a crop state and the aspect presets, and returns a crop state.
+Opens over the editor (200 ms slide up; reduce motion: 120 ms fade). It shows **the layer's whole picture**, with its rotation, flip and straighten applied, centered on the black stage, with a crop frame on it. P4-16 (video clip crop) **reuses this screen** as a component: it takes a picture (a bitmap or a video frame), a crop state and the aspect presets, and returns a crop state. **P4-16 spec** (`P4-16-clip-crop-rotate-flip-fit.md`): the same screen with a video frame, with Straighten and its slider hidden for clips.
 
 ### Layout, top to bottom
 1. **Top bar** (56 dp, `canvas`): **Close** at the start (`close`, spoken "Cancel crop"), the title "Crop", **Reset** (Quiet) and **Done** (Primary, the one blue action) at the end.

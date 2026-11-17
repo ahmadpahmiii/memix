@@ -16,7 +16,7 @@ No board shows it. Components: ToolPanel (video-editor variant, covers the timel
 **Tap count:** Voiceover tool (1), Record (2), speak, Stop (3), Done (4). The first time, Android's permission dialog adds one tap after Record. Recording starts 3 seconds after the last tap.
 
 ## Entry and exit
-- **Entry:** the **Voiceover** tool, the fifth in the video editor's main tool bar (Edit, Meme sounds, Text, Add media, **Voiceover**; ToolBar README updated). It is not shown in an empty project (no clips, so no length to record against): Add media stays the only tool there. Opening the panel does **not** ask for the microphone; only a Record tap does.
+- **Entry:** the **Voiceover** tool, the fifth in the video editor's main tool bar (Edit, Meme sounds, Text, Add media, **Voiceover**; ToolBar README updated). **Sixth since P4-01b:** Overlay takes the fifth place next to Add media (Edit, Meme sounds, Text, Add media, Overlay, Voiceover); the build moves Voiceover one place right when Overlay is built. It is not shown in an empty project (no clips, so no length to record against): Add media stays the only tool there. Opening the panel does **not** ask for the microphone; only a Record tap does.
 - **The panel** is the ToolPanel over the timeline and tool bar region, as Volume is: the preview and the transport row stay visible and live, the covered region leaves TalkBack and keyboard focus (`coveredByModal`). Pausing playback first: opening the panel pauses the editor, as every edit (P1-04).
 - **Exit:**
   - **Done**, system back and Escape close the panel when nothing is recording. While recording or counting down they do what Stop or Cancel does (below), so no take is lost to a back press.

@@ -70,7 +70,7 @@ Board: `design/screens/VideoEditor.dc.html`; component `design/system/components
 | # | Lane | Model | Row height | Item look | Label | Ticket | Shown when |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Main video | `MAIN_VIDEO` | `touch-target` (48), clip `track-height-video` (40) centered | Thumbnail strip on `track-video` | none; duration badge when selected | P1-05 | always |
-| 2 | Overlays | `OVERLAY` | `track-height` + `space-1` (32), clip `track-height` | Thumbnail strip on `track-video` | none | P4-01 | it has items |
+| 2 | Overlays | `OVERLAY` | `track-height` + `space-1` (32), clip `track-height` (28) | Thumbnail strip on `track-video` (28 dp tiles) | none | P4-01 | it has items. **Lane order is paint order** (a lower lane is in front); P4-01b |
 | 3 | Text | `TEXT` | 32 | `track-text` | The text, first line | P1-10 | it has items |
 | 4 | Stickers | `STICKER` | 32 | `track-sticker` | Sticker name | P4-12 | it has items |
 | 5 | Meme sounds | `MEME_SOUND` | 32 | `track-meme-sound` | Sound title | P1-08 | it has items |
@@ -221,6 +221,7 @@ At 200% font the labels are wider, so the same rule picks a longer step on its o
   - **Pressed** (P1-08 review): the fill turns `surface-raised`, as a sound's play disc does; the plus and the label stay `primary` (5.9:1). 120 ms.
   - **Touch target:** the whole row height (48 dp or more) across the pill's width, not just the drawn pill (40 dp tall), so the `space-1` margins above and below it count (P1-08 review: the build's target was the 40 dp pill).
   - **Long labels** (P1-08 review, M3): the pill is never wider than the timeline minus `space-4` on each side. When the label doesn't fit one line there, it wraps to two lines, centered, and the row grows to fit (two `label` lines plus `space-1` above and below inside the pill, plus the row's `space-1` margins). Spanish and Portuguese at 200% need this on a 360 dp phone ("Añadir sonido de meme" measures about 372 dp with the plus and padding). The label is never cut.
+- **Pinned when the lanes scroll (P4-01b, Principle 2):** while the lanes need to scroll vertically (for example five overlay lanes plus text and sounds), the row is pinned to the bottom of the timeline region and the lanes scroll above it, so a sound stays two taps away. While everything fits, it stays under the last meme-sound lane as above. It moves once, along the lane slide that caused the overflow.
 - **Tap:** clears any selection and opens the Meme sounds sheet (P1-06 → Meme sounds). Choosing a sound there is the second tap, and the sound lands at the playhead.
   - That makes any sound two taps from the timeline, even while a clip is selected and the tool bar shows clip tools. Without this row, that case takes three taps (deselect, Meme sounds, add).
   - CapCut shows a similar "Add audio" row under its main track (Assumption: product knowledge).

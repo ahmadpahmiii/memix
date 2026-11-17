@@ -87,7 +87,7 @@ ToolPanel rules (`design/system/components/ToolPanel/README.md`): title "Canvas"
 - **Fit:** the whole clip shows, scaled down to fit inside the frame; the background shows around it.
 - **Fill:** the clip covers the whole frame, scaled up and centered; the edges that don't fit are cut off.
 - **It applies to every main clip at once.** Users fix black bars for the whole meme, not clip by clip (Clipchamp's per-clip Fit/Fill and its "no way to set all clips at once" are the counter-example; Guidance). The model's per-clip `fit` stays, for later per-clip framing (Proposals 2).
-- **Mixed** (defensive: an older debug draft, or a later per-clip feature): neither tile is selected; a tap sets every clip.
+- **Mixed** (a real state since P4-16's per-clip Fill or Fit tool; before that defensive): neither tile is selected; a tap sets every clip. **Since P4-16 a tap here also puts every clip's framing (its move, size and turn on the preview) back to the standard place**, in the same step; crops, turns and mirrors stay (`P4-16-clip-crop-rotate-flip-fit.md`).
 
 **4. Background.** Heading "Background", then a horizontally scrolling Swatch row (`design/system/components/Swatch/README.md`): **Blur** first (the new blur variant), then the ten caption palette colors in palette order (White, Black, Yellow, …). Selected: the white ring. **P2-12 adds an Image swatch right after Blur** (and Replace and Remove below the row while a picture is set): `P2-12-canvas-background-image.md`.
 - **When nothing would show the background** (every main clip is Fill, or every clip already has the canvas's shape within 1%), a line under the swatches in `caption` `text-secondary`: "Your clips fill the frame, so the background doesn't show." The swatches still work and the choice is saved: it shows as soon as a clip fits. This explains instead of disabling (design system: keep controls enabled and explain).
@@ -213,7 +213,7 @@ English source; the engineer machine-drafts id, es, pt and hi until P5. Budgets 
 | `canvas_background` | Background | 20 | Row heading: what shows around clips that don't cover the frame |
 | `canvas_background_blur` | Blur | 16 | Spoken name of the blur swatch: a blurred copy of the clip behind it |
 | `canvas_background_hidden` | Your clips fill the frame, so the background doesn't show. | 70 | |
-| `canvas_layers_moved` | Text moved to stay inside the frame. | 50 | Toast after a ratio change moved or shrank a caption. P4-12 widens it when stickers exist. |
+| `canvas_layers_moved` | Layers moved to stay inside the frame. | 50 | Toast after a ratio change moved or shrank a caption, an overlay or a moved main clip. **Changed with P4-01b** from "Text moved…" (the photo editor's `photo_layers_moved` already says layers); the text is the same in all five languages as the photo editor's. |
 | `explain_canvas_widest` | This is as wide as a video can be. | 50 | |
 | `explain_canvas_tallest` | This is as tall as a video can be. | 50 | |
 | `explain_canvas_min` | 1 is the smallest number. | 40 | Use your language's digit |
