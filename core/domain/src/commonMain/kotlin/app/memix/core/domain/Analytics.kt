@@ -247,6 +247,17 @@ enum class EditorTool(val eventValue: String?) {
     /** A tab's Reset in the Edit photo panel: names the undo step; the events logged are the parts it changed (no event of its own). */
     EDIT_PHOTO_RESET(null),
     POSITION_TEXT("position_text"),
+
+    /**
+     * P4-01b: overlay layers in the video editor (spec docs/ux/specs/P4-01b-overlay-layers.md → Analytics, PRD). `add_overlay` is one
+     * landing per pick, `transform_overlay` a stage gesture's release, `position_overlay` one Position-panel step, `overlay_opacity`
+     * a slider release, `overlay_order` one Bring forward or Send back. No parameters.
+     */
+    ADD_OVERLAY("add_overlay"),
+    TRANSFORM_OVERLAY("transform_overlay"),
+    POSITION_OVERLAY("position_overlay"),
+    OVERLAY_OPACITY("overlay_opacity"),
+    OVERLAY_ORDER("overlay_order"),
     TRANSFORM_TEXT("transform_text"),
 
     /**

@@ -58,7 +58,7 @@ internal object CompositionPlanner {
 
         // Sorted by start and not overlapping, so the last clip ends last.
         val durationUs = mainClips.last().endUs
-        val overlays = overlayLayers(tracks, mainClips, durationUs, videoDecoderBudget)
+        val overlays = overlayLayers(tracks, mainClips, durationUs, videoDecoderBudget, keepSilentItems)
         val plan = CompositionPlan(
             canvasWidthPx = project.canvas.widthPx,
             canvasHeightPx = project.canvas.heightPx,
@@ -126,12 +126,12 @@ internal object CompositionPlanner {
     /** What [overlayLayers] found: the layers to draw, and the overlay clips left out with a log line each. */
     private class OverlayLayers(val layers: List<OverlayLayer>, val skippedIds: List<String>, val skippedLines: List<String>)
 
-    private fun overlayLayers(tracks: List<Track>, mainClips: List<MediaClip>, durationUs: Long, videoDecoderBudget: Int): OverlayLayers {
+    private fun overlayLayers(tracks: List<Track>, mainClips: List<MediaClip>, durationUs: Long, videoDecoderBudget: Int, keepSilent: Boolean): OverlayLayers {
         val skipped = mutableListOf<Pair<String, String>>() // item id to its log line
         // The first overlay track is the lowest layer.
         val overlayTracks = tracks.filter { it.kind == TrackKind.OVERLAY }
         val cutByLayer = overlayTracks.map { track ->
-            cutOverlays(track, durationUs) { clip, reason -> skipped += clip.id to "Not rendered: overlay ${clip.id} ($reason)" }
+            cutOverlays(track, durationUs, keepSilent) { clip, reason -> skipped += clip.id to "Not rendered: overlay ${clip.id} ($reason)" }
         }
         val admitted = admittedVideos(cutByLayer, mainClips, videoDecoderBudget)
         val layers = overlayTracks.zip(cutByLayer).mapNotNull { (track, cuts) ->
@@ -157,7 +157,7 @@ internal object CompositionPlanner {
     private class CutOverlay(val clip: OverlayClip, val startUs: Long)
 
     // The clips of one overlay track that can be drawn: cut to 0..durationUs, in time order, none overlapping the one before.
-    private fun cutOverlays(track: Track, durationUs: Long, skip: (MediaClip, String) -> Unit): List<CutOverlay> {
+    private fun cutOverlays(track: Track, durationUs: Long, keepSilent: Boolean, skip: (MediaClip, String) -> Unit): List<CutOverlay> {
         val cuts = mutableListOf<CutOverlay>()
         var cursorUs = 0L
         for (clip in track.items.filterIsInstance<MediaClip>().sortedBy { it.startUs }) {
@@ -167,7 +167,7 @@ internal object CompositionPlanner {
                 skip(clip, "its picture size isn't known")
                 continue
             }
-            val cut = clip.cutTo(durationUs, pixelSize) ?: continue
+            val cut = clip.cutTo(durationUs, pixelSize, plays = clip.hasOwnSound() && !clip.audioDetached && !track.muted && (clip.volume > 0f || keepSilent)) ?: continue
             if (cut.startUs < cursorUs) {
                 skip(clip, "it overlaps the clip before it on its layer")
                 continue
@@ -179,14 +179,14 @@ internal object CompositionPlanner {
     }
 
     // The part of the clip that lies between 0 and the end of the video; a photo only has a length, so it is cut from 0 as well.
-    private fun MediaClip.cutTo(timelineEndUs: Long, pixelSize: PixelSize): CutOverlay? {
+    private fun MediaClip.cutTo(timelineEndUs: Long, pixelSize: PixelSize, plays: Boolean): CutOverlay? {
         val headCutUs = (-startUs).coerceAtLeast(0)
         val cutStartUs = startUs + headCutUs
         val lengthUs = minOf(durationUs - headCutUs, timelineEndUs - cutStartUs)
         if (lengthUs <= 0) return null
         val isPhoto = source.kind == MediaKind.IMAGE
         val cutTrimInUs = if (isPhoto) 0L else trimInUs + headCutUs
-        val clip = OverlayClip(id, source, cutTrimInUs, cutTrimInUs + lengthUs, pixelSize, transform, opacity)
+        val clip = OverlayClip(id, source, cutTrimInUs, cutTrimInUs + lengthUs, pixelSize, transform, opacity, playsOwnAudio = plays, volume = volume)
         return CutOverlay(clip, cutStartUs)
     }
 

@@ -22,7 +22,7 @@ import app.memix.core.model.project.PixelSize
  * 2. the **overlay layers**, top layer first, each as long as the video, with gaps between its clips (drawn invisible);
  * 3. the **main video** sequence, the bottom.
  *
- * A layer's clips are silent, scaled to the size they're drawn at, and drawn by [OverlayPlacement]. Only video overlays hold a
+ * A layer's clips are scaled to the size they're drawn at, drawn by [OverlayPlacement], and play their own sound at their volume (P4-01b). Only video overlays hold a
  * decoder, and only while they show: the plan's decoder budget ([OverlayAdmission]) already left out what doesn't fit.
  */
 @OptIn(UnstableApi::class)
@@ -32,6 +32,8 @@ internal class OverlaySequences(
     /** The size every frame is drawn at, the canvas's shape. */
     private val frame: PixelSize,
     private val frameRate: Int,
+    /** The preview's live volume per overlay video that plays sound (heard while the Volume slider moves); empty for exports. */
+    private val liveGains: Map<String, LiveGainProcessor> = emptyMap(),
 ) {
     private val layersTopFirst: List<OverlayLayer> = plan.overlays.asReversed()
 
@@ -44,8 +46,10 @@ internal class OverlaySequences(
     private fun stage(): EditedMediaItemSequence =
         EditedMediaItemSequence.Builder(setOf(C.TRACK_TYPE_VIDEO)).addGap(plan.durationUs).build()
 
+    // A layer with a clip that plays sound has an audio track too; Media3 fills photos, gaps and silenced clips with silence, as on the main sequence.
     private fun layerSequence(layer: OverlayLayer): EditedMediaItemSequence {
-        val sequence = EditedMediaItemSequence.Builder(setOf(C.TRACK_TYPE_VIDEO))
+        val trackTypes = if (layer.hasAudio) setOf(C.TRACK_TYPE_VIDEO, C.TRACK_TYPE_AUDIO) else setOf(C.TRACK_TYPE_VIDEO)
+        val sequence = EditedMediaItemSequence.Builder(trackTypes)
         for (segment in layer.segments) {
             when (segment) {
                 is Gap -> sequence.addGap(segment.durationUs)
@@ -61,10 +65,11 @@ internal class OverlaySequences(
         // Scaled to the size it is drawn at before it is composited, so a 4K video costs a frame-sized pass, not more.
         val size = OverlayPlacement.of(clip, frame).textureSize
         val scaled = Presentation.createForWidthAndHeight(size.widthPx, size.heightPx, Presentation.LAYOUT_STRETCH_TO_FIT)
+        val audioProcessors = if (clip.playsOwnAudio) AudioChain.volume(clip.volume, liveGains[clip.itemId]) else emptyList()
         val item = EditedMediaItem.Builder(mediaItem.build())
-            .setRemoveAudio(true)
+            .setRemoveAudio(!clip.playsOwnAudio)
             .setFrameRate(frameRate)
-            .setEffects(Effects(emptyList(), listOf(scaled)))
+            .setEffects(Effects(audioProcessors, listOf(scaled)))
         if (!clip.isStill) item.setSourceDuration(clip.source, clip.trimOutUs)
         return item.build()
     }
@@ -73,16 +78,21 @@ internal class OverlaySequences(
         val starts = mutableListOf<Long>()
         val ends = mutableListOf<Long>()
         val settings = mutableListOf<OverlaySettings>()
+        val itemIds = mutableListOf<String>()
+        val placements = mutableListOf<OverlayPlacement>()
         var cursorUs = 0L
         for (segment in layer.segments) {
             if (segment is OverlayClip) {
                 starts += cursorUs
                 ends += cursorUs + segment.durationUs
-                settings += OverlayCompositorSettings.settingsOf(OverlayPlacement.of(segment, frame))
+                val placement = OverlayPlacement.of(segment, frame)
+                settings += OverlayCompositorSettings.settingsOf(placement)
+                placements += placement
+                itemIds += segment.itemId
             }
             cursorUs += segment.durationUs
         }
-        return OverlayCompositorSettings.LayerTimeline(starts.toLongArray(), ends.toLongArray(), settings)
+        return OverlayCompositorSettings.LayerTimeline(starts.toLongArray(), ends.toLongArray(), settings, itemIds, placements)
     }
 
     companion object {

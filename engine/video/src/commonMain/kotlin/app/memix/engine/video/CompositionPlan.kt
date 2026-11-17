@@ -43,7 +43,7 @@ internal data class CompositionPlan(
 
     /** True when the export needs an audio track: a main clip plays its own sound, or an audio lane exists. */
     val hasAudio: Boolean
-        get() = audioLanes.isNotEmpty() || mainVideo.any { it is VisualClip && it.playsOwnAudio }
+        get() = audioLanes.isNotEmpty() || mainVideo.any { it is VisualClip && it.playsOwnAudio } || overlays.any { it.hasAudio }
 
     /** Every item the plan plays from a media file, with that file. */
     val mediaItems: List<Pair<String, MediaRef>>
@@ -146,7 +146,7 @@ internal data class VisualClip(
 }
 
 /**
- * A video or photo floating over the main video (P4-01). Only the part from [trimInUs] to [trimOutUs] plays, silent. Where it
+ * A video or photo floating over the main video (P4-01). Only the part from [trimInUs] to [trimOutUs] plays, with its own sound at [volume] when [playsOwnAudio] (P4-01b). Where it
  * sits comes from [transform] and [opacity] through [OverlayRender].
  */
 internal data class OverlayClip(
@@ -158,6 +158,10 @@ internal data class OverlayClip(
     val pixelSize: PixelSize,
     val transform: Transform,
     val opacity: Float,
+    /** True for an overlay video with its own sound that plays: not a photo, a silent file, detached sound or a muted layer; at 0% only in a preview's plan. */
+    val playsOwnAudio: Boolean = false,
+    /** 1 is the original loudness; only used when [playsOwnAudio]. */
+    val volume: Float = 1f,
 ) : OverlaySegment {
     override val durationUs: Long get() = trimOutUs - trimInUs
 
@@ -169,7 +173,10 @@ internal data class OverlayClip(
 internal data class OverlayLayer(
     val trackId: String,
     val segments: List<OverlaySegment>,
-)
+) {
+    /** Whether one of its clips plays sound, so its sequence needs an audio track. */
+    val hasAudio: Boolean get() = segments.any { it is OverlayClip && it.playsOwnAudio }
+}
 
 /** A sound on an audio lane: a meme sound, imported audio or a clip's detached audio. */
 internal data class SoundClip(

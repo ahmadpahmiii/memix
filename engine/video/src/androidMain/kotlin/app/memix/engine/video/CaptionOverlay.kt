@@ -56,3 +56,19 @@ internal class CaptionVisibility {
     @Volatile
     var hiddenItemId: String? = null
 }
+
+/**
+ * Which overlay the preview leaves out while the editor's stand-in follows a finger (P4-01b): the compositor draws it at alpha 0.
+ * Written on the main thread, read on the GL thread, like [CaptionVisibility].
+ */
+internal class OverlayVisibility {
+    @Volatile
+    var hiddenItemId: String? = null
+
+    /** The overlay the Opacity slider is moving with the opacity it draws at meanwhile, set as one value so the GL thread never reads half of it; null when none. */
+    @Volatile
+    var liveOpacity: LiveOpacity? = null
+}
+
+/** [itemId] drawn at [opacity] while the Opacity slider moves. */
+internal class LiveOpacity(val itemId: String, val opacity: Float)

@@ -112,6 +112,7 @@ internal fun Timeline(
     trimRanges: TrimRanges?,
     reorder: ReorderUi?,
     landed: LandedItems?,
+    revealed: LandedItems?,
     preview: EditorPreview?,
     thumbnails: TimelineThumbnails?,
     waveforms: TimelineWaveforms?,
@@ -123,7 +124,7 @@ internal fun Timeline(
 ) {
     // Time always runs left to right, whatever the language (spec → Structure).
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        TimelineContent(timeline, selectedItemId, trimRanges, reorder, landed, preview, thumbnails, waveforms, originalAudio, addSoundPillFocus, addMediaTileFocus, onIntent, modifier)
+        TimelineContent(timeline, selectedItemId, trimRanges, reorder, landed, revealed, preview, thumbnails, waveforms, originalAudio, addSoundPillFocus, addMediaTileFocus, onIntent, modifier)
     }
 }
 
@@ -142,6 +143,7 @@ private fun TimelineContent(
     trimRanges: TrimRanges?,
     reorder: ReorderUi?,
     landed: LandedItems?,
+    revealed: LandedItems?,
     preview: EditorPreview?,
     thumbnails: TimelineThumbnails?,
     waveforms: TimelineWaveforms?,
@@ -174,11 +176,14 @@ private fun TimelineContent(
     val labelLineHeightPx = with(density) { MemixTheme.type.caption.lineHeight.toPx() }
     // Read in composition: it changes only when the timeline is laid out at a new width.
     val addPillLabelHeightPx = rememberAddPillLabelHeightPx(textMeasurer, state.widthPx)
-    val lanes = remember(timeline, density, labelLineHeightPx, addPillLabelHeightPx) {
-        laneLayoutOf(timeline, density, labelLineHeightPx, addPillLabelHeightPx)
-    }
     val rulerHeight = rulerHeight()
     val rulerHeightPx = with(density) { rulerHeight.toPx() }
+    // The whole timeline's height: when the lanes and the add row don't fit under the ruler, the row is pinned (P4-01b).
+    var timelineHeightPx by remember { mutableIntStateOf(0) }
+    val lanesAvailablePx = (timelineHeightPx - rulerHeightPx).coerceAtLeast(0f)
+    val lanes = remember(timeline, density, labelLineHeightPx, addPillLabelHeightPx, lanesAvailablePx) {
+        laneLayoutOf(timeline, density, labelLineHeightPx, addPillLabelHeightPx, lanesAvailablePx)
+    }
     val labelSpacingPx = rememberRulerLabelSpacing(textMeasurer, timeline.lengthUs)
     val selection = rememberSelection(textMeasurer, timeline, lanes, selectedItemId)
     val currentSelectedId by rememberUpdatedState(selection.selected?.item?.id)
@@ -201,13 +206,16 @@ private fun TimelineContent(
     AnimateEdits(motion, timeline, landed, controller)
     AnimateLanes(motion, lanes)
     val reordering = state.reorder != null
-    if (thumbnails != null) LoadThumbnails(controller, timeline, thumbnails, painter.tileSizePx, reordering, onFade = { fadeFrame = it })
+    if (thumbnails != null) LoadThumbnails(controller, timeline, thumbnails, painter.tileSizePx, painter.overlayTileSizePx, reordering, onFade = { fadeFrame = it })
     if (waveforms != null) FadeInWaveforms(waveforms, onFade = { fadeFrame = it })
 
     Box(
         modifier
             .fillMaxSize()
-            .onSizeChanged { state.widthPx = it.width }
+            .onSizeChanged {
+                state.widthPx = it.width
+                timelineHeightPx = it.height
+            }
             .timelineSemantics(stringResource(Res.string.timeline_a11y), rememberZoomActions(controller))
             .pointerInput(controller) { detectTouchAndPinch(controller::onTouchDown, controller::zoomBy, controller::onTouchUp) }
             // Before the scroll and the taps, so a finger on a handle trims instead of scrubbing.
@@ -319,7 +327,11 @@ private fun TimelineContent(
                 )
                 if (!reordering) TrackSemantics(controller, painter, timeline, lanes, selection.selected?.item?.id, trimRanges, thumbnails?.missingSources.orEmpty())
                 ShowLandedLane(landed, lanes, laneScroll, viewportHeightPx = { lanesViewportPx })
+                // After Layer order the clip's lane may have moved: the lanes scroll to keep it in view.
+                ShowLandedLane(revealed, lanes, laneScroll, viewportHeightPx = { lanesViewportPx })
             }
+            // The pinned "Add a meme sound" row takes its own height under the scrolling lanes (the pill itself is drawn over it).
+            lanes.addSoundRow?.takeIf { it.pinned }?.let { Spacer(Modifier.fillMaxWidth().height(with(density) { it.heightPx.toDp() })) }
         }
         // Reorder mode: the wash over the ruler and lanes, and the tiles over it.
         Spacer(
@@ -545,14 +557,15 @@ private fun LoadThumbnails(
     timeline: TimelineUi,
     thumbnails: TimelineThumbnails,
     tileSizePx: Int,
+    overlayTileSizePx: Int,
     reordering: Boolean,
     onFade: (frameTimeNanos: Long) -> Unit,
 ) {
-    LaunchedEffect(controller, timeline, thumbnails, tileSizePx, reordering) {
+    LaunchedEffect(controller, timeline, thumbnails, tileSizePx, overlayTileSizePx, reordering) {
         // Reorder tiles show each clip's first frame (spec P1-06 → Reorder).
         if (reordering) return@LaunchedEffect thumbnails.want(firstFrameRequestsFor(timeline), tileSizePx)
         val state = controller.state
-        snapshotFlow { tileWindowOf(state.playheadUs, pxPerUs(state.dpPerSecond, controller.density), state.widthPx, tileSizePx) }
+        snapshotFlow { tileWindowOf(state.playheadUs, pxPerUs(state.dpPerSecond, controller.density), state.widthPx, tileSizePx, overlayTileSizePx) }
             .filterNotNull()
             .distinctUntilChanged()
             .collect { window -> thumbnails.want(tileRequestsFor(timeline, window), tileSizePx) }

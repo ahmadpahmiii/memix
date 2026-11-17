@@ -144,7 +144,7 @@ Title "Layer order", Done. The two actions first, so 200% font can't push them u
 - **Trim:** handles at both ends; a video overlay stops at the source's start and end (one tick), a photo has no limit; at least 0.1 s; a neighbor on the same lane is a hard stop; snapping to the playhead, 0:00, the end, main-clip boundaries and other items' edges. The preview shows the main video as it is while trimming (overlay clips don't scrub the stage in P4-01b).
 - **Move:** long-press and drag. Horizontally sets the start; **vertically changes the lane, which changes the stacking order** (the lane you drop on, or the next free one below it, P1-06). Dropping where it would overlap on that lane lands it on the next lane below that is free, or a new one. A value bubble shows the new start time. Move here sets the start to the playhead with the same lane rule as landing.
 - **Split:** two clips with the same transform, opacity, crop and sound settings, meeting at the playhead; selection to the right one. **Delete:** the clip goes, an emptied lane goes, the selection clears, the main bar returns. No confirmation.
-- **Duplicate:** the copy goes right after the original on the same lane if that is free for its whole length; otherwise on the first lane free below, otherwise a new lane (the landing rule). **When the copy ends up overlapping the original in time, it is offset 3% of the canvas's shorter side right and down** (`overlay.duplicateOffsetOfShortSide`, P2-01's offset), so the user can see something happened; it is selected and bonks.
+- **Duplicate:** the copy goes right after the original on the same lane if that is free for its whole length; otherwise on the first lane free below, otherwise a new lane (the landing rule). **No position offset** (amended at design review, 17 Nov 2026): the copy starts where the original ends, so it never shares a moment with it; the bonk, the new clip on the timeline and the selection show that something happened. The 3% offset of the first draft could never trigger and is dropped (P2-01's offset applies to photo layers, which share the whole timeline). The copy is selected and bonks.
 - **Main track ripple does not move overlays** (P1-06 owner trial: sounds, text and now overlays keep their times). An overlay lined up with a main-clip moment can drift if earlier clips change; undo and Move here fix it. Revisit with the sounds decision at the P1 test.
 - **Reorder mode** (main clips): overlay lanes get the `scrim` wash and don't respond, like every other lane.
 
@@ -177,7 +177,7 @@ Part of every draft's look, so fixed; in `design/tokens.json` → `overlay`.
 | Overlay selected, visible at the playhead | White frame and handle on the stage; outline and handles on the timeline | none |
 | Overlay selected, not visible at the playhead | Nothing on the stage; Position, Opacity and Layer order jump the playhead to its start | none |
 | Two overlays overlap | A tap picks the front one; the other from the timeline | none |
-| Moving, sizing, turning | Overlay follows (stand-in), frame edge and guides, bubble "% · °" | `text_transform_bubble` |
+| Moving, sizing, turning | Overlay follows (stand-in), frame edge and guides; the bubble "% · °" shows once size or rotation changes, not on a pure move (P1-10's behavior, confirmed at design review) | `text_transform_bubble` |
 | Opacity panel | One slider, the blend live on the stage | `layers_opacity`, `panel_done` |
 | Position panel | P1-10's rows with the photo layers' size ladder | `position_*`, `explain_text_smallest`, `explain_text_biggest`, `explain_overlay_edge` |
 | Layer order panel | Two buttons and a hint | `tool_layer_order`, `layer_order_forward`, `layer_order_back`, `layer_order_hint` |
@@ -185,7 +185,7 @@ Part of every draft's look, so fixed; in `design/tokens.json` → `overlay`.
 | Overlay past the end of the video | The wash on the part past the end | `a11y_state_past_end`, `a11y_state_after_end` |
 | Overlay's file missing | Lane clip says "File missing"; not drawn; a toast once per open; tools: Delete first | `clip_missing_file`, `editor_missing_overlay` |
 | Many overlay lanes | Lanes scroll under the pinned ruler; the Add a meme sound row is pinned at the bottom | `timeline_add_meme_sound` |
-| More than five video overlays at once | The preview may be softer; no message | none |
+| More than the phone can decode at once | Amended at design review: P4-01a leaves the extra overlays out (preview and export) rather than softening the preview; one toast per newly skipped set, with the overlay still on its lane | `overlay_skipped_toast` |
 | Canvas panel open | Stage touches on overlays do nothing; frame and handle hidden | P1-11 |
 | Typing a caption | Overlays inert | P1-10 |
 | Reorder mode | Overlay lanes washed | P1-06 |

@@ -382,7 +382,7 @@ internal class TimelineController(val state: TimelineState, private val scope: C
 
     // A meme sound over the add row lands on a new lane: drawn there at a sound lane's size (spec P1-06 → Move).
     private fun newSoundLaneRow(row: LaneRow, lanes: LaneLayout): LaneRow? {
-        val addRow = lanes.addSoundRow ?: return null
+        val addRow = lanes.addSoundRow?.takeUnless { it.pinned } ?: return null
         if (row.track.kind != TrackKind.MEME_SOUND) return null
         val itemTopPx = addRow.topPx + (addRow.heightPx - row.itemHeightPx) / 2
         return LaneRow(row.track, addRow.topPx, addRow.heightPx, itemTopPx, row.itemHeightPx)

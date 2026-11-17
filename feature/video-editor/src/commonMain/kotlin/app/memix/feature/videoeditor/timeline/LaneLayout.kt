@@ -13,23 +13,28 @@ import kotlin.math.max
  * item plus `space-1`; an item is `track-height` tall, or its label's line height plus `space-1` above and below
  * when large fonts need more (spec → Accessibility, 200% font). The "Add a meme sound" row ([addSoundRow], P1-08) is
  * `touch-target` tall, right under the last meme-sound lane, or where those lanes go when there are none; an empty
- * project has none. Built once per timeline and text size.
+ * project has none. Built once per timeline and text size. When all that is taller than [availableHeightPx] (the lanes' window, 0
+ * for unknown), the lanes scroll and the add row is pinned under them instead of sitting among them (spec P4-01b → Many lanes).
  */
 @Immutable
 internal class LaneLayout(val rows: List<LaneRow>, val heightPx: Float, val addSoundRow: AddSoundRow?) {
     /** The track row under [y] (pixels from the top of the first row), or null in the add row and below the last row. */
     fun rowAt(y: Float): LaneRow? = rows.firstOrNull { y >= it.topPx && y < it.topPx + it.heightPx }
 
-    /** True when [y] (pixels from the top of the first row) is in the "Add a meme sound" row. */
-    fun isInAddSoundRow(y: Float): Boolean = addSoundRow != null && y >= addSoundRow.topPx && y < addSoundRow.topPx + addSoundRow.heightPx
+    /** True when [y] (pixels from the top of the first row) is in the "Add a meme sound" row. A pinned row isn't among the scrolling lanes, so nothing is dropped on it. */
+    fun isInAddSoundRow(y: Float): Boolean =
+        addSoundRow != null && !addSoundRow.pinned && y >= addSoundRow.topPx && y < addSoundRow.topPx + addSoundRow.heightPx
 
     /** The row of the item with [itemId], or null when no row holds it. */
     fun rowOf(itemId: String): LaneRow? = rows.firstOrNull { row -> row.track.items.any { it.id == itemId } }
 }
 
-/** The "Add a meme sound" row's place: its pill sits in it, and a meme sound dropped on it gets a new lane. */
+/**
+ * The "Add a meme sound" row's place: its pill sits in it, and a meme sound dropped on it gets a new lane. [pinned]: the lanes
+ * overflow their window, so the row isn't among them but stays at the bottom of the timeline ([topPx] is then where the lanes end).
+ */
 @Immutable
-internal class AddSoundRow(val topPx: Float, val heightPx: Float)
+internal class AddSoundRow(val topPx: Float, val heightPx: Float, val pinned: Boolean = false)
 
 @Immutable
 internal class LaneRow(
@@ -44,7 +49,13 @@ internal class LaneRow(
  * Where each lane and the "Add a meme sound" row sit, top to bottom. [labelLineHeightPx] is one item label's line;
  * [addPillLabelHeightPx] is the pill label's height, one or two lines ([rememberAddPillLabelHeightPx]).
  */
-internal fun laneLayoutOf(timeline: TimelineUi, density: Density, labelLineHeightPx: Float, addPillLabelHeightPx: Float): LaneLayout = with(density) {
+internal fun laneLayoutOf(timeline: TimelineUi, density: Density, labelLineHeightPx: Float, addPillLabelHeightPx: Float, availableHeightPx: Float = 0f): LaneLayout {
+    val inline = laneLayoutOf(timeline, density, labelLineHeightPx, addPillLabelHeightPx, pinAddRow = false)
+    if (availableHeightPx <= 0f || inline.addSoundRow == null || inline.heightPx <= availableHeightPx) return inline
+    return laneLayoutOf(timeline, density, labelLineHeightPx, addPillLabelHeightPx, pinAddRow = true)
+}
+
+private fun laneLayoutOf(timeline: TimelineUi, density: Density, labelLineHeightPx: Float, addPillLabelHeightPx: Float, pinAddRow: Boolean): LaneLayout = with(density) {
     val itemHeightPx = max(MemixSize.trackHeight.toPx(), labelLineHeightPx + 2 * MemixSpacing.space1.toPx())
     val rowHeightPx = itemHeightPx + MemixSpacing.space1.toPx()
     val mainRowHeightPx = MemixSize.touchTarget.toPx()
@@ -52,7 +63,7 @@ internal fun laneLayoutOf(timeline: TimelineUi, density: Density, labelLineHeigh
     // Grows with the pill's label (one or two lines, at any text size), so it's never cut: `space-1` inside the pill
     // above and below it, and the row's `space-1` margins.
     val addRowHeightPx = max(MemixSize.touchTarget.toPx(), addPillLabelHeightPx + 4 * MemixSpacing.space1.toPx())
-    val addRowGoesBefore = addSoundRowPosition(timeline)
+    val addRowGoesBefore = if (pinAddRow) -1 else addSoundRowPosition(timeline)
     var topPx = 0f
     var addSoundRow: AddSoundRow? = null
     val rows = timeline.tracks.mapIndexed { index, track ->
@@ -72,6 +83,8 @@ internal fun laneLayoutOf(timeline: TimelineUi, density: Density, labelLineHeigh
         addSoundRow = AddSoundRow(topPx, addRowHeightPx)
         topPx += addRowHeightPx
     }
+    // Pinned: the rows scroll above it, and it takes no height among them.
+    if (pinAddRow && !timeline.isEmpty) addSoundRow = AddSoundRow(topPx, addRowHeightPx, pinned = true)
     LaneLayout(rows, topPx, addSoundRow)
 }
 

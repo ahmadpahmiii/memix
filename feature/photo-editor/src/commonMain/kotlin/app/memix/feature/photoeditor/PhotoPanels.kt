@@ -36,7 +36,7 @@ import memix.core.ui.generated.resources.position_size_value
 import memix.core.ui.generated.resources.position_title
 import memix.feature.photo_editor.generated.resources.Res
 import memix.feature.photo_editor.generated.resources.layers_locked_opacity
-import memix.feature.photo_editor.generated.resources.layers_opacity
+import memix.core.ui.generated.resources.layers_opacity
 import memix.feature.photo_editor.generated.resources.photo_background_hidden
 import memix.feature.photo_editor.generated.resources.canvas_background_format
 import app.memix.core.model.project.CaptionBox
@@ -56,7 +56,7 @@ internal fun PhotoPanels(state: PhotoEditorUiState, live: PhotoLive, thumbnails:
     val done = stringResource(UiRes.string.panel_done)
     val close = { onIntent(PhotoEditorIntent.ClosePanel) }
     val layer = state.selectedLayer
-    ToolPanel(state.panel == PhotoPanel.OPACITY && layer != null, stringResource(Res.string.layers_opacity), done, close, modifier, contentMaxHeight = maxHeight) {
+    ToolPanel(state.panel == PhotoPanel.OPACITY && layer != null, stringResource(UiRes.string.layers_opacity), done, close, modifier, contentMaxHeight = maxHeight) {
         if (layer != null) OpacityRow(layer, live, onIntent)
     }
     ToolPanel(state.panel == PhotoPanel.POSITION && layer != null, stringResource(UiRes.string.position_title), done, close, modifier, contentMaxHeight = maxHeight) {
@@ -130,7 +130,7 @@ internal fun OpacityRow(layer: SceneLayerUi, live: PhotoLive, onIntent: (PhotoEd
     }
     val value = live.opacityOf() ?: layer.opacity
     Slider(
-        label = stringResource(Res.string.layers_opacity),
+        label = stringResource(UiRes.string.layers_opacity),
         value = value,
         onValueChange = { live.setOpacity(layer.id, it) },
         valueText = stringResource(UiRes.string.position_size_value, (value * PERCENT).toInt().coerceIn(0, PERCENT)),

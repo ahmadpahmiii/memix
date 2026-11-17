@@ -52,11 +52,14 @@ fun Project.setCanvasRatio(ratio: CanvasRatio, customTerms: RatioTerms? = null, 
     if (canvas.ratio == ratio && old == size) return CanvasRatioChange(this, movedLayers = false)
     var moved = false
     val tracks = tracks().map { track ->
-        if (track.kind != TrackKind.TEXT) return@map track
+        if (track.kind != TrackKind.TEXT && track.kind != TrackKind.OVERLAY) return@map track
         track.items.map { item ->
-            val text = item as? TextItem ?: return@map item
-            val kept = text.keptInside(old, size, measure)
-            if (kept != text) moved = true
+            val kept = when (item) {
+                is TextItem -> item.keptInside(old, size, measure)
+                is MediaClip -> if (track.kind == TrackKind.OVERLAY) item.keptInside(old, size) else item
+                else -> item
+            }
+            if (kept != item) moved = true
             kept
         }.let { track.copy(items = it) }
     }

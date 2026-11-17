@@ -92,7 +92,7 @@ fun BoxScope.LayerTurnHandle(state: LayerStageState, target: GestureTarget, canv
             .offset {
                 val transform = state.gesture?.takeIf { it.layerId == target.id }?.transform ?: target.transform
                 val box = target.boxIn(state.frame, canvasWidthPx, transform)
-                val center = handleCenterOf(box, state.stageWidth, state.stageHeight, outsetPx)
+                val center = handleCenterOf(box, state.stageWidth, state.stageHeight, outsetPx, if (target.keepsHandleOnStage) handlePx / 2 else 0f)
                 IntOffset((center.x - handlePx / 2).roundToInt(), (center.y - handlePx / 2).roundToInt())
             }
             .size(MemixSize.canvasHandleSize)
@@ -125,8 +125,23 @@ fun BoxScope.LayerSnapGuides(state: LayerStageState) {
                 drawLine(MemixColors.selection, Offset(frame.left, y - line / 2), Offset(frame.left + frame.width, y - line / 2), line)
                 drawLine(MemixColors.onPrimary, Offset(frame.left, y + line / 2), Offset(frame.left + frame.width, y + line / 2), line)
             }
+            // A side flush with a canvas edge: the same two-tone line, along that edge.
+            if (gesture.snappedLeft) drawVerticalGuide(frame.left, frame, line)
+            if (gesture.snappedRight) drawVerticalGuide(frame.left + frame.width, frame, line)
+            if (gesture.snappedTop) drawHorizontalGuide(frame.top, frame, line)
+            if (gesture.snappedBottom) drawHorizontalGuide(frame.top + frame.height, frame, line)
         },
     )
+}
+
+private fun DrawScope.drawVerticalGuide(x: Float, frame: CanvasFrameRect, line: Float) {
+    drawLine(MemixColors.selection, Offset(x - line / 2, frame.top), Offset(x - line / 2, frame.top + frame.height), line)
+    drawLine(MemixColors.onPrimary, Offset(x + line / 2, frame.top), Offset(x + line / 2, frame.top + frame.height), line)
+}
+
+private fun DrawScope.drawHorizontalGuide(y: Float, frame: CanvasFrameRect, line: Float) {
+    drawLine(MemixColors.selection, Offset(frame.left, y - line / 2), Offset(frame.left + frame.width, y - line / 2), line)
+    drawLine(MemixColors.onPrimary, Offset(frame.left, y + line / 2), Offset(frame.left + frame.width, y + line / 2), line)
 }
 
 // "120% · 15°" at the top of the stage while sizing or turning, where fingers don't cover it.

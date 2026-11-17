@@ -161,6 +161,8 @@ private class UnavailablePreviewSession : PreviewSession {
     override fun previewFades(itemId: String, fadeInUs: Long, fadeOutUs: Long) = Unit
     override fun previewBass(itemId: String, bassBoost: Float, distortion: Float) = Unit
     override fun hideCaption(itemId: String?) = Unit
+    override fun hideOverlay(itemId: String?) = Unit
+    override fun previewOpacity(itemId: String, opacity: Float?) = Unit
     override fun setSilent(silent: Boolean) = Unit
     override fun sampleClock(): ClockSample? = null
     override fun close() = Unit
@@ -168,6 +170,9 @@ private class UnavailablePreviewSession : PreviewSession {
 
 private object UnavailableThumbnailReader : ThumbnailReader {
     override suspend fun thumbnail(source: MediaRef, timeUs: Long, sizePx: Int): Outcome<Thumbnail> =
+        Outcome.Failure(AppError.Unexpected(UnsupportedOperationException("Thumbnails on iOS arrive with P7-03")))
+
+    override suspend fun frame(source: MediaRef, timeUs: Long, longSidePx: Int): Outcome<Thumbnail> =
         Outcome.Failure(AppError.Unexpected(UnsupportedOperationException("Thumbnails on iOS arrive with P7-03")))
 
     override fun close() = Unit

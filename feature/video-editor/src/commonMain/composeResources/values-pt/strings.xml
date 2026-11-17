@@ -208,4 +208,23 @@
     <string name="fx_voice_hint">As vozes se somam ao tom, aos graves e ao eco.</string>
     <string name="edit_fx_voice">Voz</string>
     <string name="edit_fx_echo_length">Duração do eco</string>
+
+    <!-- Overlay layers (P4-01b) -->
+    <string name="tool_overlay">Sobreposição</string>
+    <string name="tool_overlay_click">Adicionar um vídeo ou foto por cima</string>
+    <string name="tool_layer_order">Ordem das camadas</string>
+    <string name="layer_order_forward">Para a frente</string>
+    <string name="layer_order_back">Para trás</string>
+    <string name="layer_order_hint">Muda qual sobreposição fica por cima onde elas se cruzam.</string>
+    <string name="explain_layer_order_front">Nenhuma outra sobreposição está na frente desta.</string>
+    <string name="explain_layer_order_back">Nenhuma outra sobreposição está atrás desta.</string>
+    <string name="explain_overlay_edge">Esta sobreposição não pode ir mais longe assim.</string>
+    <string name="editor_missing_overlay">O arquivo de uma sobreposição sumiu, então ela não aparece. Exclua-a para corrigir.</string>
+    <string name="a11y_overlay_added">Sobreposição adicionada</string>
+    <string name="a11y_overlay_node">Sobreposição, %1$s, camada %2$d de %3$d</string>
+    <string name="a11y_overlay_item">Sobreposição, %1$s, dura %2$s, começa em %3$s</string>
+    <string name="edit_add_overlay">Adicionar sobreposição</string>
+    <string name="edit_overlay_order">Ordem das camadas</string>
+    <string name="overlay_skipped_toast">Algumas sobreposições de vídeo não aparecerão: este celular não consegue reproduzir tantas ao mesmo tempo.</string>
+    <string name="a11y_overlay_opacity">%1$d por cento de opacidade</string>
 </resources>

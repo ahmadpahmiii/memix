@@ -3,6 +3,7 @@ package app.memix.feature.videoeditor
 import app.memix.core.domain.media.ImportMediaUseCase
 import app.memix.core.domain.project.MediaPlace
 import app.memix.core.domain.project.ReplaceFit
+import app.memix.core.domain.project.addOverlay
 import app.memix.core.domain.project.insertMedia
 import app.memix.core.domain.project.mainClip
 import app.memix.core.domain.project.replaceClipMedia
@@ -28,6 +29,7 @@ import kotlinx.coroutines.launch
  *   "Replace" step. A shorter video is refused with a toast and its copy deleted; a clip that went meanwhile (an undo)
  *   takes nothing.
  * - **Background:** the first picture becomes the canvas background, one "Background" step.
+ * - **Overlay:** the pick becomes an overlay at the playhead of the tool's tap, one "Add overlay" step.
  *
  * What landed is shown once the import sheet is done ([Editor.showLanding]); when the pick is over, whatever the
  * outcome, [Editor.onPickEnded] runs. Lives in the editor's [scope]; main thread only.
@@ -53,6 +55,9 @@ internal class EditorMediaImport(
 
         /** The pick that [request] started is over, whatever happened. */
         fun onPickEnded(request: MediaPickRequest)
+
+        /** A pick for an overlay put one in the project. */
+        fun overlayLanded()
     }
 
     private val pick = ProjectPickImport(importMedia, scope, projectId, PickLanding())
@@ -83,6 +88,7 @@ internal class EditorMediaImport(
                 is MediaPickRequest.Add -> addMedia(request.place, added)
                 is MediaPickRequest.Replace -> replaceClip(project, request.itemId, added.first())
                 MediaPickRequest.Background -> setBackground(added.first())
+                is MediaPickRequest.Overlay -> addOverlay(request.atUs, added.first())
             }
         }
 
@@ -121,6 +127,16 @@ internal class EditorMediaImport(
         return LandingResult.Landed
     }
 
+    // One overlay at the playhead of the Overlay tool's tap; a video whose length isn't known, or a sound file, is declined (spec P4-01b → What lands).
+    private fun addOverlay(atUs: Long, media: MediaRef): LandingResult {
+        val clipId = Uuid.random().toString()
+        val trackId = Uuid.random().toString()
+        if (!editor.commit(VideoEdit.ADD_OVERLAY) { it.addOverlay(media, atUs, clipId, trackId) }) return LandingResult.Declined
+        landed = MediaLanding.Overlay(clipId)
+        editor.overlayLanded()
+        return LandingResult.Landed
+    }
+
     // The picker only offers images; a file that isn't one is declined. The Canvas panel is still open under the pick.
     private fun setBackground(media: MediaRef): LandingResult {
         if (media.kind != MediaKind.IMAGE) return LandingResult.Declined
@@ -143,4 +159,7 @@ internal sealed interface MediaLanding {
 
     /** The canvas background is a picture now (P2-12). */
     data object Background : MediaLanding
+
+    /** A new overlay [itemId] (P4-01b). */
+    data class Overlay(val itemId: String) : MediaLanding
 }

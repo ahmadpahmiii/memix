@@ -59,6 +59,8 @@ internal class Media3CompositionBuilder(
     private val frameSizePx: PixelSize? = null,
     /** The file of the plan's background picture, when it has one and it is on the phone (null draws the bars black). */
     private val backgroundFile: File? = null,
+    /** The preview's hide switch for an overlay under a finger (P4-01b); exports pass none and the preview takes the one the composition made. */
+    private val onOverlayVisibility: (OverlayVisibility) -> Unit = {},
 ) {
     // The size every main clip is drawn at, the canvas's shape: captions and output come out at this size too.
     private val frame: PixelSize = frameSizePx ?: frameSizeOf(PixelSize(plan.canvasWidthPx, plan.canvasHeightPx), frameShortSidePx)
@@ -68,14 +70,18 @@ internal class Media3CompositionBuilder(
 
     fun build(): Composition {
         // With overlays, the video is several sequences composited in a fixed order (OverlaySequences); without, just the main one.
-        val overlays = if (plan.hasOverlays) OverlaySequences(plan, uriByMedia, frame, frameRate) else null
+        val overlays = if (plan.hasOverlays) OverlaySequences(plan, uriByMedia, frame, frameRate, liveGains) else null
         val main = mainVideoSequence()
         val videoSequences = overlays?.videoSequences(main) ?: listOf(main)
         val composition = Composition.Builder(videoSequences + plan.audioLanes.map(::audioSequence))
             // Exports are SDR: every chat app shows SDR right, and Media3 refuses SDR clips or photos
             // after an HDR video in one sequence. OpenGL tone mapping works from API 29, our minSdk.
             .setHdrMode(Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)
-        overlays?.let { composition.setVideoCompositorSettings(it.compositorSettings()) }
+        overlays?.let {
+            val settings = it.compositorSettings()
+            onOverlayVisibility(settings.visibility)
+            composition.setVideoCompositorSettings(settings)
+        }
         val videoEffects = compositionVideoEffects()
         if (mixProcessors.isNotEmpty() || videoEffects.isNotEmpty()) composition.setEffects(Effects(mixProcessors, videoEffects))
         return composition.build()

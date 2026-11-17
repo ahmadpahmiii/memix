@@ -208,4 +208,23 @@
     <string name="fx_voice_hint">Efek suara digabung dengan nada, bass, dan gema.</string>
     <string name="edit_fx_voice">Suara</string>
     <string name="edit_fx_echo_length">Panjang gema</string>
+
+    <!-- Overlay layers (P4-01b) -->
+    <string name="tool_overlay">Overlay</string>
+    <string name="tool_overlay_click">Tambahkan video atau foto di atas</string>
+    <string name="tool_layer_order">Urutan lapisan</string>
+    <string name="layer_order_forward">Majukan</string>
+    <string name="layer_order_back">Mundurkan</string>
+    <string name="layer_order_hint">Mengubah overlay mana yang di atas saat tumpang tindih.</string>
+    <string name="explain_layer_order_front">Tidak ada overlay lain di depan overlay ini.</string>
+    <string name="explain_layer_order_back">Tidak ada overlay lain di belakang overlay ini.</string>
+    <string name="explain_overlay_edge">Overlay ini tidak bisa bergerak lebih jauh ke arah ini.</string>
+    <string name="editor_missing_overlay">File sebuah overlay hilang, jadi tidak tampil. Hapus overlay itu untuk memperbaikinya.</string>
+    <string name="a11y_overlay_added">Overlay ditambahkan</string>
+    <string name="a11y_overlay_node">Overlay, %1$s, lapisan %2$d dari %3$d</string>
+    <string name="a11y_overlay_item">Overlay, %1$s, panjang %2$s, mulai pada %3$s</string>
+    <string name="edit_add_overlay">Tambah overlay</string>
+    <string name="edit_overlay_order">Urutan lapisan</string>
+    <string name="overlay_skipped_toast">Beberapa video overlay tidak tampil: ponsel ini tidak bisa memutar sebanyak itu sekaligus.</string>
+    <string name="a11y_overlay_opacity">%1$d persen opasitas</string>
 </resources>

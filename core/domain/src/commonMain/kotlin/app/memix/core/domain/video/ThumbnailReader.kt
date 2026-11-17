@@ -27,12 +27,19 @@ interface ThumbnailReader : AutoCloseable {
      */
     suspend fun thumbnail(source: MediaRef, timeUs: Long, sizePx: Int): Outcome<Thumbnail>
 
+    /**
+     * The whole picture of [source] at [timeUs], its own shape (a photo with transparency keeps it), scaled to [longSidePx] on its
+     * long side: what the editor draws an overlay with while a finger moves it (P4-01b). Same failures and threading as [thumbnail];
+     * the [Thumbnail]'s `sizePx` is the long side.
+     */
+    suspend fun frame(source: MediaRef, timeUs: Long, longSidePx: Int): Outcome<Thumbnail>
+
     /** Frees the open media files. Further calls do nothing. */
     override fun close()
 }
 
 /**
- * One square thumbnail, [sizePx] wide and tall, as JPEG bytes. Encoded rather than a platform bitmap so shared code
+ * One square thumbnail, [sizePx] wide and tall (a [ThumbnailReader.frame]'s long side), as JPEG bytes (PNG for a picture with transparency). Encoded rather than a platform bitmap so shared code
  * can hold it; the UI decodes it once into its own image cache.
  */
 class Thumbnail(val jpegBytes: ByteArray, val sizePx: Int)

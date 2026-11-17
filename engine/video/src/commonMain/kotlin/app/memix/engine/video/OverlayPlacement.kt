@@ -1,6 +1,7 @@
 package app.memix.engine.video
 
 import app.memix.core.model.project.PixelSize
+import app.memix.core.model.project.fittedImageSize
 import kotlin.math.roundToInt
 
 /**
@@ -30,16 +31,17 @@ internal data class OverlayPlacement(
     companion object {
         /** The drawing of [clip] in a frame of [frame] pixels (the canvas's shape, at the preview's or the export's resolution). */
         fun of(clip: OverlayClip, frame: PixelSize): OverlayPlacement {
-            val fitted = FitGeometry(clip.pixelSize, frame)
-            val textureWidth = fitted.fittedWidth.roundToInt().coerceAtLeast(1)
-            val textureHeight = fitted.fittedHeight.roundToInt().coerceAtLeast(1)
+            // The same size the editor draws the overlay's frame and hit area by (a picture within 1% of the frame's shape covers it).
+            val fitted = fittedImageSize(clip.pixelSize, frame)
+            val textureWidth = fitted.width.roundToInt().coerceAtLeast(1)
+            val textureHeight = fitted.height.roundToInt().coerceAtLeast(1)
             val transform = clip.transform
             return OverlayPlacement(
                 textureSize = PixelSize(textureWidth, textureHeight),
                 anchorX = transform.centerX * 2f - 1f,
                 anchorY = 1f - transform.centerY * 2f,
-                scaleX = transform.scale * fitted.fittedWidth / textureWidth,
-                scaleY = transform.scale * fitted.fittedHeight / textureHeight,
+                scaleX = transform.scale * fitted.width / textureWidth,
+                scaleY = transform.scale * fitted.height / textureHeight,
                 rotationDegrees = -transform.rotationDegrees,
                 alpha = clip.opacity,
             )

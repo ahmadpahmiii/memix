@@ -121,6 +121,11 @@ internal class Media3PreviewSession(
     // other way round.
     private var requestedHiddenCaption: String? = null
     private var shownCaptions: CaptionVisibility? = null
+
+    // The same for the overlay a finger moves (P4-01b): the compositor of the composition on the player draws it at alpha 0.
+    private var requestedHiddenOverlay: String? = null
+    private var requestedLiveOpacity: LiveOpacity? = null
+    private var shownOverlays: OverlayVisibility? = null
     private val positionTicker = FrameTicker(::publishPlayerPosition)
     private val headphonesUnplugged = HeadphonesUnpluggedReceiver(context, onUnplugged = ::pause)
     private val playSpan = PlaySpanLog(logger)
@@ -206,6 +211,8 @@ internal class Media3PreviewSession(
         if (closed || project == projects.value) return
         // A committed caption edit ends its stand-in: the new composition draws the caption itself.
         requestedHiddenCaption = null
+        requestedHiddenOverlay = null
+        requestedLiveOpacity = null
         showTiming.start(ShowTimingLog.Change.EDIT)
         lengthUs = project.videoLengthUs()
         updateCount++
@@ -274,6 +281,28 @@ internal class Media3PreviewSession(
         if (!playerShowsTrim) mutablePlayer.value?.let { player -> player.seekTo(player.currentPosition) }
     }
 
+    override fun hideOverlay(itemId: String?) {
+        if (closed) return
+        requestedHiddenOverlay = itemId
+        val shown = shownOverlays ?: return
+        if (shown.hiddenItemId == itemId) return
+        shown.hiddenItemId = itemId
+        if (itemId == null && mutablePlayback.value.isCatchingUp) return
+        // Paused, a seek to where it is draws the frame again through the compositor, without a rebuild.
+        if (!playerShowsTrim) mutablePlayer.value?.let { player -> player.seekTo(player.currentPosition) }
+    }
+
+    override fun previewOpacity(itemId: String, opacity: Float?) {
+        if (closed) return
+        // Kept for a composition still being built, which takes it when it is shown (as for a hidden overlay).
+        requestedLiveOpacity = opacity?.let { LiveOpacity(itemId, it) }
+        val shown = shownOverlays ?: return
+        shown.liveOpacity = requestedLiveOpacity
+        if (opacity == null) return
+        // Playing, the next frame draws it; paused, a seek to where it is draws the frame again through the compositor.
+        if (!playerShowsTrim && !mutablePlayback.value.isPlaying) mutablePlayer.value?.let { player -> player.seekTo(player.currentPosition) }
+    }
+
     override fun endTrimFrames() {
         if (closed || trimClip.value == null) return
         // The project's composition is rebuilt at positionUs, the trim's commit included when it came first (the
@@ -303,6 +332,7 @@ internal class Media3PreviewSession(
         val resolved = sourceResolver.resolve(plan)
         // Each missing file, and each file whose length isn't known, plays as black and silence.
         val unplayable = resolved.missingItemIds.toSet() + plan.itemsWithoutLength()
+        val overlayIds = plan.overlays.flatMap { it.segments }.filterIsInstance<OverlayClip>().map { it.itemId }.toSet()
         val playablePlan = plan.withGapsFor(unplayable)
         return try {
             val onsetLog = if (measureSoundOnsets) listOf(SoundOnsetLog(playablePlan.soundStartsUs.toLongArray(), logger)) else emptyList()
@@ -313,6 +343,7 @@ internal class Media3PreviewSession(
             val liveFades = sounds.associate { it.itemId to LiveFades(it.effects.fadeInUs, it.effects.fadeOutUs) }
             val liveBass = sounds.associate { it.itemId to LiveBass(it.effects.bassBoost, it.effects.distortion) }
             val visibility = CaptionVisibility()
+            var overlayVisibility: OverlayVisibility? = null
             val captions = playablePlan.captions.takeIf { it.isNotEmpty() }?.let {
                 CaptionOverlay(it, captionRenderer, playablePlan.canvasWidthPx, playablePlan.canvasHeightPx, visibility)
             }
@@ -327,13 +358,16 @@ internal class Media3PreviewSession(
                 captionOverlay = captions,
                 frameShortSidePx = if (playablePlan.background == PlanBackground.Blur) BLUR_PREVIEW_SHORT_SIDE_PX else null,
                 backgroundFile = resolved.backgroundFile,
+                onOverlayVisibility = { overlayVisibility = it },
             ).build()
             PreparedPreview.Ready(
                 composition,
                 plan.durationUs,
                 missingMedia = unplayable.isNotEmpty(),
+                onlyOverlaysMissing = unplayable.isNotEmpty() && unplayable.all { it in overlayIds },
                 LiveVolumes(liveGains, volumes, liveFades, liveBass),
                 visibility,
+                overlayVisibility,
                 PixelSize(plan.canvasWidthPx, plan.canvasHeightPx),
                 compositesOverlays = playablePlan.hasOverlays,
                 skippedOverlayIds = plan.skippedOverlayIds,
@@ -359,6 +393,9 @@ internal class Media3PreviewSession(
         // A caption hidden while this composition was built (a gesture that began meanwhile) stays hidden on it.
         prepared.captions.hiddenItemId = requestedHiddenCaption
         shownCaptions = prepared.captions
+        prepared.overlays?.hiddenItemId = requestedHiddenOverlay
+        prepared.overlays?.liveOpacity = requestedLiveOpacity
+        shownOverlays = prepared.overlays
         try {
             // Rebuilds every decoder (Media3 1.11.1), so it costs a re-prepare; the position and play state carry on.
             player.setComposition(prepared.composition, startUs / MICROS_PER_MILLI)
@@ -377,7 +414,7 @@ internal class Media3PreviewSession(
         playerCanvasSize = prepared.canvasSize
         liveVolumes = prepared.liveVolumes
         mutablePosition.value = startUs
-        publish { it.copy(missingMedia = prepared.missingMedia, skippedOverlayIds = prepared.skippedOverlayIds) }
+        publish { it.copy(missingMedia = prepared.missingMedia, onlyOverlaysMissing = prepared.onlyOverlaysMissing, skippedOverlayIds = prepared.skippedOverlayIds) }
         timeFirstFrame()
     }
 
@@ -480,8 +517,12 @@ internal class Media3PreviewSession(
             val composition: Composition,
             val lengthUs: Long,
             val missingMedia: Boolean,
+            /** Every missing file belongs to an overlay. */
+            val onlyOverlaysMissing: Boolean,
             val liveVolumes: LiveVolumes,
             val captions: CaptionVisibility,
+            /** The hide switch of the composition's overlay compositor; null when it draws no overlays. */
+            val overlays: OverlayVisibility?,
             val canvasSize: PixelSize,
             /** True when the composition draws overlays, so its player needs the compositing video graph. */
             val compositesOverlays: Boolean,
@@ -491,11 +532,12 @@ internal class Media3PreviewSession(
         class Failed(val reason: String, val cause: Throwable?) : PreparedPreview
     }
 
-    /** The volume of every item [plan] plays sound from: sounds on the audio lanes and main clips with their own sound. */
+    /** The volume of every item [plan] plays sound from: sounds on the audio lanes and main and overlay clips with their own sound. */
     private fun itemsWithSoundOf(plan: CompositionPlan): Map<String, Float> {
         val sounds = plan.audioLanes.flatMap { it.segments }.filterIsInstance<SoundClip>().map { it.itemId to it.volume }
         val clips = plan.mainVideo.filterIsInstance<VisualClip>().filter { it.playsOwnAudio }.map { it.itemId to it.volume }
-        return (sounds + clips).toMap()
+        val overlayClips = plan.overlays.flatMap { it.segments }.filterIsInstance<OverlayClip>().filter { it.playsOwnAudio }.map { it.itemId to it.volume }
+        return (sounds + clips + overlayClips).toMap()
     }
 
     /** Each item's [LiveGainProcessor] in one composition, and the volume that composition applies to it. */

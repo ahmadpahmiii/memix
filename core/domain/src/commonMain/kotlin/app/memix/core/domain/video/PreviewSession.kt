@@ -71,6 +71,19 @@ interface PreviewSession : AutoCloseable {
     fun hideCaption(itemId: String?)
 
     /**
+     * While a finger moves overlay [itemId] (P4-01b): the preview draws it invisible, because the editor's stand-in follows
+     * the finger instead, so it never shows twice. Takes effect on the paused frame without rebuilding. null draws every
+     * overlay again; the [update] that commits the gesture usually comes first and ends the hiding by itself.
+     */
+    fun hideOverlay(itemId: String?)
+
+    /**
+     * While the Opacity slider moves (P4-01b): draws overlay [itemId] at [opacity] (0.1 to 1) at once, paused or playing; null
+     * ends it. The [update] that commits the change ends it by itself, since the new composition draws that opacity.
+     */
+    fun previewOpacity(itemId: String, opacity: Float?)
+
+    /**
      * While the Volume panel's slider moves (P1-08, P1-09): plays sound or clip [itemId] at [volume] (1 = its own
      * level) right away, without rebuilding, so the change is heard live, also when raising it from 0%. Nothing plays
      * for a clip whose sound is muted with every clip's, or detached. The next [update] replaces it with the
@@ -128,6 +141,8 @@ data class PreviewPlayback(
      * the same ones. Empty when all draw. The editor can say so (copy and policy: P4-01b).
      */
     val skippedOverlayIds: List<String> = emptyList(),
+    /** [missingMedia] and every file that is missing belongs to an overlay, not to a main clip (P4-01b: the editor words it differently). */
+    val onlyOverlaysMissing: Boolean = false,
     /**
      * True from an [PreviewSession.update] that changed the project until the changed project's first frame shows
      * (or the preview fails). Meanwhile the picture is the last frame before the edit (P1-06 → Preview catching up).

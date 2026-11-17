@@ -56,7 +56,7 @@ internal fun VolumePanel(
             snapValue = DEFAULT_VOLUME,
             snapDistance = SNAP_DISTANCE,
         )
-        if (isVideoClip) {
+        if (isVideoClip && panel?.isOverlay != true) {
             // While every clip is muted the slider still sets this clip's level; the row right under it says why
             // nothing is heard (spec P1-06 → Clip volume).
             Spacer(Modifier.height(MemixSpacing.space4))

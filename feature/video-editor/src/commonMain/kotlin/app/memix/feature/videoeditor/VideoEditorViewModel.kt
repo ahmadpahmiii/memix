@@ -24,6 +24,7 @@ import app.memix.core.domain.project.hasOriginalAudio
 import app.memix.core.domain.project.isOriginalMuted
 import app.memix.core.domain.project.mainClipIds
 import app.memix.core.domain.project.moveMainClip
+import app.memix.core.domain.project.overlayClip
 import app.memix.core.domain.project.reorderMainClips
 import app.memix.core.domain.project.sharedClipsFit
 import app.memix.core.domain.project.splitItem
@@ -90,7 +91,7 @@ import kotlinx.coroutines.launch
  *
  * Tool areas live in helpers that reach the editor through one [EditorHost]: meme sounds ([EditorSoundTools]), the
  * Volume panel ([VolumePanelControl]), Move ([MoveControl]), original audio ([OriginalAudioControl]) and captions
- * ([CaptionControl], measured with [captionRendering]), the Canvas panel ([CanvasPanelControl]) and the Export sheet
+ * ([CaptionControl], measured with [captionRendering]), overlays ([OverlayControl]), the Canvas panel ([CanvasPanelControl]) and the Export sheet
  * ([ExportSheetControl]); Add media and Replace copy through [importMedia]
  * ([EditorMediaImport]).
  */
@@ -118,7 +119,10 @@ class VideoEditorViewModel(
     private var shownProject: Project? = null
     private var saveFailure: AppError? = null
     private var bannerDismissed = false
-    private var missingMediaShown = false
+    private val missingMediaNotice = MissingMediaNotice()
+    private val skippedOverlayNotice = SkippedOverlayNotice()
+    // A pick for an overlay that landed one; without it the pick's end sends focus back to the Overlay tool.
+    private var overlayLanded = false
     private var backgroundMissingShown = false
     // The background picture's file that couldn't be read, so a replaced picture isn't called missing.
     private var missingBackgroundPath: String? = null
@@ -144,6 +148,7 @@ class VideoEditorViewModel(
     private val originalAudio = OriginalAudioControl(host)
     private val voiceoverControl = VoiceoverControl(host, projectId, voiceover)
     private val captions = CaptionControl(host)
+    private val overlays = OverlayControl(host)
     private val canvasPanel = CanvasPanelControl(host) { text, style, widthPx, heightPx, look -> captionRendering.measure(text, style, widthPx, heightPx, look) }
     private val exportSheet = ExportSheetControl(host, export)
     // The canvas size of the picture on screen, as the preview last reported it.
@@ -195,7 +200,10 @@ class VideoEditorViewModel(
             is VideoEditorIntent.ScrubEnded -> endScrubbing(intent.positionUs)
             is VideoEditorIntent.SeekTo -> seekTo(intent.positionUs)
             is VideoEditorIntent.SelectItem -> selectItem(intent.itemId)
-            VideoEditorIntent.ClearSelection -> updateState { it.withSelection(null, null) }
+            VideoEditorIntent.ClearSelection -> {
+                overlays.cancelHeldArrow()
+                updateState { it.withSelection(null, null) }
+            }
             VideoEditorIntent.Back -> goBack()
             VideoEditorIntent.EditTool -> selectClipUnderPlayhead()
             VideoEditorIntent.SplitSelected -> splitSelected()
@@ -281,12 +289,25 @@ class VideoEditorViewModel(
             is VideoEditorIntent.SetCaptionOutline -> captions.setOutline(intent.argb)
             is VideoEditorIntent.SetCaptionShadow -> captions.setShadow(intent.shadow)
             is VideoEditorIntent.SetCaptionBox -> captions.setBox(intent.box)
-            is VideoEditorIntent.PositionStepped -> captions.step(intent.step, intent.repeats)
-            is VideoEditorIntent.PositionStepHeld -> captions.stepHeld(intent.step, intent.repeats)
+            // One Position panel for captions and overlays: the selection says whose.
+            is VideoEditorIntent.PositionStepped -> if (overlays.selectedOverlay() != null) overlays.step(intent.step, intent.repeats) else captions.step(intent.step, intent.repeats)
+            is VideoEditorIntent.PositionStepHeld -> if (overlays.selectedOverlay() != null) overlays.stepHeld(intent.step, intent.repeats) else captions.stepHeld(intent.step, intent.repeats)
             is VideoEditorIntent.CaptionTapped -> captions.tap(intent.itemId)
             is VideoEditorIntent.CaptionGestureStarted -> captions.startGesture(intent.itemId)
             is VideoEditorIntent.CaptionGestureEnded -> captions.endGesture(intent.itemId, intent.transform)
-            VideoEditorIntent.CaptionGestureCancelled -> captions.cancelGesture()
+            VideoEditorIntent.StageGestureCancelled -> {
+                captions.cancelGesture()
+                overlays.cancelGesture()
+            }
+            VideoEditorIntent.AddOverlayTool -> requestPick(MediaPickRequest.Overlay(currentPositionUs()))
+            is VideoEditorIntent.OverlayTapped -> tapOverlay(intent.itemId)
+            is VideoEditorIntent.OverlayGestureStarted -> overlays.startGesture(intent.itemId)
+            is VideoEditorIntent.OverlayGestureEnded -> overlays.endGesture(intent.itemId, intent.transform)
+            is VideoEditorIntent.OpenOverlayPanel -> overlays.openPanel(intent.panel)
+            VideoEditorIntent.CloseOverlayPanel -> overlays.closePanel()
+            is VideoEditorIntent.OverlayOpacityChanged -> overlays.opacityChanged(intent.opacity)
+            VideoEditorIntent.OverlayOpacityReleased -> overlays.opacityReleased()
+            is VideoEditorIntent.OverlayOrder -> overlays.order(intent.forward)
             // Inert while typing (spec P2-03 → Typing; before P2-03 typing committed first and the panel opened).
             VideoEditorIntent.RatioPill -> if (state.value.textEntry == null) canvasPanel.togglePanel()
             VideoEditorIntent.CloseCanvasPanel -> canvasPanel.close()
@@ -324,7 +345,9 @@ class VideoEditorViewModel(
         addCloseable(thumbnails)
         val waveforms = TimelineWaveforms(readWaveform, viewModelScope)
         addCloseable(waveforms)
-        updateState { it.copy(canvas = canvasUiOf(project), thumbnails = thumbnails, waveforms = waveforms) }
+        val overlayFrames = OverlayFrames(startThumbnails(), viewModelScope, decodeDispatcher)
+        addCloseable(overlayFrames)
+        updateState { it.copy(canvas = canvasUiOf(project), thumbnails = thumbnails, waveforms = waveforms, overlayFrames = overlayFrames) }
         viewModelScope.launch { session.state.collect(::showEditState) }
         // Captions are measured with the bundled fonts once they've loaded; until then with the system font.
         viewModelScope.launch {
@@ -354,12 +377,15 @@ class VideoEditorViewModel(
                 timeline = timeline,
                 reorder = it.reorder?.takeIf { reorder -> reorder.originalOrder.toSet() == clipIds },
                 volumePanel = it.volumePanel?.takeIf { panel -> timeline.item(panel.itemId) != null },
+                overlays = project.overlayUis(),
+                overlayPanel = it.overlayPanel?.takeIf { panel -> timeline.item(panel.itemId) != null },
                 // Follows the project, so an undo shows in the sliders; closes with its sound.
                 audioEffects = audioEffects.syncedWith(it.audioEffects, project),
                 originalAudio = if (project.hasOriginalAudio()) OriginalAudioUi(muted = project.isOriginalMuted()) else null,
             ).withSelection(it.selectedItemId, project)
         }
         canvasPanel.onCanvasChanged(project.canvas)
+        overlays.dropStandInOf { itemId -> project.overlayClip(itemId) == null }
         showCaptions(project)
         // Peaks for the sounds on the timeline; each file is read once, off the main thread.
         state.value.waveforms?.want(timeline.soundSources())
@@ -414,14 +440,23 @@ class VideoEditorViewModel(
                 isPlaying = playback.isPlaying,
                 pictureOutOfShape = isOutOfShape(playback.shownCanvasSize, currentProject()),
                 missingMedia = playback.missingMedia,
+                skippedOverlayIds = playback.skippedOverlayIds.toImmutableSet(),
             )
         }
         showCatchingUp(playback.isCatchingUp)
         captions.onPreviewCatchingUp(playback.isCatchingUp)
-        if (playback.missingMedia && !missingMediaShown) {
-            missingMediaShown = true
-            showToast(ToastMessage.MissingMedia)
-        }
+        overlays.onPreviewCatchingUp(playback.isCatchingUp)
+        showMissingMedia(playback)
+        showSkippedOverlays(playback.skippedOverlayIds)
+    }
+
+    private fun showMissingMedia(playback: PreviewPlayback) {
+        missingMediaNotice.toastFor(playback.missingMedia, playback.onlyOverlaysMissing)?.let(::showToast)
+    }
+
+    // The phone can't play every overlay video at once, so some are left out of the preview and the export alike: said once for each new one.
+    private fun showSkippedOverlays(skipped: List<String>) {
+        if (skippedOverlayNotice.hasNewlySkipped(skipped)) showToast(ToastMessage.OverlaysSkipped)
     }
 
     // Back in the editor after Cancel or Stop: "Export stopped." (spec P1-12 → Cancel). The editor is the one place a
@@ -483,6 +518,7 @@ class VideoEditorViewModel(
             state.value.textEntry != null -> captions.commitEntry()
             state.value.exportSheet != null -> exportSheet.close()
             state.value.textPanel != null -> captions.closePanel()
+            state.value.overlayPanel != null -> overlays.closePanel()
             state.value.volumePanel != null -> volumePanel.close()
             state.value.audioEffects != null -> audioEffects.close()
             state.value.voiceover != null -> voiceoverControl.close()
@@ -499,6 +535,11 @@ class VideoEditorViewModel(
         val atUs = currentPositionUs()
         val clip = mainTrack.items.firstOrNull { atUs >= it.startUs && atUs < it.endUs } ?: mainTrack.items.lastOrNull() ?: return
         updateState { it.withSelection(clip.id, currentProject()) }
+    }
+
+    // A tap on an overlay: the first selects it, the next on the selected one plays or pauses (spec P4-01b → Gestures on the stage).
+    private fun tapOverlay(itemId: String) {
+        if (state.value.selectedItemId == itemId) togglePlayback() else overlays.select(itemId)
     }
 
     private fun splitSelected() {
@@ -624,6 +665,7 @@ class VideoEditorViewModel(
     private fun requestPick(request: MediaPickRequest) {
         if (state.value.isImporting || editSession == null) return
         preview?.pause()
+        if (request is MediaPickRequest.Overlay) overlayLanded = false
         updateState { it.copy(isImporting = true, mediaPicker = request, importWording = importWordingOf(request)) }
     }
 
@@ -659,6 +701,7 @@ class VideoEditorViewModel(
                 is MediaLanding.Added -> showAddedMedia(landing.clipIds)
                 is MediaLanding.Replaced -> showReplacedClip(landing)
                 MediaLanding.Background -> showToast(ToastMessage.BackgroundImageSet, spokenOnly = true)
+                is MediaLanding.Overlay -> showOverlayLanding(landing.itemId)
             }
         }
     }
@@ -670,6 +713,15 @@ class VideoEditorViewModel(
         val landed = newLanding(clipIds.toImmutableSet())
         updateState { it.copy(landed = landed) }
         showToast(ToastMessage.MediaAdded(clipIds.size), spokenOnly = true)
+    }
+
+    // The overlay is selected, bonks on its lane, and the bar switches to its tools (spec P4-01b → What lands → Feedback).
+    private fun showOverlayLanding(itemId: String) {
+        if (state.value.timeline.item(itemId) == null) return
+        val landed = newLanding(persistentSetOf(itemId))
+        updateState { it.withSelection(itemId, currentProject()).copy(landed = landed) }
+        showToast(ToastMessage.OverlayAdded, spokenOnly = true)
+        returnFocusTo(FocusTarget.POSITION_TOOL)
     }
 
     // The clip stays selected and the playhead stays put.
@@ -694,6 +746,8 @@ class VideoEditorViewModel(
 
     private fun endPick(request: MediaPickRequest) {
         val opener = when (request) {
+            // After a landing the bar switched to the overlay's tools (showOverlayLanding sends focus to Position).
+            is MediaPickRequest.Overlay -> FocusTarget.OVERLAY_TOOL.takeUnless { overlayLanded }
             // The Canvas panel is still open under the pick: nothing to move focus back to until the shared helper lands (P2-12 known limit).
             MediaPickRequest.Background -> null
             is MediaPickRequest.Replace -> FocusTarget.REPLACE_TOOL
@@ -745,12 +799,17 @@ class VideoEditorViewModel(
         override fun showLanding(landing: MediaLanding, afterSheet: Boolean) = showMediaLanding(landing, afterSheet)
 
         override fun onPickEnded(request: MediaPickRequest) = endPick(request)
+
+        override fun overlayLanded() {
+            this@VideoEditorViewModel.overlayLanded = true
+        }
     }
 
     private fun startTrim(itemId: String, edge: TrimEdge) {
         preview?.pause()
         trimmedEdge = edge
-        trimmedClip = currentProject()?.video?.tracks.orEmpty().firstNotNullOfOrNull { track ->
+        // Only main clips show their frame while trimmed; overlay clips leave the stage as it is (spec P4-01b → On the timeline).
+        trimmedClip = currentProject()?.video?.tracks.orEmpty().filter { it.kind == TrackKind.MAIN_VIDEO }.firstNotNullOfOrNull { track ->
             track.items.firstOrNull { it.id == itemId } as? MediaClip
         }
     }
@@ -965,17 +1024,19 @@ private fun VideoEditorIntent.waitsForStop(): Boolean = when (this) {
 internal fun VideoEditorUiState.withSelection(itemId: String?, project: Project?): VideoEditorUiState {
     // A caption's panel belongs to it: it closes when the selection moves on or goes.
     val panel = textPanel?.takeIf { itemId != null && itemId == selectedItemId }
-    val track = itemId?.let(timeline::trackOf) ?: return copy(selectedItemId = null, clipTools = null, trimRanges = null, textPanel = null)
+    val overlay = overlayPanel?.takeIf { itemId != null && itemId == selectedItemId }
+    val track = itemId?.let(timeline::trackOf) ?: return copy(selectedItemId = null, clipTools = null, trimRanges = null, textPanel = null, overlayPanel = null)
     val start = project?.trimRange(itemId, TrimEdge.START)
     val end = project?.trimRange(itemId, TrimEdge.END)
     val ranges = if (start != null && end != null) TrimRanges(start, end) else null
     val mediaKind = timeline.item(itemId)?.media?.kind
-    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind), trimRanges = ranges, textPanel = panel)
+    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind), trimRanges = ranges, textPanel = panel, overlayPanel = overlay)
 }
 
 private fun clipToolsFor(kind: TrackKind, mediaKind: MediaKind?): ClipTools = when (kind) {
     TrackKind.MAIN_VIDEO -> if (mediaKind == MediaKind.IMAGE) ClipTools.PHOTO_CLIP else ClipTools.VIDEO_CLIP
     TrackKind.TEXT -> ClipTools.TEXT
     TrackKind.MEME_SOUND, TrackKind.AUDIO -> ClipTools.SOUND
-    TrackKind.OVERLAY, TrackKind.STICKER, TrackKind.EFFECT -> ClipTools.OTHER
+    TrackKind.OVERLAY -> if (mediaKind == MediaKind.IMAGE) ClipTools.PHOTO_OVERLAY else ClipTools.VIDEO_OVERLAY
+    TrackKind.STICKER, TrackKind.EFFECT -> ClipTools.OTHER
 }

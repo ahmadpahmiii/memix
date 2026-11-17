@@ -211,4 +211,23 @@
     <string name="fx_voice_hint">Voices stack with pitch, bass and echo.</string>
     <string name="edit_fx_voice">Voice</string>
     <string name="edit_fx_echo_length">Echo length</string>
+
+    <!-- Overlay layers (P4-01b) -->
+    <string name="tool_overlay">Overlay</string>
+    <string name="tool_overlay_click">Add a video or photo on top</string>
+    <string name="tool_layer_order">Layer order</string>
+    <string name="layer_order_forward">Bring forward</string>
+    <string name="layer_order_back">Send back</string>
+    <string name="layer_order_hint">Changes which overlay is on top where they overlap.</string>
+    <string name="explain_layer_order_front">No other overlay is in front of this one.</string>
+    <string name="explain_layer_order_back">No other overlay is behind this one.</string>
+    <string name="explain_overlay_edge">This overlay can't go further this way.</string>
+    <string name="editor_missing_overlay">An overlay's file is missing, so it isn't shown. Delete it to fix it.</string>
+    <string name="a11y_overlay_added">Overlay added</string>
+    <string name="a11y_overlay_node">Overlay, %1$s, layer %2$d of %3$d</string>
+    <string name="a11y_overlay_item">Overlay, %1$s, %2$s long, starts at %3$s</string>
+    <string name="edit_add_overlay">Add overlay</string>
+    <string name="edit_overlay_order">Layer order</string>
+    <string name="overlay_skipped_toast">Some overlay videos won't show: this phone can't play that many at once.</string>
+    <string name="a11y_overlay_opacity">%1$d percent opacity</string>
 </resources>

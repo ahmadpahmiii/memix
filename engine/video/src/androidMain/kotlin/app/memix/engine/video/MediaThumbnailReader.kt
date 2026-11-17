@@ -63,6 +63,24 @@ internal class MediaThumbnailReader(
         }
     }
 
+    override suspend fun frame(source: MediaRef, timeUs: Long, longSidePx: Int): Outcome<Thumbnail> = withContext(worker) {
+        if (closed) return@withContext Outcome.Failure(AppError.Unexpected(IllegalStateException("The thumbnail reader is closed")))
+        val file = source.cachedCopyPath?.let { File(filesDir, it) }?.takeIf { it.isFile }
+            ?: return@withContext Outcome.Failure(AppError.NotFound)
+        try {
+            val picture = when (source.kind) {
+                MediaKind.VIDEO -> videoFrameFitting(file, timeUs, longSidePx)
+                MediaKind.IMAGE -> photoFitting(file, longSidePx)
+                MediaKind.AUDIO -> null
+            } ?: return@withContext unreadable(IllegalStateException("No picture in this ${source.kind} file"))
+            Outcome.Success(Thumbnail(picture.toFittedBytes(longSidePx), longSidePx))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            unreadable(e)
+        }
+    }
+
     override fun close() {
         if (closed) return
         closed = true
@@ -85,6 +103,20 @@ internal class MediaThumbnailReader(
             video.retriever.getScaledFrameAtTime(frameUs, MediaMetadataRetriever.OPTION_CLOSEST, box.first, box.second)
         }
     }
+
+    // The frame in its own shape, [longSidePx] on its long side.
+    private fun videoFrameFitting(file: File, timeUs: Long, longSidePx: Int): Bitmap? {
+        val video = openVideo(file)
+        val box = boxForLongSide(video.shownWidth, video.shownHeight, longSidePx)
+        val frameUs = timeUs.coerceIn(0, video.lastFrameUs)
+        return video.retriever.getScaledFrameAtTime(frameUs, MediaMetadataRetriever.OPTION_CLOSEST, box.first, box.second)
+    }
+
+    private fun photoFitting(file: File, longSidePx: Int): Bitmap =
+        ImageDecoder.decodeBitmap(ImageDecoder.createSource(file)) { decoder, info, _ ->
+            decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+            decoder.setTargetSampleSize(sampleSizeFor(max(info.size.width, info.size.height), longSidePx))
+        }
 
     private fun openVideo(file: File): OpenVideo {
         openVideos[file.path]?.let { return it }
@@ -162,6 +194,16 @@ private fun boxForShortSide(width: Int, height: Int, sizePx: Int): Pair<Int, Int
     }
 }
 
+/** A box whose long side is [longSidePx] in the frame's own shape. */
+private fun boxForLongSide(width: Int, height: Int, longSidePx: Int): Pair<Int, Int> {
+    if (width <= 0 || height <= 0) return longSidePx to longSidePx
+    return if (width >= height) {
+        longSidePx to max(1, (longSidePx.toDouble() * height / width).toInt())
+    } else {
+        max(1, (longSidePx.toDouble() * width / height).toInt()) to longSidePx
+    }
+}
+
 /** The largest power of two that keeps a side of [shortSidePx] at least [sizePx] after reduction. */
 private fun sampleSizeFor(shortSidePx: Int, sizePx: Int): Int {
     var sample = 1
@@ -178,6 +220,16 @@ private fun Bitmap.toSquareJpeg(sizePx: Int): ByteArray {
     val square = if (side == sizePx) cropped else Bitmap.createScaledBitmap(cropped, sizePx, sizePx, /* filter= */ true)
     val bytes = ByteArrayOutputStream().also { square.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY_PERCENT, it) }.toByteArray()
     listOf(this, cropped, square).distinct().forEach { it.recycle() }
+    return bytes
+}
+
+/** The whole picture scaled down to [longSidePx] on its long side (never up): PNG when it has transparency, else JPEG. */
+private fun Bitmap.toFittedBytes(longSidePx: Int): ByteArray {
+    val longSide = max(width, height)
+    val scaled = if (longSide <= longSidePx) this else Bitmap.createScaledBitmap(this, max(1, width * longSidePx / longSide), max(1, height * longSidePx / longSide), /* filter= */ true)
+    val format = if (scaled.hasAlpha()) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG
+    val bytes = ByteArrayOutputStream().also { scaled.compress(format, JPEG_QUALITY_PERCENT, it) }.toByteArray()
+    listOf(this, scaled).distinct().forEach { it.recycle() }
     return bytes
 }
 

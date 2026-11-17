@@ -57,6 +57,7 @@ import memix.feature.video_editor.generated.resources.a11y_go_end
 import memix.feature.video_editor.generated.resources.a11y_go_start
 import memix.feature.video_editor.generated.resources.a11y_item
 import memix.feature.video_editor.generated.resources.a11y_item_unnamed
+import memix.feature.video_editor.generated.resources.a11y_overlay_item
 import memix.feature.video_editor.generated.resources.a11y_playhead
 import memix.feature.video_editor.generated.resources.a11y_reorder_tile
 import memix.feature.video_editor.generated.resources.a11y_state_after_end
@@ -399,6 +400,10 @@ private fun itemDescription(track: TrackUi, item: ItemUi, clipCount: Int): Strin
         val kind = stringResource(if (item.isPhoto) UiRes.string.import_item_photo else UiRes.string.import_item_video)
         return stringResource(Res.string.a11y_clip_media, kind, item.clipNumber, clipCount, duration, start)
     }
+    if (track.kind == TrackKind.OVERLAY) {
+        val kind = stringResource(if (item.isPhoto) UiRes.string.import_item_photo else UiRes.string.import_item_video)
+        return stringResource(Res.string.a11y_overlay_item, kind, duration, start)
+    }
     val trackName = stringResource(trackNameOf(track.kind))
     return when (val label = item.label) {
         is ItemLabel.Written -> stringResource(Res.string.a11y_item, trackName, label.text, duration, start)
@@ -419,11 +424,12 @@ private fun itemDescription(track: TrackUi, item: ItemUi, clipCount: Int): Strin
 @Composable
 private fun itemStates(track: TrackUi, item: ItemUi, facts: ItemFacts): String {
     val isMainClip = track.kind == TrackKind.MAIN_VIDEO
+    val hasPicture = isMainClip || track.kind == TrackKind.OVERLAY
     val media = item.media
-    // First, because it explains the rest: the clip plays black, and the editor's message says to delete it.
-    val isMissing = isMainClip && media != null && media in facts.missingSources
+    // First, because it explains the rest: the clip plays black (an overlay isn't drawn), and the editor's message says to delete it.
+    val isMissing = hasPicture && media != null && media in facts.missingSources
     val missing = if (isMissing) stringResource(Res.string.clip_missing_file) else null
-    val hasOwnSound = isMainClip && !item.isPhoto && media?.hasAudio != false
+    val hasOwnSound = hasPicture && !item.isPhoto && media?.hasAudio != false
     val muted = if (hasOwnSound && (track.muted || item.silenced)) stringResource(Res.string.a11y_state_original_muted) else null
     val detached = if (item.soundDetached) stringResource(Res.string.a11y_state_sound_detached) else null
     // A sound that isn't plain says so (spec P3-09 → Accessibility); the waveform itself is decorative and has no node.

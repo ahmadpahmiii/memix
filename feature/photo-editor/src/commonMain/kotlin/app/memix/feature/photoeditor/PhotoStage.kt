@@ -130,7 +130,7 @@ import memix.feature.photo_editor.generated.resources.photo_stage_a11y
 import memix.feature.photo_editor.generated.resources.tool_censor
 import memix.feature.photo_editor.generated.resources.tool_draw
 import memix.feature.photo_editor.generated.resources.tool_hide_layer
-import memix.feature.photo_editor.generated.resources.tool_layer_opacity
+import memix.core.ui.generated.resources.tool_layer_opacity
 import memix.feature.photo_editor.generated.resources.tool_lock
 import memix.feature.photo_editor.generated.resources.tool_show_layer
 import memix.feature.photo_editor.generated.resources.tool_unlock
@@ -662,7 +662,7 @@ internal class LayerActionLabels(
         @Composable
         fun rememberLabels() = LayerActionLabels(
             position = stringResource(UiRes.string.tool_position),
-            opacity = stringResource(Res.string.tool_layer_opacity),
+            opacity = stringResource(UiRes.string.tool_layer_opacity),
             lock = stringResource(Res.string.tool_lock),
             unlock = stringResource(Res.string.tool_unlock),
             hide = stringResource(Res.string.tool_hide_layer),

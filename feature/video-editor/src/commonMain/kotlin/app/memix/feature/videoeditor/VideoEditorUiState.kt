@@ -43,6 +43,7 @@ import app.memix.feature.videoeditor.timeline.TrimRanges
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.coroutines.flow.StateFlow
 
 /** What the video editor shows (spec docs/ux/specs/P1-04-editor-and-preview.md → States). */
@@ -122,6 +123,23 @@ data class VideoEditorUiState(
      * new frame takes over, so nothing jumps or flashes (spec P1-10 → Live editing). Null otherwise.
      */
     val captionStandIn: CaptionUi? = null,
+    /** The overlays on the stage (P4-01b), back to front; empty until the draft has opened. */
+    val overlays: ImmutableList<OverlayUi> = persistentListOf(),
+    /** The Position, Opacity or Layer order panel of the selected overlay, or null when none is open. */
+    val overlayPanel: OverlayPanelUi? = null,
+    /**
+     * An overlay a finger or a held arrow moved, or a commit the preview hasn't shown yet: the editor's stand-in draws it from
+     * there until the preview's new frame takes over, so it never shows twice or jumps (spec P4-01b → Live feedback). Null otherwise.
+     */
+    val overlayStandIn: OverlayStandInUi? = null,
+    /** Overlay videos the phone can't decode together with the rest: left out of the preview and the export, so they are on their lane only, never on the stage. */
+    val skippedOverlayIds: ImmutableSet<String> = persistentSetOf(),
+    /** A clip the timeline's lanes scroll to show (after Layer order moved it); a new serial scrolls again. */
+    val revealed: LandedItems? = null,
+    /** The overlay the preview leaves out because the stand-in draws it now (a finger, a held arrow or a commit not shown yet). */
+    val hiddenOverlayId: String? = null,
+    /** The pictures the stand-in draws overlays with, once the draft has opened. Compared by identity. */
+    val overlayFrames: OverlayFrames? = null,
     /** The thumbnail tiles of the timeline's strips, once the draft has opened. Compared by identity. */
     val thumbnails: TimelineThumbnails? = null,
     /** The waveforms of the timeline's sounds, once the draft has opened. Compared by identity. */
@@ -240,7 +258,13 @@ enum class ClipTools {
     /** A meme sound or detached audio: Volume, Split, Delete, Audio effects, Move here, Duplicate. */
     SOUND,
 
-    /** Overlays, stickers and effects: Split, Delete, Move here, Duplicate. */
+    /** A video overlay: Position, Opacity, Delete, Split, Volume, Layer order, Move here, Duplicate, Detach audio (spec P4-01b → Overlay tool bar). */
+    VIDEO_OVERLAY,
+
+    /** A photo overlay: Position, Opacity, Delete, Split, Layer order, Move here, Duplicate. */
+    PHOTO_OVERLAY,
+
+    /** Stickers and effects: Split, Delete, Move here, Duplicate. */
     OTHER,
 }
 
@@ -253,10 +277,15 @@ data class SoundsSheetUi(val isOpen: Boolean = false)
 
 /**
  * The Volume panel of item [itemId]: [volume] follows the slider while it moves (1 = 100%). [isVideoClip]: a main video
- * clip, labelled "This clip" with the "Mute original audio of every clip" row under the slider; sounds read "This sound".
+ * clip, labelled "This clip" with the "Mute original audio of every clip" row under the slider, unless it is an overlay's ([isOverlay]:
+ * that row belongs to the main track); sounds read "This sound".
  */
 @Immutable
-data class VolumePanelUi(val itemId: String, val volume: Float, val isVideoClip: Boolean = false)
+data class VolumePanelUi(val itemId: String, val volume: Float, val isVideoClip: Boolean = false, val isOverlay: Boolean = false)
+
+/** The Position, Opacity or Layer order [panel] of overlay [itemId]; [opacity] follows the slider while it moves (1 = fully drawn). */
+@Immutable
+data class OverlayPanelUi(val panel: OverlayPanel, val itemId: String, val opacity: Float)
 
 /**
  * The Audio effects panel of sound [itemId] (spec P3-09): the open [tab] (kept for the visit), and the [effects] as the sliders
@@ -345,6 +374,9 @@ sealed interface MediaPickRequest {
 
     /** One photo for the canvas background (P2-12: the Canvas panel's Image swatch and Replace). */
     data object Background : MediaPickRequest
+
+    /** One video or photo for a new overlay (P4-01b), landing at [atUs]: where the playhead was when the Overlay tool was tapped. */
+    data class Overlay(val atUs: Long) : MediaPickRequest
 }
 
 /** Which control gets focus; a new [serial] moves it there again. */
@@ -389,6 +421,13 @@ enum class FocusTarget {
 
     /** The ratio pill in the top bar, after the Canvas panel closes (P1-11). */
     RATIO_PILL,
+
+    /** The Overlay tool on the main tool bar (P4-01b): after a pick that added nothing. */
+    OVERLAY_TOOL,
+
+    /** The selected overlay's Opacity and Layer order tools, after their panels close. */
+    OPACITY_TOOL,
+    LAYER_ORDER_TOOL,
 }
 
 /** Why a tool explains instead of acting (spec P1-06 → Clip tool bar: tools stay enabled and explain on tap). */
@@ -420,6 +459,11 @@ enum class Explanation {
     TEXT_SMALLEST,
     TEXT_BIGGEST,
     TEXT_EDGE,
+
+    /** Overlays (P4-01b): a Move arrow with the center at that edge; Bring forward or Send back with no overlay in that direction sharing a moment. */
+    OVERLAY_EDGE,
+    LAYER_ORDER_FRONT,
+    LAYER_ORDER_BACK,
 
     /** Custom ratio limits (P1-11): past 2.39:1 either way, below 1, above 99. */
     CANVAS_WIDEST,
@@ -468,6 +512,21 @@ sealed interface ToastMessage {
 
     /** Once per open, when a clip's media file is missing. */
     data object MissingMedia : ToastMessage
+
+    /** Once per open, when only overlay files are missing (P4-01b). */
+    data object MissingOverlay : ToastMessage
+
+    /** When overlay videos are left out because the phone can't play that many at once (P4-01b); once for each new set. */
+    data object OverlaysSkipped : ToastMessage
+
+    /** Spoken only, after an overlay landed. */
+    data object OverlayAdded : ToastMessage
+
+    /** Spoken only, after the Opacity slider was released at [percent]. */
+    data class OverlayOpacity(val percent: Int) : ToastMessage
+
+    /** Spoken only, after Bring forward or Send back: "Layer 2 of 3", 1 being the front-most. */
+    data class OverlayLayer(val layer: Int, val count: Int) : ToastMessage
 
     /** Once per open, when the background picture's file is missing; [ratioLabel] is the pill's text ("9:16"). */
     data class BackgroundMissing(val ratioLabel: String) : ToastMessage
@@ -836,7 +895,34 @@ sealed interface VideoEditorIntent {
     data class CaptionGestureEnded(val itemId: String, val transform: Transform) : VideoEditorIntent
 
     /** The gesture was cancelled (system back, a lost gesture); nothing changes. */
-    data object CaptionGestureCancelled : VideoEditorIntent
+    data object StageGestureCancelled : VideoEditorIntent
+
+    /** The Overlay tool: pauses and opens the picker for one video or photo (spec P4-01b → Entry and exit). */
+    data object AddOverlayTool : VideoEditorIntent
+
+    /** A tap on overlay [itemId] on the preview: selects it; on the selected overlay, plays or pauses. */
+    data class OverlayTapped(val itemId: String) : VideoEditorIntent
+
+    /** A drag, pinch or handle drag on overlay [itemId] began: playback pauses, it's selected, the stand-in draws it. */
+    data class OverlayGestureStarted(val itemId: String) : VideoEditorIntent
+
+    /** The gesture on overlay [itemId] ended at [transform]: one "Position and size" step (none if unchanged). */
+    data class OverlayGestureEnded(val itemId: String, val transform: Transform) : VideoEditorIntent
+
+    /** The Position, Opacity or Layer order tool of the selected overlay. */
+    data class OpenOverlayPanel(val panel: OverlayPanel) : VideoEditorIntent
+
+    /** Done, system back or Escape on an overlay panel. */
+    data object CloseOverlayPanel : VideoEditorIntent
+
+    /** The Opacity slider moved to [opacity] (0.1 to 1); seen at once, nothing committed yet. */
+    data class OverlayOpacityChanged(val opacity: Float) : VideoEditorIntent
+
+    /** The slider was let go (or stepped): one "Opacity" step, none if it is where it began. */
+    data object OverlayOpacityReleased : VideoEditorIntent
+
+    /** Bring forward ([forward]) or Send back on the selected overlay: one "Layer order" step, or an explanation. */
+    data class OverlayOrder(val forward: Boolean) : VideoEditorIntent
 
     /** The ratio pill: opens the Canvas panel, or closes it when it's open (spec P1-11). */
     data object RatioPill : VideoEditorIntent

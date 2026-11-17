@@ -2,7 +2,6 @@
 <resources>
     <!-- Machine-drafted until P5-06. P2-01 photo editor. English source, budgets and translator notes: docs/ux/specs/P2-01-photo-editor-shell.md -> Copy. Compose resources keep ' and % as written: use plain apostrophes and a single %. -->
     <string name="tool_layers">Lapisan</string>
-    <string name="tool_layer_opacity">Opasitas</string>
     <string name="tool_lock">Kunci</string>
     <string name="tool_unlock">Buka kunci</string>
     <string name="tool_hide_layer">Sembunyikan</string>
@@ -11,7 +10,6 @@
     <string name="layers_title">Lapisan</string>
     <string name="layers_move_up">Naikkan lapisan</string>
     <string name="layers_move_down">Turunkan lapisan</string>
-    <string name="layers_opacity">Opasitas</string>
     <string name="layers_locked_opacity">Terkunci. Buka kunci lapisan ini untuk mengubah opasitasnya.</string>
     <string name="layer_name_photo">Foto</string>
     <string name="layer_meta_locked">Terkunci</string>
@@ -30,7 +28,6 @@
     <string name="a11y_layer_hidden">Tersembunyi.</string>
     <string name="a11y_layer_missing">File hilang.</string>
     <string name="a11y_layer_opacity">Opasitas %1$d persen.</string>
-    <string name="a11y_layer_order">Lapisan %1$d dari %2$d</string>
     <string name="explain_layer_locked">Lapisan ini terkunci. Buka kunci untuk mengubahnya.</string>
     <string name="explain_layer_one">Mengurutkan ulang butuh minimal dua lapisan.</string>
     <string name="explain_layer_front">Lapisan ini sudah paling depan.</string>
@@ -43,8 +40,6 @@
     <string name="photo_background_hidden">Fotomu menutupi seluruh bingkai, jadi latar tidak terlihat.</string>
     <string name="photo_empty_title">Kanvas ini kosong</string>
     <string name="photo_empty_body">Ketuk Urungkan untuk mengembalikan lapisanmu, atau tambahkan sesuatu yang baru dengan Teks atau Tambah foto.</string>
-    <string name="edit_transform_layer">Posisi dan ukuran</string>
-    <string name="edit_layer_opacity">Opasitas</string>
     <string name="edit_lock">Kunci</string>
     <string name="edit_unlock">Buka kunci</string>
     <string name="edit_layer_hide">Sembunyikan</string>

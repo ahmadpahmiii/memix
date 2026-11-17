@@ -66,6 +66,10 @@ import memix.feature.video_editor.generated.resources.tool_split
 import memix.core.ui.generated.resources.tool_style
 import memix.core.ui.generated.resources.tool_text
 import memix.feature.video_editor.generated.resources.tool_audio_effects
+import memix.feature.video_editor.generated.resources.tool_layer_order
+import memix.feature.video_editor.generated.resources.tool_overlay
+import memix.feature.video_editor.generated.resources.tool_overlay_click
+import memix.core.ui.generated.resources.tool_layer_opacity
 import memix.feature.video_editor.generated.resources.tool_volume
 import org.jetbrains.compose.resources.stringResource
 
@@ -178,9 +182,9 @@ private fun ReorderBar(onIntent: (VideoEditorIntent) -> Unit, moveEarlierFocus: 
 }
 
 /**
- * Nothing selected: Edit, Meme sounds in blue (it's meme-sound UI), Text, Add media, then Voiceover (P3-08, not blue: a
- * recording is not a meme sound); each tool keeps its place as more arrive (spec P1-06 → Main tool bar; P1-10 put Text in
- * place 3). An empty project has only Add media: nothing to select, nothing to play a sound over, caption or record against.
+ * Nothing selected: Edit, Meme sounds in blue (it's meme-sound UI), Text, Add media, Overlay (P4-01b, Add media's sibling), then
+ * Voiceover (P3-08, not blue: a recording is not a meme sound); each tool keeps its place as more arrive (spec P1-06 → Main tool
+ * bar; P1-10 put Text in place 3; P4-01b put Overlay in place 5 and moved Voiceover to 6). An empty project has only Add media: nothing to select, nothing to play a sound over, caption or record against.
  */
 @Composable
 private fun rememberMainTools(isEmpty: Boolean, focus: EditorFocusTargets, onIntent: (VideoEditorIntent) -> Unit): ImmutableList<ToolBarItem> {
@@ -189,7 +193,9 @@ private fun rememberMainTools(isEmpty: Boolean, focus: EditorFocusTargets, onInt
     val text = stringResource(UiRes.string.tool_text)
     val addMedia = stringResource(Res.string.tool_add_media)
     val voiceover = stringResource(Res.string.tool_voiceover)
-    return remember(isEmpty, edit, memeSounds, text, addMedia, voiceover, focus, onIntent) {
+    val overlay = stringResource(Res.string.tool_overlay)
+    val overlayClickLabel = stringResource(Res.string.tool_overlay_click)
+    return remember(isEmpty, edit, memeSounds, text, addMedia, voiceover, overlay, overlayClickLabel, focus, onIntent) {
         val addMediaTool = ToolBarItem(addMedia, MemixIcons.Create, { onIntent(VideoEditorIntent.AddMediaTool) }, focusRequester = focus.addMediaTool)
         if (isEmpty) return@remember persistentListOf(addMediaTool)
         persistentListOf(
@@ -197,6 +203,7 @@ private fun rememberMainTools(isEmpty: Boolean, focus: EditorFocusTargets, onInt
             ToolBarItem(memeSounds, MemixIcons.Sounds, { onIntent(VideoEditorIntent.MemeSoundsTool) }, ToolTone.MemeSound, focusRequester = focus.memeSoundsTool),
             ToolBarItem(text, MemixIcons.Text, { onIntent(VideoEditorIntent.TextTool) }, focusRequester = focus.textTool),
             addMediaTool,
+            ToolBarItem(overlay, MemixIcons.Overlay, { onIntent(VideoEditorIntent.AddOverlayTool) }, clickLabel = overlayClickLabel, focusRequester = focus.overlayTool),
             ToolBarItem(voiceover, MemixIcons.Mic, { onIntent(VideoEditorIntent.VoiceoverTool) }, focusRequester = focus.voiceoverTool),
         )
     }
@@ -227,7 +234,10 @@ private fun rememberClipTools(
     val replace = stringResource(UiRes.string.tool_replace)
     val detach = stringResource(Res.string.tool_detach_audio)
     val textTools = rememberTextTools(onIntent, focus)
-    return remember(clipTools, isMissing, split, delete, duplicate, reorder, volume, audioEffects, moveHere, moveHereClickLabel, replace, detach, textTools, onIntent, reorderFocus, focus) {
+    val position = stringResource(UiRes.string.tool_position)
+    val opacity = stringResource(UiRes.string.tool_layer_opacity)
+    val layerOrder = stringResource(Res.string.tool_layer_order)
+    return remember(clipTools, isMissing, split, delete, duplicate, reorder, volume, audioEffects, moveHere, moveHereClickLabel, replace, detach, textTools, position, opacity, layerOrder, onIntent, reorderFocus, focus) {
         val splitTool = ToolBarItem(split, MemixIcons.Split, { onIntent(VideoEditorIntent.SplitSelected) })
         val deleteTool = ToolBarItem(delete, MemixIcons.Delete, { onIntent(VideoEditorIntent.DeleteSelected) }, ToolTone.Danger)
         val duplicateTool = ToolBarItem(duplicate, MemixIcons.Duplicate, { onIntent(VideoEditorIntent.DuplicateSelected) })
@@ -238,7 +248,21 @@ private fun rememberClipTools(
         val audioEffectsTool = ToolBarItem(audioEffects, MemixIcons.AudioEffects, { onIntent(VideoEditorIntent.AudioEffectsTool) }, focusRequester = focus.audioEffectsTool)
         val replaceTool = ToolBarItem(replace, MemixIcons.Replace, { onIntent(VideoEditorIntent.ReplaceSelected) }, focusRequester = focus.replaceTool)
         val reorderTool = ToolBarItem(reorder, MemixIcons.Reorder, { onIntent(VideoEditorIntent.StartReorderSelected) }, focusRequester = reorderFocus)
+        val positionTool = ToolBarItem(position, MemixIcons.Position, { onIntent(VideoEditorIntent.OpenOverlayPanel(OverlayPanel.POSITION)) }, focusRequester = focus.positionTool)
+        val opacityTool = ToolBarItem(opacity, MemixIcons.Opacity, { onIntent(VideoEditorIntent.OpenOverlayPanel(OverlayPanel.OPACITY)) }, focusRequester = focus.opacityTool)
+        val layerOrderTool = ToolBarItem(layerOrder, MemixIcons.Layers, { onIntent(VideoEditorIntent.OpenOverlayPanel(OverlayPanel.ORDER)) }, focusRequester = focus.layerOrderTool)
         when (clipTools) {
+            // The overlay's own tools (spec P4-01b → Overlay tool bar): Position (the no-drag route) and Opacity first, Delete third.
+            // A missing file puts Delete first and leaves out what acts on nothing visible.
+            ClipTools.VIDEO_OVERLAY -> {
+                val detachTool = ToolBarItem(detach, MemixIcons.DetachAudio, { onIntent(VideoEditorIntent.DetachAudioSelected(fileMissing = isMissing)) })
+                val rest = listOf(splitTool, volumeTool, layerOrderTool, moveHereTool, duplicateTool, detachTool)
+                (if (isMissing) listOf(deleteTool) + rest else listOf(positionTool, opacityTool, deleteTool) + rest).toImmutableList()
+            }
+            ClipTools.PHOTO_OVERLAY -> {
+                val rest = listOf(splitTool, layerOrderTool, moveHereTool, duplicateTool)
+                (if (isMissing) listOf(deleteTool) + rest else listOf(positionTool, opacityTool, deleteTool) + rest).toImmutableList()
+            }
             // Volume second, because lowering the original under a meme sound is the next most common job; Detach audio
             // with the rare tools (spec P1-06 → Clip tool bar). A clip with no sound keeps both; they explain on tap.
             ClipTools.VIDEO_CLIP -> {
@@ -301,6 +325,10 @@ internal class EditorFocusTargets {
     val positionTool = FocusRequester()
     val selectedCaption = FocusRequester()
     val ratioPill = FocusRequester()
+    val overlayTool = FocusRequester()
+    val opacityTool = FocusRequester()
+    val layerOrderTool = FocusRequester()
+    val selectedOverlay = FocusRequester()
 
     /** Moves focus to [target]'s control; nothing happens when it isn't on screen. */
     fun moveTo(target: FocusTarget) {
@@ -318,6 +346,9 @@ internal class EditorFocusTargets {
             FocusTarget.AUDIO_EFFECTS_TOOL -> audioEffectsTool
             FocusTarget.VOICEOVER_TOOL -> voiceoverTool
             FocusTarget.RATIO_PILL -> ratioPill
+            FocusTarget.OVERLAY_TOOL -> overlayTool
+            FocusTarget.OPACITY_TOOL -> opacityTool
+            FocusTarget.LAYER_ORDER_TOOL -> layerOrderTool
         }.requestFocus()
     }
 }

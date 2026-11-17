@@ -12,6 +12,9 @@ object OverlayCatalog {
     /** An overlay at 0% would be invisible but still selectable; delete exists for that. The same numbers as `PhotoCatalog.OPACITY_RANGE`. */
     val OPACITY_RANGE: ClosedFloatingPointRange<Float> = 0.1f..1f
 
+    /** The Position panel's Size steps (spec P4-01b → Position panel): the photo layers' ladder, 100% being the overlay fitted inside the canvas. */
+    val SIZE_STEPS: List<Float> = listOf(0.1f, 0.15f, 0.25f, 0.33f, 0.5f, 0.67f, 0.75f, 0.9f, 1f, 1.1f, 1.25f, 1.5f, 1.75f, 2f, 2.5f, 3f, 4f, 5f)
+
     /** A slot is taken when an overlay showing at the playhead has its center within this fraction of the canvas of it. */
     const val SLOT_TAKEN_WITHIN = 0.1f
 
@@ -20,9 +23,6 @@ object OverlayCatalog {
      * (fractions of the canvas); all taken: the center (spec P4-01b → Landing).
      */
     val LANDING_SLOTS: List<Pair<Float, Float>> = listOf(0.5f to 0.5f, 0.7f to 0.7f, 0.7f to 0.3f, 0.3f to 0.7f, 0.3f to 0.3f)
-
-    /** A duplicate that overlaps its original in time sits this far right and down of it, as a fraction of the canvas's shorter side (built with P4-01b). */
-    const val DUPLICATE_OFFSET_OF_SHORT_SIDE = 0.03f
 
     /** On a ratio change an overlay is shrunk to fit inside the canvas, but not below this scale (built with P4-01b). */
     const val RATIO_CHANGE_SHRINK_FLOOR = 0.1f

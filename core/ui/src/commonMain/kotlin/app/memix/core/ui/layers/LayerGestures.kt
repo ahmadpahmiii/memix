@@ -22,6 +22,8 @@ import androidx.compose.ui.input.pointer.positionChanged
 import app.memix.core.model.project.Transform
 import kotlin.math.abs
 import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.math.roundToInt
 
 /**
@@ -57,6 +59,15 @@ interface GestureTarget {
 
     /** A locked layer can be tapped, but a drag, pinch or the handle's place only explains (spec P2-01 → Locked layers). */
     val locked: Boolean
+
+    /**
+     * Whether the layer's sides also snap flush to the canvas's edges within `space-2` while it moves or sizes (spec P4-01b →
+     * Snapping: a corner picture-in-picture is the common layout). The centers' and the turn's snaps hold for every layer.
+     */
+    val snapsToEdges: Boolean get() = false
+
+    /** Whether the scale-and-rotate handle is kept whole on the stage: its center never nearer to the stage's edge than half its size (spec P4-01b → Frame, handle). */
+    val keepsHandleOnStage: Boolean get() = false
 }
 
 /** [this] layer's box on the stage frame [frame], for a canvas [canvasWidthPx] wide. */
@@ -86,6 +97,12 @@ class LayerGesture(val target: GestureTarget) {
     var transform by mutableStateOf(target.transform)
     var snappedCenterX by mutableStateOf(false)
     var snappedCenterY by mutableStateOf(false)
+
+    /** Which of the layer's sides are flush with the canvas's edges now (only for a target that [GestureTarget.snapsToEdges]). */
+    var snappedLeft by mutableStateOf(false)
+    var snappedRight by mutableStateOf(false)
+    var snappedTop by mutableStateOf(false)
+    var snappedBottom by mutableStateOf(false)
     var cancelled = false
 
     // The unsnapped values the fingers have reached; snapping only changes what's shown.
@@ -113,6 +130,8 @@ class LayerTouchSizes(
     val frameOutsetPx: Float,
     /** A center snaps to the frame's middle lines within this: `space-2`. */
     val snapPx: Float,
+    /** Half the handle's drawn size: how far from the stage's edge a [GestureTarget.keepsHandleOnStage] layer's handle stays. */
+    val handleHalfPx: Float = 0f,
 )
 
 /** What the stage's gestures report; each editor turns these into its own intents. Called on the main thread. */
@@ -150,14 +169,14 @@ suspend fun PointerInputScope.detectLayerGestures(
     val layers = targets()
     val selected = layers.lastOrNull { it.id == selectedId() }
     val boxOf = { layer: GestureTarget -> layer.boxIn(frame, canvasWidthPx()) }
-    val onHandle = selected?.let { handleCenterOf(boxOf(it), size.width.toFloat(), size.height.toFloat(), sizes.frameOutsetPx) }
+    val onHandle = selected?.let { handleCenterOf(boxOf(it), size.width.toFloat(), size.height.toFloat(), sizes.frameOutsetPx, if (it.keepsHandleOnStage) sizes.handleHalfPx else 0f) }
         ?.let { (down.position - it).getDistance() <= sizes.targetPx / 2 } == true
     val hit = if (onHandle) selected else layers.lastOrNull { boxOf(it).contains(down.position, sizes.frameOutsetPx, sizes.targetPx / 2) }
     if (hit == null) {
         // Not on a layer: a second finger with a layer selected starts a pinch; otherwise the stage has the touch.
         if (selected == null || !awaitSecondFinger()) return@awaitEachGesture
         if (selected.locked) return@awaitEachGesture explainLocked(selected, events)
-        runGesture(LayerGesture(selected).apply { kind = LayerGestureKind.PINCH }, state, frame, sizes, haptics, events)
+        runGesture(LayerGesture(selected).apply { kind = LayerGestureKind.PINCH }, state, frame, canvasWidthPx(), sizes, haptics, events)
         return@awaitEachGesture
     }
     down.consume()
@@ -171,7 +190,7 @@ suspend fun PointerInputScope.detectLayerGestures(
         events.onTap(hit.id)
         return@awaitEachGesture
     }
-    runGesture(gesture, state, frame, sizes, haptics, events)
+    runGesture(gesture, state, frame, canvasWidthPx(), sizes, haptics, events)
 }
 
 // Says "locked" once, then takes the rest of the touch, so nothing else on the stage reacts to it.
@@ -218,6 +237,7 @@ private suspend fun AwaitPointerEventScope.runGesture(
     gesture: LayerGesture,
     state: LayerStageState,
     frame: CanvasFrameRect,
+    canvasWidthPx: Int,
     sizes: LayerTouchSizes,
     haptics: () -> HapticFeedback?,
     events: LayerGestureEvents,
@@ -241,7 +261,7 @@ private suspend fun AwaitPointerEventScope.runGesture(
                 turnByHandle(gesture, startCenter, from, finger)
             }
         }
-        val engaged = applySnaps(gesture, frame, sizes.snapPx)
+        val engaged = applySnaps(gesture, frame, canvasWidthPx, sizes.snapPx)
         if (engaged) haptics()?.performHapticFeedback(HapticFeedbackType.SegmentTick)
         event.changes.forEach { if (it.positionChanged() || it.pressed) it.consume() }
     }
@@ -276,42 +296,89 @@ private fun turnByHandle(gesture: LayerGesture, center: Offset, from: Offset, fi
  * Shows the raw values with their snaps (spec P1-10 → Snapping): the center to the frame's middle lines within
  * `space-2`, the turn to a quarter within 4°, the size to 100% within 3%. True when a snap newly engaged (one tick).
  */
-private fun applySnaps(gesture: LayerGesture, frame: CanvasFrameRect, snapPx: Float): Boolean {
+private fun applySnaps(gesture: LayerGesture, frame: CanvasFrameRect, canvasWidthPx: Int, snapPx: Float): Boolean {
     val snapX = abs(gesture.rawCenter.x - MIDDLE) * frame.width <= snapPx
     val snapY = abs(gesture.rawCenter.y - MIDDLE) * frame.height <= snapPx
+    val edges = if (gesture.target.snapsToEdges) edgeSnapsOf(gesture, frame, canvasWidthPx, snapPx, snapX, snapY) else EdgeSnaps.None
     val canResize = gesture.kind != LayerGestureKind.MOVE
     val nearestQuarter = (gesture.rawRotation / QUARTER_TURN).roundToInt() * QUARTER_TURN
     val snapTurn = canResize && abs(gesture.rawRotation - nearestQuarter) <= ROTATION_SNAP_DEGREES
     val snapSize = canResize && abs(gesture.rawScale - 1f) <= SCALE_SNAP
     val engaged = (snapX && !gesture.snappedCenterX) || (snapY && !gesture.snappedCenterY) ||
-        (snapTurn && !gesture.snappedRotation) || (snapSize && !gesture.snappedScale)
+        (snapTurn && !gesture.snappedRotation) || (snapSize && !gesture.snappedScale) ||
+        (edges.left && !gesture.snappedLeft) || (edges.right && !gesture.snappedRight) ||
+        (edges.top && !gesture.snappedTop) || (edges.bottom && !gesture.snappedBottom)
     gesture.snappedCenterX = snapX
     gesture.snappedCenterY = snapY
     gesture.snappedRotation = snapTurn
     gesture.snappedScale = snapSize
+    gesture.snappedLeft = edges.left
+    gesture.snappedRight = edges.right
+    gesture.snappedTop = edges.top
+    gesture.snappedBottom = edges.bottom
     gesture.transform = Transform(
-        centerX = if (snapX) MIDDLE else gesture.rawCenter.x,
-        centerY = if (snapY) MIDDLE else gesture.rawCenter.y,
+        centerX = if (snapX) MIDDLE else edges.centerX ?: gesture.rawCenter.x,
+        centerY = if (snapY) MIDDLE else edges.centerY ?: gesture.rawCenter.y,
         scale = if (snapSize) 1f else gesture.rawScale,
         rotationDegrees = if (snapTurn) nearestQuarter else gesture.rawRotation,
     )
     return engaged
 }
 
+/** Which sides of a layer are flush with the canvas's edges, and the center that makes them so (null on an axis where none is). */
+private class EdgeSnaps(val left: Boolean, val right: Boolean, val top: Boolean, val bottom: Boolean, val centerX: Float?, val centerY: Float?) {
+    companion object {
+        val None = EdgeSnaps(left = false, right = false, top = false, bottom = false, centerX = null, centerY = null)
+    }
+}
+
+// The layer's turned bounds against the frame's edges (spec P4-01b → Snapping): a side within `space-2` of its edge sits flush on it.
+// A center snap on the same axis wins, so the middle lines keep their place.
+private fun edgeSnapsOf(gesture: LayerGesture, frame: CanvasFrameRect, canvasWidthPx: Int, snapPx: Float, centerSnappedX: Boolean, centerSnappedY: Boolean): EdgeSnaps {
+    val shown = Transform(gesture.rawCenter.x, gesture.rawCenter.y, gesture.rawScale, gesture.rawRotation)
+    val box = gesture.target.boxIn(frame, canvasWidthPx, shown)
+    val radians = box.rotationDegrees.toRadians()
+    val halfAcross = abs(box.halfWidth * cos(radians)) + abs(box.halfHeight * sin(radians))
+    val halfDown = abs(box.halfWidth * sin(radians)) + abs(box.halfHeight * cos(radians))
+    val centerXpx = frame.left + gesture.rawCenter.x * frame.width
+    val centerYpx = frame.top + gesture.rawCenter.y * frame.height
+    val left = !centerSnappedX && abs(centerXpx - halfAcross - frame.left) <= snapPx
+    val right = !centerSnappedX && !left && abs(centerXpx + halfAcross - (frame.left + frame.width)) <= snapPx
+    val top = !centerSnappedY && abs(centerYpx - halfDown - frame.top) <= snapPx
+    val bottom = !centerSnappedY && !top && abs(centerYpx + halfDown - (frame.top + frame.height)) <= snapPx
+    return EdgeSnaps(
+        left, right, top, bottom,
+        centerX = when {
+            left -> halfAcross / frame.width
+            right -> 1f - halfAcross / frame.width
+            else -> null
+        },
+        centerY = when {
+            top -> halfDown / frame.height
+            bottom -> 1f - halfDown / frame.height
+            else -> null
+        },
+    )
+}
+
 /**
  * Where the scale-and-rotate handle sits: the frame's bottom-right corner, or, when that's off the stage
  * ([stageWidth] × [stageHeight]), the nearest corner that's on it.
  */
-fun handleCenterOf(box: LayerBox, stageWidth: Float, stageHeight: Float, outset: Float): Offset {
+fun handleCenterOf(box: LayerBox, stageWidth: Float, stageHeight: Float, outset: Float, wholeInset: Float = 0f): Offset {
     val corners = listOf(box.corner(1, 1, outset), box.corner(1, -1, outset), box.corner(-1, 1, outset), box.corner(-1, -1, outset))
     val preferred = corners.first()
-    fun onStage(point: Offset) = point.x in 0f..stageWidth && point.y in 0f..stageHeight
+    // With [wholeInset] (half the handle's size) the handle lies whole on the stage, not only its center.
+    fun onStage(point: Offset) = point.x in wholeInset..(stageWidth - wholeInset) && point.y in wholeInset..(stageHeight - wholeInset)
     // A point to keep clear of (a bubble's tail handle): the first corner, in the usual order, at least a handle's reach from it.
     val avoid = box.avoid
     fun clear(point: Offset) = avoid == null || (point - avoid).getDistance() >= HANDLE_CLEARANCE_PX
     if (onStage(preferred) && clear(preferred)) return preferred
-    return corners.filter { onStage(it) && clear(it) }.minByOrNull { (it - preferred).getDistance() }
-        ?: corners.filter(::onStage).minByOrNull { (it - preferred).getDistance() } ?: preferred
+    val nearest = corners.filter { onStage(it) && clear(it) }.minByOrNull { (it - preferred).getDistance() }
+        ?: corners.filter(::onStage).minByOrNull { (it - preferred).getDistance() }
+    if (nearest != null || wholeInset == 0f) return nearest ?: preferred
+    // A full-bleed layer: no corner has room, so the handle is held inside the stage at the preferred corner's side.
+    return Offset(preferred.x.coerceIn(wholeInset, stageWidth - wholeInset), preferred.y.coerceIn(wholeInset, stageHeight - wholeInset))
 }
 
 private const val MIDDLE = 0.5f

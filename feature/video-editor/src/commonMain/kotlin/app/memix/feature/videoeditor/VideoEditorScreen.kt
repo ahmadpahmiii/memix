@@ -115,6 +115,20 @@ import app.memix.core.ui.spokenTime
 import app.memix.core.ui.spokenTimeOf
 import app.memix.feature.videoeditor.canvas.CanvasPanel
 import app.memix.feature.videoeditor.captions.CaptionLayer
+import app.memix.feature.videoeditor.overlays.OverlayLayer
+import app.memix.feature.videoeditor.overlays.OverlayPanels
+import memix.core.ui.generated.resources.edit_layer_opacity
+import memix.core.ui.generated.resources.edit_transform_layer
+import memix.feature.video_editor.generated.resources.edit_add_overlay
+import memix.feature.video_editor.generated.resources.edit_overlay_order
+import memix.feature.video_editor.generated.resources.a11y_overlay_added
+import memix.feature.video_editor.generated.resources.a11y_overlay_opacity
+import memix.feature.video_editor.generated.resources.editor_missing_overlay
+import memix.feature.video_editor.generated.resources.explain_layer_order_back
+import memix.feature.video_editor.generated.resources.explain_layer_order_front
+import memix.feature.video_editor.generated.resources.explain_overlay_edge
+import memix.feature.video_editor.generated.resources.overlay_skipped_toast
+import memix.core.ui.generated.resources.a11y_layer_order
 import app.memix.feature.videoeditor.captions.CaptionStandInSlot
 import app.memix.core.ui.text.TextEntryBar
 import app.memix.feature.videoeditor.captions.TextPanels
@@ -126,12 +140,14 @@ import app.memix.feature.mediaimport.ImportSheet
 import app.memix.feature.mediaimport.ImportWording
 import app.memix.feature.mediaimport.showsSheet
 import app.memix.feature.videoeditor.timeline.Timeline
+import app.memix.feature.videoeditor.timeline.TimelineThumbnails
 import app.memix.feature.videoeditor.timeline.spokenName
 import app.memix.feature.videoeditor.timeline.timelineMinHeight
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -300,7 +316,7 @@ fun VideoEditorScreen(
     val freeUpSpaceForSave = remember(onFreeUpSpace) { { onFreeUpSpace(ImportMediaUseCase.HEADROOM_BYTES) } }
     val focusTargets = remember { EditorFocusTargets() }
     val backgroundThumbnails = rememberBackgroundThumbnails(imageSource, state.canvas?.background, onIntent)
-    val panelOpen = state.volumePanel != null || state.audioEffects != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null
+    val panelOpen = state.volumePanel != null || state.audioEffects != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null || state.overlayPanel != null
     val sheetOpen = state.sounds.isOpen || state.unsavedSheetOpen || state.exportSheet != null || importSheetShown(state.mediaImport)
     ReturnFocus(state.returnFocus, focusTargets)
     // Typing (spec P1-10 → Typing): the field's words live here, so only the field and the stand-in redraw per key.
@@ -340,6 +356,7 @@ fun VideoEditorScreen(
                             state.trimRanges,
                             state.reorder,
                             state.landed,
+                            state.revealed,
                             state.preview,
                             state.thumbnails,
                             state.waveforms,
@@ -361,6 +378,7 @@ fun VideoEditorScreen(
                     VoiceoverPanel(state.voiceover, microphone, onIntent, Modifier.fillMaxSize())
                     val panelCaption = selectedCaption(state)
                     TextPanels(state.textPanel, panelCaption?.style, panelCaption?.transform, onIntent, Modifier.fillMaxSize())
+                    OverlayPanels(state.overlayPanel, selectedOverlayTransform(state), onIntent, Modifier.fillMaxSize())
                     CanvasPanel(state.canvasPanel, state.canvas, backgroundThumbnails, onIntent, Modifier.fillMaxSize())
                 },
                 entryBar = entry?.let { { TextEntryBar(it, entryField, onChanged = { text -> onIntent(VideoEditorIntent.TextEntryChanged(text)) }, onDone = { onIntent(VideoEditorIntent.TextEntryDone) }) } },
@@ -579,6 +597,9 @@ private fun PreviewStage(
         Modifier
     }
     val visibleCaptions = rememberVisibleCaptions(state.captions, state.preview)
+    // Overlays left out of the preview are on their lane only: no frame, handle, touch area, node or picture on the stage.
+    val stageOverlays = remember(state.overlays, state.skippedOverlayIds) { state.overlays.filter { it.itemId !in state.skippedOverlayIds }.toImmutableList() }
+    val visibleOverlays = rememberVisibleOverlays(stageOverlays, state.preview, state.thumbnails)
     // A traversal group, so screen readers reach the save banner before the preview (spec P1-04 → Accessibility).
     // Clipped, so a caption's frame and its TalkBack bounds never draw over the top bar, transport row or entry bar
     // (P1-10 review M1).
@@ -591,7 +612,7 @@ private fun PreviewStage(
                 .matchParentSize()
                 .then(playOnTap)
                 // Inside the stage's tap, so a touch on a caption is the caption's (spec P1-10 → On the preview).
-                .captionGestures(gesturesOn, captionLayer, visibleCaptions, state, onIntent)
+                .stageGestures(gesturesOn, captionLayer, visibleOverlays, visibleCaptions, state, onIntent)
                 .clearAndSetSemantics { contentDescription = previewLabel },
         ) {
             if (canvas != null) {
@@ -611,6 +632,21 @@ private fun PreviewStage(
         }
         if (canvas != null) {
             FrameEdge({ frame }, visible = state.canvasPanel != null || captionLayer.gesture != null)
+            // Under the captions, which are in front of every overlay (spec P4-01b → Rendering rules).
+            OverlayLayer(
+                captionLayer,
+                canvas,
+                visibleOverlays.value,
+                stageOverlays,
+                state.selectedItemId,
+                state.overlayStandIn,
+                state.hiddenOverlayId,
+                state.overlayFrames,
+                state.preview,
+                focusTargets.selectedOverlay,
+                interactive = state.canvasPanel == null && state.textEntry == null,
+                onIntent = onIntent,
+            )
             CaptionLayer(
                 captionLayer,
                 canvas,
@@ -649,6 +685,22 @@ private fun rememberVisibleCaptions(captions: ImmutableList<CaptionUi>, preview:
 }
 
 /**
+ * The overlays shown at the preview's time, back to front, without those whose file is missing (they aren't drawn, so nothing
+ * on the stage stands for them); the stage recomposes only when that set changes, not every frame.
+ */
+@Composable
+private fun rememberVisibleOverlays(overlays: ImmutableList<OverlayUi>, preview: EditorPreview?, thumbnails: TimelineThumbnails?): State<List<OverlayUi>> {
+    val position = preview?.positionUs?.collectAsState()
+    return remember(overlays, position, thumbnails) {
+        derivedStateOf {
+            val timeUs = position?.value ?: 0L
+            val missing = thumbnails?.missingSources.orEmpty()
+            overlays.filter { it.isShownAt(timeUs) && it.media !in missing }
+        }
+    }
+}
+
+/**
  * The canvas frame on a stage [stageWidth] × [stageHeight]: the largest rectangle of the canvas ratio, `space-2` in from
  * every side. While typing it never gets bigger, and doesn't move, than it was before (spec P1-10 → Typing).
  */
@@ -674,10 +726,11 @@ private fun rememberCanvasFrame(
     return frame
 }
 
-private fun Modifier.captionGestures(
+private fun Modifier.stageGestures(
     enabled: Boolean,
     layer: LayerStageState,
-    visible: State<List<CaptionUi>>,
+    overlays: State<List<OverlayUi>>,
+    captions: State<List<CaptionUi>>,
     state: VideoEditorUiState,
     onIntent: (VideoEditorIntent) -> Unit,
 ): Modifier = composed {
@@ -685,27 +738,35 @@ private fun Modifier.captionGestures(
     val density = LocalDensity.current
     val haptics = LocalHapticFeedback.current
     val sizes = remember(density) {
-        with(density) { LayerTouchSizes(MemixSize.touchTarget.toPx(), MemixSpacing.space1.toPx(), MemixSpacing.space2.toPx()) }
+        with(density) { LayerTouchSizes(MemixSize.touchTarget.toPx(), MemixSpacing.space1.toPx(), MemixSpacing.space2.toPx(), MemixSize.canvasHandleSize.toPx() / 2) }
     }
     val selected by rememberUpdatedState(state.selectedItemId)
     val canvasWidth by rememberUpdatedState(state.canvas?.widthPx ?: 0)
     val currentOnIntent by rememberUpdatedState(onIntent)
     val currentHaptics by rememberUpdatedState(haptics)
-    val events = remember { CaptionGestureEvents { currentOnIntent(it) } }
+    // The visible lists are derived states that are made again with every project change, so the gesture reads them through these holders: a
+    // pointerInput block started once would keep the first ones (a new overlay would not be hit).
+    val currentOverlays by rememberUpdatedState(overlays)
+    val currentCaptions by rememberUpdatedState(captions)
+    val isOverlay = { layerId: String -> currentOverlays.value.any { it.itemId == layerId } }
+    val events = remember { StageGestureEvents(isOverlay) { currentOnIntent(it) } }
     pointerInput(layer, sizes) {
-        detectLayerGestures(layer, { visible.value }, { selected }, { canvasWidth }, sizes, { currentHaptics }, events)
+        // Back to front: the overlays, then the captions in front of them, so a touch finds a caption first (spec P4-01b → Gestures).
+        detectLayerGestures(layer, { currentOverlays.value + currentCaptions.value }, { selected }, { canvasWidth }, sizes, { currentHaptics }, events)
     }
 }
 
-/** The stage's gestures as the video editor's caption intents. */
-private class CaptionGestureEvents(private val onIntent: (VideoEditorIntent) -> Unit) : LayerGestureEvents {
-    override fun onTap(layerId: String) = onIntent(VideoEditorIntent.CaptionTapped(layerId))
+/** The stage's gestures as the video editor's intents for captions and overlays; [isOverlay] says which a layer id is. */
+private class StageGestureEvents(private val isOverlay: (String) -> Boolean, private val onIntent: (VideoEditorIntent) -> Unit) : LayerGestureEvents {
+    override fun onTap(layerId: String) = onIntent(if (isOverlay(layerId)) VideoEditorIntent.OverlayTapped(layerId) else VideoEditorIntent.CaptionTapped(layerId))
 
-    override fun onStarted(layerId: String) = onIntent(VideoEditorIntent.CaptionGestureStarted(layerId))
+    override fun onStarted(layerId: String) =
+        onIntent(if (isOverlay(layerId)) VideoEditorIntent.OverlayGestureStarted(layerId) else VideoEditorIntent.CaptionGestureStarted(layerId))
 
-    override fun onEnded(layerId: String, transform: Transform) = onIntent(VideoEditorIntent.CaptionGestureEnded(layerId, transform))
+    override fun onEnded(layerId: String, transform: Transform) =
+        onIntent(if (isOverlay(layerId)) VideoEditorIntent.OverlayGestureEnded(layerId, transform) else VideoEditorIntent.CaptionGestureEnded(layerId, transform))
 
-    // Captions in a video are never locked.
+    // Nothing in a video is locked.
     override fun onLockedTouch(layerId: String) = Unit
 }
 
@@ -723,9 +784,15 @@ private fun CancelCaptionGestureOnBack(layer: LayerStageState, onIntent: (VideoE
         onBackCompleted = {
             layer.gesture?.cancelled = true
             layer.gesture = null
-            onIntent(VideoEditorIntent.CaptionGestureCancelled)
+            onIntent(VideoEditorIntent.StageGestureCancelled)
         },
     )
+}
+
+/** The selected overlay's place as the Position panel shows it: a held arrow's or a commit's stand-in while one is on its way. */
+private fun selectedOverlayTransform(state: VideoEditorUiState): Transform? {
+    val itemId = state.selectedItemId ?: return null
+    return state.overlayStandIn?.takeIf { it.itemId == itemId }?.transform ?: state.overlays.firstOrNull { it.itemId == itemId }?.transform
 }
 
 /** The selected caption as its panels show it: the stand-in's values while a hold or a commit is on its way. */
@@ -848,14 +915,14 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
     LaunchedEffect(toast.id) {
         val baseMillis = when (toast.message) {
             is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition, is ToastMessage.SoundAdded,
-            is ToastMessage.MediaAdded, ToastMessage.NothingToReset, ToastMessage.AudioEffectsReset, is ToastMessage.VoiceoverAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned,
+            is ToastMessage.MediaAdded, ToastMessage.OverlayAdded, is ToastMessage.OverlayOpacity, is ToastMessage.OverlayLayer, ToastMessage.NothingToReset, ToastMessage.AudioEffectsReset, is ToastMessage.VoiceoverAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned,
             -> WHAT_HAPPENED_TOAST_MILLIS
             is ToastMessage.RatioStepped, ToastMessage.ExportStopped, ToastMessage.BackgroundImageSet, ToastMessage.BackgroundImageRemoved -> WHAT_HAPPENED_TOAST_MILLIS
             is ToastMessage.ExportFrameRateLowered, is ToastMessage.ExportResolutionLowered, is ToastMessage.ExportCantDo,
             is ToastMessage.ExportShapeCantDo,
             -> EXPLANATION_TOAST_MILLIS
             // An unexpected move, so it stays as long as an explanation.
-            ToastMessage.MissingMedia, is ToastMessage.Explain, is ToastMessage.ReplaceTooShort, ToastMessage.LayersMoved, ToastMessage.SoundMovedLane, is ToastMessage.SoundPastEnd, is ToastMessage.BackgroundMissing -> EXPLANATION_TOAST_MILLIS
+            ToastMessage.MissingMedia, ToastMessage.MissingOverlay, ToastMessage.OverlaysSkipped, is ToastMessage.Explain, is ToastMessage.ReplaceTooShort, ToastMessage.LayersMoved, ToastMessage.SoundMovedLane, is ToastMessage.SoundPastEnd, is ToastMessage.BackgroundMissing -> EXPLANATION_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
         onTimedOut(toast.id)
@@ -884,6 +951,11 @@ private fun toastText(message: ToastMessage): String = when (message) {
     is ToastMessage.Undone -> stringResource(UiRes.string.editor_undo_toast, editName(message.edit))
     is ToastMessage.Redone -> stringResource(UiRes.string.editor_redo_toast, editName(message.edit))
     ToastMessage.MissingMedia -> stringResource(Res.string.editor_missing_media)
+    ToastMessage.MissingOverlay -> stringResource(Res.string.editor_missing_overlay)
+    ToastMessage.OverlaysSkipped -> stringResource(Res.string.overlay_skipped_toast)
+    ToastMessage.OverlayAdded -> stringResource(Res.string.a11y_overlay_added)
+    is ToastMessage.OverlayOpacity -> stringResource(Res.string.a11y_overlay_opacity, message.percent)
+    is ToastMessage.OverlayLayer -> stringResource(UiRes.string.a11y_layer_order, message.layer, message.count)
     is ToastMessage.Explain -> explanationText(message.explanation)
     is ToastMessage.Edited -> stringResource(UiRes.string.a11y_edit_on_item, editName(message.edit), spokenName(message.item))
     is ToastMessage.ReorderPosition -> stringResource(Res.string.a11y_reorder_position, message.position, message.count)
@@ -955,6 +1027,10 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.TEXT_BOX -> UiRes.string.edit_text_box
         VideoEdit.POSITION_TEXT -> Res.string.edit_move_text
         VideoEdit.TRANSFORM_TEXT -> Res.string.edit_transform_text
+        VideoEdit.ADD_OVERLAY -> Res.string.edit_add_overlay
+        VideoEdit.TRANSFORM_OVERLAY, VideoEdit.POSITION_OVERLAY -> UiRes.string.edit_transform_layer
+        VideoEdit.OVERLAY_OPACITY -> UiRes.string.edit_layer_opacity
+        VideoEdit.OVERLAY_ORDER -> Res.string.edit_overlay_order
         VideoEdit.CANVAS_RATIO -> UiRes.string.edit_canvas_ratio
         VideoEdit.CANVAS_FIT -> Res.string.edit_canvas_fit
         VideoEdit.CANVAS_FILL -> Res.string.edit_canvas_fill
@@ -980,6 +1056,9 @@ private fun explanationText(explanation: Explanation): String = stringResource(
         Explanation.TEXT_SMALLEST -> UiRes.string.explain_text_smallest
         Explanation.TEXT_BIGGEST -> UiRes.string.explain_text_biggest
         Explanation.TEXT_EDGE -> Res.string.explain_text_edge
+        Explanation.OVERLAY_EDGE -> Res.string.explain_overlay_edge
+        Explanation.LAYER_ORDER_FRONT -> Res.string.explain_layer_order_front
+        Explanation.LAYER_ORDER_BACK -> Res.string.explain_layer_order_back
         Explanation.CANVAS_WIDEST -> UiRes.string.explain_canvas_widest
         Explanation.CANVAS_TALLEST -> UiRes.string.explain_canvas_tallest
         Explanation.CANVAS_MIN -> UiRes.string.explain_canvas_min

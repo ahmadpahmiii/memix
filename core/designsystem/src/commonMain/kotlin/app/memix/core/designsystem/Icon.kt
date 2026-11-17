@@ -28,6 +28,7 @@ import memix.core.designsystem.generated.resources.ic_delete
 import memix.core.designsystem.generated.resources.ic_detach_audio
 import memix.core.designsystem.generated.resources.ic_drafts
 import memix.core.designsystem.generated.resources.ic_duplicate
+import memix.core.designsystem.generated.resources.ic_overlay
 import memix.core.designsystem.generated.resources.ic_edit
 import memix.core.designsystem.generated.resources.ic_flag
 import memix.core.designsystem.generated.resources.ic_folder
@@ -99,6 +100,7 @@ object MemixIcons {
     val DetachAudio = Res.drawable.ic_detach_audio
     val Drafts = Res.drawable.ic_drafts
     val Duplicate = Res.drawable.ic_duplicate
+    val Overlay = Res.drawable.ic_overlay
     val Edit = Res.drawable.ic_edit
     val Fill = Res.drawable.ic_fill
     val Flag = Res.drawable.ic_flag

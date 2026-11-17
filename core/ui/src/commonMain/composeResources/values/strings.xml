@@ -194,4 +194,11 @@
     <string name="import_reason_unreadable">Couldn't be read. If it's in the cloud, check your connection.</string>
     <string name="import_storage_title">Not enough space</string>
     <string name="close">Close</string>
+
+    <!-- Moved from the photo editor with P4-01b: both editors layers use them. -->
+    <string name="tool_layer_opacity">Opacity</string>
+    <string name="layers_opacity">Opacity</string>
+    <string name="a11y_layer_order">Layer %1$d of %2$d</string>
+    <string name="edit_transform_layer">Position and size</string>
+    <string name="edit_layer_opacity">Opacity</string>
 </resources>

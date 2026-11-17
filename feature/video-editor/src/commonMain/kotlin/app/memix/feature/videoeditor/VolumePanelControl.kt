@@ -2,6 +2,7 @@ package app.memix.feature.videoeditor
 
 import app.memix.core.domain.project.OriginalSound
 import app.memix.core.domain.project.originalSoundOf
+import app.memix.core.domain.project.overlayClip
 import app.memix.core.domain.project.setVolume
 import app.memix.core.domain.project.volumeOf
 import app.memix.feature.videoeditor.timeline.nameOf
@@ -26,7 +27,7 @@ internal class VolumePanelControl(private val host: EditorHost) {
             OriginalSound.PLAYS, null -> Unit
         }
         val volume = project.volumeOf(itemId) ?: return
-        host.updateUiState { it.copy(volumePanel = VolumePanelUi(itemId, volume, isVideoClip = originalSound == OriginalSound.PLAYS)) }
+        host.updateUiState { it.copy(volumePanel = VolumePanelUi(itemId, volume, isVideoClip = originalSound == OriginalSound.PLAYS, isOverlay = project.overlayClip(itemId) != null)) }
     }
 
     /** Done, back or Escape: the item stays selected and focus goes back to its Volume tool. */

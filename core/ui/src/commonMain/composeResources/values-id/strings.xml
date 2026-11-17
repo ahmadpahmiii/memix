@@ -190,4 +190,11 @@
     <string name="import_reason_unreadable">Tidak bisa dibaca. Jika ada di cloud, periksa koneksimu.</string>
     <string name="import_storage_title">Ruang tidak cukup</string>
     <string name="close">Tutup</string>
+
+    <!-- Moved from the photo editor with P4-01b: both editors layers use them. -->
+    <string name="tool_layer_opacity">Opasitas</string>
+    <string name="layers_opacity">Opasitas</string>
+    <string name="a11y_layer_order">Lapisan %1$d dari %2$d</string>
+    <string name="edit_transform_layer">Posisi dan ukuran</string>
+    <string name="edit_layer_opacity">Opasitas</string>
 </resources>

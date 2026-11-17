@@ -23,6 +23,9 @@ internal class OverlayCompositorSettings(
     private val layersTopFirst: List<LayerTimeline>,
     private val frame: PixelSize,
 ) : VideoCompositorSettings {
+    // Set by the preview while a finger moves one overlay; its clip draws at alpha 0 (the editor's stand-in is on screen instead).
+    val visibility = OverlayVisibility()
+
 
     private val outputSize = Size(frame.widthPx, frame.heightPx)
     private var warnedAboutPrimary = false
@@ -41,13 +44,19 @@ internal class OverlayCompositorSettings(
     override fun getOverlaySettings(inputId: Int, presentationTimeUs: Long): OverlaySettings = when (inputId) {
         OverlaySequences.STAGE_INPUT -> HIDDEN
         in OverlaySequences.FIRST_LAYER_INPUT until OverlaySequences.FIRST_LAYER_INPUT + layersTopFirst.size ->
-            layersTopFirst[inputId - OverlaySequences.FIRST_LAYER_INPUT].settingsAt(presentationTimeUs)
+            layersTopFirst[inputId - OverlaySequences.FIRST_LAYER_INPUT].settingsAt(presentationTimeUs, visibility)
         else -> FILL_FRAME
     }
 
     /** One overlay layer in time: where each of its clips shows (µs, end excluded), in order, with the settings to draw it by. */
-    class LayerTimeline(private val startsUs: LongArray, private val endsUs: LongArray, private val settings: List<OverlaySettings>) {
-        fun settingsAt(timeUs: Long): OverlaySettings {
+    class LayerTimeline(
+        private val startsUs: LongArray,
+        private val endsUs: LongArray,
+        private val settings: List<OverlaySettings>,
+        private val itemIds: List<String>,
+        private val placements: List<OverlayPlacement>,
+    ) {
+        fun settingsAt(timeUs: Long, visibility: OverlayVisibility): OverlaySettings {
             // The last clip that starts at or before the time; clips don't overlap, so it's the only candidate.
             var low = 0
             var high = startsUs.size - 1
@@ -61,7 +70,11 @@ internal class OverlayCompositorSettings(
                     high = middle - 1
                 }
             }
-            return if (found >= 0 && timeUs < endsUs[found]) settings[found] else HIDDEN
+            if (found < 0 || timeUs >= endsUs[found] || itemIds[found] == visibility.hiddenItemId) return HIDDEN
+            // The Opacity slider is moving this overlay: its drawing with the slider's value, built only while it moves.
+            val live = visibility.liveOpacity
+            if (live != null && itemIds[found] == live.itemId) return settingsOf(placements[found].copy(alpha = live.opacity))
+            return settings[found]
         }
     }
 

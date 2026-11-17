@@ -208,4 +208,23 @@
     <string name="fx_voice_hint">आवाज़ के इफ़ेक्ट पिच, बास और इको के साथ जुड़ते हैं।</string>
     <string name="edit_fx_voice">आवाज़</string>
     <string name="edit_fx_echo_length">इको की लंबाई</string>
+
+    <!-- Overlay layers (P4-01b) -->
+    <string name="tool_overlay">ओवरले</string>
+    <string name="tool_overlay_click">ऊपर एक वीडियो या फ़ोटो जोड़ें</string>
+    <string name="tool_layer_order">लेयर का क्रम</string>
+    <string name="layer_order_forward">आगे लाएं</string>
+    <string name="layer_order_back">पीछे भेजें</string>
+    <string name="layer_order_hint">जहाँ ओवरले एक-दूसरे पर आते हैं, वहाँ कौन-सा ऊपर रहे, यह बदलता है।</string>
+    <string name="explain_layer_order_front">इसके आगे कोई और ओवरले नहीं है।</string>
+    <string name="explain_layer_order_back">इसके पीछे कोई और ओवरले नहीं है।</string>
+    <string name="explain_overlay_edge">यह ओवरले इस तरफ़ और आगे नहीं जा सकता।</string>
+    <string name="editor_missing_overlay">एक ओवरले की फ़ाइल नहीं मिली, इसलिए वह नहीं दिखेगा। ठीक करने के लिए उसे हटाएं।</string>
+    <string name="a11y_overlay_added">ओवरले जुड़ गया</string>
+    <string name="a11y_overlay_node">ओवरले, %1$s, लेयर %2$d / %3$d</string>
+    <string name="a11y_overlay_item">ओवरले, %1$s, %2$s लंबा, %3$s पर शुरू</string>
+    <string name="edit_add_overlay">ओवरले जोड़ें</string>
+    <string name="edit_overlay_order">लेयर का क्रम</string>
+    <string name="overlay_skipped_toast">कुछ ओवरले वीडियो नहीं दिखेंगे: यह फ़ोन इतने वीडियो एक साथ नहीं चला सकता।</string>
+    <string name="a11y_overlay_opacity">%1$d प्रतिशत अपारदर्शिता</string>
 </resources>

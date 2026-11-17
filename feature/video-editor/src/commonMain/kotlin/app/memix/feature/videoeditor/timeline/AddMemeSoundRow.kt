@@ -56,7 +56,8 @@ import org.jetbrains.compose.resources.stringResource
  * The "Add a meme sound" pill (spec P1-05 → "Add a meme sound" row): `primary-subtle` on a `canvas` base and
  * `radius-full`, the plus and the label in `primary` (it's meme-sound UI), in [addRow] under the sound lanes, centered
  * on the playhead and drawn over it. It stays put while time scrolls, because it marks where a sound will land, and
- * moves with the lanes' vertical scroll, clipped below the ruler.
+ * moves with the lanes' vertical scroll, clipped below the ruler; when the lanes overflow it is pinned to the bottom of the timeline
+ * instead (spec P4-01b → Many lanes), so a sound stays two taps away.
  * - Never wider than the timeline minus `space-4` on each side; a label that doesn't fit wraps to two centered lines,
  *   and the row is built taller for it ([rememberAddPillLabelHeightPx]).
  * - Its target is the whole row height across its width; pressed, the fill turns `surface-raised`.
@@ -85,9 +86,9 @@ internal fun BoxScope.AddMemeSoundPill(
         AnimatedVisibility(
             visible = !motion.isLaneSliding,
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                // Read at placement: scrolling the lanes moves the pill without recomposing it.
-                .offset { IntOffset(0, (addRow.topPx - laneScroll.value).roundToInt()) },
+                .align(if (addRow.pinned) Alignment.BottomCenter else Alignment.TopCenter)
+                // Read at placement: scrolling the lanes moves the pill without recomposing it. Pinned, it stays at the bottom.
+                .offset { if (addRow.pinned) IntOffset.Zero else IntOffset(0, (addRow.topPx - laneScroll.value).roundToInt()) },
             enter = fadeIn(tween(MemixMotion.durationPress)),
             exit = ExitTransition.None,
         ) {

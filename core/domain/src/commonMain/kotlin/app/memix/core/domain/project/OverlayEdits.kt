@@ -1,13 +1,18 @@
 package app.memix.core.domain.project
 
+import app.memix.core.model.project.BoxSize
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.OverlayCatalog
+import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
+import app.memix.core.model.project.Track
 import app.memix.core.model.project.TrackKind
 import app.memix.core.model.project.Transform
+import app.memix.core.model.project.fittedImageSize
 import app.memix.core.model.project.normalizedDegrees
+import app.memix.core.model.project.turnedBounds
 import kotlin.math.abs
 
 /*
@@ -38,7 +43,7 @@ fun overlayLandingSpan(atUs: Long, wantedUs: Long, videoLengthUs: Long): Pair<Lo
  * [OverlayCatalog.PHOTO_LANDING_US] (see [overlayLandingSpan]), at [OverlayCatalog.LANDING_SCALE], upright, opaque, in the first free
  * slot ([OverlayCatalog.LANDING_SLOTS]). It lands in front of every layer holding an overlapping clip: on the first later layer free
  * for its whole span, else on a new layer [newTrackId] after the last. A video whose length wasn't measured, and audio, add nothing.
- * Its sound is at 100% like any clip's; the engine plays overlays silent until a later ticket (TODO(P4-01b)).
+ * Its sound is at 100% like any clip's, played by the engine (P4-01b).
  */
 fun Project.addOverlay(media: MediaRef, atUs: Long, itemId: String, newTrackId: String): Project {
     val wantedUs = when (media.kind) {
@@ -110,4 +115,77 @@ fun Transform.clampedForOverlay(): Transform = Transform(
 private fun Project.replaceOverlay(overlay: MediaClip): Project {
     val (track, _) = findItem(overlay.id) ?: return this
     return replaceTrack(track.copy(items = track.items.map { if (it.id == overlay.id) overlay else it }))
+}
+
+/**
+ * Bring forward ([forward]) or Send back overlay [itemId] (spec P4-01b → Layer order panel): it swaps places in the stack with the
+ * nearest overlay in front of it (behind it) that shares a moment with it, so it ends up directly in front of (behind) that one.
+ * It takes the lane right next to the one it passes if that lane is free for its whole span, else a new lane [newTrackId] is made
+ * there; a lane left empty goes. Returns this project unchanged when no overlay in that direction shares a moment with it, so the
+ * edit session records no step and the editor explains.
+ */
+fun Project.reorderOverlay(itemId: String, forward: Boolean, newTrackId: String): Project {
+    val overlay = overlayClip(itemId) ?: return this
+    val lanes = tracks().filter { it.kind == TrackKind.OVERLAY }
+    val ownIndex = lanes.indexOfFirst { lane -> lane.items.any { it.id == itemId } }
+    val endUs = overlay.startUs + overlay.durationUs
+    val passedIndex = if (forward) {
+        (ownIndex + 1..lanes.lastIndex).firstOrNull { !lanes[it].isFree(overlay.startUs, endUs) }
+    } else {
+        (ownIndex - 1 downTo 0).firstOrNull { !lanes[it].isFree(overlay.startUs, endUs) }
+    } ?: return this
+    val passed = lanes[passedIndex]
+    val nextTo = lanes.getOrNull(if (forward) passedIndex + 1 else passedIndex - 1)?.takeIf { it.isFree(overlay.startUs, endUs) }
+    val own = lanes[ownIndex]
+    val withoutOverlay = tracks().map { if (it.id == own.id) it.copy(items = it.items.filterNot { item -> item.id == itemId }) else it }
+    val placed = if (nextTo != null) {
+        withoutOverlay.map { if (it.id == nextTo.id) it.copy(items = it.items + overlay) else it }
+    } else {
+        val at = withoutOverlay.indexOfFirst { it.id == passed.id } + if (forward) 1 else 0
+        withoutOverlay.toMutableList().apply { add(at, Track(newTrackId, TrackKind.OVERLAY, listOf(overlay))) }
+    }
+    return withTracks(placed.filterNot { it.id == own.id && it.items.isEmpty() })
+}
+
+/**
+ * Where overlay [itemId] sits in the stack among all overlay layers, 1 = the front-most, for "layer 2 of 3" (spec P4-01b →
+ * Accessibility); null when it isn't an overlay.
+ */
+fun Project.overlayLayerOf(itemId: String): OverlayLayerPosition? {
+    val lanes = tracks().filter { it.kind == TrackKind.OVERLAY }
+    val index = lanes.indexOfFirst { lane -> lane.items.any { it.id == itemId } }
+    return if (index < 0) null else OverlayLayerPosition(layer = lanes.size - index, count = lanes.size)
+}
+
+/** Layer [layer] of [count] overlay layers, 1 being the front-most. */
+data class OverlayLayerPosition(val layer: Int, val count: Int)
+
+/**
+ * The overlay at [atUs]'s place in the stack among the overlays showing there, 1 = front-most, and how many show: the stage nodes'
+ * "layer 1 of 2" (spec P4-01b → Accessibility).
+ */
+fun Project.overlayStackAt(itemId: String, atUs: Long): OverlayLayerPosition? {
+    val shown = overlaysAt(atUs)
+    val index = shown.indexOfFirst { it.id == itemId }
+    return if (index < 0) null else OverlayLayerPosition(layer = shown.size - index, count = shown.size)
+}
+
+/** Overlay [clip]'s picture fitted inside a canvas [canvas] at scale 1, in canvas pixels; empty when its size isn't known. */
+fun overlayBoxAtScaleOne(clip: MediaClip, canvas: PixelSize): BoxSize =
+    clip.source.pixelSize?.let { fittedImageSize(it, canvas) } ?: BoxSize(0f, 0f)
+
+/** The overlay's box on [canvas] at [scale]: its turned bounds, in canvas pixels. */
+internal fun MediaClip.overlayBoundsOn(canvas: PixelSize, scale: Float): BoxSize {
+    val box = overlayBoxAtScaleOne(this, canvas)
+    return turnedBounds(BoxSize(box.width * scale, box.height * scale), transform.rotationDegrees)
+}
+
+/**
+ * This overlay after a ratio change from [old] to [new] (spec P4-01b → Ratio change): the photo layers' rule, with margin 0 and the
+ * smallest size [OverlayCatalog.RATIO_CHANGE_SHRINK_FLOOR]. An overlay whose picture size isn't known keeps its place.
+ */
+internal fun MediaClip.keptInside(old: PixelSize, new: PixelSize): MediaClip {
+    if (source.pixelSize == null) return this
+    val kept = transform.keptInside(old, new, OverlayCatalog.RATIO_CHANGE_SHRINK_FLOOR, marginOfShortSide = 0f) { canvas, scale -> overlayBoundsOn(canvas, scale) }
+    return if (kept == transform) this else copy(transform = kept)
 }

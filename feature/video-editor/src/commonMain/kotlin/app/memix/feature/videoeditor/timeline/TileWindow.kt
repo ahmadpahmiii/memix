@@ -14,10 +14,16 @@ import kotlin.math.min
  * when the playhead crosses a tile or the zoom changes, so a scroll frame usually asks for nothing new.
  */
 @Immutable
-internal data class TileWindow(val playheadTile: Long, val tileDurationUs: Long, val reachTiles: Int)
+internal data class TileWindow(val playheadTile: Long, val tileDurationUs: Long, val reachTiles: Int, val overlay: TileWindow? = null)
 
 /** Null until the timeline is laid out. Tile lengths match [TimelinePainter.drawLanes], so requests hit its cache. */
-internal fun tileWindowOf(playheadUs: Long, pxPerUs: Float, widthPx: Int, tileSizePx: Int): TileWindow? {
+internal fun tileWindowOf(playheadUs: Long, pxPerUs: Float, widthPx: Int, tileSizePx: Int, overlayTileSizePx: Int = 0): TileWindow? {
+    val main = windowOf(playheadUs, pxPerUs, widthPx, tileSizePx) ?: return null
+    // The overlay lanes' smaller tiles are a window of their own: they cross tiles at their own pace.
+    return main.copy(overlay = windowOf(playheadUs, pxPerUs, widthPx, overlayTileSizePx))
+}
+
+private fun windowOf(playheadUs: Long, pxPerUs: Float, widthPx: Int, tileSizePx: Int): TileWindow? {
     if (pxPerUs <= 0f || widthPx <= 0 || tileSizePx <= 0) return null
     val tileDurationUs = (tileSizePx / pxPerUs).toLong()
     if (tileDurationUs <= 0) return null
@@ -25,14 +31,28 @@ internal fun tileWindowOf(playheadUs: Long, pxPerUs: Float, widthPx: Int, tileSi
     return TileWindow(playheadUs / tileDurationUs, tileDurationUs, reachTiles)
 }
 
-/** The main video's tiles inside [window], nearest the playhead first, each source frame asked for once. */
+/**
+ * The main video's tiles and the overlay lanes' tiles inside [window], nearest the playhead first, each source frame asked for
+ * once. Every tile is read at the main strip's size; the overlay lanes draw the same pictures smaller.
+ */
 internal fun tileRequestsFor(timeline: TimelineUi, window: TileWindow): List<TileRequest> {
-    val mainTrack = timeline.tracks.firstOrNull { it.kind == TrackKind.MAIN_VIDEO } ?: return emptyList()
+    val byDistance = ArrayList<Pair<Long, TileRequest>>()
+    for (track in timeline.tracks) {
+        val trackWindow = when (track.kind) {
+            TrackKind.MAIN_VIDEO -> window
+            TrackKind.OVERLAY -> window.overlay ?: continue
+            else -> continue
+        }
+        addRequests(track, trackWindow, byDistance)
+    }
+    return byDistance.sortedBy { it.first }.map { it.second }.distinct()
+}
+
+private fun addRequests(mainTrack: TrackUi, window: TileWindow, byDistance: MutableList<Pair<Long, TileRequest>>) {
     val tileUs = window.tileDurationUs
     val centerUs = window.playheadTile * tileUs
     val startUs = centerUs - window.reachTiles * tileUs
     val endUs = centerUs + (window.reachTiles + 1) * tileUs
-    val byDistance = ArrayList<Pair<Long, TileRequest>>()
     mainTrack.forEachItemBetween(startUs, endUs) { clip ->
         val media = clip.media ?: return@forEachItemBetween
         val lastTile = max(0L, (clip.durationUs - 1) / tileUs)
@@ -44,7 +64,6 @@ internal fun tileRequestsFor(timeline: TimelineUi, window: TileWindow): List<Til
             byDistance += abs(tileStartUs + tileUs / 2 - centerUs) to TileRequest(media, timeUs)
         }
     }
-    return byDistance.sortedBy { it.first }.map { it.second }.distinct()
 }
 
 /** Each main clip's first frame, in play order: what reorder mode's tiles show (spec P1-06 → Reorder). */

@@ -157,7 +157,7 @@ import memix.core.ui.generated.resources.tool_duplicate
 import memix.core.ui.generated.resources.tool_position
 import memix.feature.photo_editor.generated.resources.Res
 import memix.feature.photo_editor.generated.resources.a11y_layer_added
-import memix.feature.photo_editor.generated.resources.a11y_layer_order
+import memix.core.ui.generated.resources.a11y_layer_order
 import memix.feature.photo_editor.generated.resources.a11y_layer_opacity
 import memix.feature.photo_editor.generated.resources.a11y_layer_row
 import memix.feature.photo_editor.generated.resources.a11y_draw_done
@@ -177,10 +177,10 @@ import memix.feature.photo_editor.generated.resources.explain_censor_min
 import memix.feature.photo_editor.generated.resources.tool_censor
 import memix.feature.photo_editor.generated.resources.tool_draw
 import memix.feature.photo_editor.generated.resources.edit_layer_hide
-import memix.feature.photo_editor.generated.resources.edit_layer_opacity
+import memix.core.ui.generated.resources.edit_layer_opacity
 import memix.feature.photo_editor.generated.resources.edit_layer_show
 import memix.feature.photo_editor.generated.resources.edit_lock
-import memix.feature.photo_editor.generated.resources.edit_transform_layer
+import memix.core.ui.generated.resources.edit_transform_layer
 import memix.feature.photo_editor.generated.resources.edit_unlock
 import memix.feature.photo_editor.generated.resources.explain_layer_back
 import memix.feature.photo_editor.generated.resources.explain_layer_edge
@@ -212,7 +212,7 @@ import memix.feature.photo_editor.generated.resources.edit_panels_divider
 import memix.feature.photo_editor.generated.resources.edit_panels_layout
 import memix.feature.photo_editor.generated.resources.edit_format
 import memix.feature.photo_editor.generated.resources.panels_photo_dropped
-import memix.feature.photo_editor.generated.resources.tool_layer_opacity
+import memix.core.ui.generated.resources.tool_layer_opacity
 import memix.feature.photo_editor.generated.resources.tool_layers
 import memix.feature.photo_editor.generated.resources.tool_lock
 import memix.feature.photo_editor.generated.resources.tool_show_layer
@@ -533,7 +533,7 @@ private fun selectedLayerTools(layer: SceneLayerUi, missing: Boolean, onIntent: 
     val position = ToolBarItem(stringResource(UiRes.string.tool_position), MemixIcons.Position, {
         if (layer.locked) onIntent(PhotoEditorIntent.LockedLayerTouched(layer.id)) else onIntent(PhotoEditorIntent.OpenPanel(PhotoPanel.POSITION))
     })
-    val opacity = ToolBarItem(stringResource(Res.string.tool_layer_opacity), MemixIcons.Opacity, {
+    val opacity = ToolBarItem(stringResource(UiRes.string.tool_layer_opacity), MemixIcons.Opacity, {
         if (layer.locked) onIntent(PhotoEditorIntent.LockedLayerTouched(layer.id)) else onIntent(PhotoEditorIntent.OpenPanel(PhotoPanel.OPACITY))
     })
     val delete = ToolBarItem(stringResource(UiRes.string.tool_delete), MemixIcons.Delete, { onIntent(PhotoEditorIntent.DeleteLayer(layer.id)) }, ToolTone.Danger)
@@ -664,7 +664,7 @@ private fun toastText(message: PhotoToastMessage): String = when (message) {
         editName(message.edit),
         stringResource(Res.string.a11y_layer_row, stringResource(Res.string.layer_name_photo), message.position, message.count),
     )
-    is PhotoToastMessage.LayerOrder -> stringResource(Res.string.a11y_layer_order, message.position, message.count)
+    is PhotoToastMessage.LayerOrder -> stringResource(UiRes.string.a11y_layer_order, message.position, message.count)
     is PhotoToastMessage.PositionTransformed -> stringResource(
         UiRes.string.a11y_text_transformed,
         stringResource(UiRes.string.position_size_value, message.scalePercent),
@@ -693,8 +693,8 @@ private fun toastText(message: PhotoToastMessage): String = when (message) {
 @Composable
 private fun editName(edit: PhotoEdit): String = stringResource(
     when (edit) {
-        PhotoEdit.TRANSFORM, PhotoEdit.POSITION, PhotoEdit.TRANSFORM_TEXT, PhotoEdit.POSITION_TEXT -> Res.string.edit_transform_layer
-        PhotoEdit.OPACITY -> Res.string.edit_layer_opacity
+        PhotoEdit.TRANSFORM, PhotoEdit.POSITION, PhotoEdit.TRANSFORM_TEXT, PhotoEdit.POSITION_TEXT -> UiRes.string.edit_transform_layer
+        PhotoEdit.OPACITY -> UiRes.string.edit_layer_opacity
         PhotoEdit.LOCK -> Res.string.edit_lock
         PhotoEdit.UNLOCK -> Res.string.edit_unlock
         PhotoEdit.HIDE -> Res.string.edit_layer_hide

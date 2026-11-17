@@ -86,6 +86,9 @@ internal class TimelinePainter(
     /** Thumbnail tiles are squares the main clip's height. */
     val tileSizePx: Int = with(density) { MemixSize.trackHeightVideo.roundToPx() }
 
+    /** An overlay clip's tiles are squares `track-height` tall (28 dp, spec P4-01b → Overlay lanes): the main strip's pictures, drawn smaller. */
+    val overlayTileSizePx: Int = with(density) { MemixSize.trackHeight.roundToPx() }
+
     private val itemPath = Path()
     private val place = ItemPlace()
     private val layerPaint = Paint()
@@ -238,10 +241,10 @@ internal class TimelinePainter(
         val right = left + widthPx(endUs - startUs, place.pxPerUs)
         val pastEnd = endUs > place.lengthUs
         when (row.track.kind) {
-            TrackKind.MAIN_VIDEO -> drawStrip(item, row, left, right, trimInUs, trimOutUs, place)
-            // Overlays get their thumbnails and their label rules with P4-01.
+            TrackKind.MAIN_VIDEO -> drawStrip(item, row, left, right, trimInUs, trimOutUs, place, tileSizePx)
+            // Thumbnails and no label; the part past the end of the video is washed (spec P4-01b → Overlay lanes).
             TrackKind.OVERLAY -> {
-                drawItemBody(row, left, right, MemixColors.trackVideo)
+                drawStrip(item, row, left, right, trimInUs, trimOutUs, place, overlayTileSizePx)
                 if (pastEnd) drawPastEndWash(row, left, right, place.endX)
             }
             TrackKind.TEXT, TrackKind.STICKER, TrackKind.MEME_SOUND, TrackKind.AUDIO, TrackKind.EFFECT -> {
@@ -390,7 +393,7 @@ internal class TimelinePainter(
      * the frame at its own start (see [tileSourceTimeUs]); until it arrives, the nearest tile already in memory
      * stands in, and the exact one fades in over it in 120 ms.
      */
-    private fun DrawScope.drawStrip(item: ItemUi, row: LaneRow, left: Float, right: Float, trimInUs: Long, trimOutUs: Long, place: ItemPlace) {
+    private fun DrawScope.drawStrip(item: ItemUi, row: LaneRow, left: Float, right: Float, trimInUs: Long, trimOutUs: Long, place: ItemPlace, tileEdgePx: Int) {
         val top = row.itemTopPx
         val media = item.media
         val thumbnails = place.thumbnails
@@ -403,7 +406,7 @@ internal class TimelinePainter(
         clipPath(itemShape(left, top, right, top + row.itemHeightPx)) {
             drawRect(MemixColors.trackVideo, Offset(left, top), Size(right - left, row.itemHeightPx))
             if (media == null || thumbnails == null) return@clipPath
-            val tilePx = tileSizePx.toFloat()
+            val tilePx = tileEdgePx.toFloat()
             val tileDurationUs = (tilePx / pxPerUs).toLong()
             val firstTile = max(0, floor(-left / tilePx).toInt())
             val lastTile = min(ceil((right - left) / tilePx).toInt() - 1, floor((size.width - left) / tilePx).toInt())
@@ -412,17 +415,17 @@ internal class TimelinePainter(
                 val tile = thumbnails.tileAt(media, timeUs) ?: continue
                 val x = left + tileIndex * tilePx
                 val alpha = if (tile.timeUs == timeUs) fadeInAlpha(tile) else 1f
-                if (alpha < 1f) thumbnails.standInFor(media, timeUs)?.let { drawTile(it, x, top, alpha = 1f) }
-                drawTile(tile, x, top, alpha)
+                if (alpha < 1f) thumbnails.standInFor(media, timeUs)?.let { drawTile(it, x, top, alpha = 1f, tileEdgePx) }
+                drawTile(tile, x, top, alpha, tileEdgePx)
             }
         }
     }
 
-    private fun DrawScope.drawTile(tile: ThumbnailTile, x: Float, top: Float, alpha: Float) {
+    private fun DrawScope.drawTile(tile: ThumbnailTile, x: Float, top: Float, alpha: Float, edgePx: Int = tileSizePx) {
         drawImage(
             tile.image,
             dstOffset = IntOffset(x.roundToInt(), top.roundToInt()),
-            dstSize = IntSize(tileSizePx, tileSizePx),
+            dstSize = IntSize(edgePx, edgePx),
             alpha = alpha,
         )
     }

@@ -41,9 +41,9 @@ enum class OriginalSound {
     DETACHED,
 }
 
-/** The state of main clip [itemId]'s own sound; null when [itemId] isn't a main clip. */
+/** The state of main or overlay clip [itemId]'s own sound; null when [itemId] is neither (P4-01b: an overlay video has its own sound too). */
 fun Project.originalSoundOf(itemId: String): OriginalSound? {
-    val clip = mainClip(itemId) ?: return null
+    val (_, clip) = soundBearingClip(itemId) ?: return null
     return when {
         !clip.hasOwnSound() -> OriginalSound.NONE
         clip.audioDetached -> OriginalSound.DETACHED
@@ -52,7 +52,7 @@ fun Project.originalSoundOf(itemId: String): OriginalSound? {
 }
 
 /**
- * Moves main clip [itemId]'s own sound to a new audio clip [audioClipId]: the same source, trim and volume, starting at
+ * Moves main or overlay clip [itemId]'s own sound to a new audio clip [audioClipId]: the same source, trim and volume, starting at
  * the clip's start, on the first Audio lane free for that span, else a new lane [newTrackId] after the last one. The
  * clip's `audioDetached` becomes true, so its sound plays only from the new clip. While every clip is muted, the new
  * clip starts at 0%, so nothing suddenly gets louder. Nothing changes unless the clip's sound plays
@@ -60,8 +60,7 @@ fun Project.originalSoundOf(itemId: String): OriginalSound? {
  */
 fun Project.detachAudio(itemId: String, audioClipId: String, newTrackId: String): Project {
     if (originalSoundOf(itemId) != OriginalSound.PLAYS) return this
-    val clip = mainClip(itemId) ?: return this
-    val track = mainTrack() ?: return this
+    val (track, clip) = soundBearingClip(itemId) ?: return this
     val audio = AudioClip(
         id = audioClipId,
         startUs = clip.startUs,
@@ -72,6 +71,14 @@ fun Project.detachAudio(itemId: String, audioClipId: String, newTrackId: String)
     )
     val detached = replaceTrack(track.copy(items = track.items.map { if (it.id == itemId) clip.copy(audioDetached = true) else it }))
     return detached.withItemOnFreeLane(audio, TrackKind.AUDIO, detached.tracks().filter { it.kind == TrackKind.AUDIO }, newTrackId)
+}
+
+// A main clip, or an overlay clip, with the track it is on: the clips whose own sound plays.
+private fun Project.soundBearingClip(itemId: String): Pair<app.memix.core.model.project.Track, MediaClip>? {
+    mainClip(itemId)?.let { clip -> mainTrack()?.let { return it to clip } }
+    val overlay = overlayClip(itemId) ?: return null
+    val track = findItem(itemId)?.track ?: return null
+    return track to overlay
 }
 
 // A video measured with a sound track this phone can decode; media from before schema 2 isn't measured (null) and

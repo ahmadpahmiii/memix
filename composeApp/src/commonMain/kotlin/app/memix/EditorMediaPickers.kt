@@ -16,7 +16,7 @@ import app.memix.platform.services.PickerMedia
 import app.memix.platform.services.rememberMediaPickerLauncher
 
 /**
- * The video editor's three system pickers (P1-16, P2-12): up to 35 items for Add media, one for Replace, one image for the canvas background. Opens the one
+ * The video editor's system pickers (P1-16, P2-12, P4-01b): up to 35 items for Add media, one for Replace and for an overlay, one image for the canvas background. Opens the one
  * [request] asks for and keeps that request while the picker is open, saved with the screen, so the result goes back
  * to the editor with what it was for ([VideoEditorIntent.MediaPicked]) even after Android restarted the app behind the
  * picker. Call it unconditionally in the editor's destination: a result after a restart reaches only a picker
@@ -42,6 +42,7 @@ internal fun EditorMediaPickers(request: MediaPickRequest?, onIntent: (VideoEdit
             is MediaPickRequest.Add -> addPicker
             is MediaPickRequest.Replace -> replacePicker
             MediaPickRequest.Background -> backgroundPicker
+            is MediaPickRequest.Overlay -> replacePicker
         }
         if (picker.launch()) {
             currentOnIntent(VideoEditorIntent.PickerOpened)
@@ -58,6 +59,7 @@ private val MediaPickRequestSaver = Saver<MediaPickRequest?, List<Any>>(
         when (request) {
             null -> emptyList()
             MediaPickRequest.Background -> listOf(KIND_BACKGROUND)
+            is MediaPickRequest.Overlay -> listOf(KIND_OVERLAY, request.atUs)
             is MediaPickRequest.Replace -> listOf(KIND_REPLACE, request.itemId)
             is MediaPickRequest.Add -> when (val place = request.place) {
                 is MediaPlace.AfterClipAt -> listOf(KIND_AFTER_CLIP, place.atUs)
@@ -71,6 +73,7 @@ private val MediaPickRequestSaver = Saver<MediaPickRequest?, List<Any>>(
             KIND_AFTER_CLIP -> MediaPickRequest.Add(MediaPlace.AfterClipAt(saved[1] as Long))
             KIND_END -> MediaPickRequest.Add(MediaPlace.End)
             KIND_BACKGROUND -> MediaPickRequest.Background
+            KIND_OVERLAY -> MediaPickRequest.Overlay(saved[1] as Long)
             else -> null
         }
     },
@@ -80,3 +83,4 @@ private const val KIND_REPLACE = "replace"
 private const val KIND_AFTER_CLIP = "after"
 private const val KIND_END = "end"
 private const val KIND_BACKGROUND = "background"
+private const val KIND_OVERLAY = "overlay"

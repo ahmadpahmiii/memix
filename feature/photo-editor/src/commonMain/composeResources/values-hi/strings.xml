@@ -2,7 +2,6 @@
 <resources>
     <!-- Machine-drafted until P5-06. P2-01 photo editor. English source, budgets and translator notes: docs/ux/specs/P2-01-photo-editor-shell.md -> Copy. Compose resources keep ' and % as written: use plain apostrophes and a single %. -->
     <string name="tool_layers">लेयर</string>
-    <string name="tool_layer_opacity">पारदर्शिता</string>
     <string name="tool_lock">लॉक</string>
     <string name="tool_unlock">अनलॉक</string>
     <string name="tool_hide_layer">छिपाएँ</string>
@@ -11,7 +10,6 @@
     <string name="layers_title">लेयर</string>
     <string name="layers_move_up">लेयर ऊपर ले जाएँ</string>
     <string name="layers_move_down">लेयर नीचे ले जाएँ</string>
-    <string name="layers_opacity">पारदर्शिता</string>
     <string name="layers_locked_opacity">लॉक है। पारदर्शिता बदलने के लिए यह लेयर अनलॉक करें।</string>
     <string name="layer_name_photo">फ़ोटो</string>
     <string name="layer_meta_locked">लॉक</string>
@@ -30,7 +28,6 @@
     <string name="a11y_layer_hidden">छिपी है।</string>
     <string name="a11y_layer_missing">फ़ाइल नहीं मिली।</string>
     <string name="a11y_layer_opacity">%1$d प्रतिशत पारदर्शिता।</string>
-    <string name="a11y_layer_order">लेयर %1$d / %2$d</string>
     <string name="explain_layer_locked">यह लेयर लॉक है। बदलने के लिए इसे अनलॉक करें।</string>
     <string name="explain_layer_one">क्रम बदलने के लिए कम से कम दो लेयर चाहिए।</string>
     <string name="explain_layer_front">यह लेयर पहले से सबसे आगे है।</string>
@@ -43,8 +40,6 @@
     <string name="photo_background_hidden">आपकी फ़ोटो पूरे फ़्रेम को ढकती है, इसलिए बैकग्राउंड नहीं दिखता।</string>
     <string name="photo_empty_title">यह कैनवास खाली है</string>
     <string name="photo_empty_body">अपनी लेयर वापस पाने के लिए पूर्ववत करें दबाएँ, या टेक्स्ट या फ़ोटो जोड़ें दबाकर कुछ नया जोड़ें।</string>
-    <string name="edit_transform_layer">स्थिति और आकार</string>
-    <string name="edit_layer_opacity">पारदर्शिता</string>
     <string name="edit_lock">लॉक</string>
     <string name="edit_unlock">अनलॉक</string>
     <string name="edit_layer_hide">छिपाएँ</string>
