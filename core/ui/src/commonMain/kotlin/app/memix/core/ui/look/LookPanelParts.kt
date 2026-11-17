@@ -27,6 +27,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixShapes
 import app.memix.core.designsystem.MemixSize
@@ -188,7 +189,8 @@ private fun FilterTile(name: String, tile: ImageBitmap?, selected: Boolean, posi
         ) {
             if (tile != null) Image(BitmapPainter(tile), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         }
-        Text(name, MemixTheme.type.label, color = MemixColors.text)
+        // Centered under the picture, one line or several, the same in the Filters and Transition strips (design review P4-08).
+        Text(name, MemixTheme.type.label, Modifier.fillMaxWidth(), color = MemixColors.text, textAlign = TextAlign.Center)
     }
 }
 

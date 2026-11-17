@@ -50,7 +50,8 @@ fun Project.splitItem(itemId: String, atUs: Long, newItemId: String): Project {
     val (track, item) = findItem(itemId) ?: return this
     val leftLengthUs = atUs - item.startUs
     val (leftKeyframes, rightKeyframes) = item.keyframesAfterSplit(leftLengthUs)
-    val left = item.withLength(leftLengthUs).withoutFade(FadeEdge.OUT).withFadesFitted().withKeyframesIfAny(leftKeyframes)
+    // The transition leads from the clip's end into the next clip, so it goes with the right piece; the cut between the pieces is plain (P4-08).
+    val left = item.withLength(leftLengthUs).withoutFade(FadeEdge.OUT).withFadesFitted().withKeyframesIfAny(leftKeyframes).withoutTransition()
     val right = item.withId(newItemId).withStart(atUs).trimmedFromStart(leftLengthUs).withoutFade(FadeEdge.IN).withFadesFitted().withKeyframesIfAny(rightKeyframes)
     return replaceTrack(track.copy(items = track.items.flatMap { if (it.id == itemId) listOf(left, right) else listOf(it) }))
 }
@@ -107,7 +108,13 @@ fun Project.canDelete(itemId: String): Boolean {
 fun Project.deleteItem(itemId: String): Project {
     if (!canDelete(itemId)) return this
     val (track, _) = findItem(itemId) ?: return this
-    if (track.kind == TrackKind.MAIN_VIDEO) return replaceTrack(track.copy(items = repacked(mainClipsInOrder(track).filterNot { it.id == itemId })))
+    if (track.kind == TrackKind.MAIN_VIDEO) {
+        // The clip before it now leads into a different clip, so its transition (made for the old pair) goes (P4-08).
+        val ordered = mainClipsInOrder(track)
+        val index = ordered.indexOfFirst { it.id == itemId }
+        val remaining = ordered.filterNot { it.id == itemId }.mapIndexed { place, item -> if (place == index - 1) item.withoutTransition() else item }
+        return replaceTrack(track.copy(items = repacked(remaining)))
+    }
     val items = track.items.filterNot { it.id == itemId }
     if (items.isEmpty()) return withTracks(tracks().filterNot { it.id == track.id })
     return replaceTrack(track.copy(items = items))
@@ -232,6 +239,8 @@ internal fun TimelineItem.withStart(startUs: Long): TimelineItem = when (this) {
 }
 
 // A detached clip's copy (P1-09 review, P1): the same rule as Replace on a detached clip (MediaEdits).
+private fun TimelineItem.withoutTransition(): TimelineItem = if (this is MediaClip && transitionOut != null) copy(transitionOut = null) else this
+
 private fun TimelineItem.withOwnSoundAtZero(): TimelineItem =
     if (this is MediaClip && audioDetached) copy(audioDetached = false, volume = 0f) else this
 

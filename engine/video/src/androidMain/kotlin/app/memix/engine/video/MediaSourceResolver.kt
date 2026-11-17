@@ -13,10 +13,12 @@ internal data class ResolvedSources(
     val missingItemIds: List<String>,
     /** The plan's background picture, when it has one and it is on the phone; null otherwise (the bars draw black). */
     val backgroundFile: File?,
+    /** The still picture of each frame a transition holds (P4-08); a hold missing here leaves that side of the cut fading toward black. */
+    val heldFrames: Map<HoldKey, Uri> = emptyMap(),
 )
 
 /** Finds the file each clip of a [CompositionPlan] plays from. Reads the disk, so call it off the main thread. */
-internal class MediaSourceResolver(private val filesDir: File) {
+internal class MediaSourceResolver(private val filesDir: File, private val heldFrames: HeldFrames) {
 
     fun resolve(plan: CompositionPlan): ResolvedSources {
         val uriByMedia = mutableMapOf<MediaRef, Uri>()
@@ -26,7 +28,7 @@ internal class MediaSourceResolver(private val filesDir: File) {
             val uri = uriFor(media)
             if (uri != null) uriByMedia[media] = uri else missingItemIds += itemId
         }
-        return ResolvedSources(uriByMedia, missingItemIds, backgroundFileOf(plan))
+        return ResolvedSources(uriByMedia, missingItemIds, backgroundFileOf(plan), heldFrames.resolve(plan, uriByMedia))
     }
 
     /** The background picture's file when the plan has one and it is on the phone; null otherwise (the bars draw black). */

@@ -58,6 +58,7 @@ import memix.core.designsystem.generated.resources.ic_minus
 import memix.core.designsystem.generated.resources.ic_mic
 import memix.core.designsystem.generated.resources.ic_more
 import memix.core.designsystem.generated.resources.ic_effects
+import memix.core.designsystem.generated.resources.ic_transition
 import memix.core.designsystem.generated.resources.ic_move_here
 import memix.core.designsystem.generated.resources.ic_pause
 import memix.core.designsystem.generated.resources.ic_photo
@@ -90,6 +91,7 @@ import org.jetbrains.compose.resources.painterResource
 object MemixIcons {
     val Adjust = Res.drawable.ic_adjust
     val Effects = Res.drawable.ic_effects
+    val Transition = Res.drawable.ic_transition
     val Arrow = Res.drawable.ic_arrow
     val ArrowBack = Res.drawable.ic_arrow_back
     val ArrowLeft = Res.drawable.ic_arrow_left

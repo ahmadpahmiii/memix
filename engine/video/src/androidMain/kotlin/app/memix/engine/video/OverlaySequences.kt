@@ -45,11 +45,34 @@ internal class OverlaySequences(
 ) {
     private val layersTopFirst: List<OverlayLayer> = plan.overlays.asReversed()
 
-    /** The video sequences in compositing order: the stage, the layers top first, then [main]. */
-    fun videoSequences(main: EditedMediaItemSequence): List<EditedMediaItemSequence> =
-        listOf(stage()) + layersTopFirst.map(::layerSequence) + main
+    /**
+     * The video sequences in compositing order: the stage, the layers top first, [main], then the transitions' [partner] beneath it (P4-08), which
+     * [partnerLayer] describes for the compositor settings.
+     */
+    fun videoSequences(main: EditedMediaItemSequence, partner: EditedMediaItemSequence?, partnerLayer: TransitionLayer?): List<EditedMediaItemSequence> {
+        this.partnerLayer = partnerLayer
+        return listOf(stage()) + layersTopFirst.map(::layerSequence) + main + listOfNotNull(partner)
+    }
 
-    fun compositorSettings(): OverlayCompositorSettings = OverlayCompositorSettings(layersTopFirst.map(::timelineOf), frame)
+    fun compositorSettings(): OverlayCompositorSettings = OverlayCompositorSettings(layersTopFirst.map(::timelineOf), frame, partnerLayer?.let(::partnerTimelineOf))
+
+    // Set when the sequences are listed; the settings are made from the same layer.
+    private var partnerLayer: TransitionLayer? = null
+
+    // Where the partner shows: its pieces (not its gaps), which the compositor draws and hides the rest.
+    private fun partnerTimelineOf(layer: TransitionLayer): OverlayCompositorSettings.PartnerTimeline {
+        val starts = mutableListOf<Long>()
+        val ends = mutableListOf<Long>()
+        var cursorUs = 0L
+        for (segment in layer.segments) {
+            if (segment !is Gap) {
+                starts += cursorUs
+                ends += cursorUs + segment.durationUs
+            }
+            cursorUs += segment.durationUs
+        }
+        return OverlayCompositorSettings.PartnerTimeline(starts.toLongArray(), ends.toLongArray())
+    }
 
     private fun stage(): EditedMediaItemSequence =
         EditedMediaItemSequence.Builder(setOf(C.TRACK_TYPE_VIDEO)).addGap(plan.durationUs).build()

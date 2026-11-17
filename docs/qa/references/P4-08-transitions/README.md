@@ -1,0 +1,7 @@
+# P4-08 transition references
+
+One strip per transition (`<id>.png`, 810 x 480): progress 25%, 50% and 75% at the transition's default length, from `TransitionMath` (`:core:domain`), the CPU twin the GLSL shaders (`TransitionShaders`, `:engine:video`) were written from. `scene-a.png` and `scene-b.png` are the two pictures (270 x 480; A a lettered grid with a white square, B colour bars with a black square). Desktop only: **the shaders have not run on a GPU**; QA compares a phone export frame, scaled to 270 wide, with these (99% of pixels within 3/255). The first phone pass pins them.
+
+Notes: frames at the window's start and end equal plain A and plain B; Dip to black and Dip to white are black or white at 50% (the cut); Glitch cut is in a burst at 25, 50 and 75% (its three bursts sit at 20, 50 and 80% of the window); outside the picture is black (Twirl, Zoom through, Flip). `make-transition-clips.sh` makes the two 6 s test clips for the `transitions-*` debug scenes (steps: `docs/qa/phase-4/engineer-hand-checks.md` → P4-08).
+
+Harness checks (not in the repo, 321 pass): first and last frames plain; two layers equal `mix(A', B', m)` within 1 level; deterministic; half-size twin agrees; one luminance peak for Dip to white; at most 3 glitch bursts of at most 90 ms; the audio plan fields and a software mix of them identical with and without a transition (20 transitions x 2 durations x 4 scenes, difference 0.0).

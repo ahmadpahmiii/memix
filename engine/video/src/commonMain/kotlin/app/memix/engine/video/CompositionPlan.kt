@@ -44,6 +44,11 @@ internal data class CompositionPlan(
      * pass only when this isn't empty; the items it holds are read live per frame, so an edit of one needs no new composition.
      */
     val effects: List<EffectSpan> = emptyList(),
+    /**
+     * The partner sequence of the transitions (P4-08): the other picture of each cut, a video-only layer beneath the main video that shows only inside
+     * the windows. Null when no cut has a transition this build draws.
+     */
+    val transitionLayer: TransitionLayer? = null,
     /** Overlay clips left out because the phone can't decode that many videos at once, or their size isn't known (see [OverlayAdmission]). */
     val skippedOverlayIds: List<String> = emptyList(),
     /** One log line per thing in the project this engine doesn't render yet, naming the ticket that adds it. */
@@ -54,6 +59,12 @@ internal data class CompositionPlan(
 
     /** True when overlays are drawn: the engine then composites several video sequences instead of playing the main one alone. */
     val hasOverlays: Boolean get() = overlays.isNotEmpty()
+
+    /** True when a transition is drawn (P4-08): it needs the compositor too, for the partner sequence beneath the main video. */
+    val hasTransitions: Boolean get() = transitionLayer != null
+
+    /** True when the engine composites several video sequences: overlays or transitions. */
+    val compositesSequences: Boolean get() = hasOverlays || hasTransitions
 
     /** True when the export needs an audio track: a main clip plays its own sound, or an audio lane exists. */
     val hasAudio: Boolean
@@ -86,7 +97,8 @@ internal data class CompositionPlan(
             val mainMedia = mainVideo.filterIsInstance<VisualClip>().map { it.itemId to it.source }
             val overlayMedia = overlays.flatMap { it.segments }.filterIsInstance<OverlayClip>().map { it.itemId to it.source }
             val laneMedia = audioLanes.flatMap { it.segments }.filterIsInstance<SoundClip>().map { it.itemId to it.source }
-            return mainMedia + overlayMedia + laneMedia
+            val partnerMedia = transitionLayer?.segments.orEmpty().filterIsInstance<PartnerClip>().map { it.clip.itemId to it.clip.source }
+            return mainMedia + overlayMedia + partnerMedia + laneMedia
         }
 
     /** Where each sound of the audio lanes starts on the timeline, µs, in lane order. */
@@ -110,8 +122,11 @@ internal data class CompositionPlan(
         fun MainVideoSegment.gapIfListed() = if (this is VisualClip && itemId in itemIds) Gap(durationUs) else this
         fun AudioSegment.gapIfListed() = if (this is SoundClip && itemId in itemIds) Gap(durationUs) else this
         fun OverlaySegment.gapIfListed() = if (this is OverlayClip && itemId in itemIds) Gap(durationUs) else this
+        // A cut next to a clip that plays black has no transition: the window is drawn from the two pictures and one is missing.
+        val windowsLost = mainVideo.filterIsInstance<VisualClip>().filter { it.itemId in itemIds }.flatMap { it.transitions }.toSet()
         return copy(
-            mainVideo = mainVideo.map { it.gapIfListed() },
+            mainVideo = mainVideo.map { it.gapIfListed() }.map { segment -> if (segment is VisualClip && windowsLost.isNotEmpty()) segment.copy(transitions = segment.transitions - windowsLost) else segment },
+            transitionLayer = transitionLayer?.withoutWindows(windowsLost),
             overlays = overlays
                 .map { layer -> layer.copy(segments = layer.segments.map { it.gapIfListed() }) }
                 .filter { layer -> layer.segments.any { it is OverlayClip } },
@@ -120,6 +135,18 @@ internal data class CompositionPlan(
                 .filter { lane -> lane.segments.any { it is SoundClip } },
         )
     }
+}
+
+private fun TransitionLayer.withoutWindows(lost: Set<TransitionWindow>): TransitionLayer? {
+    if (lost.isEmpty()) return this
+    val segments = segments.map { segment ->
+        when {
+            segment is PartnerClip && segment.window in lost -> Gap(segment.durationUs)
+            segment is PartnerHold && segment.window in lost -> Gap(segment.durationUs)
+            else -> segment
+        }
+    }
+    return if (segments.any { it !is Gap }) TransitionLayer(segments) else null
 }
 
 /** What fills the canvas around a fitted clip. */
@@ -155,7 +182,7 @@ internal sealed interface OverlaySegment {
 }
 
 /** Empty time: black frames on the main video sequence, silence in an audio lane, nothing drawn in an overlay layer. */
-internal data class Gap(override val durationUs: Long) : MainVideoSegment, AudioSegment, OverlaySegment
+internal data class Gap(override val durationUs: Long) : MainVideoSegment, AudioSegment, OverlaySegment, PartnerSegment
 
 /** A video or photo on the main track, shown at the canvas size. */
 internal data class VisualClip(
@@ -184,6 +211,8 @@ internal data class VisualClip(
     val mask: ClipMask? = null,
     /** The filter and adjustments (P4-07): after the key, on the clip's own picture, before Fit or Fill. Neutral is none. */
     val look: ClipLook = ClipLook.NONE,
+    /** The transitions this clip is drawn through (P4-08): the one at its end (as the outgoing picture) and the one at its start (as the incoming), in composition time. */
+    val transitions: List<TransitionWindow> = emptyList(),
 ) : MainVideoSegment {
     override val durationUs: Long get() = trimOutUs - trimInUs
 

@@ -143,6 +143,8 @@ data class VideoEditorUiState(
     val effectsSheet: EffectsSheetUi? = null,
     /** The Intensity panel of the selected effect item (P4-06), or null when it is closed. */
     val effectPanel: EffectPanelUi? = null,
+    /** The Transition panel of the selected main clip's cut (P4-08), or null when it is closed. */
+    val transitionPanel: TransitionPanelUi? = null,
     /**
      * An overlay a finger or a held arrow moved, or a commit the preview hasn't shown yet: the editor's stand-in draws it from
      * there until the preview's new frame takes over, so it never shows twice or jumps (spec P4-01b → Live feedback). Null otherwise.
@@ -485,6 +487,9 @@ enum class FocusTarget {
     EFFECTS_TOOL,
     CHANGE_EFFECT_TOOL,
     INTENSITY_TOOL,
+
+    /** The selected main clip's Transition tool, after its panel closes (P4-08). */
+    TRANSITION_TOOL,
 }
 
 /** What a spoken mask step reads out: the width or height in percent, or the turn in degrees (a move is read as a place). */
@@ -567,6 +572,10 @@ enum class Explanation {
     AUDIO_EFFECTS_MISSING,
     FADE_TOO_SHORT,
 
+    /** Transition tool (P4-08): on the last clip (nothing follows it), or on a cut whose two clips are too short to give 0.1 s. */
+    TRANSITION_LAST,
+    TRANSITION_SHORT,
+
     /** A fourth effect would overlap three others: an add, move, trim or duplicate that would make one is refused (P4-06). */
     EFFECT_MAX,
     EFFECT_FLASH,
@@ -621,6 +630,9 @@ sealed interface ToastMessage {
 
     /** Spoken only, after an overlay landed. */
     data object OverlayAdded : ToastMessage
+
+    /** An edit shortened a transition to fit, or removed it ([removed]) because its clips got too short (P4-08); 3 s. */
+    data class TransitionSettled(val removed: Boolean) : ToastMessage
 
     /** Spoken only, after an effect landed on the timeline (P4-06). */
     data object EffectAdded : ToastMessage
@@ -1102,6 +1114,19 @@ sealed interface VideoEditorIntent {
     /** The Intensity slider moved: seen at once, nothing committed yet; and let go (or stepped): one step. */
     data class EffectIntensityChanged(val intensity: Float) : VideoEditorIntent
     data object EffectIntensityReleased : VideoEditorIntent
+
+    /** Transition on the selected main clip's bar: the panel for the cut after it opens, or the tool says why it can't (P4-08). */
+    data object TransitionTool : VideoEditorIntent
+
+    /** Done, system back or Escape on the Transition panel. */
+    data object CloseTransition : VideoEditorIntent
+
+    /** A tile (null is None): one step, then the cut plays once. */
+    data class TransitionPicked(val id: String?) : VideoEditorIntent
+
+    /** The Duration slider moved (µs, seen at once, nothing committed), and was let go or stepped (one step). */
+    data class TransitionDurationChanged(val durationUs: Long) : VideoEditorIntent
+    data object TransitionDurationReleased : VideoEditorIntent
 
     /** Filters on the main bar: the panel opens for every main clip (spec P4-07 → The tool and its scope). */
     data object FiltersAllTool : VideoEditorIntent

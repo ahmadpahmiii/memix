@@ -71,9 +71,13 @@ fun Project.exceedsEffectOverlap(): Boolean {
     return false
 }
 
-/** True when more than [EffectCatalog.MAX_FLASHES_PER_SECOND] Flash items start within any one second (spec P4-06 → Photosensitivity). */
+/**
+ * True when more than [EffectCatalog.MAX_FLASHES_PER_SECOND] flash events fall within any one second (spec P4-06 → Photosensitivity; WCAG 2.3.1). The events are
+ * the start of each Flash item and the flashes of transitions ([transitionFlashTimesUs]: one for each Dip to white, three for each Glitch cut), so the two
+ * kinds count together.
+ */
 fun Project.exceedsFlashRate(): Boolean {
-    val starts = effectItemsInLaneOrder().filter { it.effectId == EffectCatalog.FLASH_ID }.map { it.startUs }.sorted()
+    val starts = (effectItemsInLaneOrder().filter { it.effectId == EffectCatalog.FLASH_ID }.map { it.startUs } + transitionFlashTimesUs()).sorted()
     val limit = EffectCatalog.MAX_FLASHES_PER_SECOND
     return (0..starts.size - limit - 1).any { starts[it + limit] - starts[it] < FLASH_WINDOW_US }
 }

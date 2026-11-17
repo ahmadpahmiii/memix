@@ -14,6 +14,7 @@ import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
 import app.memix.core.model.project.ClipLook
+import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.PixelSize
 import java.io.File
@@ -57,6 +58,8 @@ internal class Media3CompositionBuilder(
     private val lutTables: LutTables? = null,
     /** The preview's live effect items (P4-06: an edit of one moves it without a new composition); a plan with effects and none here gets its own fixed list. */
     private val liveEffects: LiveEffects? = null,
+    /** The still picture of each frame a transition holds (P4-08); a hold missing here leaves that side of the cut with nothing beneath it: the picture fades toward black there. */
+    private val heldFrames: Map<HoldKey, Uri> = emptyMap(),
     /** The plan's captions over the composited video; null when the plan has none. */
     private val captionOverlay: CaptionOverlay? = null,
     /** The "Memix" mark of a free export, drawn above the captions; null in previews and watermark-free exports (P1-13). */
@@ -79,6 +82,11 @@ internal class Media3CompositionBuilder(
     // The background picture at the frame's size, decoded once for every clip (P2-12). Reads the file: build() runs off the main thread.
     private val pictureBars: BackgroundBars? = if (plan.background is PlanBackground.Image) BackgroundBars(backgroundFile, frame) else null
 
+    // The partner layer with the holds whose still picture couldn't be read turned into gaps: that side of the cut then has nothing beneath it.
+    private val partnerLayer: TransitionLayer? = plan.transitionLayer?.let { layer ->
+        TransitionLayer(layer.segments.map { if (it is PartnerHold && HoldKey(it.clip.source, it.atUs) !in heldFrames) Gap(it.durationUs) else it })
+    }
+
     private fun framingOf(clip: VisualClip): CanvasFraming {
         val key = clip.chromaKey?.let { liveKeys[clip.itemId] ?: LiveChromaKey(it) }
         val mask = clip.mask?.let { liveMasks[clip.itemId] ?: LiveMask(it) }
@@ -93,10 +101,10 @@ internal class Media3CompositionBuilder(
     }
 
     fun build(): Composition {
-        // With overlays, the video is several sequences composited in a fixed order (OverlaySequences); without, just the main one.
-        val overlays = if (plan.hasOverlays) OverlaySequences(plan, uriByMedia, frame, frameRate, liveGains, liveKeys, liveMasks, liveLooks, lutTables) else null
+        // With overlays or transitions, the video is several sequences composited in a fixed order (OverlaySequences); without, just the main one.
+        val overlays = if (plan.compositesSequences) OverlaySequences(plan, uriByMedia, frame, frameRate, liveGains, liveKeys, liveMasks, liveLooks, lutTables) else null
         val main = mainVideoSequence()
-        val videoSequences = overlays?.videoSequences(main) ?: listOf(main)
+        val videoSequences = overlays?.videoSequences(main, partnerLayer?.let(::partnerSequence), partnerLayer) ?: listOf(main)
         val composition = Composition.Builder(videoSequences + plan.audioLanes.map(::audioSequence))
             // Exports are SDR: every chat app shows SDR right, and Media3 refuses SDR clips or photos
             // after an HDR video in one sequence. OpenGL tone mapping works from API 29, our minSdk.
@@ -141,8 +149,32 @@ internal class Media3CompositionBuilder(
         return sequence.build()
     }
 
-    private fun visualItem(clip: VisualClip): EditedMediaItem {
-        val mediaItem = MediaItem.Builder().setUri(uriByMedia.getValue(clip.source))
+    // The partner sequence of the transitions (P4-08): the other picture of each cut, beneath the main video, video only. Each piece is framed like its
+    // clip and drawn by the layer beneath's transition pass; the gaps between windows are drawn invisible by the compositor settings.
+    private fun partnerSequence(layer: TransitionLayer): EditedMediaItemSequence {
+        val sequence = EditedMediaItemSequence.Builder(setOf(C.TRACK_TYPE_VIDEO))
+        for (segment in layer.segments) {
+            when (segment) {
+                is Gap -> sequence.addGap(segment.durationUs)
+                is PartnerClip -> sequence.addItem(visualItem(segment.clip, uriByMedia.getValue(segment.clip.source), TransitionEffect(listOf(segment.window), onTop = false)))
+                is PartnerHold -> sequence.addItem(heldItem(segment))
+            }
+        }
+        return sequence.build()
+    }
+
+    // A frame the clip has no footage for, held: its still picture, framed like the clip and as long as the stretch it covers.
+    private fun heldItem(hold: PartnerHold): EditedMediaItem {
+        val uri = heldFrames.getValue(HoldKey(hold.clip.source, hold.atUs))
+        val still = hold.clip.copy(source = hold.clip.source.copy(kind = MediaKind.IMAGE, durationUs = null, hasAudio = false), trimInUs = 0, trimOutUs = hold.durationUs)
+        return visualItem(still, uri, TransitionEffect(listOf(hold.window), onTop = false))
+    }
+
+    private fun visualItem(clip: VisualClip): EditedMediaItem =
+        visualItem(clip, uriByMedia.getValue(clip.source), clip.transitions.takeIf { it.isNotEmpty() }?.let { TransitionEffect(it, onTop = true) })
+
+    private fun visualItem(clip: VisualClip, uri: Uri, transition: TransitionEffect?): EditedMediaItem {
+        val mediaItem = MediaItem.Builder().setUri(uri)
         if (clip.isStill) {
             // Media3 treats an item as a photo only when it has an image duration (required since 1.8).
             mediaItem.setImageDurationMs(roundedMs(clip.durationUs))
@@ -154,7 +186,7 @@ internal class Media3CompositionBuilder(
             .setRemoveAudio(!clip.playsOwnAudio)
             // The output rate for photos; a ceiling that drops extra frames from faster videos.
             .setFrameRate(frameRate)
-            .setEffects(Effects(audioProcessors, framingOf(clip).effects()))
+            .setEffects(Effects(audioProcessors, framingOf(clip).effects() + listOfNotNull(transition)))
         // A photo's length comes from its image duration.
         if (!clip.isStill) item.setSourceDuration(clip.source, clip.trimOutUs)
         return item.build()

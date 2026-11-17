@@ -33,6 +33,7 @@ import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.Track
 import app.memix.core.model.project.TrackKind
 import app.memix.core.model.project.Transform
+import app.memix.core.model.project.Transition
 import app.memix.core.model.project.VideoTimeline
 import kotlin.uuid.Uuid
 import org.koin.core.component.KoinComponent
@@ -61,11 +62,11 @@ internal class EditorCheckProjects : KoinComponent {
     suspend fun save(name: String): DebugEditor? {
         if (name == PhotoCheckProjects.EMPTY) return DebugEditor(Uuid.random().toString(), ProjectType.PHOTO, blank = true)
         // The photo scenes' pictures are generated on first use.
-        if (name in PhotoCheckProjects.NAMES || name == CANVAS_IMAGE_CHECK || name == GREENSCREEN_MAIN || name == MASK_MAIN || name in FILTER_SCENES) writeDebugPhotos()
+        if (name in PhotoCheckProjects.NAMES || name == CANVAS_IMAGE_CHECK || name == GREENSCREEN_MAIN || name == MASK_MAIN || name == TRANSITIONS_PHOTOS || name in FILTER_SCENES) writeDebugPhotos()
         // The green screen scenes' pictures are drawn on first use (ChromaCheckFixture).
         if (name == GREENSCREEN_CHECK || name == GREENSCREEN_MAIN) writeChromaCheckPictures()
         // The mask scenes' grid picture is drawn on first use (MaskCheckFixture).
-        if (name == MASK_CHECK || name == MASK_MAIN || name in FILTER_SCENES) writeMaskCheckPicture()
+        if (name == MASK_CHECK || name == MASK_MAIN || name == TRANSITIONS_PHOTOS || name in FILTER_SCENES) writeMaskCheckPicture()
         val project = build(name)
         if (project == null) {
             logger.error(TAG, "Unknown memix.openEditor '$name'. Use ${NAMES.joinToString()}.")
@@ -109,6 +110,10 @@ internal class EditorCheckProjects : KoinComponent {
         EFFECTS_CHECK -> effectsCheck(EFFECTS_CHECK, emptyList())
         STACK_TWO -> effectsCheck(STACK_TWO, stackedEffects(zoomFirst = true))
         STACK_TWO_REVERSE -> effectsCheck(STACK_TWO_REVERSE, stackedEffects(zoomFirst = false))
+        TRANSITIONS_CHECK -> transitionsCheck(TRANSITIONS_CHECK, withSpareMedia = true)
+        TRANSITIONS_HOLD -> transitionsCheck(TRANSITIONS_HOLD, withSpareMedia = false)
+        TRANSITIONS_PHOTOS -> transitionsPhotos()
+        TRANSITIONS_SET -> transitionsSet()
         else -> null
     }
 
@@ -448,6 +453,47 @@ internal class EditorCheckProjects : KoinComponent {
         ) + effects,
     )
 
+    /**
+     * The P4-08 transition scenes (spec docs/ux/specs/P4-08-transitions.md → QA compares; steps in docs/qa/phase-4/engineer-hand-checks.md → P4-08): two 3 s
+     * clips with a cut at 3.0 s, A with a 440 Hz tone over the lettered grid, B with an 880 Hz tone over colour bars (the 6 s `transition-a.mp4` and
+     * `transition-b.mp4`; the ffmpeg commands are in the hand checks), and a meme sound across the cut. `transitions-check` trims both from 1.5 s, so each has real
+     * footage on both sides of the cut (spare media); `transitions-hold` plays each from its start to its end of a 3 s file, so the edge frames are held.
+     * No transition is set: the checker taps one.
+     */
+    private fun transitionsCheck(id: String, withSpareMedia: Boolean): Project {
+        val inUs = if (withSpareMedia) 1_500_000L else 0L
+        val a = if (withSpareMedia) transitionA else transitionA.copy(durationUs = 3_000_000)
+        val b = if (withSpareMedia) transitionB else transitionB.copy(durationUs = 3_000_000)
+        return project(
+            id,
+            mainClips = listOf(
+                MediaClip("tr-a", startUs = 0, source = a, trimInUs = inUs, trimOutUs = inUs + 3_000_000),
+                MediaClip("tr-b", startUs = 3_000_000, source = b, trimInUs = inUs, trimOutUs = inUs + 3_000_000),
+            ),
+            extraTracks = listOf(Track("tr-sounds", TrackKind.MEME_SOUND, listOf(AudioClip("tr-beep", startUs = 3_500_000, source = sound, trimInUs = 500_000, trimOutUs = 1_000_000)))),
+        )
+    }
+
+    // Two stills (the 12 x 12 grid and the patterned 3:2 picture), 3 s each: the photo-to-photo case, where each side of the cut is the same picture.
+    private fun transitionsPhotos(): Project = project(
+        TRANSITIONS_PHOTOS,
+        mainClips = listOf(
+            MediaClip("tr-photo-a", startUs = 0, source = maskGrid, trimInUs = 0, trimOutUs = 3_000_000),
+            MediaClip("tr-photo-b", startUs = 3_000_000, source = photo4x3Measured, trimInUs = 0, trimOutUs = 3_000_000),
+        ),
+    )
+
+    // Three clips with two transitions already set, so the cut cues show at once: Dissolve 0.5 s after the first, Push left 1 s after the second; the
+    // middle clip is 1.2 s long, so a trim under 1 s shortens a transition (the toast) and one more removes it.
+    private fun transitionsSet(): Project = project(
+        TRANSITIONS_SET,
+        mainClips = listOf(
+            MediaClip("tr-set-a", startUs = 0, source = transitionA, trimInUs = 1_500_000, trimOutUs = 4_500_000, transitionOut = Transition("dissolve", 500_000)),
+            MediaClip("tr-set-b", startUs = 3_000_000, source = transitionB, trimInUs = 1_500_000, trimOutUs = 2_700_000, transitionOut = Transition("push_left", 1_000_000)),
+            MediaClip("tr-set-c", startUs = 4_200_000, source = transitionA, trimInUs = 0, trimOutUs = 3_000_000),
+        ),
+    )
+
     private fun stackedEffects(zoomFirst: Boolean): List<Track> {
         val zoom = EffectItem("fx-zoom", startUs = 1_000_000, durationUs = 600_000, effectId = "zoom_punch", intensity = 1f)
         val fry = EffectItem("fx-fry", startUs = 1_000_000, durationUs = 2_000_000, effectId = "deep_fry", intensity = 0.7f)
@@ -565,10 +611,15 @@ internal class EditorCheckProjects : KoinComponent {
         const val EFFECTS_CHECK = "effects-check"
         const val STACK_TWO = "stack-two"
         const val STACK_TWO_REVERSE = "stack-two-reverse"
+        const val TRANSITIONS_CHECK = "transitions-check"
+        const val TRANSITIONS_HOLD = "transitions-hold"
+        const val TRANSITIONS_PHOTOS = "transitions-photos"
+        const val TRANSITIONS_SET = "transitions-set"
         private val FILTER_SCENES = setOf(FILTERS_CHECK, FILTERS_MIXED)
         private val NAMES = listOf(
             EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK,
             TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK, OVERLAY_CHECK, OVERLAY_PERF, KEYFRAME_CHECK, GREENSCREEN_CHECK, GREENSCREEN_MAIN, MASK_CHECK, MASK_MAIN, FILTERS_CHECK, FILTERS_MIXED, EFFECTS_CHECK, STACK_TWO, STACK_TWO_REVERSE,
+            TRANSITIONS_CHECK, TRANSITIONS_HOLD, TRANSITIONS_PHOTOS, TRANSITIONS_SET,
         ) + PhotoCheckProjects.NAMES
         private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20
@@ -604,6 +655,9 @@ internal class EditorCheckProjects : KoinComponent {
         )
         // The 4 s effects scene of P4-06a (desktop-made; the ffmpeg command is in the hand checks), measured like the others.
         private val effectsClip = media("effects-check.mp4", MediaKind.VIDEO).copy(durationUs = 4_000_000, pixelSize = PixelSize(1080, 1920), hasAudio = false)
+        // The 6 s transition scene clips of P4-08 (desktop-made; the ffmpeg commands are in the hand checks): 1080 x 1920, each with its own tone.
+        private val transitionA = media("transition-a.mp4", MediaKind.VIDEO).copy(durationUs = 6_000_000, pixelSize = PixelSize(1080, 1920), hasAudio = true)
+        private val transitionB = media("transition-b.mp4", MediaKind.VIDEO).copy(durationUs = 6_000_000, pixelSize = PixelSize(1080, 1920), hasAudio = true)
         private val photo4x3Measured = photo4x3.copy(pixelSize = PixelSize(1440, 1080), hasAudio = false)
         private val sound = MediaRef(MediaOrigin.CatalogItem("debug-beep"), MediaKind.AUDIO, cachedCopyPath = "${ExportCheckProject.MEDIA_DIR}/sound.m4a")
 

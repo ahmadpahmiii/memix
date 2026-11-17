@@ -122,6 +122,8 @@ import app.memix.feature.videoeditor.greenscreen.GreenScreenPanel
 import app.memix.feature.videoeditor.greenscreen.PickLayer
 import app.memix.feature.videoeditor.effects.EffectPanel
 import app.memix.feature.videoeditor.effects.EffectTiles
+import app.memix.feature.videoeditor.transitions.TransitionPanel
+import app.memix.feature.videoeditor.transitions.TransitionTiles
 import app.memix.feature.videoeditor.effects.EffectsSheet
 import app.memix.feature.videoeditor.looks.LookPanel
 import app.memix.feature.videoeditor.masks.MaskPanel
@@ -319,6 +321,13 @@ import memix.feature.video_editor.generated.resources.edit_effect_delete
 import memix.feature.video_editor.generated.resources.edit_effect_move
 import memix.feature.video_editor.generated.resources.effects_change_title
 import memix.feature.video_editor.generated.resources.explain_effect_flash
+import memix.feature.video_editor.generated.resources.explain_transition_last
+import memix.feature.video_editor.generated.resources.explain_transition_short
+import memix.feature.video_editor.generated.resources.edit_transition_duration
+import memix.feature.video_editor.generated.resources.edit_transition_remove
+import memix.feature.video_editor.generated.resources.tool_transition
+import memix.feature.video_editor.generated.resources.transition_removed_toast
+import memix.feature.video_editor.generated.resources.transition_shortened_toast
 import memix.feature.video_editor.generated.resources.explain_effect_max
 import memix.feature.video_editor.generated.resources.tool_intensity
 import memix.feature.video_editor.generated.resources.keyframe_add
@@ -381,7 +390,8 @@ fun VideoEditorScreen(
     val backgroundThumbnails = rememberBackgroundThumbnails(imageSource, state.canvas?.background, onIntent)
     val lookTiles = rememberLookTiles(imageTools)
     val effectTiles = rememberEffectTiles(imageTools)
-    val panelOpen = state.volumePanel != null || state.audioEffects != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null || state.overlayPanel != null || state.greenScreen != null || state.maskPanel != null || state.lookPanel != null || state.effectPanel != null || state.keyframeBar?.easingOpen == true
+    val transitionTiles = rememberTransitionTiles(imageTools)
+    val panelOpen = state.volumePanel != null || state.audioEffects != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null || state.overlayPanel != null || state.greenScreen != null || state.maskPanel != null || state.lookPanel != null || state.effectPanel != null || state.transitionPanel != null || state.keyframeBar?.easingOpen == true
     val sheetOpen = state.sounds.isOpen || state.effectsSheet != null || state.unsavedSheetOpen || state.exportSheet != null || importSheetShown(state.mediaImport)
     ReturnFocus(state.returnFocus, focusTargets)
     // Typing (spec P1-10 → Typing): the field's words live here, so only the field and the stand-in redraw per key.
@@ -451,6 +461,7 @@ fun VideoEditorScreen(
                     MaskPanel(state.maskPanel, onIntent, Modifier.fillMaxSize())
                     LookPanel(state.lookPanel, lookTiles, onIntent, Modifier.fillMaxSize())
                     EffectPanel(state.effectPanel, onIntent, Modifier.fillMaxSize())
+                    TransitionPanel(state.transitionPanel, transitionTiles, onIntent, Modifier.fillMaxSize())
                     OverlayPanels(state.overlayPanel, { timeUs -> selectedOverlayTransform(state, timeUs) }, panelPlayhead, onIntent, Modifier.fillMaxSize())
                     CanvasPanel(state.canvasPanel, state.canvas, backgroundThumbnails, onIntent, Modifier.fillMaxSize())
                 },
@@ -482,6 +493,13 @@ fun VideoEditorScreen(
 private fun rememberEffectTiles(imageTools: ImageToolRenderer): EffectTiles {
     val scope = rememberCoroutineScope()
     return remember(imageTools) { EffectTiles(imageTools, scope) }
+}
+
+// The Transition panel's 21 tiles, made from the cut's two frames (spec P4-08 → The Transition panel); emptied when the panel closes.
+@Composable
+private fun rememberTransitionTiles(imageTools: ImageToolRenderer): TransitionTiles {
+    val scope = rememberCoroutineScope()
+    return remember(imageTools) { TransitionTiles(imageTools, scope) }
 }
 
 // The Filters panel's 21 tiles, made from a frame of the clip (spec P4-07 → The panel); they live as long as the screen and are emptied when the panel closes.
@@ -1054,6 +1072,9 @@ private fun VideoMemeNoteTimer(shown: Boolean, onTimedOut: () -> Unit) {
 
 private const val VIDEO_MEME_NOTE_MILLIS = 8_000L
 
+/** A transition shortened or removed by another edit says so for three seconds (spec P4-08 → States). */
+private const val TRANSITION_TOAST_MILLIS = 3_000L
+
 /**
  * Hides [toast] after its time: 2 s for what happened, 4 s for an explanation, or longer when the user's "Time to
  * take action" setting asks for it. It runs even while the save banner hides the toast.
@@ -1067,6 +1088,7 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
             is ToastMessage.MediaAdded, ToastMessage.OverlayAdded, ToastMessage.EffectAdded, is ToastMessage.OverlayOpacity, is ToastMessage.OverlayLayer, ToastMessage.NothingToReset, ToastMessage.AudioEffectsReset, is ToastMessage.VoiceoverAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned, is ToastMessage.MaskStepped, is ToastMessage.KeyframeAdded, is ToastMessage.KeyframePicked, ToastMessage.GreenScreenPicked, ToastMessage.KeyframeRemoved, is ToastMessage.EasingChanged,
             -> WHAT_HAPPENED_TOAST_MILLIS
             is ToastMessage.RatioStepped, ToastMessage.ExportStopped, ToastMessage.BackgroundImageSet, ToastMessage.BackgroundImageRemoved -> WHAT_HAPPENED_TOAST_MILLIS
+            is ToastMessage.TransitionSettled -> TRANSITION_TOAST_MILLIS
             is ToastMessage.ExportFrameRateLowered, is ToastMessage.ExportResolutionLowered, is ToastMessage.ExportCantDo,
             is ToastMessage.ExportShapeCantDo,
             -> EXPLANATION_TOAST_MILLIS
@@ -1107,6 +1129,7 @@ private fun toastText(message: ToastMessage): String = when (message) {
     is ToastMessage.OverlayOpacity -> stringResource(Res.string.a11y_overlay_opacity, message.percent)
     is ToastMessage.OverlayLayer -> stringResource(UiRes.string.a11y_layer_order, message.layer, message.count)
     is ToastMessage.Explain -> explanationText(message.explanation)
+    is ToastMessage.TransitionSettled -> stringResource(if (message.removed) Res.string.transition_removed_toast else Res.string.transition_shortened_toast)
     is ToastMessage.KeyframeAdded -> stringResource(Res.string.keyframe_added, formatTimecode(message.atUs))
     ToastMessage.KeyframesOn -> stringResource(Res.string.keyframe_on)
     ToastMessage.KeyframeRemoved -> stringResource(Res.string.a11y_keyframe_removed)
@@ -1206,6 +1229,9 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.KEYFRAME_MOVE -> Res.string.edit_keyframe_move
         VideoEdit.KEYFRAME_EASING -> Res.string.keyframe_easing
         VideoEdit.KEYFRAME_CLEAR -> Res.string.edit_keyframe_clear
+        VideoEdit.TRANSITION -> Res.string.tool_transition
+        VideoEdit.TRANSITION_DURATION -> Res.string.edit_transition_duration
+        VideoEdit.TRANSITION_REMOVE -> Res.string.edit_transition_remove
         VideoEdit.CANVAS_RATIO -> UiRes.string.edit_canvas_ratio
         VideoEdit.CANVAS_FIT -> Res.string.edit_canvas_fit
         VideoEdit.CANVAS_FILL -> Res.string.edit_canvas_fill
@@ -1242,6 +1268,8 @@ private fun explanationText(explanation: Explanation): String = stringResource(
         Explanation.OVERLAY_EDGE -> Res.string.explain_overlay_edge
         Explanation.EFFECT_MAX -> Res.string.explain_effect_max
         Explanation.EFFECT_FLASH -> Res.string.explain_effect_flash
+        Explanation.TRANSITION_LAST -> Res.string.explain_transition_last
+        Explanation.TRANSITION_SHORT -> Res.string.explain_transition_short
         Explanation.MASK_NONE -> Res.string.explain_mask_none
         Explanation.MASK_MIN -> Res.string.explain_mask_min
         Explanation.MASK_MAX -> Res.string.explain_mask_max

@@ -47,7 +47,7 @@ internal class Media3VideoEngine(
     /** Builds with hand checks: previews log where each sound is heard ([SoundOnsetLog]). */
     private val measureSoundOnsets: Boolean = false,
 ) : VideoEngine {
-    private val sourceResolver = MediaSourceResolver(context.filesDir)
+    private val sourceResolver = MediaSourceResolver(context.filesDir, HeldFrames(context, context.cacheDir))
     private val transformerExport = TransformerExport(context)
     private val peaksReader = AudioPeaksReader(context.filesDir, context.cacheDir, ioDispatcher, logger)
     private val decoderBudget = VideoDecoderBudget(logger)
@@ -98,12 +98,13 @@ internal class Media3VideoEngine(
         } catch (e: SecurityException) {
             return failed(e)
         }
-        return writeFile(playable, resolved.uriByMedia, resolved.backgroundFile, settings, output, onProgress)
+        return writeFile(playable, resolved.uriByMedia, resolved.heldFrames, resolved.backgroundFile, settings, output, onProgress)
     }
 
     private suspend fun writeFile(
         plan: CompositionPlan,
         sources: Map<MediaRef, Uri>,
+        heldFrames: Map<HoldKey, Uri>,
         backgroundFile: File?,
         settings: ExportSettings,
         output: ExportOutput,
@@ -122,6 +123,7 @@ internal class Media3VideoEngine(
                     plan,
                     sources,
                     settings.frameRate,
+                    heldFrames = heldFrames,
                     captionOverlay = captions,
                     watermarkOverlay = if (settings.watermark) WatermarkOverlay(captionRenderer) else null,
                     frameShortSidePx = settings.shortSidePx,

@@ -77,6 +77,8 @@ import memix.feature.video_editor.generated.resources.tool_effect_change_click
 import memix.feature.video_editor.generated.resources.tool_effects
 import memix.feature.video_editor.generated.resources.tool_effects_click
 import memix.feature.video_editor.generated.resources.tool_intensity
+import memix.feature.video_editor.generated.resources.tool_transition
+import memix.feature.video_editor.generated.resources.tool_transition_click
 import memix.feature.video_editor.generated.resources.tool_mask
 import memix.feature.video_editor.generated.resources.tool_mask_click
 import memix.feature.video_editor.generated.resources.tool_keyframes
@@ -277,10 +279,12 @@ private fun rememberClipTools(
     val maskClick = stringResource(Res.string.tool_mask_click)
     val filtersLabel = stringResource(Res.string.tool_filters)
     val filtersClick = stringResource(Res.string.tool_filters_click_clip)
+    val transitionLabel = stringResource(Res.string.tool_transition)
+    val transitionClick = stringResource(Res.string.tool_transition_click)
     val intensityLabel = stringResource(Res.string.tool_intensity)
     val changeEffectLabel = stringResource(Res.string.effects_change_title)
     val changeEffectClick = stringResource(Res.string.tool_effect_change_click)
-    return remember(clipTools, intensityLabel, changeEffectLabel, changeEffectClick, isMissing, greenScreenLabel, greenScreenClick, maskLabel, maskClick, filtersLabel, filtersClick, split, delete, duplicate, reorder, volume, audioEffects, moveHere, moveHereClickLabel, replace, detach, textTools, position, opacity, layerOrder, keyframesLabel, keyframesClick, onIntent, reorderFocus, focus) {
+    return remember(clipTools, transitionLabel, transitionClick, intensityLabel, changeEffectLabel, changeEffectClick, isMissing, greenScreenLabel, greenScreenClick, maskLabel, maskClick, filtersLabel, filtersClick, split, delete, duplicate, reorder, volume, audioEffects, moveHere, moveHereClickLabel, replace, detach, textTools, position, opacity, layerOrder, keyframesLabel, keyframesClick, onIntent, reorderFocus, focus) {
         val splitTool = ToolBarItem(split, MemixIcons.Split, { onIntent(VideoEditorIntent.SplitSelected) })
         val deleteTool = ToolBarItem(delete, MemixIcons.Delete, { onIntent(VideoEditorIntent.DeleteSelected) }, ToolTone.Danger)
         val duplicateTool = ToolBarItem(duplicate, MemixIcons.Duplicate, { onIntent(VideoEditorIntent.DuplicateSelected) })
@@ -298,6 +302,8 @@ private fun rememberClipTools(
         val greenScreenTool = ToolBarItem(greenScreenLabel, MemixIcons.GreenScreen, { onIntent(VideoEditorIntent.GreenScreenTool) }, clickLabel = greenScreenClick, focusRequester = focus.greenScreenTool)
         val maskTool = ToolBarItem(maskLabel, MemixIcons.Mask, { onIntent(VideoEditorIntent.MaskTool) }, clickLabel = maskClick, focusRequester = focus.maskTool)
         val filtersTool = ToolBarItem(filtersLabel, MemixIcons.Adjust, { onIntent(VideoEditorIntent.FiltersTool) }, clickLabel = filtersClick, focusRequester = focus.filtersTool)
+        // After Keyframes and before Duplicate: the rarer job for a meme, so Delete and Speed stay in view at 360 dp (spec P4-08 → The tool and the cut).
+        val transitionTool = ToolBarItem(transitionLabel, MemixIcons.Transition, { onIntent(VideoEditorIntent.TransitionTool) }, clickLabel = transitionClick, focusRequester = focus.transitionTool)
         val intensityTool = ToolBarItem(intensityLabel, MemixIcons.Adjust, { onIntent(VideoEditorIntent.IntensityTool) }, focusRequester = focus.intensityTool)
         val changeEffectTool = ToolBarItem(changeEffectLabel, MemixIcons.Replace, { onIntent(VideoEditorIntent.ChangeEffectTool) }, clickLabel = changeEffectClick, focusRequester = focus.changeEffectTool)
         when (clipTools) {
@@ -321,11 +327,11 @@ private fun rememberClipTools(
                 val detachTool = ToolBarItem(detach, MemixIcons.DetachAudio, { onIntent(VideoEditorIntent.DetachAudioSelected(fileMissing = isMissing)) })
                 // Keyframes animate the clip's volume until P4-16 draws its framing; a clip whose file is missing has nothing to animate.
                 // Green screen after Delete until P4-16 and P4-07 put Crop, Fit or Fill, Position and Filters before it (spec P4-04 → The tool in the bars).
-                val usual = listOfNotNull(splitTool, volumeTool, deleteTool, greenScreenTool.takeUnless { isMissing }, maskTool.takeUnless { isMissing }, filtersTool.takeUnless { isMissing }, keyframesTool.takeUnless { isMissing }, duplicateTool, detachTool, reorderTool)
+                val usual = listOfNotNull(splitTool, volumeTool, deleteTool, greenScreenTool.takeUnless { isMissing }, maskTool.takeUnless { isMissing }, filtersTool.takeUnless { isMissing }, keyframesTool.takeUnless { isMissing }, transitionTool.takeUnless { isMissing }, duplicateTool, detachTool, reorderTool)
                 (if (isMissing) listOf(replaceTool) + usual else usual + replaceTool).toImmutableList()
             }
             ClipTools.PHOTO_CLIP -> {
-                val usual = listOfNotNull(splitTool, deleteTool, greenScreenTool.takeUnless { isMissing }, maskTool.takeUnless { isMissing }, filtersTool.takeUnless { isMissing }, duplicateTool, reorderTool)
+                val usual = listOfNotNull(splitTool, deleteTool, greenScreenTool.takeUnless { isMissing }, maskTool.takeUnless { isMissing }, filtersTool.takeUnless { isMissing }, transitionTool.takeUnless { isMissing }, duplicateTool, reorderTool)
                 (if (isMissing) listOf(replaceTool) + usual else usual + replaceTool).toImmutableList()
             }
             // Audio effects fourth, so it shows without scrolling at 360 dp (spec P3-09 → Entry and exit).
@@ -393,6 +399,7 @@ internal class EditorFocusTargets {
     val effectsTool = FocusRequester()
     val changeEffectTool = FocusRequester()
     val intensityTool = FocusRequester()
+    val transitionTool = FocusRequester()
 
     /** Moves focus to [target]'s control; nothing happens when it isn't on screen. */
     fun moveTo(target: FocusTarget) {
@@ -422,6 +429,7 @@ internal class EditorFocusTargets {
             FocusTarget.EFFECTS_TOOL -> effectsTool
             FocusTarget.CHANGE_EFFECT_TOOL -> changeEffectTool
             FocusTarget.INTENSITY_TOOL -> intensityTool
+            FocusTarget.TRANSITION_TOOL -> transitionTool
         }.requestFocus()
     }
 }

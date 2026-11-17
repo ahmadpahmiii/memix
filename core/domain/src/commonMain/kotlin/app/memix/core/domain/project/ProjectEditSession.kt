@@ -61,11 +61,16 @@ class ProjectEditSession internal constructor(
      */
     fun commit(tool: EditorTool, font: String? = null, value: String? = null, filter: String? = null, loggedAs: List<EditorTool> = listOf(tool), edit: (Project) -> Project): Boolean {
         lastRefusal = null
+        lastTransitionSettling = TransitionSettling.NOTHING
         val recorded = changeHistory { history ->
             val before = history.current
-            val after = edit(before)
+            // A length or order change can leave a transition too long for its clips: it is shortened in the same step (spec P4-08 → What fits).
+            val edited = edit(before)
+            val (after, settling) = edited.settleTransitions()
+            lastTransitionSettling = settling
             // A fourth overlapping effect or a fourth Flash within a second is never a step, whoever made the edit (spec P4-06 → Stacking, Photosensitivity).
-            val refusal = effectRefusal(before, after)
+            // Judged on the edit itself, before the settling: shortening a transition to fit never makes the rule refuse the trim that caused it.
+            val refusal = effectRefusal(before, edited)
             lastRefusal = refusal
             history.record(tool, if (refusal == null) after else before)
         }
@@ -76,6 +81,10 @@ class ProjectEditSession internal constructor(
         }
         return recorded
     }
+
+    /** What the last [commit] had to do to the transitions to make them fit (the editor's toast), when it recorded a step. */
+    var lastTransitionSettling: TransitionSettling = TransitionSettling.NOTHING
+        private set
 
     /** Why the last [commit] was refused by the effect rules, or null; the editor says so. */
     var lastRefusal: EffectRefusal? = null

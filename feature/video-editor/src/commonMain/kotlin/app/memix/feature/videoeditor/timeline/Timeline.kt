@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.round
+import app.memix.core.designsystem.MemixIcons
 import app.memix.core.designsystem.MemixMotion
 import app.memix.core.designsystem.MemixSize
 import app.memix.core.designsystem.MemixSpacing
@@ -89,6 +90,7 @@ import memix.feature.video_editor.generated.resources.timeline_zoom_fit
 import memix.feature.video_editor.generated.resources.timeline_zoom_in
 import memix.feature.video_editor.generated.resources.timeline_zoom_menu
 import memix.feature.video_editor.generated.resources.timeline_zoom_out
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -198,6 +200,7 @@ private fun TimelineContent(
     val labelSpacingPx = rememberRulerLabelSpacing(textMeasurer, timeline.lengthUs)
     val selection = rememberSelection(textMeasurer, timeline, lanes, selectedItemId)
     val currentSelectedId by rememberUpdatedState(selection.selected?.item?.id)
+    val transitionIcon = painterResource(MemixIcons.Transition)
     val currentSelected by rememberUpdatedState(selection.selected)
     val currentTrimRanges by rememberUpdatedState(trimRanges)
     val laneScroll = rememberScrollState()
@@ -338,6 +341,10 @@ private fun TimelineContent(
                             val strip = state.reorder
                             with(painter) {
                                 drawLanes(timeline, lanes, playheadUs, pxPerUs, thumbnails, waveforms, missingSources, trim, move, motion, hideMainClips = strip != null)
+                            }
+                            // The cue stays out of reorder mode and of a trim or a carry, where the cut is not at rest.
+                            if (strip == null && trim == null && move == null) {
+                                with(painter) { drawTransitionCues(timeline, lanes, selectedItemId, playheadUs, pxPerUs, transitionIcon) }
                             }
                             keyframeBar?.let { bar ->
                                 lanes.rowOf(bar.itemId)?.let { row ->

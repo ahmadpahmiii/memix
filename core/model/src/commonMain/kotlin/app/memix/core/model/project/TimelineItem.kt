@@ -61,6 +61,11 @@ data class MediaClip(
      * key and before framing, so it moves with the clip. Main clips and overlays alike. Split and Duplicate copy it, Replace keeps it.
      */
     val mask: ClipMask? = null,
+    /**
+     * How this main-track clip leads into the next one (P4-08, schema 20); null is a plain cut. It belongs to the clip before the cut, never moves
+     * anything and never touches sound (see [Transition]). Only main-track clips carry one; the last clip's is always null.
+     */
+    val transitionOut: Transition? = null,
 ) : TimelineItem {
     // Derived, not saved, so it can never disagree with the trim points.
     override val durationUs: Long get() = trimOutUs - trimInUs

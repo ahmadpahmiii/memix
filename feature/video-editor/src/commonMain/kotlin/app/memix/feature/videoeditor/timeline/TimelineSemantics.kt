@@ -46,6 +46,7 @@ import app.memix.core.ui.spokenTime
 import app.memix.core.ui.spokenTimeOf
 import app.memix.feature.videoeditor.KeyframeBarUi
 import app.memix.feature.videoeditor.VideoEditorIntent
+import app.memix.feature.videoeditor.transitions.transitionNameOf
 import app.memix.feature.videoeditor.keyframes.easingNameOf
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -63,6 +64,8 @@ import memix.feature.video_editor.generated.resources.tool_green_screen
 import memix.feature.video_editor.generated.resources.a11y_state_adjusted
 import memix.feature.video_editor.generated.resources.a11y_state_filtered
 import memix.feature.video_editor.generated.resources.a11y_state_masked
+import memix.feature.video_editor.generated.resources.a11y_state_transition
+import memix.feature.video_editor.generated.resources.tool_transition
 import memix.feature.video_editor.generated.resources.mask_circle
 import memix.feature.video_editor.generated.resources.mask_linear
 import memix.feature.video_editor.generated.resources.mask_mirror
@@ -400,7 +403,8 @@ private fun rememberItemActions(controller: TimelineController, isMainClip: Bool
     val moveToPlayhead = stringResource(Res.string.tool_move_here_a11y)
     val changeEffect = stringResource(Res.string.effects_change_title)
     val intensity = stringResource(Res.string.tool_intensity)
-    return remember(controller, isMainClip, isEffect, split, delete, duplicate, earlier, later, moveToPlayhead, changeEffect, intensity) {
+    val transition = stringResource(Res.string.tool_transition)
+    return remember(controller, isMainClip, isEffect, split, delete, duplicate, earlier, later, moveToPlayhead, changeEffect, intensity, transition) {
         fun action(label: String, intent: VideoEditorIntent) = CustomAccessibilityAction(label) {
             controller.onIntent(intent)
             true
@@ -414,7 +418,8 @@ private fun rememberItemActions(controller: TimelineController, isMainClip: Bool
         // An effect also changes and sets its strength without a gesture (spec P4-06 → Accessibility).
         if (isEffect) return@remember edits + action(moveToPlayhead, VideoEditorIntent.MoveHereSelected) + action(changeEffect, VideoEditorIntent.ChangeEffectTool) + action(intensity, VideoEditorIntent.IntensityTool)
         if (!isMainClip) return@remember edits + action(moveToPlayhead, VideoEditorIntent.MoveHereSelected)
-        edits + action(earlier, VideoEditorIntent.MoveSelectedClip(steps = -1)) + action(later, VideoEditorIntent.MoveSelectedClip(steps = 1))
+        // The route to Transition that needs no visible control: the cut's cue is output only (spec P4-08 → Accessibility).
+        edits + action(transition, VideoEditorIntent.TransitionTool) + action(earlier, VideoEditorIntent.MoveSelectedClip(steps = -1)) + action(later, VideoEditorIntent.MoveSelectedClip(steps = 1))
     }
 }
 
@@ -426,8 +431,10 @@ private fun itemDescription(track: TrackUi, item: ItemUi, clipCount: Int): Strin
     // Then the filter or the adjustments (P4-07), then the mask (P4-03b: Green screen, Filter or Adjusted, Mask, Keyframes).
     val filtered = lookDescription(item)?.let { keyed + ". " + it } ?: keyed
     val masked = item.masked?.let { filtered + ". " + stringResource(Res.string.a11y_state_masked, stringResource(maskShapeName(it))) } ?: filtered
-    if (item.keyframeCount == 0) return masked
-    return masked + ". " + stringResource(Res.string.a11y_state_keyframed, item.keyframeCount)
+    val keyframed = if (item.keyframeCount == 0) masked else masked + ". " + stringResource(Res.string.a11y_state_keyframed, item.keyframeCount)
+    // Speed and Reversed (P4-09, P4-10) go before the transition, which is always last (spec P4-08 → Accessibility).
+    val transition = item.transitionId?.let(::transitionNameOf) ?: return keyframed
+    return keyframed + ". " + stringResource(Res.string.a11y_state_transition, stringResource(transition))
 }
 
 // "Filter: Vivid", or "Adjusted" when only sliders are set; null for a clip with no look.

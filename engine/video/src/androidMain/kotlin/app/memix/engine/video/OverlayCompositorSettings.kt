@@ -22,6 +22,8 @@ internal class OverlayCompositorSettings(
     /** One timeline per overlay layer, top layer first: the order of their sequences, which is the compositor's input order. */
     private val layersTopFirst: List<LayerTimeline>,
     private val frame: PixelSize,
+    /** Where the transitions' partner sequence shows (P4-08); null when there is none. It is the input after the main video's. */
+    private val partner: PartnerTimeline? = null,
 ) : VideoCompositorSettings {
     // Set by the preview while a finger moves one overlay; its clip draws at alpha 0 (the editor's stand-in is on screen instead).
     val visibility = OverlayVisibility()
@@ -45,7 +47,17 @@ internal class OverlayCompositorSettings(
         OverlaySequences.STAGE_INPUT -> HIDDEN
         in OverlaySequences.FIRST_LAYER_INPUT until OverlaySequences.FIRST_LAYER_INPUT + layersTopFirst.size ->
             layersTopFirst[inputId - OverlaySequences.FIRST_LAYER_INPUT].settingsAt(presentationTimeUs, visibility)
+        // The main video is the input after the layers, the partner (when there is one) the input after that.
+        in (OverlaySequences.FIRST_LAYER_INPUT + layersTopFirst.size + 1)..Int.MAX_VALUE -> if (partner?.showsAt(presentationTimeUs) == true) FILL_FRAME else HIDDEN
         else -> FILL_FRAME
+    }
+
+    /** Where the partner sequence has a piece (µs, end excluded), in order: outside them its frames are blank and drawn invisible. */
+    class PartnerTimeline(private val startsUs: LongArray, private val endsUs: LongArray) {
+        fun showsAt(timeUs: Long): Boolean {
+            for (i in startsUs.indices) if (timeUs >= startsUs[i] && timeUs < endsUs[i]) return true
+            return false
+        }
     }
 
     /** One overlay layer in time: where each of its clips shows (µs, end excluded), in order, with the settings to draw it by. */

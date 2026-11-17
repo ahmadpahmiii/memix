@@ -76,4 +76,8 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     // moves the version on; the bump keeps an older build from opening a draft whose effects it would drop on the next save. P4-06b adds no bump:
     // the 30 effect ids are data.
     ProjectMigration(fromVersion = 18) { json -> json },
+    // 19 → 20 (P4-08): MediaClip gained the nullable "transitionOut" (id, durationUs; null is a plain cut). Version-19 JSON has none, which decodes as
+    // null: a draft saved before has plain cuts and looks as saved. The step only moves the version on; the bump keeps an older build from opening a
+    // draft whose transitions it would drop on the next save.
+    ProjectMigration(fromVersion = 19) { json -> json },
 )

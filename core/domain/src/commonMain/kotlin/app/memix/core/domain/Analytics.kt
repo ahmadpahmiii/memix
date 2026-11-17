@@ -302,6 +302,15 @@ enum class EditorTool(val eventValue: String?) {
     EFFECT_MOVE("move"),
 
     /**
+     * P4-08: transitions between main clips (spec docs/ux/specs/P4-08-transitions.md → Analytics), once per committed step, `editor: "video"`.
+     * `transition` is a tile that changes the cut and sends `value` = the transition id (a fixed catalog id); `transition_remove` is the None
+     * tile; `transition_duration` is a Duration release. A shortening by another edit folds into that edit and logs nothing of its own.
+     */
+    TRANSITION("transition"),
+    TRANSITION_DURATION("transition_duration"),
+    TRANSITION_REMOVE("transition_remove"),
+
+    /**
      * P1-11: the Canvas panel (PM, 20 Oct), each with a `value`. Fit and Fill are one event, `canvas_fit` with `value`
      * `fit` or `fill`, but two entries, so the undo history can say "Undo: Fill".
      */

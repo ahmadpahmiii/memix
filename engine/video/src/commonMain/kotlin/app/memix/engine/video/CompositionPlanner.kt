@@ -61,7 +61,11 @@ internal object CompositionPlanner {
 
         // Sorted by start and not overlapping, so the last clip ends last.
         val durationUs = mainClips.last().endUs
-        val overlays = overlayLayers(tracks, mainClips, durationUs, videoDecoderBudget, keepSilentItems)
+        val visuals = mainClips.associateWith { it.toVisualClip(mainTrack.muted, keepSilentItems) }
+        val transitions = TransitionPlanner.plan(mainClips, { visuals.getValue(it) }, durationUs)
+        // A transition's partner sequence holds one more video decoder while a window plays.
+        val decoderBudget = if (transitions.layer != null) videoDecoderBudget - 1 else videoDecoderBudget
+        val overlays = overlayLayers(tracks, mainClips, durationUs, decoderBudget, keepSilentItems)
         val plan = CompositionPlan(
             canvasWidthPx = project.canvas.widthPx,
             canvasHeightPx = project.canvas.heightPx,
@@ -71,7 +75,8 @@ internal object CompositionPlanner {
                 is CanvasBackground.Image -> PlanBackground.Image(background.source)
             },
             durationUs = durationUs,
-            mainVideo = backToBack(mainClips, ::Gap) { it.toVisualClip(mainTrack.muted, keepSilentItems) },
+            mainVideo = backToBack(mainClips, ::Gap) { clip -> visuals.getValue(clip).copy(transitions = transitions.windowsByClipId[clip.id].orEmpty()) },
+            transitionLayer = transitions.layer,
             overlays = overlays.layers,
             audioLanes = tracks.filter { it.kind.carriesSound() && !it.muted }.flatMap { audioLanes(it, durationUs, keepSilentItems) },
             captions = captions(tracks, durationUs),

@@ -7,6 +7,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -100,6 +102,9 @@ internal class TimelinePainter(
     private val markerBandPx = with(density) { MemixSize.trackHeight.toPx() }
     private val markerLinePx = with(density) { MemixStroke.strokeHairline.toPx() }
     private val badgeMinClipWidthPx = with(density) { MemixSpacing.space8.toPx() }
+    private val cueSizePx = with(density) { MemixSize.badge.toPx() }
+    private val cueIconPx = with(density) { MemixSize.iconSmall.toPx() }
+    private val cueCorner = CornerRadius(cornerPx)
     private val diamondPath = Path()
     private val itemPath = Path()
     private val place = ItemPlace()
@@ -704,6 +709,34 @@ internal class TimelinePainter(
         val centerY = row.itemTopPx + badgeInsetPx + half
         fillDiamond(centerX, centerY, markerSizePx + 2 * markerLinePx, MemixColors.onPrimary)
         fillDiamond(centerX, centerY, markerSizePx, MemixColors.text)
+    }
+
+    /**
+     * The cue on every cut that has a transition (spec P4-08 → The cut's cue): a `badge-size` `scrim` chip with the `transition` icon in `text`,
+     * centered on the cut in the main row. It is output only. Hidden while either neighbour is the selected clip (its handle sits on the cut),
+     * and when either neighbour is narrower than the touch target at this zoom; the caller leaves it out in Reorder mode and during a trim or move.
+     */
+    fun DrawScope.drawTransitionCues(timeline: TimelineUi, lanes: LaneLayout, selectedItemId: String?, playheadUs: Long, pxPerUs: Float, icon: Painter) {
+        if (pxPerUs <= 0f) return
+        val row = lanes.rows.firstOrNull { it.track.kind == TrackKind.MAIN_VIDEO } ?: return
+        val items = row.track.items
+        val centerPx = size.width / 2
+        val colorFilter = ColorFilter.tint(MemixColors.text)
+        for (i in 0 until items.size - 1) {
+            val item = items[i]
+            if (item.transitionId == null) continue
+            val next = items[i + 1]
+            if (item.id == selectedItemId || next.id == selectedItemId) continue
+            if (widthPx(item.durationUs, pxPerUs) < handleTargetPx || widthPx(next.durationUs, pxPerUs) < handleTargetPx) continue
+            // The cut is the middle of the gap between the two clips.
+            val cutX = xOf(next.startUs, playheadUs, centerPx, pxPerUs) - gapPx / 2
+            if (cutX < -cueSizePx || cutX > size.width + cueSizePx) continue
+            val top = row.itemTopPx + (row.itemHeightPx - cueSizePx) / 2
+            drawRoundRect(MemixColors.scrim, Offset(cutX - cueSizePx / 2, top), Size(cueSizePx, cueSizePx), cueCorner)
+            translate(cutX - cueIconPx / 2, top + (cueSizePx - cueIconPx) / 2) {
+                with(icon) { draw(Size(cueIconPx, cueIconPx), colorFilter = colorFilter) }
+            }
+        }
     }
 
     private fun itemShape(left: Float, top: Float, right: Float, bottom: Float): Path {
