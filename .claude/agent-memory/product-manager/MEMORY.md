@@ -33,3 +33,5 @@ Lessons for this project only, newest first. Keep under ~150 lines; prune stale 
 <!-- - 2026-10-xx · P0-01 · lesson … -->
 
 - 11 Nov 2026: owner answered "1A, 2A, 3A" on Phase 3 kickoff. Phase 3 delegated like Phase 2. Added P3-14 (S) and P3-15 (S, watch M); split P3-12 into 12a (M) and 12b (L). Sound license rule (CC0, CC-BY with credit, own/recreated; no standalone-redistribution bars) now in PRD. Owner pattern: answers in short form, accepts PM recommendations.
+
+- 17 Nov 2026 · P4 kickoff · Owner: Phase 3 leftovers move to the end of Phase 4, then "ship it all" (Phases 4 to 7 code, one end-of-build QA and approval list; he approves manual testing later). **Promised specs go missing:** the 21 Oct proposal said the designer specs P4-16 "before Phase 4"; no file exists, only notes in the P1-11 and P2-04 specs. At each kickoff, check every "spec before phase" promise against `docs/ux/specs/`. P0-06's 3 seed templates never existed either. Splits proposed: 01, 02, 03, 05, 06, 09, 13, 15. Risk watch: QA debt about 60 tickets unrun, schema 13+, iOS code uncompiled here, `main` fixes diverging from the branch, smoke pass before the 25 Jan closed test.

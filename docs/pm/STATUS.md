@@ -2,7 +2,7 @@
 
 Owned by the product manager. Keep it one screen long. Statuses: Not started · Ready · Building · Paused · Built · QA · Accepted · Needs work · Rejected · Moved. Code that is built but not yet run on an emulator or phone stays **Building (hand check pending)**. The repo files are the source of truth (owner, 8 Oct 2026). Evidence and details per ticket: `acceptance-log.md`.
 
-**Current phase (16 Nov): all 15 Phase 3 app tickets are built (provisional accept); only P3-12b (owner-gated content) is open.** P3 · Sounds and audio (planned 7–27 Dec 2026; **kicked off 10 Nov, 27 days early, by the owner**, in parallel with the combined Phase 1 and 2 QA; decision log). Day 1: ready checks done, nothing built. Planned dates, P4 from 28 Dec and both launch dates are unchanged: Android ≈ 7 Mar 2027, iOS ≈ 2 May 2027. Agents run on Sonnet (owner, 22 Oct); one builder at a time.
+**Current phase (17 Nov): Phase 4 · Pro video tools kicked off, 6 weeks before its 28 Dec plan (owner, 17 Nov).** Owner: Phase 3's open work (live Supabase steps, P3-12b, QA, gate, `/retro`, PR) moves to the end; then "ship it all": Phases 4, 5, 6 and 7 are built in the same working mode, with **one end-of-build QA and approval list** (below). Phase 4 runs on this branch on top of the unmerged Phase 3; launch dates unchanged. Ready checks, splits, order: `proposals/2026-11-17-phase-4-kickoff.md` (TICKETS not edited until the main session says "apply"). **Phase 3 (16 Nov): all 15 app tickets built (provisional accept); only P3-12b (owner-gated content) open.** P3 · Sounds and audio (planned 7–27 Dec 2026; **kicked off 10 Nov, 27 days early, by the owner**, in parallel with the combined Phase 1 and 2 QA; decision log). Day 1: ready checks done, nothing built. Planned dates, P4 from 28 Dec and both launch dates are unchanged: Android ≈ 7 Mar 2027, iOS ≈ 2 May 2027. Agents run on Sonnet (owner, 22 Oct); one builder at a time.
 
 **Branch and CI:** Phase 3 is built on `claude/friendly-brown-km8lwu`, restarted from `main` at dc24ac7 (Phase 2, PR #9, merged 10 Nov). **No CI until the phase PR**, as in Phase 2: each ticket's checks are local (`:androidApp:assembleDebug`, `lint`, `compileCommonMainKotlinMetadata`, `bundleRelease` for R8); verdicts say "local build green". Device hand checks wait for phase-end QA, so every ticket is a provisional accept.
 
@@ -28,11 +28,50 @@ Owned by the product manager. Keep it one screen long. Statuses: Not started · 
 | P3-09b | Audio effects half 2: Bass, Echo, Voice presets, limiter (M) | **Built; provisional accept of the code (16 Nov)**, local build green (incl. `verifySqlDelightMigration`, `bundleRelease`), code review approved with no must-fixes, design review Pass with polish. JVM harness 225 of 225; references in `docs/qa/references/P3-09b-audio-effects/`. **Done when (preview and export sound the same, null test under -40 dB, ear check per preset, no clipping with effects stacked): null test bit-identical for every preset and extreme across buffer sizes, settled stretch under -64 dB after a seek; stacking 40 loud renders never pass -1.00 dBFS (all 40 clip without the limiter). Open on a phone: decoder, AudioTrack, AAC and mixing, the ear check per preset (voice numbers are starting values), preview stage cost, underruns with many echoed sounds.** No schema change (13) | done | principal-mobile-engineer | acceptance-log 16 Nov |
 | P3-12b | Load the first 500 sounds (L; split from P3-12) | **Blocked on owner**: `FREESOUND_API_KEY`, and the table review per batch of about 50 (rule approved 11 Nov: CC0, CC-BY with credit, own or recreated; no standalone-redistribution bars). Runs alongside the app tickets | none | owner, backend-engineer | proposal owner table |
 
+**Phase 4 board (17 Nov; splits proposed, delegated):** Ready = Needs built, Done when checkable, size M or smaller. Spec column: yes = designer specs before that half is built. Order: 1 to 23.
+
+| # | ID | Status | Spec |
+| --- | --- | --- | --- |
+| 1 | P4-01a Overlays: model, engine (opacity, z-order, transform), schema bump | **Ready** | none |
+| 2 | P4-01b Overlays: on-frame gestures, lane, picker | Ready after spec | yes (first) |
+| 3 | P4-02a Keyframes: model, easing, interpolation | Not started (Needs 01a) | none |
+| 4 | P4-02b Keyframes: markers, panel | Not started | yes |
+| 5 | P4-04 Green screen keying | Not started (Needs 01) | yes |
+| 6 | P4-03a Blend modes (10) | Not started (Needs 01) | none (list in 03b spec) |
+| 7 | P4-03b Shape masks (4) | Not started | yes |
+| 8 | P4-07 Video LUT filters (about 20) | **Ready** | addendum to P2-04 spec |
+| 9 | P4-06a Effects: framework, first batch (incl. zoom punch) | Ready after spec (30-name list) | yes |
+| 10 | P4-06b Effects: the rest | Not started | in 06 spec |
+| 11 | P4-08 Transitions (about 20) | **Ready** after spec | yes |
+| 12 | P4-09a Speed 0.1x to 10x, audio follows or mutes | **Ready** after spec | yes |
+| 13 | P4-10 Reverse, freeze frame | **Ready** after small spec | yes (small) |
+| 14 | P4-09b Speed curves and presets (cut list) | Not started (Needs 09a) | in 09 spec |
+| 15 | P4-16 Clip crop, rotate, flip, per-clip Fit or Fill | **Blocked: no spec exists** (promised before Phase 4; only notes in the P1-11 and P2-04 specs), Needs 01 | yes (second) |
+| 16 | P4-11 Text animations, presets | **Ready** after spec | yes |
+| 17 | P4-12 Stickers in video, photo GIF export (watch M) | **Ready** after spec; packs use fixtures | yes |
+| 18 | P4-13a Video person segmentation, mask cache, low-res preview | Not started (Needs 01) | yes |
+| 19 | P4-13b Full-res export, refine, progress | Not started | in 13 spec |
+| 20 | P4-05a Templates: repository, Templates screen | Not started (Needs 04, P3-01) | yes |
+| 21 | P4-05b Templates: slot-fill, open in editor, 3 fixture templates | Not started | yes |
+| 22 | P4-14 Meme shortcuts | Not started (Needs 06, P3-05) | yes |
+| 23 | P4-15a Template and pack loader with fixtures | Not started (Needs 05) | none |
+| 24 | P4-15b Load 40 + 60 + 20 real items | **Blocked on owner** (licensed content) | none |
+
 **Build order (11 Nov, with P3-15):** P3-13, P3-12a, P3-01, P3-02, P3-06, P3-03, P3-04, P3-05, P3-15, P3-10, P3-07, P3-11, P3-14, P3-08, P3-09; P3-12b alongside. 16 rows: 4 L, 6 M, 6 S. The designer specs the library first while the first builds run.
 
 Later: P5-08 closed test for production access, not started, ≈ 25 Jan 2027 (needs the owner's Play Console app and first manual upload).
 
+**End-of-build QA and approval list (owner, 17 Nov: "ship it all ... for manual testing I will approve it later").** One list for everything that needs a phone, a Mac, a key or the owner's judgment. Phases 4 to 7 are built here first; append items as each ticket lands. Order at the end: A, B, C, D, then fixes, gates, `/retro`, security review, PR(s).
+- **A. Phase 1 and 2 (separate session on `main`, unaffected):** the QA pass, P1-15 check B first, device numbers, watermark test post, 10-sound listen, Firebase test crash, Play Console and first upload. Merge `main` into this branch when its fixes land.
+- **B. Phase 3 owner live steps (moved to the end of Phase 4, 17 Nov):** apply `20261111120000_api_role_grants.sql` first, then `20261111100000`; `local.properties` Supabase URL and publishable key; `SUPABASE_SECRET_KEY` in `.env` and the 10-starter upload; `media_base_url` in Remote Config; `FREESOUND_API_KEY` and the license table per 50 sounds (P3-12b, plus the 40 starter-pack sounds); lawyer read of the license sentences. Steps: `docs/qa/phase-3/engineer-hand-checks.md`.
+- **C. Phase 3 device checks:** clap test (67 ms), 300 ms sound start, cold-start median of 5, null test and ear check per audio preset, language switch on API 29 to 32 and 33+, TalkBack, two-people censor legibility test (before about 25 Jan 2027), iOS framework link on the Mac.
+- **D. Phase 4 and later device checks and owner-gated content:** five overlays at 30 fps, keyframe parity, blend and mask references, a real green screen clip, template fill and export, effect fps, transition audio, speed and reverse smoothness, mask export match, P4-15b content (40 + 60 + 20 with licenses) and the famous-format list.
+- **E. Later phases, prepared here, done by the owner:** P5 AdMob account, app and ad unit IDs, UMP check in an EEA region, privacy-policy URL, P5-08 closed test (15 to 20 testers, 14 days from about 25 Jan), Play forms and listing; P6 signing and upload, store screenshots, R2 account and domain, production rollout; P7 Apple Developer enrollment, signing, iOS link and simulator, TestFlight, App Store.
+- **F. After the list:** fixes and re-test, P1 to P4 gates, `/retro`, security review on the pushed head, PR(s) (owner picks one PR or stacked PRs; proposal item 5).
+- **Later phases, what can be built here / what waits:** **P5** AdMob, consent flow code (test IDs), analytics, share row, translations (machine drafts, native read by the owner) and credits screen are built; accounts, real IDs and the closed test wait. **P6** baseline profiles, listing and policy drafts, form answers and the R2 runbook are prepared; measuring, screenshots, hosting, submission and the R2 move wait. **P7** shared and common code only, no iOS framework link or simulator here, so `iosMain` code stays uncompiled until the owner's Mac or CI; enrollment, signing and submission wait.
+
 **Top risks**
+0. **The build now runs ahead of every test.** About 60 tickets will be unrun on a device by the end of Phase 4 (32 + 15 + Phase 4), schema at 13 and rising, no CI until the PR, `main` fixes diverging from this branch, and iOS code that cannot compile here. One engine or timeline device bug can mean rework in many tickets. Mitigation: a short smoke pass before the 25 Jan closed test; merge `main` in at every `main` fix.
 1. **QA debt keeps growing and nothing has run on a device.** 32 tickets are waiting for QA and Phase 3 adds 14 more on code (engine, picker, import, timeline) nobody has seen run. A Phase 1 or 2 device bug can mean rework. No CI until the phase PR: iOS and R8 breakage shows at the PR. Suggestion: QA's Mac session runs `:composeApp:linkDebugFrameworkIosSimulatorArm64` at its start.
 2. **Content is the long pole, not code.** P3-12b needs 500 licensed sounds, the owner's approvals and a secret key only he holds; "Voice lines (recreated)" and Local content for 5 regions need a person to record or find. Watch the count at 150 sounds; a scope-cut proposal if short. Lawyer review before launch is still open.
 3. **Audio parity and the first live backend.** P3-09's "preview and export sound the same" and P3-08's sync have never run on a device (P1-08's sync checks are also still owed); P3-13 is the first time the app reads live Supabase and Storage (Free limits until R2, P6-07).

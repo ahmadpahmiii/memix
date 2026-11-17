@@ -122,25 +122,35 @@ Work top to bottom within each phase. Each phase has one branch (`phase-<n>`, e.
 ## Phase 4 · Pro video tools (weeks 12 to 17, from 28 Dec)
 
 > 21 Oct 2026 (owner, [proposal](pm/proposals/2026-10-20-clip-crop-rotate-flip.md) A): P4-16 adds the PRD's video crop, rotate and flip, plus per-clip Fit or Fill (P1-11 sets it for all clips), right after P4-10. If Phase 4 runs late, it joins the cut-list talk and the owner decides then. The designer specs it before Phase 4.
+>
+> 17 Nov 2026 (owner's delegation, [proposal](pm/proposals/2026-11-17-phase-4-kickoff.md) A): Phase 4 starts early; the L tickets are split into a/b halves (01, 02, 03, 05, 06, 09, 13, 15). **Build order:** 01a, 01b, 02a, 02b, 04, 03a, 03b, 07, 06a, 06b, 08, 09a, 10, 09b, 16, 11, 12, 13a, 13b, 05a, 05b, 14, 15a; 15b waits for the owner. P4-16 still has no designer spec (first to request after 01b). Templates and packs use original fixtures in debug builds only. P4-14 Needs P4-06a and P4-06b (zoom punch). Phases 4 to 7 are built one after another, with one QA at the end (owner, 17 Nov).
 
 | ID | Ticket | Done when | Size | Needs |
 | --- | --- | --- | --- | --- |
-| P4-01 | Overlay layers (picture-in-picture video and photo): opacity, stacking order, transform | Five overlays at 1080p preview at 30 fps or more | L | P1-05 |
-| P4-02 | Keyframes for position, scale, rotation, opacity and volume, with easing and keyframe markers on the timeline | Motion matches between preview and export | L | P4-01 |
-| P4-03 | 10 blend modes and shape masks (rectangle, circle, linear, mirror) | Each mode and mask matches its reference render | L | P4-01 |
+| P4-01a | Overlay layers, engine and model: picture-in-picture video and photo, opacity, stacking order, transform; schema bump | Overlays render in preview and export with the same opacity, order and transform; old drafts open | M | P1-05 |
+| P4-01b | Overlay layers, editor: on-frame gestures, overlay lane, picker | Five overlays at 1080p preview at 30 fps or more; each edit is one undo step | M | P4-01a |
+| P4-02a | Keyframes, model and interpolation: position, scale, rotation, opacity, volume, easing | Motion matches between preview and export | M | P4-01a |
+| P4-02b | Keyframes, editor: markers on the timeline and the panel | A keyframe is added, moved and deleted, each as one undo step | M | P4-02a, P4-01b |
+| P4-03a | 10 blend modes | Each mode matches its reference render | M | P4-01a |
+| P4-03b | Shape masks (rectangle, circle, linear, mirror) | Each mask matches its reference render | M | P4-03a |
 | P4-04 | Green screen keying on clips and overlays: pick color, strength, edge softness | A standard green screen clip keys cleanly at default settings | M | P4-01 |
-| P4-05 | Templates: repository, Templates screen (Video / Photo switch, categories, previews), slot-fill flow, open in editor; loads P0-06's 3 seed templates | A user fills a 2-slot preset and exports it | L | P3-01, P4-04 |
-| P4-06 | About 30 video effects as timeline items with intensity | Each effect matches its reference render and preview stays at 30 fps or more | L | P1-05 |
+| P4-05a | Templates: repository, Templates screen (Video / Photo switch, categories, previews) | Templates list and preview from the cache, offline too | M | P3-01, P4-04 |
+| P4-05b | Templates: slot-fill flow, open in editor; 3 original fixture templates (debug builds only; P0-06 seeds never existed) | A user fills a 2-slot preset and exports it | M | P4-05a |
+| P4-06a | Video effects, framework and first batch as timeline items with intensity (list of about 30 fixed in the spec; includes zoom punch) | Each effect matches its reference render and preview stays at 30 fps or more | M | P1-05 |
+| P4-06b | Video effects, the rest of the list | Same as 06a | M | P4-06a |
 | P4-07 | About 20 LUT filters and adjustments for video | Same ids and looks as the photo filters | M | P2-04 |
 | P4-08 | About 20 transitions between clips | Transitions keep audio continuous | M | P1-06 |
-| P4-09 | Speed: constant 0.1× to 10× and speed curves with presets | Audio follows the speed or mutes, per the user's choice | L | P1-06 |
+| P4-09a | Speed: constant 0.1x to 10x | Audio follows the speed or mutes, per the user's choice | M | P1-06 |
+| P4-09b | Speed curves with presets (cut list) | A curve plays the same in preview and export | M | P4-09a |
 | P4-10 | Reverse and freeze frame | Reversed clips play smoothly in preview | M | P1-06 |
-| P4-16 | Clip crop, rotate, flip and per-clip Fit or Fill in the video editor (reuses P4-01's on-frame gestures and P2-04's crop screen); declarative params with a reference render | A cropped, rotated and flipped clip looks the same in preview and export and matches its reference render; Fit or Fill set on one clip changes only that clip; each change is one undo step | M | P4-01, P2-04 |
+| P4-16 | Clip crop, rotate, flip and per-clip Fit or Fill in the video editor (reuses P4-01's on-frame gestures and P2-04's crop screen); declarative params with a reference render | A cropped, rotated and flipped clip looks the same in preview and export and matches its reference render; Fit or Fill set on one clip changes only that clip; each change is one undo step | M | P4-01b, P2-04 |
 | P4-11 | Text animations (in, out, loop) and text presets | Animations look the same in preview and export | M | P1-10 |
 | P4-12 | Stickers in video: catalog packs, animated GIF and WebP, the user's own files; photo GIF export (moved from P2-08) | Animated stickers loop in sync with the timeline | M | P3-01, P2-08 |
-| P4-13 | Video background removal for people: MediaPipe person segmentation, per-frame mask cache, low-res preview, full-res export, refine | Progress shows while processing, and the export matches the preview | L | P2-06, P4-01 |
-| P4-14 | Meme shortcuts: Sound + zoom combo, quick top/bottom caption, manual beat markers | Sound + zoom places both items in one tap | M | P4-06, P3-05 |
-| P4-15 | Load 40 video templates, 60 photo templates and 20 sticker packs | Every item has complete license fields | L | P4-05 |
+| P4-13a | Video background removal for people: MediaPipe person segmentation, per-frame mask cache, low-res preview | A masked clip previews with the background removed | M | P2-06, P4-01a |
+| P4-13b | Video background removal: full-res export, refine, progress | Progress shows while processing, and the export matches the preview | M | P4-13a |
+| P4-14 | Meme shortcuts: Sound + zoom combo, quick top/bottom caption, manual beat markers | Sound + zoom places both items in one tap | M | P4-06a, P3-05 |
+| P4-15a | Template and sticker-pack loader with original fixtures (debug builds only) | Fixtures load and show every license field | S | P4-05b |
+| P4-15b | Load 40 video templates, 60 photo templates and 20 sticker packs (owner-gated content) | Every item has complete license fields | L | P4-15a |
 
 ## Phase 5 · Ads, analytics, sharing, languages (weeks 18 to 19, from 8 Feb)
 
