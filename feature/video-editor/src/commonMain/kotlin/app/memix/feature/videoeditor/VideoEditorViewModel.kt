@@ -152,6 +152,7 @@ class VideoEditorViewModel(
     private val captions = CaptionControl(host)
     private val overlays = OverlayControl(host)
     private val keyframes = KeyframeControl(host)
+    private val greenScreen = GreenScreenControl(host, startThumbnails, decodeDispatcher)
     private val canvasPanel = CanvasPanelControl(host) { text, style, widthPx, heightPx, look -> captionRendering.measure(text, style, widthPx, heightPx, look) }
     private val exportSheet = ExportSheetControl(host, export)
     // The canvas size of the picture on screen, as the preview last reported it.
@@ -161,6 +162,7 @@ class VideoEditorViewModel(
         updateState { it.copy(mediaImport = mediaImport.ui, captionMeasure = EditorCaptionMeasure(captionRendering.measure)) }
         addCloseable(AutoCloseable { preview?.close() })
         addCloseable(AutoCloseable { voiceoverControl.release() })
+        addCloseable(greenScreen)
         viewModelScope.launch { loadStarterSounds() }
         viewModelScope.launch { export.export.state.collect(::showExportEnded) }
         viewModelScope.launch {
@@ -320,6 +322,15 @@ class VideoEditorViewModel(
             is VideoEditorIntent.OverlayTapped -> tapOverlay(intent.itemId)
             is VideoEditorIntent.OverlayGestureStarted -> overlays.startGesture(intent.itemId)
             is VideoEditorIntent.OverlayGestureEnded -> overlays.endGesture(intent.itemId, intent.transform)
+            VideoEditorIntent.GreenScreenTool -> greenScreen.open()
+            VideoEditorIntent.CloseGreenScreen -> greenScreen.closePanel()
+            VideoEditorIntent.GreenScreenOff -> greenScreen.turnOff()
+            is VideoEditorIntent.GreenScreenColor -> greenScreen.setColor(intent.argb)
+            is VideoEditorIntent.GreenScreenStrengthChanged -> greenScreen.strengthChanged(intent.strength)
+            is VideoEditorIntent.GreenScreenSoftnessChanged -> greenScreen.softnessChanged(intent.softness)
+            VideoEditorIntent.GreenScreenReleased -> greenScreen.released()
+            VideoEditorIntent.GreenScreenPickToggled -> greenScreen.togglePick()
+            is VideoEditorIntent.GreenScreenPickReleased -> greenScreen.pickReleased(intent.canvasFx, intent.canvasFy)
             is VideoEditorIntent.OpenOverlayPanel -> overlays.openPanel(intent.panel)
             VideoEditorIntent.CloseOverlayPanel -> overlays.closePanel()
             is VideoEditorIntent.OverlayOpacityChanged -> overlays.opacityChanged(intent.opacity)
@@ -396,6 +407,8 @@ class VideoEditorViewModel(
                 volumePanel = it.volumePanel?.takeIf { panel -> timeline.item(panel.itemId) != null },
                 overlays = project.overlayUis(),
                 overlayPanel = it.overlayPanel?.takeIf { panel -> timeline.item(panel.itemId) != null },
+                // Follows the project, so an undo shows in the sliders; closes with its key (Undo of the opening step, Turn off) or its clip.
+                greenScreen = greenScreen.syncedWith(it.greenScreen, project),
                 // The bar follows the keyframes through edits and undo; it closes with its item.
                 keyframeBar = it.keyframeBar?.let { bar -> project.keyframeBarOf(bar.itemId, bar) },
                 // Follows the project, so an undo shows in the sliders; closes with its sound.
@@ -537,6 +550,7 @@ class VideoEditorViewModel(
             state.value.textEntry != null -> captions.commitEntry()
             state.value.exportSheet != null -> exportSheet.close()
             state.value.textPanel != null -> captions.closePanel()
+            state.value.greenScreen != null -> greenScreen.closePanel()
             state.value.overlayPanel != null -> overlays.closePanel()
             state.value.keyframeBar?.easingOpen == true -> keyframes.closeEasing()
             state.value.volumePanel != null -> volumePanel.close()
@@ -1052,14 +1066,15 @@ internal fun VideoEditorUiState.withSelection(itemId: String?, project: Project?
     // A caption's panel belongs to it: it closes when the selection moves on or goes.
     val panel = textPanel?.takeIf { itemId != null && itemId == selectedItemId }
     val overlay = overlayPanel?.takeIf { itemId != null && itemId == selectedItemId }
+    val green = greenScreen?.takeIf { itemId != null && itemId == selectedItemId }
     // The keyframe bar belongs to its item: selecting another one shows that item's own bar.
     val keyframes = keyframeBar?.takeIf { itemId != null && itemId == it.itemId }
-    val track = itemId?.let(timeline::trackOf) ?: return copy(selectedItemId = null, clipTools = null, trimRanges = null, textPanel = null, overlayPanel = null, keyframeBar = null)
+    val track = itemId?.let(timeline::trackOf) ?: return copy(selectedItemId = null, clipTools = null, trimRanges = null, textPanel = null, overlayPanel = null, greenScreen = null, keyframeBar = null)
     val start = project?.trimRange(itemId, TrimEdge.START)
     val end = project?.trimRange(itemId, TrimEdge.END)
     val ranges = if (start != null && end != null) TrimRanges(start, end) else null
     val mediaKind = timeline.item(itemId)?.media?.kind
-    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind), trimRanges = ranges, textPanel = panel, overlayPanel = overlay, keyframeBar = keyframes)
+    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind), trimRanges = ranges, textPanel = panel, overlayPanel = overlay, greenScreen = green, keyframeBar = keyframes)
 }
 
 private fun clipToolsFor(kind: TrackKind, mediaKind: MediaKind?): ClipTools = when (kind) {

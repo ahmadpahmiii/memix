@@ -60,4 +60,7 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     // 14 → 15 (P4-02a): MediaClip, AudioClip, TextItem and StickerItem gained "keyframes" (a list, empty by default). Version-14 JSON has no
     // "keyframes", which decodes as none: an item saved before moves as it did. The step only moves the version on.
     ProjectMigration(fromVersion = 14) { json -> json },
+    // 15 → 16 (P4-04): MediaClip gained the nullable "chromaKey" (color, strength, softness; null is off). Version-15 JSON has none, which
+    // decodes as null: a clip saved before is unkeyed and looks as saved. The step only moves the version on.
+    ProjectMigration(fromVersion = 15) { json -> json },
 )

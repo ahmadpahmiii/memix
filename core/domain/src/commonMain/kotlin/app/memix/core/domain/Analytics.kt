@@ -271,6 +271,13 @@ enum class EditorTool(val eventValue: String?) {
     KEYFRAME_CLEAR("keyframe_clear"),
 
     /**
+     * P4-04: green screen (spec docs/ux/specs/P4-04-green-screen.md → Analytics), once per committed step. `green_screen` is keying turning
+     * on, a swatch, a pick or a slider release; `green_screen_off` is Turn off. The key color is content and is never sent; no `value`.
+     */
+    GREEN_SCREEN("green_screen"),
+    GREEN_SCREEN_OFF("green_screen_off"),
+
+    /**
      * P1-11: the Canvas panel (PM, 20 Oct), each with a `value`. Fit and Fill are one event, `canvas_fit` with `value`
      * `fit` or `fill`, but two entries, so the undo history can say "Undo: Fill".
      */

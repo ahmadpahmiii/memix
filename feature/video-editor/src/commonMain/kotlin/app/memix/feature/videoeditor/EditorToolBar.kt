@@ -67,6 +67,8 @@ import memix.feature.video_editor.generated.resources.tool_split
 import memix.core.ui.generated.resources.tool_style
 import memix.core.ui.generated.resources.tool_text
 import memix.feature.video_editor.generated.resources.tool_audio_effects
+import memix.feature.video_editor.generated.resources.tool_green_screen
+import memix.feature.video_editor.generated.resources.tool_green_screen_click
 import memix.feature.video_editor.generated.resources.tool_keyframes
 import memix.feature.video_editor.generated.resources.tool_keyframes_click
 import memix.feature.video_editor.generated.resources.tool_layer_order
@@ -252,7 +254,9 @@ private fun rememberClipTools(
     val layerOrder = stringResource(Res.string.tool_layer_order)
     val keyframesLabel = stringResource(Res.string.tool_keyframes)
     val keyframesClick = stringResource(Res.string.tool_keyframes_click)
-    return remember(clipTools, isMissing, split, delete, duplicate, reorder, volume, audioEffects, moveHere, moveHereClickLabel, replace, detach, textTools, position, opacity, layerOrder, keyframesLabel, keyframesClick, onIntent, reorderFocus, focus) {
+    val greenScreenLabel = stringResource(Res.string.tool_green_screen)
+    val greenScreenClick = stringResource(Res.string.tool_green_screen_click)
+    return remember(clipTools, isMissing, greenScreenLabel, greenScreenClick, split, delete, duplicate, reorder, volume, audioEffects, moveHere, moveHereClickLabel, replace, detach, textTools, position, opacity, layerOrder, keyframesLabel, keyframesClick, onIntent, reorderFocus, focus) {
         val splitTool = ToolBarItem(split, MemixIcons.Split, { onIntent(VideoEditorIntent.SplitSelected) })
         val deleteTool = ToolBarItem(delete, MemixIcons.Delete, { onIntent(VideoEditorIntent.DeleteSelected) }, ToolTone.Danger)
         val duplicateTool = ToolBarItem(duplicate, MemixIcons.Duplicate, { onIntent(VideoEditorIntent.DuplicateSelected) })
@@ -267,28 +271,31 @@ private fun rememberClipTools(
         val opacityTool = ToolBarItem(opacity, MemixIcons.Opacity, { onIntent(VideoEditorIntent.OpenOverlayPanel(OverlayPanel.OPACITY)) }, focusRequester = focus.opacityTool)
         val layerOrderTool = ToolBarItem(layerOrder, MemixIcons.Layers, { onIntent(VideoEditorIntent.OpenOverlayPanel(OverlayPanel.ORDER)) }, focusRequester = focus.layerOrderTool)
         val keyframesTool = ToolBarItem(keyframesLabel, MemixIcons.Keyframe, { onIntent(VideoEditorIntent.KeyframesTool) }, clickLabel = keyframesClick, focusRequester = focus.keyframesTool)
+        val greenScreenTool = ToolBarItem(greenScreenLabel, MemixIcons.GreenScreen, { onIntent(VideoEditorIntent.GreenScreenTool) }, clickLabel = greenScreenClick, focusRequester = focus.greenScreenTool)
         when (clipTools) {
             // The overlay's own tools (spec P4-01b → Overlay tool bar): Position (the no-drag route) and Opacity first, Delete third.
             // A missing file puts Delete first and leaves out what acts on nothing visible.
             ClipTools.VIDEO_OVERLAY -> {
                 val detachTool = ToolBarItem(detach, MemixIcons.DetachAudio, { onIntent(VideoEditorIntent.DetachAudioSelected(fileMissing = isMissing)) })
                 val rest = listOf(splitTool, volumeTool, keyframesTool, layerOrderTool, moveHereTool, duplicateTool, detachTool).filterNot { isMissing && it === keyframesTool }
-                (if (isMissing) listOf(deleteTool) + rest else listOf(positionTool, opacityTool, deleteTool) + rest).toImmutableList()
+                // Green screen fourth: the common overlay job is a character on green (spec P4-04 → The tool in the bars); a missing file has no picture to key.
+                (if (isMissing) listOf(deleteTool) + rest else listOf(positionTool, opacityTool, deleteTool, greenScreenTool) + rest).toImmutableList()
             }
             ClipTools.PHOTO_OVERLAY -> {
                 val rest = listOf(splitTool, keyframesTool, layerOrderTool, moveHereTool, duplicateTool).filterNot { isMissing && it === keyframesTool }
-                (if (isMissing) listOf(deleteTool) + rest else listOf(positionTool, opacityTool, deleteTool) + rest).toImmutableList()
+                (if (isMissing) listOf(deleteTool) + rest else listOf(positionTool, opacityTool, deleteTool, greenScreenTool) + rest).toImmutableList()
             }
             // Volume second, because lowering the original under a meme sound is the next most common job; Detach audio
             // with the rare tools (spec P1-06 → Clip tool bar). A clip with no sound keeps both; they explain on tap.
             ClipTools.VIDEO_CLIP -> {
                 val detachTool = ToolBarItem(detach, MemixIcons.DetachAudio, { onIntent(VideoEditorIntent.DetachAudioSelected(fileMissing = isMissing)) })
                 // Keyframes animate the clip's volume until P4-16 draws its framing; a clip whose file is missing has nothing to animate.
-                val usual = listOfNotNull(splitTool, volumeTool, deleteTool, keyframesTool.takeUnless { isMissing }, duplicateTool, detachTool, reorderTool)
+                // Green screen after Delete until P4-16 and P4-07 put Crop, Fit or Fill, Position and Filters before it (spec P4-04 → The tool in the bars).
+                val usual = listOfNotNull(splitTool, volumeTool, deleteTool, greenScreenTool.takeUnless { isMissing }, keyframesTool.takeUnless { isMissing }, duplicateTool, detachTool, reorderTool)
                 (if (isMissing) listOf(replaceTool) + usual else usual + replaceTool).toImmutableList()
             }
             ClipTools.PHOTO_CLIP -> {
-                val usual = listOf(splitTool, deleteTool, duplicateTool, reorderTool)
+                val usual = listOfNotNull(splitTool, deleteTool, greenScreenTool.takeUnless { isMissing }, duplicateTool, reorderTool)
                 (if (isMissing) listOf(replaceTool) + usual else usual + replaceTool).toImmutableList()
             }
             // Audio effects fourth, so it shows without scrolling at 360 dp (spec P3-09 → Entry and exit).
@@ -350,6 +357,7 @@ internal class EditorFocusTargets {
     val keyframesTool = FocusRequester()
     val addKeyframeTool = FocusRequester()
     val easingTool = FocusRequester()
+    val greenScreenTool = FocusRequester()
 
     /** Moves focus to [target]'s control; nothing happens when it isn't on screen. */
     fun moveTo(target: FocusTarget) {
@@ -373,6 +381,7 @@ internal class EditorFocusTargets {
             FocusTarget.KEYFRAMES_TOOL -> keyframesTool
             FocusTarget.ADD_KEYFRAME_TOOL -> addKeyframeTool
             FocusTarget.EASING_TOOL -> easingTool
+            FocusTarget.GREEN_SCREEN_TOOL -> greenScreenTool
         }.requestFocus()
     }
 }

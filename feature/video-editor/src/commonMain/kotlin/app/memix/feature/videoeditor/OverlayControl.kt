@@ -198,7 +198,9 @@ internal class OverlayControl(private val host: EditorHost) {
         if (host.routesThroughKeyframes(itemId)) KeyframeCatalog.CENTER_RANGE else 0f..1f
 
     // The preview draws an overlay invisible only when the editor can draw it in its place: no picture, no hiding.
+    // A keyed overlay has no stand-in: the prefetched picture is the unkeyed frame, which would show the green screen under the finger (P4-04).
     private fun hideForStandIn(itemId: String): Boolean {
+        if (host.currentProject()?.overlayClip(itemId)?.chromaKey != null) return false
         val overlay = host.uiState.overlays.firstOrNull { it.itemId == itemId } ?: return false
         if (host.uiState.overlayFrames?.isReady(overlay, host.currentPositionUs()) != true) return false
         host.preview?.hideOverlay(itemId)

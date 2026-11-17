@@ -51,6 +51,11 @@ data class MediaClip(
      * they take over and those three fields are not used (see [Keyframe]). A main clip has no opacity to key.
      */
     val keyframes: List<Keyframe> = emptyList(),
+    /**
+     * The clip's green screen (P4-04, schema 16): the color removed from the picture before anything else is drawn; null is off. Main
+     * clips and overlays alike, video and photo. Split and Duplicate copy it, Replace keeps it.
+     */
+    val chromaKey: ChromaKey? = null,
 ) : TimelineItem {
     // Derived, not saved, so it can never disagree with the trim points.
     override val durationUs: Long get() = trimOutUs - trimInUs

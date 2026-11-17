@@ -266,4 +266,22 @@
     <string name="edit_keyframe_move">Pindahkan keyframe</string>
     <string name="edit_keyframe_clear">Hapus keyframe</string>
     <string name="keyframe_select_node">Ke sini</string>
+    <!-- P4-04 Green screen -->
+    <string name="tool_green_screen">Layar hijau</string>
+    <string name="tool_green_screen_click">Hapus satu warna dari klip ini</string>
+    <string name="green_screen_color">Warna yang dihapus</string>
+    <string name="green_screen_strength">Kekuatan</string>
+    <string name="green_screen_softness">Kelembutan tepi</string>
+    <string name="green_screen_off">Matikan</string>
+    <string name="green_screen_off_a11y">Matikan layar hijau</string>
+    <string name="key_green">Hijau</string>
+    <string name="key_blue">Biru</string>
+    <string name="key_picked">Warna terpilih</string>
+    <string name="key_pick">Pilih dari video</string>
+    <string name="key_pick_click">Ketuk warna di klipmu</string>
+    <string name="green_screen_pick_hint">Ketuk warna yang ingin dihapus.</string>
+    <string name="green_screen_pick_miss">Ketuk di dalam klip untuk memilih warna.</string>
+    <string name="green_screen_nothing">Tidak ada yang dihapus di sini. Pilih warna yang ingin dihilangkan.</string>
+    <string name="a11y_green_screen_picked">Warna dipilih</string>
+    <string name="edit_green_screen_off">Matikan layar hijau</string>
 </resources>

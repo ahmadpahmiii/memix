@@ -1,6 +1,7 @@
 package app.memix.core.domain.video
 
 import app.memix.core.domain.voiceover.ClockSample
+import app.memix.core.model.project.ChromaKey
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
@@ -82,6 +83,12 @@ interface PreviewSession : AutoCloseable {
      * ends it. The [update] that commits the change ends it by itself, since the new composition draws that opacity.
      */
     fun previewOpacity(itemId: String, opacity: Float?)
+
+    /**
+     * While the Green screen sliders or swatches move (P4-04): draws clip [itemId] with [key] at once, paused or playing, with no
+     * rebuild. Ignored for a clip the composition doesn't key. The [update] that commits the change draws the same key by itself.
+     */
+    fun previewChromaKey(itemId: String, key: ChromaKey)
 
     /**
      * While the Volume panel's slider moves (P1-08, P1-09): plays sound or clip [itemId] at [volume] (1 = its own

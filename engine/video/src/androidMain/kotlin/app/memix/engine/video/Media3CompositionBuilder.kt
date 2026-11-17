@@ -46,6 +46,8 @@ internal class Media3CompositionBuilder(
     private val liveFades: Map<String, LiveFades> = emptyMap(),
     /** The preview's live Bass boost and Distortion per sound (heard while their sliders move); empty for exports. */
     private val liveBass: Map<String, LiveBass> = emptyMap(),
+    /** The preview's live green screen per keyed clip (the Strength and Edge softness sliders move the matte); a clip not listed gets its own fixed key. */
+    private val liveKeys: Map<String, LiveChromaKey> = emptyMap(),
     /** The plan's captions over the composited video; null when the plan has none. */
     private val captionOverlay: CaptionOverlay? = null,
     /** The "Memix" mark of a free export, drawn above the captions; null in previews and watermark-free exports (P1-13). */
@@ -70,7 +72,7 @@ internal class Media3CompositionBuilder(
 
     fun build(): Composition {
         // With overlays, the video is several sequences composited in a fixed order (OverlaySequences); without, just the main one.
-        val overlays = if (plan.hasOverlays) OverlaySequences(plan, uriByMedia, frame, frameRate, liveGains) else null
+        val overlays = if (plan.hasOverlays) OverlaySequences(plan, uriByMedia, frame, frameRate, liveGains, liveKeys) else null
         val main = mainVideoSequence()
         val videoSequences = overlays?.videoSequences(main) ?: listOf(main)
         val composition = Composition.Builder(videoSequences + plan.audioLanes.map(::audioSequence))
@@ -122,7 +124,7 @@ internal class Media3CompositionBuilder(
             .setRemoveAudio(!clip.playsOwnAudio)
             // The output rate for photos; a ceiling that drops extra frames from faster videos.
             .setFrameRate(frameRate)
-            .setEffects(Effects(audioProcessors, CanvasFraming(clip, frame, plan.background, pictureBars).effects()))
+            .setEffects(Effects(audioProcessors, CanvasFraming(clip, frame, plan.background, pictureBars, clip.chromaKey?.let { liveKeys[clip.itemId] ?: LiveChromaKey(it) }).effects()))
         // A photo's length comes from its image duration.
         if (!clip.isStill) item.setSourceDuration(clip.source, clip.trimOutUs)
         return item.build()

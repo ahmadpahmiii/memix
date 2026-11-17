@@ -54,6 +54,7 @@ import memix.core.ui.generated.resources.import_item_photo
 import memix.core.ui.generated.resources.import_item_video
 import memix.feature.video_editor.generated.resources.a11y_back_1s
 import memix.feature.video_editor.generated.resources.a11y_clip_media
+import memix.feature.video_editor.generated.resources.tool_green_screen
 import memix.feature.video_editor.generated.resources.a11y_forward_1s
 import memix.feature.video_editor.generated.resources.a11y_go_end
 import memix.feature.video_editor.generated.resources.a11y_go_start
@@ -404,9 +405,10 @@ private fun rememberItemActions(controller: TimelineController, isMainClip: Bool
 @Composable
 private fun itemDescription(track: TrackUi, item: ItemUi, clipCount: Int): String {
     val base = baseDescription(track, item, clipCount)
-    // After the clip's own words, never in its state description (spec P4-02b → Accessibility).
-    if (item.keyframeCount == 0) return base
-    return base + ". " + stringResource(Res.string.a11y_state_keyframed, item.keyframeCount)
+    // After the clip's own words, never in its state description (spec P4-02b → Accessibility; P4-04 adds "Green screen", before the keyframes).
+    val keyed = if (item.keyed) base + ". " + stringResource(Res.string.tool_green_screen) else base
+    if (item.keyframeCount == 0) return keyed
+    return keyed + ". " + stringResource(Res.string.a11y_state_keyframed, item.keyframeCount)
 }
 
 @Composable

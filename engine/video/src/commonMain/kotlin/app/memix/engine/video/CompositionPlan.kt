@@ -3,6 +3,7 @@ package app.memix.engine.video
 import app.memix.core.domain.project.interpolatedLook
 import app.memix.core.model.project.AudioEffects
 import app.memix.core.model.project.CaptionStyle
+import app.memix.core.model.project.ChromaKey
 import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.ItemLook
 import app.memix.core.model.project.Keyframe
@@ -47,6 +48,13 @@ internal data class CompositionPlan(
     /** True when the export needs an audio track: a main clip plays its own sound, or an audio lane exists. */
     val hasAudio: Boolean
         get() = audioLanes.isNotEmpty() || mainVideo.any { it is VisualClip && it.playsOwnAudio } || overlays.any { it.hasAudio }
+
+    /** Every main clip and overlay the plan draws with a green screen, by item id. */
+    val chromaKeys: Map<String, ChromaKey>
+        get() = buildMap {
+            mainVideo.filterIsInstance<VisualClip>().forEach { clip -> clip.chromaKey?.let { put(clip.itemId, it) } }
+            overlays.flatMap { it.segments }.filterIsInstance<OverlayClip>().forEach { clip -> clip.chromaKey?.let { put(clip.itemId, it) } }
+        }
 
     /** Every item the plan plays from a media file, with that file. */
     val mediaItems: List<Pair<String, MediaRef>>
@@ -146,6 +154,8 @@ internal data class VisualClip(
      * turn arrive with P4-16 (the planner logs it).
      */
     val keyframes: List<Keyframe> = emptyList(),
+    /** The green screen (P4-04): removed from the picture first, before it is scaled; the canvas background shows through it. Null is off. */
+    val chromaKey: ChromaKey? = null,
 ) : MainVideoSegment {
     override val durationUs: Long get() = trimOutUs - trimInUs
 
@@ -172,6 +182,8 @@ internal data class OverlayClip(
     val volume: Float = 1f,
     /** The overlay's motion over time (P4-02), counted from where this clip starts showing; they take over [transform] and [opacity] (and the volume). */
     val keyframes: List<Keyframe> = emptyList(),
+    /** The green screen (P4-04): removed from the picture before it is scaled to its drawn size, so the layers beneath show through. Null is off. */
+    val chromaKey: ChromaKey? = null,
 ) : OverlaySegment {
     override val durationUs: Long get() = trimOutUs - trimInUs
 

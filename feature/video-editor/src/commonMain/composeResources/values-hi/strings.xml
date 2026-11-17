@@ -266,4 +266,22 @@
     <string name="edit_keyframe_move">कीफ़्रेम खिसकाएं</string>
     <string name="edit_keyframe_clear">कीफ़्रेम हटाएं</string>
     <string name="keyframe_select_node">यहाँ जाएं</string>
+    <!-- P4-04 Green screen -->
+    <string name="tool_green_screen">ग्रीन स्क्रीन</string>
+    <string name="tool_green_screen_click">इस क्लिप से एक रंग हटाएं</string>
+    <string name="green_screen_color">हटाने वाला रंग</string>
+    <string name="green_screen_strength">ताकत</string>
+    <string name="green_screen_softness">किनारे की कोमलता</string>
+    <string name="green_screen_off">बंद करें</string>
+    <string name="green_screen_off_a11y">ग्रीन स्क्रीन बंद करें</string>
+    <string name="key_green">हरा</string>
+    <string name="key_blue">नीला</string>
+    <string name="key_picked">चुना हुआ रंग</string>
+    <string name="key_pick">वीडियो से चुनें</string>
+    <string name="key_pick_click">अपनी क्लिप का कोई रंग छुएं</string>
+    <string name="green_screen_pick_hint">जो रंग हटाना है उस पर टैप करें।</string>
+    <string name="green_screen_pick_miss">रंग चुनने के लिए क्लिप के अंदर टैप करें।</string>
+    <string name="green_screen_nothing">यहाँ हटाने को कुछ नहीं है। जो रंग हटाना है उसे चुनें।</string>
+    <string name="a11y_green_screen_picked">रंग चुना गया</string>
+    <string name="edit_green_screen_off">ग्रीन स्क्रीन बंद</string>
 </resources>

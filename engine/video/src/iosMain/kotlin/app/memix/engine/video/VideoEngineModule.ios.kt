@@ -29,6 +29,7 @@ import app.memix.core.domain.voiceover.VoiceRoute
 import app.memix.core.model.project.CaptionCatalog
 import app.memix.core.model.project.CaptionLook
 import app.memix.core.model.project.CaptionStyle
+import app.memix.core.model.project.ChromaKey
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.MediaRef
@@ -163,6 +164,9 @@ private class UnavailablePreviewSession : PreviewSession {
     override fun hideCaption(itemId: String?) = Unit
     override fun hideOverlay(itemId: String?) = Unit
     override fun previewOpacity(itemId: String, opacity: Float?) = Unit
+    // TODO(P7-04): green screen as a Core Image kernel with the shader's math (ChromaKeyMath, docs/qa/references/P4-04-green-screen/). Until then
+    // this whole preview is the unavailable stub, so a keyed clip is not drawn on iOS at all rather than drawn wrong.
+    override fun previewChromaKey(itemId: String, key: ChromaKey) = Unit
     override fun setSilent(silent: Boolean) = Unit
     override fun sampleClock(): ClockSample? = null
     override fun close() = Unit

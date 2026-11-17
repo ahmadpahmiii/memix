@@ -197,3 +197,28 @@ A JVM harness (not in the repo; it compiles the real feature module on the JVM w
 - The lanes' scroll-into-view when the bar opens, and the slide, are only seen in the renders as their end state.
 - Playing a segment from the Easing panel (seek, play, stop at the next keyframe).
 - Delegated: the diamond fade, the selected diamond's size animation, edge auto-scroll while dragging, the spoken new node after Previous or Next, and `explain_fit_keyed` (needs P4-16's per-clip Fit tool) are not built; see the TECHNICAL_DESIGN limits.
+
+## P4-04 · green screen keying
+
+Spec: `docs/ux/specs/P4-04-green-screen.md`. Notes: `docs/TECHNICAL_DESIGN.md` → Green screen. Screenshots (desktop renders, not a phone): `docs/ux/reviews/P4-04/`. Reference renders: `docs/qa/references/P4-04-green-screen/`. Scenes: `--es memix.openEditor greenscreen-check` (the 10 s 1080p clip with three `chroma-check` pictures over it: green, blue already keyed with Blue, off-green `#6BB536`) and `greenscreen-main` (the green picture as the main clip over the canvas Image background). The pictures are drawn on first use into `files/debug-media/` (PNG, `ChromaCheckFixture`). For a video fixture: `ffmpeg -loop 1 -i chroma-check.png -t 4 -r 30 -vf noise=alls=4:allf=t -c:v libx264 -pix_fmt yuv420p chroma-check.mp4` (desktop only), push it to `files/debug-media/` and swap the media in `greenScreenCheck()`.
+
+### 1. What was checked without a device
+JVM harnesses (not in the repo): 37 checks on the key math, edits, JSON round trip and the 15 to 16 migration (an old draft's JSON without `chromaKey` opens unkeyed), the pick mapping (overlay turn and scale, main Fit), and the fixture's Done when; 37 checks on the real `GreenScreenControl` with a fake edit host (opening keys at the defaults as one step, swatch, slider release, Turn off, Undo closing the panel, pick mode, miss banner, "nothing found"). All pass. On the CPU mirror at the defaults: backdrop cleared 100% (need 99.5), subject kept 100% (99), strand centers kept 100% (99), band G - max(R, B) 0/255 (6). The Android shader (`ChromaKeyEffect`, `BackdropEffect`) and everything on screen were compiled, not run.
+
+### 2. The Done when, on a phone
+1. Open `greenscreen-check`, tap the green picture, Green screen (fourth tool): keyed at once, backdrop gone, the main video shows through, no green rim. Undo once: unkeyed and the panel closes.
+2. Strength and Edge softness: the matte follows the thumb live (playing and paused); one step per release. Blue swatch on the green picture: nothing left to remove, the banner "Nothing to remove here" after 600 ms or after the color change.
+3. Eyedropper on the off-green picture: banner, playback pauses, press shows the loupe above the finger, release picks (one step, Picked swatch). Release outside the picture: the miss banner for 2 s. Eyedropper again, Done or back ends the mode.
+4. `greenscreen-main`: Green screen on the main clip: the canvas background picture shows through. With Color background: the color. With Blur: black (delegated, below).
+5. Turn off: one step, panel closes. Opacity at 50% on a keyed overlay: the keyed alpha is multiplied.
+6. Export 1080p30 and compare frame 1.0 s with the preview and `docs/qa/references/P4-04-green-screen/default-key.png` (alpha within 3/255 for 99% of pixels, per the spec).
+7. Drag a keyed overlay: its picture stays where it was until release (no stand-in, below).
+
+### 3. Numbers to take (release or benchmark, the owner's phone)
+- Preview of a keyed 1080p overlay over the 1080p main video at 30 fps or more; janky frames under 5% for three 3 s Strength drags.
+- LeakCanary: open the panel, pick, drag both sliders, Turn off, close the editor, five times.
+- The owner's real green clip, defaults only or Strength or Softness alone.
+
+### 4. Things that could not be verified
+- Everything on a phone: the GL pass (orientation, `Presentation` alpha through the compositor, the picture backdrop's flip), the pick's loupe, haptics-free gestures, TalkBack, reduce motion.
+- Delegated: Blur background under a keyed main clip is black; a keyed overlay has no drag stand-in; the pick reads a 960 px frame from the thumbnail reader rather than the decoder's own frame; "nothing found" uses the whole source frame.

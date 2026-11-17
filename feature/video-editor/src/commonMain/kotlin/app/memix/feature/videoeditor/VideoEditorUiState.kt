@@ -16,6 +16,7 @@ import app.memix.core.domain.video.VideoCodec
 import app.memix.core.domain.voiceover.VoiceRoute
 import app.memix.core.domain.sound.PickedSound
 import app.memix.core.model.catalog.LocalizedText
+import app.memix.core.model.project.ChromaKey
 import app.memix.core.model.project.AudioEffects
 import app.memix.core.model.project.AudioEffectsCatalog
 import app.memix.core.model.project.CanvasRatio
@@ -127,6 +128,8 @@ data class VideoEditorUiState(
     val overlays: ImmutableList<OverlayUi> = persistentListOf(),
     /** The Position, Opacity or Layer order panel of the selected overlay, or null when none is open. */
     val overlayPanel: OverlayPanelUi? = null,
+    /** The Green screen panel of the selected main clip or overlay (P4-04), or null when it is closed. */
+    val greenScreen: GreenScreenUi? = null,
     /**
      * An overlay a finger or a held arrow moved, or a commit the preview hasn't shown yet: the editor's stand-in draws it from
      * there until the preview's new frame takes over, so it never shows twice or jumps (spec P4-01b → Live feedback). Null otherwise.
@@ -285,6 +288,23 @@ data class SoundsSheetUi(val isOpen: Boolean = false)
 @Immutable
 data class VolumePanelUi(val itemId: String, val volume: Float, val isVideoClip: Boolean = false, val isOverlay: Boolean = false, val keyed: Boolean = false)
 
+/**
+ * The Green screen panel of clip [itemId] (P4-04): [key] follows the sliders while they move; [picking] is the eyedropper mode
+ * (stage taps pick a color); [colorAt] reads the color under a finger in that mode; [hint] the one stage banner this panel owns.
+ */
+@Immutable
+data class GreenScreenUi(
+    val itemId: String,
+    val key: ChromaKey,
+    val picking: Boolean = false,
+    /** The color under canvas fractions (fx, fy) in pick mode, or null outside the clip or before the frame is read; read by the pick layer's own state. */
+    val colorAt: ((Float, Float) -> Int?)? = null,
+    val hint: GreenScreenHint? = null,
+)
+
+/** What the Green screen banner says: how to pick, that a release missed the clip, or that nothing in the picture is removed. */
+enum class GreenScreenHint { PICK, PICK_MISS, NOTHING }
+
 /** The Position, Opacity or Layer order [panel] of overlay [itemId]; [opacity] follows the slider while it moves (1 = fully drawn); [keyed]: the overlay has keyframes, so the panel says so and its ranges widen (P4-02b). */
 @Immutable
 data class OverlayPanelUi(val panel: OverlayPanel, val itemId: String, val opacity: Float, val keyed: Boolean = false)
@@ -435,6 +455,9 @@ enum class FocusTarget {
     KEYFRAMES_TOOL,
     ADD_KEYFRAME_TOOL,
     EASING_TOOL,
+
+    /** The selected item's Green screen tool, after its panel closes (P4-04). */
+    GREEN_SCREEN_TOOL,
 }
 
 /** Why a tool explains instead of acting (spec P1-06 → Clip tool bar: tools stay enabled and explain on tap). */
@@ -543,6 +566,9 @@ sealed interface ToastMessage {
 
     /** Spoken only, after Previous, Next or a tap picked keyframe number [position] of [count]: "Keyframe 2 of 3, at 0:02.0, Smooth". */
     data class KeyframePicked(val position: Int, val count: Int, val atUs: Long, val easing: app.memix.core.model.project.Easing) : ToastMessage
+
+    /** Spoken only, after the eyedropper picked a color (P4-04). */
+    data object GreenScreenPicked : ToastMessage
 
     /** Spoken only, after Remove keyframe. */
     data object KeyframeRemoved : ToastMessage
@@ -987,6 +1013,31 @@ sealed interface VideoEditorIntent {
 
     /** The slider was let go (or stepped): one "Opacity" step, none if it is where it began. */
     data object OverlayOpacityReleased : VideoEditorIntent
+
+    /** The Green screen tool of the selected clip: keying turns on at the defaults when it isn't on (spec P4-04 → Entry and exit). */
+    data object GreenScreenTool : VideoEditorIntent
+
+    /** Done, system back or Escape on the Green screen panel (in pick mode the first back ends the mode). */
+    data object CloseGreenScreen : VideoEditorIntent
+
+    /** Turn off in the panel's header: one step, and the panel closes. */
+    data object GreenScreenOff : VideoEditorIntent
+
+    /** A key swatch (Green, Blue): one step. */
+    data class GreenScreenColor(val argb: Int) : VideoEditorIntent
+
+    /** Strength or Edge softness moved: seen at once, nothing committed yet. */
+    data class GreenScreenStrengthChanged(val strength: Float) : VideoEditorIntent
+    data class GreenScreenSoftnessChanged(val softness: Float) : VideoEditorIntent
+
+    /** The slider was let go (or stepped): one step, none if unchanged. */
+    data object GreenScreenReleased : VideoEditorIntent
+
+    /** The eyedropper swatch: starts pick mode, or ends it. */
+    data object GreenScreenPickToggled : VideoEditorIntent
+
+    /** In pick mode the finger was lifted at that point: picks the color there, or misses. */
+    data class GreenScreenPickReleased(val canvasFx: Float, val canvasFy: Float) : VideoEditorIntent
 
     /** Bring forward ([forward]) or Send back on the selected overlay: one "Layer order" step, or an explanation. */
     data class OverlayOrder(val forward: Boolean) : VideoEditorIntent

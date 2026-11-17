@@ -44,7 +44,8 @@ import org.jetbrains.compose.resources.DrawableResource
  * Image variant (P2-12) is the icon variant until a picture is set, then the [picture] itself, center-cropped into the
  * circle. [name] is spoken; [clickLabel], when given, is what "double-tap to ..." says. Selected: a white ring 2 dp
  * outside the circle. Low-contrast colors (black on `surface`) get a `text-muted` hairline
- * ring so they don't vanish. Put the row in a `selectableGroup()`; a tap on the selected swatch does nothing.
+ * ring so they don't vanish. Put the row in a `selectableGroup()`; a tap on the selected swatch does nothing, except with
+ * [clickWhenSelected] (the Green screen eyedropper, whose second tap ends the pick mode that its ring shows, P4-04).
  */
 @Composable
 fun Swatch(
@@ -57,16 +58,17 @@ fun Swatch(
     iconTint: Color = MemixColors.textSecondary,
     picture: ImageBitmap? = null,
     clickLabel: String? = null,
+    clickWhenSelected: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressedBackdrop = pressedColor(interactionSource, MemixColors.surfaceRaised.copy(alpha = 0f), MemixColors.surfaceRaised)
     Box(
         modifier
             .size(MemixSize.touchTarget)
-            .selectable(selected, interactionSource, indication = null, role = Role.RadioButton, onClick = { if (!selected) onClick() })
+            .selectable(selected, interactionSource, indication = null, role = Role.RadioButton, onClick = { if (!selected || clickWhenSelected) onClick() })
             .semantics {
                 contentDescription = name
-                if (clickLabel != null) onClick(label = clickLabel) { if (!selected) onClick(); true }
+                if (clickLabel != null) onClick(label = clickLabel) { if (!selected || clickWhenSelected) onClick(); true }
             },
         contentAlignment = Alignment.Center,
     ) {

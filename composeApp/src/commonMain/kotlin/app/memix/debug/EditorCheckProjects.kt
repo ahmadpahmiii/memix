@@ -7,6 +7,8 @@ import app.memix.core.model.project.ArgbColor
 import app.memix.core.model.project.AudioClip
 import app.memix.core.model.project.Canvas
 import app.memix.core.model.project.CanvasBackground
+import app.memix.core.model.project.ChromaKey
+import app.memix.core.model.project.ChromaKeyCatalog
 import app.memix.core.model.project.CanvasRatio
 import app.memix.core.model.project.CaptionStyle
 import app.memix.core.model.project.EffectItem
@@ -54,7 +56,9 @@ internal class EditorCheckProjects : KoinComponent {
     suspend fun save(name: String): DebugEditor? {
         if (name == PhotoCheckProjects.EMPTY) return DebugEditor(Uuid.random().toString(), ProjectType.PHOTO, blank = true)
         // The photo scenes' pictures are generated on first use.
-        if (name in PhotoCheckProjects.NAMES || name == CANVAS_IMAGE_CHECK) writeDebugPhotos()
+        if (name in PhotoCheckProjects.NAMES || name == CANVAS_IMAGE_CHECK || name == GREENSCREEN_MAIN) writeDebugPhotos()
+        // The green screen scenes' pictures are drawn on first use (ChromaCheckFixture).
+        if (name == GREENSCREEN_CHECK || name == GREENSCREEN_MAIN) writeChromaCheckPictures()
         val project = build(name)
         if (project == null) {
             logger.error(TAG, "Unknown memix.openEditor '$name'. Use ${NAMES.joinToString()}.")
@@ -89,6 +93,8 @@ internal class EditorCheckProjects : KoinComponent {
         OVERLAY_CHECK -> overlayCheck()
         OVERLAY_PERF -> overlayPerf()
         KEYFRAME_CHECK -> keyframeCheck()
+        GREENSCREEN_CHECK -> greenScreenCheck()
+        GREENSCREEN_MAIN -> greenScreenMain()
         else -> null
     }
 
@@ -359,6 +365,32 @@ internal class EditorCheckProjects : KoinComponent {
         )
     }
 
+    /**
+     * The P4-04 green screen check: the 10 s 1080p clip with three `chroma-check` pictures over it (spec docs/ux/specs/P4-04-green-screen.md →
+     * Requests 7): the green one and the off-green one (`#6BB536`, for the eyedropper) not keyed yet, the blue one keyed with the Blue
+     * preset. Steps: docs/qa/phase-4/engineer-hand-checks.md → P4-04. To check a video instead of a picture, make
+     * `chroma-check.mp4` from the picture with the ffmpeg command there and swap the media in.
+     */
+    private fun greenScreenCheck(): Project {
+        fun layer(name: String, source: MediaRef, centerY: Float, key: ChromaKey?) = Track(
+            "gs-$name-layer",
+            TrackKind.OVERLAY,
+            listOf(MediaClip("gs-$name", 1_000_000, source, trimInUs = 0, trimOutUs = 8_000_000, volume = 0f, transform = Transform(0.5f, centerY, 0.9f, 0f), chromaKey = key)),
+        )
+        val layers = listOf(
+            layer("green", chromaGreen, 0.2f, key = null),
+            layer("blue", chromaBlue, 0.5f, key = ChromaKeyCatalog.keyOf(ChromaKeyCatalog.BLUE_ARGB, ChromaKeyCatalog.DEFAULT_STRENGTH, ChromaKeyCatalog.DEFAULT_SOFTNESS)),
+            layer("off-green", chromaOffGreen, 0.8f, key = null),
+        )
+        return project(GREENSCREEN_CHECK, listOf(MediaClip("gs-main", 0, clip1080pMeasured, trimInUs = 0, trimOutUs = 10_000_000, volume = 0f)), layers)
+    }
+
+    /** The P4-04 main-clip check: the green picture as the main clip (3 s) over the canvas Image background of P2-12. */
+    private fun greenScreenMain(): Project {
+        val base = project(GREENSCREEN_MAIN, listOf(MediaClip("gs-main-picture", 0, chromaGreen, trimInUs = 0, trimOutUs = 3_000_000)))
+        return base.copy(canvas = base.canvas.copy(background = CanvasBackground.Image(PhotoCheckProjects.backgroundMedia(missing = false))))
+    }
+
     private fun overlayCheck(): Project {
         val layers = listOf(
             overlayLayer("a", clipAMeasured, startUs = 1_000_000, lengthUs = 6_000_000, Transform(0.30f, 0.25f, 0.5f, 0f), opacity = 1f),
@@ -438,9 +470,11 @@ internal class EditorCheckProjects : KoinComponent {
         const val OVERLAY_CHECK = "overlay-check"
         const val OVERLAY_PERF = "overlay-perf"
         const val KEYFRAME_CHECK = "keyframe-check"
+        const val GREENSCREEN_CHECK = "greenscreen-check"
+        const val GREENSCREEN_MAIN = "greenscreen-main"
         private val NAMES = listOf(
             EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK,
-            TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK, OVERLAY_CHECK, OVERLAY_PERF, KEYFRAME_CHECK,
+            TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK, OVERLAY_CHECK, OVERLAY_PERF, KEYFRAME_CHECK, GREENSCREEN_CHECK, GREENSCREEN_MAIN,
         ) + PhotoCheckProjects.NAMES
         private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20
@@ -464,6 +498,10 @@ internal class EditorCheckProjects : KoinComponent {
         private val clipBMeasured = clipB.copy(durationUs = 6_000_000, pixelSize = PixelSize(720, 1280), hasAudio = true)
         private val photoMeasured = photo.copy(pixelSize = PixelSize(1080, 1080), hasAudio = false)
         // The 12 x 12 lettered grid picture and the 1 kHz tone of P4-02 (desktop-made, steps in the hand checks); measured like the others.
+        private val chromaSize = PixelSize(ChromaCheckFixture.WIDTH_PX, ChromaCheckFixture.HEIGHT_PX)
+        private val chromaGreen = media("chroma-check.png", MediaKind.IMAGE).copy(pixelSize = chromaSize, hasAudio = false)
+        private val chromaBlue = media("chroma-check-blue.png", MediaKind.IMAGE).copy(pixelSize = chromaSize, hasAudio = false)
+        private val chromaOffGreen = media("chroma-check-offgreen.png", MediaKind.IMAGE).copy(pixelSize = chromaSize, hasAudio = false)
         private val grid = media("grid-12.png", MediaKind.IMAGE)
         private val gridMeasured = grid.copy(pixelSize = PixelSize(1080, 1080), hasAudio = false)
         private val toneMeasured = MediaRef(

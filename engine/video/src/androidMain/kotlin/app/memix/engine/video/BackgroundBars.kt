@@ -30,6 +30,9 @@ internal class BackgroundBars(private val file: File?, private val frame: PixelS
         return bars.getOrPut(area) { Bitmap.createBitmap(picture, area.left, area.top, area.width(), area.height()) }
     }
 
+    /** The whole covered picture, frame-sized, for a keyed clip that has the background behind all of it (P4-04); null when there is none. */
+    fun whole(): Bitmap? = cover
+
     private fun decodeCover(): Bitmap? {
         if (file == null || !file.isFile) return null
         return try {

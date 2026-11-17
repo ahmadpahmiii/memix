@@ -99,6 +99,7 @@ internal object CompositionPlanner {
         playsOwnAudio = hasOwnSound() && !audioDetached && !trackMuted && (peakVolume() > 0f || keepSilent),
         volume = plannedVolume(),
         keyframes = keyframes,
+        chromaKey = chromaKey,
     )
 
     // With keyframes they carry the level (P4-02), so the fixed volume stays at 1 and never switches the clip off or on by itself.
@@ -197,6 +198,7 @@ internal object CompositionPlanner {
             playsOwnAudio = plays,
             volume = plannedVolume(),
             keyframes = keyframes.shiftedBy(headCutUs),
+            chromaKey = chromaKey,
         )
         return CutOverlay(clip, cutStartUs)
     }

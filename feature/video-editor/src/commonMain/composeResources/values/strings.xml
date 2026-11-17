@@ -269,4 +269,22 @@
     <string name="edit_keyframe_move">Move keyframe</string>
     <string name="edit_keyframe_clear">Clear keyframes</string>
     <string name="keyframe_select_node">Go to</string>
+    <!-- P4-04 Green screen -->
+    <string name="tool_green_screen">Green screen</string>
+    <string name="tool_green_screen_click">Remove a color from this clip</string>
+    <string name="green_screen_color">Color to remove</string>
+    <string name="green_screen_strength">Strength</string>
+    <string name="green_screen_softness">Edge softness</string>
+    <string name="green_screen_off">Turn off</string>
+    <string name="green_screen_off_a11y">Turn off green screen</string>
+    <string name="key_green">Green</string>
+    <string name="key_blue">Blue</string>
+    <string name="key_picked">Picked color</string>
+    <string name="key_pick">Pick from video</string>
+    <string name="key_pick_click">Tap a color in your clip</string>
+    <string name="green_screen_pick_hint">Tap the color you want to remove.</string>
+    <string name="green_screen_pick_miss">Tap inside the clip to pick a color.</string>
+    <string name="green_screen_nothing">Nothing to remove here. Pick the color you want gone.</string>
+    <string name="a11y_green_screen_picked">Color picked</string>
+    <string name="edit_green_screen_off">Turn off green screen</string>
 </resources>

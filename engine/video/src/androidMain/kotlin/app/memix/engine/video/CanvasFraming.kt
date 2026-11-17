@@ -43,8 +43,11 @@ internal class CanvasFraming(
     private val background: PlanBackground,
     /** The background picture's bars; null unless [background] is an image. */
     private val pictureBars: BackgroundBars? = null,
+    /** The clip's green screen (P4-04), when it has one: the key runs first, then the framing, then the background goes behind the whole frame. */
+    private val liveKey: LiveChromaKey? = null,
 ) {
     fun effects(): List<Effect> {
+        if (liveKey != null) return keyedEffects(liveKey)
         if (clip.fit == FrameFit.FILL) return listOf(presentation(frame, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP))
         val picture = clip.pixelSize?.takeIf { it.widthPx > 0 && it.heightPx > 0 }
             ?: return listOf(presentation(frame, Presentation.LAYOUT_SCALE_TO_FIT))
@@ -55,6 +58,25 @@ internal class CanvasFraming(
             is PlanBackground.Color -> fittedOn(background.argb, geometry)
             is PlanBackground.Image -> fittedOnPicture(geometry)
         }
+    }
+
+    // A keyed clip is transparent where the key (or Fit's bars) leaves it, so the background can't be bars drawn over the fitted clip:
+    // it goes behind the whole frame instead. A color and the picture do; a blur of the clip itself would blur its green, so Blur is
+    // black under a keyed clip (delegated decision, P4-04).
+    private fun keyedEffects(key: LiveChromaKey): List<Effect> {
+        val picture = clip.pixelSize?.takeIf { it.widthPx > 0 && it.heightPx > 0 }
+        val framing = when {
+            clip.fit == FrameFit.FILL -> presentation(frame, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP)
+            picture == null -> presentation(frame, Presentation.LAYOUT_SCALE_TO_FIT)
+            hasSameShape(picture, frame) -> presentation(frame, Presentation.LAYOUT_STRETCH_TO_FIT)
+            else -> presentation(frame, Presentation.LAYOUT_SCALE_TO_FIT)
+        }
+        val backdrop = when (background) {
+            is PlanBackground.Color -> BackdropEffect(background.argb, null)
+            is PlanBackground.Image -> BackdropEffect(BLACK_ARGB, pictureBars?.whole())
+            PlanBackground.Blur -> BackdropEffect(BLACK_ARGB, null)
+        }
+        return listOf(ChromaKeyEffect(key), framing, backdrop)
     }
 
     private fun fittedOn(argb: Long, geometry: FitGeometry): List<Effect> {

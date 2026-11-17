@@ -93,8 +93,9 @@ A parameter on the clip, never a new file. Same in the preview and in the export
 | --- | --- |
 | Color space | sRGB 8-bit, converted to YCbCr (BT.601, full range); only **Cb and Cr** are compared, luma is ignored, so the shadowed parts of a screen key like the lit parts |
 | Distance | *d* = the distance between the pixel's (Cb, Cr) and the key's, each in −0.5 to +0.5 |
-| Tolerance | *t* = 0.05 + 0.35 × strength |
-| Feather | *f* = 0.02 + 0.28 × edge softness |
+| Tolerance | *t* = 0.05 + **0.20** × strength (0.05 to 0.25; was 0.35, changed in the design review: at 100% it removed a white shirt, 0.33 from the key, and skin, 0.43) |
+| Feather | *f* = min(0.02 + **0.08** × edge softness, max(0.02, **0.30 − t**)) (was 0.02 + 0.28 × softness, which made the subject see-through at 100%). `MAX_REACH` = 0.30 caps t + f so white (0.328 from the key) stays fully opaque at every setting: default 50/25 gives t 0.15, f 0.04; 100/0 gives 0.25, 0.02; 100/100 gives 0.25, 0.05 (reach 0.30); 50/100 gives 0.15, 0.10 |
+| Bleed guard | below alpha 0.25 the key-direction chroma is neutralized fully (rising to the 60% at 0.25), so green never bleeds into a scaled edge; engine detail added in the build, in `design/tokens.json` as `bleedGuardAlpha` |
 | Alpha | `smoothstep(t, t + f, d)`: 0 inside the tolerance, 1 beyond it plus the feather; the clip's own alpha (a PNG) is multiplied, never replaced |
 | Spill removal | where alpha is above 0, the pixel's chroma component along the key's direction is reduced by 60% × (1 − alpha) toward neutral; fixed, no control |
 | Default key | Green `#00B140`, strength 50%, edge softness 25% |

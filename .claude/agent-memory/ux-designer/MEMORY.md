@@ -2,6 +2,7 @@
 
 Lessons for this project only, newest first. Keep under ~150 lines; prune stale items. Focus: Design decisions and their reasons, patterns that worked or failed, recurring review issues, competitor insights.
 
+- 2026-11-17 · P4-04 review lesson: a spec's slider ranges must be checked against the fixture's real chroma distances before the build (white 0.328, skin 0.43 from green), not after; my 0.35/0.28 gains removed the shirt at 100%. Fixed as t = 0.05 + 0.20 x strength, feather capped by MAX_REACH 0.30. Check the "100% keeps the subject" claim for every pair of sliders, and write the cap into the spec when two ranges add up.
 - 2026-11-17 · Phase 4 specs P4-06 effects, P4-08 transitions, P4-09 speed, P4-10 reverse/freeze (rewritten after a lost session; save each file the moment it is done). Decisions and reasons:
   - **Effects:** 30 in six tabs of five; 06a = Motion, Light, Color (cheap single-pass, zoom punch inside), 06b = Glitch, Blur, Retro. Sheet with 3-column grid of the user's frame (`grid-tile-min`) and Tabs so one tab = two rows fits 70% sheet at 640. Whole-frame scope, max 3 overlapping, four fixed envelopes, hash-based randomness, flashing capped at 3/s (WCAG 2.3.1).
   - **Transitions:** length-preserving, centered on the cut, audio never touched (sample-identical) = the "audio continuous" proof; door is a clip-bar tool plus a cue badge, not a per-cut button (48 dp targets would eat 40 dp clips).

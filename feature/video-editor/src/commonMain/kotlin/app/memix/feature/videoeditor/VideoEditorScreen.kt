@@ -118,6 +118,8 @@ import app.memix.core.ui.spokenTimeOf
 import app.memix.feature.videoeditor.canvas.CanvasPanel
 import app.memix.feature.videoeditor.captions.CaptionLayer
 import app.memix.feature.videoeditor.overlays.OverlayLayer
+import app.memix.feature.videoeditor.greenscreen.GreenScreenPanel
+import app.memix.feature.videoeditor.greenscreen.PickLayer
 import app.memix.feature.videoeditor.overlays.OverlayPanels
 import memix.core.ui.generated.resources.edit_layer_opacity
 import memix.core.ui.generated.resources.edit_transform_layer
@@ -273,7 +275,13 @@ import memix.core.ui.generated.resources.export_stopped_toast
 import memix.core.ui.generated.resources.position_size_value
 import memix.core.ui.generated.resources.sound_dl_storage_toast
 import memix.feature.video_editor.generated.resources.a11y_keyframe_node
+import memix.feature.video_editor.generated.resources.a11y_green_screen_picked
 import memix.feature.video_editor.generated.resources.a11y_keyframe_removed
+import memix.feature.video_editor.generated.resources.edit_green_screen_off
+import memix.feature.video_editor.generated.resources.green_screen_nothing
+import memix.feature.video_editor.generated.resources.green_screen_pick_hint
+import memix.feature.video_editor.generated.resources.green_screen_pick_miss
+import memix.feature.video_editor.generated.resources.tool_green_screen
 import memix.feature.video_editor.generated.resources.edit_keyframe_clear
 import memix.feature.video_editor.generated.resources.edit_keyframe_move
 import memix.feature.video_editor.generated.resources.explain_easing_last
@@ -341,7 +349,7 @@ fun VideoEditorScreen(
     val freeUpSpaceForSave = remember(onFreeUpSpace) { { onFreeUpSpace(ImportMediaUseCase.HEADROOM_BYTES) } }
     val focusTargets = remember { EditorFocusTargets() }
     val backgroundThumbnails = rememberBackgroundThumbnails(imageSource, state.canvas?.background, onIntent)
-    val panelOpen = state.volumePanel != null || state.audioEffects != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null || state.overlayPanel != null || state.keyframeBar?.easingOpen == true
+    val panelOpen = state.volumePanel != null || state.audioEffects != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null || state.overlayPanel != null || state.greenScreen != null || state.keyframeBar?.easingOpen == true
     val sheetOpen = state.sounds.isOpen || state.unsavedSheetOpen || state.exportSheet != null || importSheetShown(state.mediaImport)
     ReturnFocus(state.returnFocus, focusTargets)
     // Typing (spec P1-10 → Typing): the field's words live here, so only the field and the stand-in redraw per key.
@@ -407,6 +415,7 @@ fun VideoEditorScreen(
                     val panelCaption = selectedCaption(state)
                     TextPanels(state.textPanel, panelCaption?.style, panelCaption?.let { caption -> { timeUs: Long -> caption.atTime(timeUs).transform } }, panelPlayhead, panelCaption != null && (panelCaption.keyframes.isNotEmpty() || state.keyframeBar?.itemId == panelCaption.itemId), onIntent, Modifier.fillMaxSize())
                     EasingPanel(state.keyframeBar, onIntent, Modifier.fillMaxSize())
+                    GreenScreenPanel(state.greenScreen, onIntent, Modifier.fillMaxSize())
                     OverlayPanels(state.overlayPanel, { timeUs -> selectedOverlayTransform(state, timeUs) }, panelPlayhead, onIntent, Modifier.fillMaxSize())
                     CanvasPanel(state.canvasPanel, state.canvas, backgroundThumbnails, onIntent, Modifier.fillMaxSize())
                 },
@@ -670,7 +679,8 @@ private fun PreviewStage(
                 canvas,
                 visibleOverlays.value,
                 stageOverlays,
-                state.selectedItemId,
+                // The overlay's white frame and handle go while the eyedropper is on (spec P4-04 → The selected item on the stage).
+                state.selectedItemId.takeUnless { state.greenScreen?.picking == true },
                 state.overlayStandIn,
                 state.hiddenOverlayId,
                 state.overlayFrames,
@@ -695,6 +705,8 @@ private fun PreviewStage(
                 playheadUs = playheadUs,
                 onIntent = onIntent,
             )
+            // The eyedropper (spec P4-04 → Pick mode) takes every touch on the preview, over the clips and captions.
+            state.greenScreen?.takeIf { it.picking }?.let { PickLayer(frame, it.colorAt, onIntent) }
             FrameMessage(state.stage, frame, onRetry = { onIntent(VideoEditorIntent.RetryPreview) })
         }
         StageMessages(
@@ -950,6 +962,8 @@ private fun StageMessages(
                     action = ToastAction(stringResource(Res.string.make_video_note_ok)) { onIntent(VideoEditorIntent.DismissVideoMemeNote) },
                 )
             }
+            // The Green screen panel's own line (spec P4-04 → States): how to pick, a miss, or "nothing to remove"; the one stage slot, under any toast.
+            FadingToast(state.greenScreen?.hint?.takeIf { banner == null && shownToast == null }) { hint -> Toast(greenScreenHintText(hint)) }
             FadingToast(if (updatingShown) PreviewUpdating else null) { Toast(stringResource(Res.string.editor_preview_updating), announce = false) }
         }
         // A new node per toast, so the same text twice ("Undo: Trim") is announced twice.
@@ -957,6 +971,15 @@ private fun StageMessages(
         SavedAgainAnnouncement(state.savedAgainCount)
     }
 }
+
+@Composable
+private fun greenScreenHintText(hint: GreenScreenHint): String = stringResource(
+    when (hint) {
+        GreenScreenHint.PICK -> Res.string.green_screen_pick_hint
+        GreenScreenHint.PICK_MISS -> Res.string.green_screen_pick_miss
+        GreenScreenHint.NOTHING -> Res.string.green_screen_nothing
+    },
+)
 
 /** The note stays [VIDEO_MEME_NOTE_MILLIS], or longer when the user's "Time to take action" setting asks for it (the Got it button ends it sooner). */
 @Composable
@@ -981,7 +1004,7 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
     LaunchedEffect(toast.id) {
         val baseMillis = when (toast.message) {
             is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition, is ToastMessage.SoundAdded,
-            is ToastMessage.MediaAdded, ToastMessage.OverlayAdded, is ToastMessage.OverlayOpacity, is ToastMessage.OverlayLayer, ToastMessage.NothingToReset, ToastMessage.AudioEffectsReset, is ToastMessage.VoiceoverAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned, is ToastMessage.KeyframeAdded, is ToastMessage.KeyframePicked, ToastMessage.KeyframeRemoved, is ToastMessage.EasingChanged,
+            is ToastMessage.MediaAdded, ToastMessage.OverlayAdded, is ToastMessage.OverlayOpacity, is ToastMessage.OverlayLayer, ToastMessage.NothingToReset, ToastMessage.AudioEffectsReset, is ToastMessage.VoiceoverAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned, is ToastMessage.KeyframeAdded, is ToastMessage.KeyframePicked, ToastMessage.GreenScreenPicked, ToastMessage.KeyframeRemoved, is ToastMessage.EasingChanged,
             -> WHAT_HAPPENED_TOAST_MILLIS
             is ToastMessage.RatioStepped, ToastMessage.ExportStopped, ToastMessage.BackgroundImageSet, ToastMessage.BackgroundImageRemoved -> WHAT_HAPPENED_TOAST_MILLIS
             is ToastMessage.ExportFrameRateLowered, is ToastMessage.ExportResolutionLowered, is ToastMessage.ExportCantDo,
@@ -1026,6 +1049,7 @@ private fun toastText(message: ToastMessage): String = when (message) {
     is ToastMessage.KeyframeAdded -> stringResource(Res.string.keyframe_added, formatTimecode(message.atUs))
     ToastMessage.KeyframesOn -> stringResource(Res.string.keyframe_on)
     ToastMessage.KeyframeRemoved -> stringResource(Res.string.a11y_keyframe_removed)
+    ToastMessage.GreenScreenPicked -> stringResource(Res.string.a11y_green_screen_picked)
     is ToastMessage.KeyframePicked -> stringResource(Res.string.a11y_keyframe_node, message.position, message.count, spokenTime(message.atUs), stringResource(easingNameOf(message.easing)))
     is ToastMessage.EasingChanged -> stringResource(easingNameOf(message.easing))
     is ToastMessage.Edited -> stringResource(UiRes.string.a11y_edit_on_item, editName(message.edit), spokenName(message.item))
@@ -1102,6 +1126,8 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.TRANSFORM_OVERLAY, VideoEdit.POSITION_OVERLAY -> UiRes.string.edit_transform_layer
         VideoEdit.OVERLAY_OPACITY -> UiRes.string.edit_layer_opacity
         VideoEdit.OVERLAY_ORDER -> Res.string.edit_overlay_order
+        VideoEdit.GREEN_SCREEN -> Res.string.tool_green_screen
+        VideoEdit.GREEN_SCREEN_OFF -> Res.string.edit_green_screen_off
         VideoEdit.KEYFRAME_ADD -> Res.string.keyframe_add
         VideoEdit.KEYFRAME_REMOVE -> Res.string.keyframe_remove
         VideoEdit.KEYFRAME_MOVE -> Res.string.edit_keyframe_move

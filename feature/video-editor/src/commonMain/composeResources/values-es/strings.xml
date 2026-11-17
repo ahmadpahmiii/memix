@@ -266,4 +266,22 @@
     <string name="edit_keyframe_move">Mover fotograma clave</string>
     <string name="edit_keyframe_clear">Borrar fotogramas clave</string>
     <string name="keyframe_select_node">Ir a</string>
+    <!-- P4-04 Green screen -->
+    <string name="tool_green_screen">Pantalla verde</string>
+    <string name="tool_green_screen_click">Quitar un color de este clip</string>
+    <string name="green_screen_color">Color a quitar</string>
+    <string name="green_screen_strength">Fuerza</string>
+    <string name="green_screen_softness">Suavidad del borde</string>
+    <string name="green_screen_off">Desactivar</string>
+    <string name="green_screen_off_a11y">Desactivar la pantalla verde</string>
+    <string name="key_green">Verde</string>
+    <string name="key_blue">Azul</string>
+    <string name="key_picked">Color elegido</string>
+    <string name="key_pick">Elegir del video</string>
+    <string name="key_pick_click">Toca un color de tu clip</string>
+    <string name="green_screen_pick_hint">Toca el color que quieres quitar.</string>
+    <string name="green_screen_pick_miss">Toca dentro del clip para elegir un color.</string>
+    <string name="green_screen_nothing">No hay nada que quitar aquí. Elige el color que quieres quitar.</string>
+    <string name="a11y_green_screen_picked">Color elegido</string>
+    <string name="edit_green_screen_off">Desactivar pantalla verde</string>
 </resources>

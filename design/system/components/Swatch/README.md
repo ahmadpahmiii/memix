@@ -17,7 +17,7 @@ A round, single-choice color button for content colors: caption text and outline
 - **Layout:** a horizontally scrolling row that scrolls edge to edge, in palette order.
 - **Behavior:**
   - A tap selects it and applies the color at once (one undo step).
-  - Tapping the selected swatch does nothing.
+  - Tapping the selected swatch does nothing, except a swatch built with `clickWhenSelected = true`: its second tap still fires. Only the Green screen eyedropper uses it (its ring shows pick mode, and the second tap ends the mode).
   - Pressed: a `surface-raised` circle fades in behind it, the size of the selected ring, over `duration-press`. Nothing moves.
 - **Accessibility:** the row is a single-choice group named by its heading ("Color", "Outline"). Each swatch reads its color name ("Yellow", "No outline"), "selected" when it is, and its position. Color is never the only cue: the name is always spoken, and the result shows on the preview.
 - **Don't:** use swatches for interface colors or as a color legend, or show a swatch without a spoken name.

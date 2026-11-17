@@ -266,4 +266,22 @@
     <string name="edit_keyframe_move">Mover quadro-chave</string>
     <string name="edit_keyframe_clear">Limpar quadros-chave</string>
     <string name="keyframe_select_node">Ir para</string>
+    <!-- P4-04 Green screen -->
+    <string name="tool_green_screen">Tela verde</string>
+    <string name="tool_green_screen_click">Remover uma cor deste clipe</string>
+    <string name="green_screen_color">Cor a remover</string>
+    <string name="green_screen_strength">Força</string>
+    <string name="green_screen_softness">Suavidade da borda</string>
+    <string name="green_screen_off">Desativar</string>
+    <string name="green_screen_off_a11y">Desativar a tela verde</string>
+    <string name="key_green">Verde</string>
+    <string name="key_blue">Azul</string>
+    <string name="key_picked">Cor escolhida</string>
+    <string name="key_pick">Escolher do vídeo</string>
+    <string name="key_pick_click">Toque numa cor do seu clipe</string>
+    <string name="green_screen_pick_hint">Toque na cor que quer remover.</string>
+    <string name="green_screen_pick_miss">Toque dentro do clipe para escolher uma cor.</string>
+    <string name="green_screen_nothing">Nada a remover aqui. Escolha a cor que quer tirar.</string>
+    <string name="a11y_green_screen_picked">Cor escolhida</string>
+    <string name="edit_green_screen_off">Desativar tela verde</string>
 </resources>

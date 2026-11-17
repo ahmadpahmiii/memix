@@ -93,6 +93,8 @@ data class ItemUi(
     val sound: SoundLook? = null,
     /** How many keyframes the item has; above 0 it wears the keyframe badge (P4-02b). */
     val keyframeCount: Int = 0,
+    /** The clip has a green screen on (P4-04): its spoken description says so. */
+    val keyed: Boolean = false,
 ) {
     val endUs: Long get() = startUs + durationUs
 }
@@ -151,7 +153,7 @@ private fun trackUiOf(track: Track, soundTitles: Map<String, LocalizedText>): Tr
     var clipNumber = 0
     val items = sorted.map { item ->
         if (track.kind == TrackKind.MAIN_VIDEO) clipNumber++
-        itemUiOf(item, track.kind, if (track.kind == TrackKind.MAIN_VIDEO) clipNumber else 0, soundTitles).copy(keyframeCount = item.keyframeList().size)
+        itemUiOf(item, track.kind, if (track.kind == TrackKind.MAIN_VIDEO) clipNumber else 0, soundTitles).copy(keyframeCount = item.keyframeList().size, keyed = (item as? MediaClip)?.chromaKey != null)
     }
     return TrackUi(track.id, track.kind, items.toImmutableList(), track.muted)
 }

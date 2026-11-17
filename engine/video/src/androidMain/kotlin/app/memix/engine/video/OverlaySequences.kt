@@ -3,6 +3,7 @@ package app.memix.engine.video
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.C
+import androidx.media3.common.Effect
 import androidx.media3.common.MediaItem
 import androidx.media3.common.OverlaySettings
 import androidx.media3.common.util.UnstableApi
@@ -34,6 +35,8 @@ internal class OverlaySequences(
     private val frameRate: Int,
     /** The preview's live volume per overlay video that plays sound (heard while the Volume slider moves); empty for exports. */
     private val liveGains: Map<String, LiveGainProcessor> = emptyMap(),
+    /** The preview's live green screen per keyed overlay; an overlay not listed gets its own fixed key. */
+    private val liveKeys: Map<String, LiveChromaKey> = emptyMap(),
 ) {
     private val layersTopFirst: List<OverlayLayer> = plan.overlays.asReversed()
 
@@ -62,6 +65,7 @@ internal class OverlaySequences(
     private fun clipItem(clip: OverlayClip): EditedMediaItem {
         val mediaItem = MediaItem.Builder().setUri(uriByMedia.getValue(clip.source))
         if (clip.isStill) mediaItem.setImageDurationMs(roundedMs(clip.durationUs)) else mediaItem.setClippingConfiguration(clipping(clip.trimInUs, clip.trimOutUs))
+        // The key runs first, on the source picture (spec P4-04 → Pipeline position); its alpha then reaches the compositor.
         // Scaled to the size it is drawn at before it is composited, so a 4K video costs a frame-sized pass, not more.
         val size = OverlayPlacement.of(clip, frame).textureSize
         val scaled = Presentation.createForWidthAndHeight(size.widthPx, size.heightPx, Presentation.LAYOUT_STRETCH_TO_FIT)
@@ -69,10 +73,13 @@ internal class OverlaySequences(
         val item = EditedMediaItem.Builder(mediaItem.build())
             .setRemoveAudio(!clip.playsOwnAudio)
             .setFrameRate(frameRate)
-            .setEffects(Effects(audioProcessors, listOf(scaled)))
+            .setEffects(Effects(audioProcessors, keyEffects(clip) + scaled))
         if (!clip.isStill) item.setSourceDuration(clip.source, clip.trimOutUs)
         return item.build()
     }
+
+    private fun keyEffects(clip: OverlayClip): List<Effect> =
+        clip.chromaKey?.let { listOf(ChromaKeyEffect(liveKeys[clip.itemId] ?: LiveChromaKey(it))) }.orEmpty()
 
     private fun timelineOf(layer: OverlayLayer): OverlayCompositorSettings.LayerTimeline {
         val starts = mutableListOf<Long>()

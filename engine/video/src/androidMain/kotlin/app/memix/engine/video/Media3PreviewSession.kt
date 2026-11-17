@@ -21,6 +21,7 @@ import app.memix.core.domain.video.PreviewPlayback
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.domain.video.PreviewStatus
 import app.memix.core.domain.voiceover.ClockSample
+import app.memix.core.model.project.ChromaKey
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.PixelSize
@@ -126,6 +127,10 @@ internal class Media3PreviewSession(
     private var requestedHiddenOverlay: String? = null
     private var requestedLiveOpacity: LiveOpacity? = null
     private var shownOverlays: OverlayVisibility? = null
+
+    // The green screen sliders' newest key (P4-04): kept for a composition still being built, and written to the shown one's shaders.
+    private var requestedLiveKey: Pair<String, ChromaKey>? = null
+    private var shownKeys: Map<String, LiveChromaKey> = emptyMap()
     private val positionTicker = FrameTicker(::publishPlayerPosition)
     private val headphonesUnplugged = HeadphonesUnpluggedReceiver(context, onUnplugged = ::pause)
     private val playSpan = PlaySpanLog(logger)
@@ -213,6 +218,7 @@ internal class Media3PreviewSession(
         requestedHiddenCaption = null
         requestedHiddenOverlay = null
         requestedLiveOpacity = null
+        requestedLiveKey = null
         showTiming.start(ShowTimingLog.Change.EDIT)
         lengthUs = project.videoLengthUs()
         updateCount++
@@ -303,6 +309,15 @@ internal class Media3PreviewSession(
         if (!playerShowsTrim && !mutablePlayback.value.isPlaying) mutablePlayer.value?.let { player -> player.seekTo(player.currentPosition) }
     }
 
+    override fun previewChromaKey(itemId: String, key: ChromaKey) {
+        if (closed) return
+        requestedLiveKey = itemId to key
+        val live = shownKeys[itemId] ?: return
+        live.key = key
+        // Playing, the next frame draws it; paused, a seek to where it is draws the frame again through the shader.
+        if (!playerShowsTrim && !mutablePlayback.value.isPlaying) mutablePlayer.value?.let { player -> player.seekTo(player.currentPosition) }
+    }
+
     override fun endTrimFrames() {
         if (closed || trimClip.value == null) return
         // The project's composition is rebuilt at positionUs, the trim's commit included when it came first (the
@@ -342,6 +357,7 @@ internal class Media3PreviewSession(
             val sounds = playablePlan.audioLanes.flatMap { it.segments }.filterIsInstance<SoundClip>()
             val liveFades = sounds.associate { it.itemId to LiveFades(it.effects.fadeInUs, it.effects.fadeOutUs) }
             val liveBass = sounds.associate { it.itemId to LiveBass(it.effects.bassBoost, it.effects.distortion) }
+            val liveKeys = playablePlan.chromaKeys.mapValues { (_, key) -> LiveChromaKey(key) }
             val visibility = CaptionVisibility()
             var overlayVisibility: OverlayVisibility? = null
             val captions = playablePlan.captions.takeIf { it.isNotEmpty() }?.let {
@@ -355,6 +371,7 @@ internal class Media3PreviewSession(
                 liveGains,
                 liveFades,
                 liveBass,
+                liveKeys = liveKeys,
                 captionOverlay = captions,
                 frameShortSidePx = if (playablePlan.background == PlanBackground.Blur) BLUR_PREVIEW_SHORT_SIDE_PX else null,
                 backgroundFile = resolved.backgroundFile,
@@ -371,6 +388,7 @@ internal class Media3PreviewSession(
                 PixelSize(plan.canvasWidthPx, plan.canvasHeightPx),
                 compositesOverlays = playablePlan.hasOverlays,
                 skippedOverlayIds = plan.skippedOverlayIds,
+                liveKeys = liveKeys,
             )
         } catch (e: RuntimeException) {
             // Media3's own argument checks.
@@ -396,6 +414,8 @@ internal class Media3PreviewSession(
         prepared.overlays?.hiddenItemId = requestedHiddenOverlay
         prepared.overlays?.liveOpacity = requestedLiveOpacity
         shownOverlays = prepared.overlays
+        requestedLiveKey?.let { (itemId, key) -> prepared.liveKeys[itemId]?.key = key }
+        shownKeys = prepared.liveKeys
         try {
             // Rebuilds every decoder (Media3 1.11.1), so it costs a re-prepare; the position and play state carry on.
             player.setComposition(prepared.composition, startUs / MICROS_PER_MILLI)
@@ -527,6 +547,8 @@ internal class Media3PreviewSession(
             /** True when the composition draws overlays, so its player needs the compositing video graph. */
             val compositesOverlays: Boolean,
             val skippedOverlayIds: List<String>,
+            /** The green screen's live key of every keyed clip in this composition. */
+            val liveKeys: Map<String, LiveChromaKey>,
         ) : PreparedPreview
 
         class Failed(val reason: String, val cause: Throwable?) : PreparedPreview
