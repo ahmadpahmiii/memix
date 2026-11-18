@@ -24,6 +24,10 @@ import app.memix.core.domain.video.VideoEngine
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
+import app.memix.engine.video.reverse.ReverseCopyMaker
+import app.memix.engine.video.reverse.ReverseException
+import app.memix.engine.video.reverse.ReversedClips
+import app.memix.engine.video.reverse.ReversedCopies
 import java.io.File
 import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
@@ -47,15 +51,17 @@ internal class Media3VideoEngine(
     /** Builds with hand checks: previews log where each sound is heard ([SoundOnsetLog]). */
     private val measureSoundOnsets: Boolean = false,
 ) : VideoEngine {
-    private val sourceResolver = MediaSourceResolver(context.filesDir, HeldFrames(context, context.cacheDir))
+    private val heldFrameFiles = HeldFrames(context, context.cacheDir)
+    private val sourceResolver = MediaSourceResolver(context.filesDir, heldFrameFiles)
     private val transformerExport = TransformerExport(context)
+    private val reversedClips = ReversedClips(ReversedCopies(File(context.cacheDir, "reversed"), ioDispatcher, ReverseCopyMaker(context, transformerExport, logger), logger), heldFrameFiles)
     private val peaksReader = AudioPeaksReader(context.filesDir, context.cacheDir, ioDispatcher, logger)
     private val decoderBudget = VideoDecoderBudget(logger)
     private val lutTables = LutTables(logger)
     private val capabilityScanner = ExportCapabilityScanner(ioDispatcher, GalleryVideoFile.WRITES_STRAIGHT_TO_GALLERY)
 
     override fun createPreview(project: Project): PreviewSession =
-        Media3PreviewSession(context, sourceResolver, captionRenderer, decoderBudget, logger, ioDispatcher, lutTables, project, measureSoundOnsets)
+        Media3PreviewSession(context, sourceResolver, captionRenderer, decoderBudget, logger, ioDispatcher, lutTables, reversedClips, project, measureSoundOnsets)
 
     override fun openThumbnails(): ThumbnailReader = MediaThumbnailReader(context.filesDir, ioDispatcher, logger)
 
@@ -90,7 +96,21 @@ internal class Media3VideoEngine(
         val resolved = withContext(ioDispatcher) { sourceResolver.resolve(plan) }
         // A clip already missing exports black and silent, as the preview plays it (the sheet said so first).
         if (resolved.missingItemIds.isNotEmpty()) logger.debug(TAG, "Exporting ${resolved.missingItemIds.size} missing clip(s) as black")
-        val playable = plan.withGapsFor(resolved.missingItemIds.toSet())
+        // Reversed clips wait for their copies first; the Exporting screen's progress covers that time (P4-10).
+        var preparedCopies = false
+        val reversed = try {
+            // Reads the cache folder and the source frames: off the main thread.
+            withContext(ioDispatcher) {
+                reversedClips.forExport(exportOwner, plan, resolved.uriByMedia) { fraction ->
+                    preparedCopies = true
+                    onProgress(fraction * COPIES_SHARE)
+                }
+            }
+        } catch (e: ReverseException) {
+            return failed(e)
+        }
+        val playable = reversed.plan.withGapsFor(resolved.missingItemIds.toSet())
+        val renderProgress: (Float) -> Unit = if (preparedCopies) { fraction -> onProgress(COPIES_SHARE + fraction * (1f - COPIES_SHARE)) } else onProgress
         val output = try {
             withContext(ioDispatcher) { ExportOutput.create(context, settings.destination) }
         } catch (e: IOException) {
@@ -98,7 +118,7 @@ internal class Media3VideoEngine(
         } catch (e: SecurityException) {
             return failed(e)
         }
-        return writeFile(playable, resolved.uriByMedia, resolved.heldFrames, resolved.backgroundFile, settings, output, onProgress)
+        return writeFile(playable, reversed.uriByMedia, resolved.heldFrames, resolved.backgroundFile, settings, output, renderProgress)
     }
 
     private suspend fun writeFile(
@@ -202,6 +222,10 @@ internal class Media3VideoEngine(
 
     private companion object {
         const val TAG = "MemixVideoEngine"
+
+        // The first part of an export's progress when reversed copies had to be made (P4-10); the rest is the render.
+        const val COPIES_SHARE = 0.3f
+        private val exportOwner = Any()
         const val MICROS_PER_MILLI = 1_000L
         const val MICROS_PER_SECOND = 1_000_000L
         const val CONTAINER_ALLOWANCE = 1.05

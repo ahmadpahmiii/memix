@@ -21,6 +21,11 @@ import app.memix.core.domain.video.ExportSettings
 import app.memix.core.domain.video.PreviewPlayback
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.domain.video.PreviewStatus
+import app.memix.core.domain.video.ReverseFailure
+import app.memix.engine.video.reverse.CopyState
+import app.memix.engine.video.reverse.ReversalKey
+import app.memix.engine.video.reverse.ReversedClips
+import app.memix.engine.video.reverse.ReversedPlan
 import app.memix.core.domain.voiceover.ClockSample
 import app.memix.core.model.project.ChromaKey
 import app.memix.core.model.project.ClipLook
@@ -74,6 +79,8 @@ internal class Media3PreviewSession(
     private val logger: Logger,
     private val ioDispatcher: CoroutineDispatcher,
     private val lutTables: LutTables,
+    /** Prepares the reversed copies of reversed clips (P4-10) and swaps them into each plan; its copies stop when this session closes. */
+    private val reversedClips: ReversedClips,
     project: Project,
     /** Hand-check builds: log where each sound is heard in the mix ([SoundOnsetLog]). */
     private val measureSoundOnsets: Boolean = false,
@@ -145,6 +152,10 @@ internal class Media3PreviewSession(
     private val requestedLiveLooks = mutableMapOf<String, ClipLook>()
     private var shownLooks: Map<String, LiveLook> = emptyMap()
     private val lookRebuilds = MutableStateFlow(0)
+
+    // The reversed ranges the shown composition was built for, and how each stood then (P4-10): a copy that finishes or fails asks for a new composition,
+    // and one that only moves on publishes its percent.
+    private var shownReversals: Map<ReversalKey, CopyState?> = emptyMap()
     private val lookRebuildGate = LookRebuildGate()
 
     // The shown composition's live effect items (P4-06), or null when it was built without the effects pass: edits of effect items then move the
@@ -193,7 +204,7 @@ internal class Media3PreviewSession(
             combine(projects.distinctUntilChanged(::sameComposition), trimClip, lookRebuilds) { _, clip, _ -> clip }.collectLatest { clip ->
                 val next = projects.value
                 if (clip != null) {
-                    showTrimComposition(withContext(ioDispatcher) { prepare(trimProjectOf(next, clip)) })
+                    showTrimComposition(withContext(ioDispatcher) { prepare(trimProjectOf(next, clip), trimPreview = true) })
                 } else {
                     val update = updateCount
                     captionRenderer.prepare()
@@ -202,6 +213,25 @@ internal class Media3PreviewSession(
                 }
             }
         }
+        scope.launch { reversedClips.changes.collect { onReversedCopiesChanged() } }
+    }
+
+    // A reversed copy moved on (P4-10): a new percent is published as it is; a copy that finished or failed needs a new composition, which plays it (or keeps
+    // the clip's first frame and lets the editor switch Reverse off).
+    private suspend fun onReversedCopiesChanged() {
+        val shown = shownReversals
+        if (shown.isEmpty()) return
+        val now = withContext(ioDispatcher) { reversedClips.statesOf(shown.keys) }
+        val settled = now.any { (key, state) -> shown[key].settledKind() != state.settledKind() }
+        if (settled) return startLookRebuild()
+        publish { it.copy(reversePercent = now.values.filterIsInstance<CopyState.Preparing>().minOfOrNull { state -> state.percent }) }
+    }
+
+    // What a copy's state means for the composition: only a change between these asks for a new one.
+    private fun CopyState?.settledKind(): Int = when (this) {
+        is CopyState.Ready -> 1
+        is CopyState.Failed -> 2
+        is CopyState.Preparing, null -> 0
     }
 
     override fun play() {
@@ -408,10 +438,11 @@ internal class Media3PreviewSession(
         headphonesUnplugged.unregister()
         mutablePlayer.value?.release()
         mutablePlayer.value = null
+        reversedClips.release(this)
     }
 
     // Runs on ioDispatcher.
-    private fun prepare(project: Project): PreparedPreview {
+    private fun prepare(project: Project, trimPreview: Boolean = false): PreparedPreview {
         // Silent items stay in, so raising one from 0% is heard while the slider moves.
         val planned = CompositionPlanner.plan(project, keepSilentItems = true, videoDecoderBudget = decoderBudget.videoDecoders)
         val plan = when (planned) {
@@ -423,7 +454,9 @@ internal class Media3PreviewSession(
         // Each missing file, and each file whose length isn't known, plays as black and silence.
         val unplayable = resolved.missingItemIds.toSet() + plan.itemsWithoutLength()
         val overlayIds = plan.overlays.flatMap { it.segments }.filterIsInstance<OverlayClip>().map { it.itemId }.toSet()
-        val playablePlan = plan.withGapsFor(unplayable)
+        // Reversed clips play their prepared copy, or hold their first frame until it is ready (P4-10). A trim drag shows the whole source and has none.
+        val reversed = if (trimPreview) ReversedPlan(plan, resolved.uriByMedia, null, emptyList()) else reversedClips.forPreview(this, plan, resolved.uriByMedia)
+        val playablePlan = reversed.plan.withGapsFor(unplayable)
         return try {
             val onsetLog = if (measureSoundOnsets) listOf(SoundOnsetLog(playablePlan.soundStartsUs.toLongArray(), logger)) else emptyList()
             val volumes = itemsWithSoundOf(playablePlan)
@@ -443,7 +476,7 @@ internal class Media3PreviewSession(
             }
             val composition = Media3CompositionBuilder(
                 playablePlan,
-                resolved.uriByMedia,
+                reversed.uriByMedia,
                 ExportSettings.DEFAULT_FRAME_RATE,
                 onsetLog,
                 liveGains,
@@ -475,6 +508,9 @@ internal class Media3PreviewSession(
                 liveMasks = liveMasks,
                 liveLooks = liveLooks,
                 liveEffects = liveEffects,
+                reversals = reversed.states,
+                reversePercent = reversed.percent,
+                reverseFailures = reversed.failures.map { ReverseFailure(it.itemId, it.noSpace, it.tooLong) },
             )
         } catch (e: RuntimeException) {
             // Media3's own argument checks.
@@ -535,7 +571,18 @@ internal class Media3PreviewSession(
         playerCanvasSize = prepared.canvasSize
         liveVolumes = prepared.liveVolumes
         mutablePosition.value = startUs
-        publish { it.copy(missingMedia = prepared.missingMedia, onlyOverlaysMissing = prepared.onlyOverlaysMissing, skippedOverlayIds = prepared.skippedOverlayIds) }
+        shownReversals = prepared.reversals
+        // A copy that settled while this composition was being built is not in it: look once now, or it would never be asked for.
+        if (prepared.reversals.isNotEmpty()) scope.launch { onReversedCopiesChanged() }
+        publish {
+            it.copy(
+                missingMedia = prepared.missingMedia,
+                onlyOverlaysMissing = prepared.onlyOverlaysMissing,
+                skippedOverlayIds = prepared.skippedOverlayIds,
+                reversePercent = prepared.reversePercent,
+                reverseFailures = prepared.reverseFailures,
+            )
+        }
         timeFirstFrame()
     }
 
@@ -655,6 +702,10 @@ internal class Media3PreviewSession(
             val liveLooks: Map<String, LiveLook>,
             /** The effects pass's live items; null when the composition has none (see [effectsChangeComposition]). */
             val liveEffects: LiveEffects?,
+            /** Where each reversed range stood when this composition was built (P4-10), so a later change of one asks for a new composition. */
+            val reversals: Map<ReversalKey, CopyState?>,
+            val reversePercent: Int?,
+            val reverseFailures: List<ReverseFailure>,
         ) : PreparedPreview
 
         class Failed(val reason: String, val cause: Throwable?) : PreparedPreview
@@ -720,8 +771,8 @@ private fun wholeSourceOf(clip: MediaClip): MediaClip {
         MediaKind.IMAGE -> PHOTO_TRIM_PREVIEW_US
         MediaKind.VIDEO, MediaKind.AUDIO -> clip.source.durationUs ?: clip.trimOutUs
     }
-    // At 1x: the trim drag seeks in source time.
-    return clip.copy(startUs = 0, trimInUs = 0, trimOutUs = lengthUs, audioDetached = true, speed = 1f, speedCurve = null)
+    // At 1x and forward: the trim drag seeks in source time.
+    return clip.copy(startUs = 0, trimInUs = 0, trimOutUs = lengthUs, audioDetached = true, speed = 1f, speedCurve = null, reversed = false)
 }
 
 private fun lastFrameUs(wholeSource: MediaClip): Long = (wholeSource.trimOutUs - FRAME_US).coerceAtLeast(0)

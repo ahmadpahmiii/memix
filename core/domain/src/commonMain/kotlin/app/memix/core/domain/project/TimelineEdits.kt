@@ -2,6 +2,7 @@ package app.memix.core.domain.project
 
 import app.memix.core.model.project.AudioClip
 import app.memix.core.model.project.EffectItem
+import app.memix.core.model.project.FreezeReverseCatalog
 import app.memix.core.model.project.Keyframe
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
@@ -75,12 +76,14 @@ fun Project.trimRange(itemId: String, edge: TrimEdge): TrimRange? {
     return when (edge) {
         TrimEdge.START -> {
             val sourceLimitUs = item.footageBeforeUs()?.let { startUs - it } ?: UNLIMITED_EARLIER_US
-            val minUs = if (isMain) sourceLimitUs else maxOf(sourceLimitUs, 0L, track.previousEndUs(item))
+            val limitedUs = item.maxLengthUs()?.let { maxOf(sourceLimitUs, endUs - it) } ?: sourceLimitUs
+            val minUs = if (isMain) limitedUs else maxOf(limitedUs, 0L, track.previousEndUs(item))
             TrimRange(minOf(minUs, startUs), maxOf(endUs - MIN_ITEM_DURATION_US, startUs))
         }
         TrimEdge.END -> {
             val sourceLimitUs = item.footageAfterUs()?.let { endUs + it } ?: UNLIMITED_LATER_US
-            val maxUs = if (isMain) sourceLimitUs else minOf(sourceLimitUs, track.nextStartUs(item))
+            val limitedUs = item.maxLengthUs()?.let { minOf(sourceLimitUs, startUs + it) } ?: sourceLimitUs
+            val maxUs = if (isMain) limitedUs else minOf(limitedUs, track.nextStartUs(item))
             TrimRange(minOf(startUs + MIN_ITEM_DURATION_US, endUs), maxOf(maxUs, endUs))
         }
     }
@@ -217,18 +220,30 @@ private fun Track.nextStartUs(item: TimelineItem): Long {
 
 internal fun Track.isFree(startUs: Long, endUs: Long): Boolean = items.none { it.startUs < endUs && it.startUs + it.durationUs > startUs }
 
-/** How much of the source plays before the item's start: null when there's no limit or it isn't known. */
+/**
+ * How much of the source plays before the item's start: null when there's no limit or it isn't known. A reversed clip's start is the end of its trimmed source
+ * (P4-10), so what lies before it on the timeline is the footage after its trim-out.
+ */
 private fun TimelineItem.footageBeforeUs(): Long? = when (this) {
-    is MediaClip -> if (source.kind == MediaKind.IMAGE) null else SpeedCatalog.timelineLengthOf(trimInUs, SpeedCatalog.speedOf(this))
+    is MediaClip -> if (source.kind == MediaKind.IMAGE) null else SpeedCatalog.timelineLengthOf(if (reversed) source.remainingAfter(trimOutUs) else trimInUs, SpeedCatalog.speedOf(this))
     is AudioClip -> effects.timelineLengthFloorOf(trimInUs)
     is TextItem, is StickerItem, is EffectItem -> null
 }
 
 /** How much of the source is left after the item's end; 0 when the source's length isn't known (can't extend). */
 private fun TimelineItem.footageAfterUs(): Long? = when (this) {
-    is MediaClip -> if (source.kind == MediaKind.IMAGE) null else SpeedCatalog.timelineLengthOf(source.remainingAfter(trimOutUs), SpeedCatalog.speedOf(this))
+    is MediaClip -> if (source.kind == MediaKind.IMAGE) null else SpeedCatalog.timelineLengthOf(if (reversed) trimInUs else source.remainingAfter(trimOutUs), SpeedCatalog.speedOf(this))
     is AudioClip -> effects.timelineLengthOf(source.remainingAfter(trimOutUs))
     is TextItem, is StickerItem, is EffectItem -> null
+}
+
+// The longest an item may be made by a trim (P4-10): a frozen frame is held up to 10 s, and a reversed clip keeps its trimmed source within the 60 s the
+// engine can reverse (at its speed), so the cap holds after Reverse is on as well as when it is switched on. Null: no cap beyond the source.
+private fun TimelineItem.maxLengthUs(): Long? = when {
+    this !is MediaClip -> null
+    freeze != null -> FreezeReverseCatalog.FREEZE_MAX_US
+    reversed && source.kind == MediaKind.VIDEO -> SpeedCatalog.timelineLengthOf(FreezeReverseCatalog.MAX_REVERSE_SOURCE_US, SpeedCatalog.speedOf(this))
+    else -> null
 }
 
 private fun MediaRef.remainingAfter(trimOutUs: Long): Long = durationUs?.let { (it - trimOutUs).coerceAtLeast(0) } ?: 0L
@@ -260,7 +275,7 @@ private fun TimelineItem.withId(id: String): TimelineItem = when (this) {
  * with a speed other than 1 plays more or less of its source in that time.
  */
 private fun TimelineItem.withLength(lengthUs: Long): TimelineItem = when (this) {
-    is MediaClip -> copy(trimOutUs = trimInUs + SpeedCatalog.sourceSpanOf(lengthUs, SpeedCatalog.speedOf(this)))
+    is MediaClip -> withSourceSpan(SpeedCatalog.sourceSpanOf(lengthUs, SpeedCatalog.speedOf(this)), keepStartOfSpan = !reversed)
     is AudioClip -> copy(trimOutUs = trimInUs + effects.sourceSpanOf(lengthUs))
     is TextItem -> copy(durationUs = lengthUs)
     is StickerItem -> copy(durationUs = lengthUs)
@@ -273,11 +288,18 @@ private fun TimelineItem.withLength(lengthUs: Long): TimelineItem = when (this) 
  */
 private fun TimelineItem.trimmedFromStart(deltaUs: Long): TimelineItem = when (this) {
     is MediaClip -> if (source.kind == MediaKind.IMAGE) copy(trimInUs = 0, trimOutUs = durationUs - deltaUs)
-    else copy(trimInUs = (trimInUs + SpeedCatalog.sourceSpanOf(deltaUs, SpeedCatalog.speedOf(this))).coerceAtLeast(0))
+    else withSourceSpan(sourceSpanUs - SpeedCatalog.sourceSpanOf(deltaUs, SpeedCatalog.speedOf(this)), keepStartOfSpan = reversed)
     is AudioClip -> copy(trimInUs = (trimInUs + effects.sourceSpanOf(deltaUs)).coerceAtLeast(0))
     is TextItem -> copy(durationUs = durationUs - deltaUs)
     is StickerItem -> copy(durationUs = durationUs - deltaUs)
     is EffectItem -> copy(durationUs = durationUs - deltaUs)
+}
+
+// The clip with its trimmed source [spanUs] long, one end of the trim kept: the trim-in while it plays forward, the trim-out when reversed, because the end
+// of the clip that a cut or a drag moves is the other end of the source then (P4-10). A negative span (a start dragged past the end) is not made.
+private fun MediaClip.withSourceSpan(spanUs: Long, keepStartOfSpan: Boolean): MediaClip {
+    val span = spanUs.coerceAtLeast(0)
+    return if (keepStartOfSpan) copy(trimOutUs = trimInUs + span) else copy(trimInUs = (trimOutUs - span).coerceAtLeast(0))
 }
 
 // A piece of a split gets its keyframes; an item that had none stays without.

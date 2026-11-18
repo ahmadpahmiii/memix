@@ -32,10 +32,10 @@ fun Project.picturePointAt(itemId: String, atUs: Long, canvasFx: Float, canvasFy
     return point?.takeIf { it.u in 0f..1f && it.v in 0f..1f }
 }
 
-/** The time in [clip]'s source file of the frame shown at project time [atUs] (at the clip's speed, P4-09); 0 for a photo. */
+/** The time in [clip]'s source file of the frame shown at project time [atUs] (at the clip's speed and direction, P4-09, P4-10); 0 for a photo. */
 fun sourceTimeOf(clip: MediaClip, atUs: Long): Long =
     if (clip.source.kind == MediaKind.IMAGE) 0L
-    else (clip.trimInUs + SpeedCatalog.sourceSpanOf(atUs - clip.startUs, SpeedCatalog.speedOf(clip))).coerceIn(clip.trimInUs, clip.trimOutUs)
+    else clip.sourceTimeAt(atUs - clip.startUs)
 
 private fun Project.overlayPicturePoint(clip: MediaClip, atUs: Long, picture: PixelSize, canvas: PixelSize, x: Float, y: Float): PicturePoint? {
     val transform = lookOf(clip.id, atUs)?.transform ?: clip.transform

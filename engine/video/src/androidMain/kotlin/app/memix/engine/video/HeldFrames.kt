@@ -41,6 +41,9 @@ internal class HeldFrames(private val context: Context, private val cacheDir: Fi
         return found
     }
 
+    /** The still picture of [key]'s frame, read once into the cache (P4-10 uses it for a reversed clip's first frame); null when it can't be read. Reads files: off the main thread. */
+    fun still(key: HoldKey, sourceUri: Uri): File? = fileFor(key, sourceUri)
+
     private fun fileFor(key: HoldKey, sourceUri: Uri): File? {
         val folder = File(cacheDir, FOLDER).apply { mkdirs() }
         val file = File(folder, nameOf(key))

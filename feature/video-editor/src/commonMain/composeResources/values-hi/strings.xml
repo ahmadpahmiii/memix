@@ -445,4 +445,22 @@
     <string name="edit_speed">स्पीड</string>
     <string name="edit_speed_sound">स्पीड की आवाज़</string>
     <string name="edit_speed_reset">स्पीड रीसेट</string>
+    <string name="tool_reverse">उल्टा</string>
+    <string name="tool_reverse_click_on">इस क्लिप को फिर आगे चलाएं</string>
+    <string name="tool_reverse_click_off">इस क्लिप को उल्टा चलाएं</string>
+    <string name="tool_freeze_frame">फ़्रेम रोकें</string>
+    <string name="tool_freeze_frame_click">प्लेहेड पर तस्वीर रोकें</string>
+    <string name="reverse_preparing">उल्टा कर रहे हैं %1$d%</string>
+    <string name="reverse_failed">यह क्लिप उल्टी नहीं हो सकी। फिर कोशिश करें।</string>
+    <string name="explain_reverse_long">उल्टा करना 60 सेकंड तक की क्लिप पर चलता है। पहले इसे बाँटें।</string>
+    <string name="explain_reverse_space">उल्टा करने की जगह नहीं है। जगह खाली करके फिर कोशिश करें।</string>
+    <string name="explain_freeze_outside">पहले प्लेहेड को क्लिप पर ले जाएं।</string>
+    <string name="explain_detach_reversed">उल्टी क्लिप की आवाज़ अलग नहीं हो सकती। पहले उल्टा बंद करें।</string>
+    <string name="a11y_state_reversed">उल्टा</string>
+    <string name="a11y_state_frozen">रुका हुआ फ़्रेम</string>
+    <string name="a11y_freeze_added">रुका फ़्रेम जुड़ा</string>
+    <string name="a11y_reverse_ready">उल्टी क्लिप तैयार</string>
+    <string name="edit_reverse">उल्टा</string>
+    <string name="edit_freeze_frame">फ़्रेम रोकें</string>
+    <string name="explain_freeze_failed">यह फ़्रेम रोका नहीं जा सका। फिर कोशिश करें।</string>
 </resources>

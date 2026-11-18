@@ -38,6 +38,9 @@ data class OverlayUi(
     val trimInUs: Long,
     /** How fast the clip plays (P4-09); a photo has none. */
     val speed: Float = 1f,
+    /** Where the clip ends inside its source file and whether it plays backward (P4-10): a reversed clip starts at this end. */
+    val trimOutUs: Long = 0L,
+    val reversed: Boolean = false,
     /** The clip's keyframes (counted from its start); empty when it has none. The stage follows them under the playhead (P4-02b). */
     val keyframes: ImmutableList<Keyframe> = persistentListOf(),
 ) : GestureTarget {
@@ -63,7 +66,11 @@ data class OverlayUi(
     fun isShownAt(timeUs: Long): Boolean = timeUs >= startUs && timeUs < endUs
 
     /** The source file's time of the frame shown at [timeUs]; 0 for a photo. */
-    fun sourceTimeAt(timeUs: Long): Long = if (isPhoto) 0L else trimInUs + SpeedCatalog.sourceSpanOf((timeUs - startUs).coerceAtLeast(0), speed)
+    fun sourceTimeAt(timeUs: Long): Long {
+        if (isPhoto) return 0L
+        val span = SpeedCatalog.sourceSpanOf((timeUs - startUs).coerceAtLeast(0), speed)
+        return if (reversed) (trimOutUs - span).coerceAtLeast(trimInUs) else trimInUs + span
+    }
 }
 
 /** What a finger or a held Position arrow has put an overlay at, drawn by the editor's stand-in until the preview shows the commit. */
@@ -82,7 +89,7 @@ internal fun Project.overlayUis(): ImmutableList<OverlayUi> {
         .mapNotNull { clip ->
             val box = overlayBoxAtScaleOne(clip, size)
             if (box.width <= 0f || box.height <= 0f) return@mapNotNull null
-            OverlayUi(clip.id, clip.startUs, clip.startUs + clip.durationUs, clip.transform, clip.opacity, box.width, box.height, clip.source, clip.trimInUs, SpeedCatalog.speedOf(clip), clip.keyframes.toImmutableList())
+            OverlayUi(clip.id, clip.startUs, clip.startUs + clip.durationUs, clip.transform, clip.opacity, box.width, box.height, clip.source, clip.trimInUs, SpeedCatalog.speedOf(clip), clip.trimOutUs, clip.reversed && clip.source.kind == MediaKind.VIDEO, clip.keyframes.toImmutableList())
         }
         .toImmutableList()
 }

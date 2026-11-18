@@ -24,11 +24,12 @@ enum class SpeedSound {
 data class SpeedPoint(val positionFraction: Float, val speed: Float)
 
 /**
- * A main clip that holds one frame of its video (P4-10, saved from schema 21 so that ticket needs no second bump). The clip behaves like a photo for
- * its length and tools; the picture is the frame of [source] at [sourceTimeUs], read by the engine. No file is stored.
+ * Marks a main clip as a frozen frame (P4-10): a photo clip whose picture is one frame of a video, kept as a JPEG in the project's media folder (so it
+ * plays, frames and trims exactly like a photo, and keeps working if the video is later replaced or deleted). [sourceTimeUs] is where in the
+ * video the frame came from, for the editor's description of the clip; nothing else reads it.
  */
 @Serializable
-data class FreezeSource(val source: MediaRef, val sourceTimeUs: Long)
+data class FreezeSource(val sourceTimeUs: Long)
 
 /**
  * The numbers of the Speed tool (P4-09; spec docs/ux/specs/P4-09-speed.md, design/tokens.json → speed), and the one place that turns a clip's

@@ -70,6 +70,8 @@ internal class TimelinePainter(
     private val missingFileLabel: String,
     /** The app's language, for catalog titles that come in every language. */
     private val languageCode: String,
+    /** The marks of the retime chip that are drawn, not written (P4-10). */
+    private val retimeIcons: RetimeIcons,
     density: Density,
 ) {
     private val gapPx = with(density) { MemixSpacing.space1.toPx() }
@@ -109,6 +111,7 @@ internal class TimelinePainter(
     private val retimeLabels = HashMap<Float, TextLayoutResult>()
     private val cueSizePx = with(density) { MemixSize.badge.toPx() }
     private val cueIconPx = with(density) { MemixSize.iconSmall.toPx() }
+    private val retimeIconPx = cueIconPx
     private val cueCorner = CornerRadius(cornerPx)
     private val diamondPath = Path()
     private val itemPath = Path()
@@ -437,7 +440,7 @@ internal class TimelinePainter(
             val firstTile = max(0, floor(-left / tilePx).toInt())
             val lastTile = min(ceil((right - left) / tilePx).toInt() - 1, floor((size.width - left) / tilePx).toInt())
             for (tileIndex in firstTile..lastTile) {
-                val timeUs = if (item.isPhoto) 0L else tileSourceTimeUs(trimInUs, trimOutUs, tileIndex, tileDurationUs, item.speed)
+                val timeUs = if (item.isPhoto) 0L else tileSourceTimeUs(trimInUs, trimOutUs, tileIndex, tileDurationUs, item.speed, item.reversed)
                 val tile = thumbnails.tileAt(media, timeUs) ?: continue
                 val x = left + tileIndex * tilePx
                 val alpha = if (tile.timeUs == timeUs) fadeInAlpha(tile) else 1f
@@ -629,7 +632,7 @@ internal class TimelinePainter(
         clipPath(itemShape(left, top, left + width, bottom)) {
             drawRect(MemixColors.trackVideo, Offset(left, top), Size(width, tileSizePx.toFloat()))
             if (media != null && media !in missingSources) {
-                thumbnails?.tileAt(media, if (clip.isPhoto) 0L else clip.trimInUs)?.let { drawTile(it, left, top, alpha = 1f) }
+                thumbnails?.tileAt(media, if (clip.isPhoto) 0L else tileSourceTimeUs(clip.trimInUs, clip.trimOutUs, 0, 0L, reversed = clip.reversed))?.let { drawTile(it, left, top, alpha = 1f) }
             }
         }
         if (id != strip.movingId) return
@@ -708,19 +711,29 @@ internal class TimelinePainter(
     }
 
     /**
-     * The retime chip (spec P4-09 → The retime chip): the speed ("2×", "0.5×") in `text` on `scrim` at the clip's bottom-left, `space-1` inside, on every clip
-     * that plays at another speed, selected or not; only on a clip 56 dp wide or more, since the duration badge takes the top-left and the keyframe badge the
-     * top-right. A cue, not a control. The reverse icon joins it with P4-10, and a curve's icon with P4-09b.
+     * The retime chip (spec P4-09 → The retime chip, P4-10): the speed ("2×", "0.5×") in `text` on `scrim` at the clip's bottom-left, `space-1` inside, on every clip
+     * that plays at another speed, selected or not, with the `reverse` icon first when it plays backward; a frozen frame wears the `freeze` icon alone. Only on a clip
+     * 56 dp wide or more, since the duration badge takes the top-left and the keyframe badge the top-right. A cue, not a control. A curve's icon joins with P4-09b.
      */
     private fun DrawScope.drawRetimeChip(row: LaneRow, item: ItemUi, left: Float, right: Float) {
-        if (item.speed == 1f || right - left < retimeMinClipWidthPx) return
-        val label = retimeLabels.getOrPut(item.speed) { textMeasurer.measure(speedText(item.speed) + SPEED_SIGN, rulerStyle, softWrap = false, maxLines = 1) }
-        val chipWidth = label.size.width + 2 * badgeInsetPx
+        val hasSpeed = item.speed != 1f
+        if (!hasSpeed && !item.reversed && !item.frozen || right - left < retimeMinClipWidthPx) return
+        val label = if (hasSpeed) retimeLabels.getOrPut(item.speed) { textMeasurer.measure(speedText(item.speed) + SPEED_SIGN, rulerStyle, softWrap = false, maxLines = 1) } else null
+        val icons = listOfNotNull(retimeIcons.reverse.takeIf { item.reversed }, retimeIcons.freeze.takeIf { item.frozen })
+        val contentWidth = icons.size * (retimeIconPx + badgeInsetPx) + (label?.size?.width ?: 0) - if (label == null && icons.isNotEmpty()) badgeInsetPx else 0f
+        val height = max(label?.size?.height?.toFloat() ?: 0f, retimeIconPx)
+        val chipWidth = contentWidth + 2 * badgeInsetPx
         // Clear of the trim handle of a selected clip before this one, which sits over this clip's first handle-width.
-        val topLeft = Offset(max(left, 0f) + handleWidthPx + badgeInsetPx, row.itemTopPx + row.itemHeightPx - badgeInsetPx - label.size.height)
+        val topLeft = Offset(max(left, 0f) + handleWidthPx + badgeInsetPx, row.itemTopPx + row.itemHeightPx - badgeInsetPx - height)
         if (right - topLeft.x < chipWidth) return
-        drawRoundRect(MemixColors.scrim, topLeft, Size(chipWidth, label.size.height.toFloat()), CornerRadius(cornerPx))
-        drawText(label, color = MemixColors.text, topLeft = Offset(topLeft.x + badgeInsetPx, topLeft.y))
+        drawRoundRect(MemixColors.scrim, topLeft, Size(chipWidth, height), CornerRadius(cornerPx))
+        var x = topLeft.x + badgeInsetPx
+        val iconFilter = ColorFilter.tint(MemixColors.text)
+        for (icon in icons) {
+            translate(x, topLeft.y + (height - retimeIconPx) / 2) { with(icon) { draw(Size(retimeIconPx, retimeIconPx), colorFilter = iconFilter) } }
+            x += retimeIconPx + badgeInsetPx
+        }
+        if (label != null) drawText(label, color = MemixColors.text, topLeft = Offset(x, topLeft.y + (height - label.size.height) / 2))
     }
 
     /** The cue on a keyed clip (spec P4-02b → A keyed item's badge): a `text` diamond with an `on-primary` edge, 2 dp from the top-right corner; only on a clip 32 dp wide or more. */
@@ -773,6 +786,10 @@ internal class TimelinePainter(
         var cutWidthPx = -1
     }
 }
+
+/** The painters of the retime chip's icons (P4-10). */
+@Stable
+internal class RetimeIcons(val reverse: Painter, val freeze: Painter)
 
 /** Well above what fits on one screen, so scrolling never re-measures, yet a long project's labels aren't all kept. */
 private const val MAX_CACHED_RULER_LABELS = 64

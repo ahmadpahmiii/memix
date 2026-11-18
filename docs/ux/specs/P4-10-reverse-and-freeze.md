@@ -123,6 +123,7 @@ English source; drafts for id, es, pt and hi (the engineer machine-drafts the re
 | `explain_reverse_space` | Not enough space to reverse. Free up space and try again. | 70 | Ruang tidak cukup untuk membalik. Kosongkan ruang lalu coba lagi. · No hay espacio para invertir. Libera espacio e inténtalo de nuevo. · Sem espaço para inverter. Libere espaço e tente de novo. · उल्टा करने की जगह नहीं है। जगह खाली करके फिर कोशिश करें। | Toast with the P1-02 Free up space action; 57 en |
 | `explain_freeze_outside` | Move the playhead onto the clip first. | 50 | Pindahkan playhead ke klip dulu. · Mueve primero el cabezal sobre el clip. · Mova antes a posição atual para o clipe. · पहले प्लेहेड को क्लिप पर ले जाएं। | Toast; 38 en |
 | `explain_detach_reversed` | Reversed clips can't detach their sound. Turn Reverse off first. | 70 | Klip terbalik tidak bisa dipisah suaranya. Matikan Balik dulu. · Los clips invertidos no pueden separar su sonido. Desactiva Invertir primero. · Clipes invertidos não podem separar o som. Desative Inverter primeiro. · उल्टी क्लिप की आवाज़ अलग नहीं हो सकती। पहले उल्टा बंद करें। | Toast; 63 en, es 73 (trim "Quita Invertir primero.") |
+| `explain_freeze_failed` | Couldn't freeze this frame. Try again. | 55 | Tidak bisa membekukan frame ini. Coba lagi. · No se pudo congelar este fotograma. Inténtalo otra vez. · Não foi possível congelar este quadro. Tente de novo. · यह फ़्रेम रोका नहीं जा सका। फिर कोशिश करें। | Toast when the frame can't be read (added in review 18 Nov); wraps |
 | `a11y_state_reversed` | Reversed | 16 | Terbalik · Invertido · Invertido · उल्टा | Appended to the clip's spoken description (after Speed) |
 | `a11y_state_frozen` | Frozen frame | 16 | Frame beku · Fotograma congelado · Quadro congelado · रुका हुआ फ़्रेम | Spoken description of a freeze clip |
 | `a11y_freeze_added` | Frozen frame added | 24 | Frame beku ditambahkan · Fotograma congelado añadido · Quadro congelado adicionado · रुका फ़्रेम जुड़ा | Polite |
@@ -175,7 +176,7 @@ Use the debug clip `reverse-check` (Requests 4) and a 360 × 640 and a 360 × 80
 | Need | Expected model |
 | --- | --- |
 | Reverse | `MediaClip.reversed: Boolean = false`; the trimmed source range maps from its end; split keeps the flag; sound reversed with the picture |
-| Freeze | A main-track `MediaClip` with `freeze: FreezeSource(sourceMediaRef, sourceTimeUs)?` behaving like a photo clip for length and tools; the look copied at creation; no new file stored |
+| Freeze | A main-track `MediaClip` with `freeze: FreezeSource(sourceTimeUs)?` behaving like a photo clip for length and tools; the look copied at creation. **As built and accepted (review 18 Nov):** the still is an app-private JPEG in the project's media folder (origin `freeze-frame/<id>`); it must be removed with the project and when its clip is gone for good (not on Undo while redo is possible) |
 | Derived | The reversed copy is cache, never in the project; rebuilt when the source range changes |
 | Edits | `setClipReversed`, `freezeFrame(clipId, timeUs)`, pure, one `commit` each (the freeze is split plus insert, with the transition moved to the right piece) |
 | Version | One `schemaVersion` bump with P4-09's (fields default to false and null) |

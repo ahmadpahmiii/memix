@@ -116,6 +116,9 @@ internal class EditorCheckProjects : KoinComponent {
         TRANSITIONS_PHOTOS -> transitionsPhotos()
         TRANSITIONS_SET -> transitionsSet()
         SPEED_CHECK -> speedCheck()
+        REVERSE_CHECK -> reverseCheck()
+        REVERSE_PLAIN -> reversePlain()
+        REVERSE_LONG -> reverseLong()
         SPEED_PLAIN -> speedPlain()
         SPEED_OVERLAY -> speedOverlay()
         else -> null
@@ -514,6 +517,27 @@ internal class EditorCheckProjects : KoinComponent {
         extraTracks = listOf(Track("speed-sounds", TrackKind.MEME_SOUND, listOf(AudioClip("speed-beep", startUs = 8_500_000, source = sound, trimInUs = 500_000, trimOutUs = 1_000_000)))),
     )
 
+    /**
+     * The P4-10 reverse scenes (spec docs/ux/specs/P4-10-reverse-and-freeze.md → QA compares, Measured; steps in docs/qa/phase-4/engineer-hand-checks.md → P4-10), from the 10 s
+     * `reverse-check.mp4` (the source time burned in as seconds and frame number, a sine sweep falling in pitch; `docs/qa/references/P4-10-reverse-freeze/make-reverse-check.sh`).
+     * `reverse-check` has the whole clip reversed, so the first play shows the "Reversing" wait and then the burned-in time falling one frame per frame; `reverse-plain` has it at
+     * 1x in two clips (0 to 6 s, 6 to 10 s) for the Reverse switch, Split and Freeze frame by hand; `reverse-long` is a 61 s file for the 60 s limit.
+     */
+    private fun reverseCheck(): Project = project(
+        REVERSE_CHECK,
+        mainClips = listOf(MediaClip("reverse-a", startUs = 0, source = reverseClip, trimInUs = 0, trimOutUs = 10_000_000, reversed = true)),
+    )
+
+    private fun reversePlain(): Project = project(
+        REVERSE_PLAIN,
+        mainClips = listOf(
+            MediaClip("reverse-p1", startUs = 0, source = reverseClip, trimInUs = 0, trimOutUs = 6_000_000),
+            MediaClip("reverse-p2", startUs = 6_000_000, source = reverseClip, trimInUs = 6_000_000, trimOutUs = 10_000_000),
+        ),
+    )
+
+    private fun reverseLong(): Project = project(REVERSE_LONG, mainClips = listOf(MediaClip("reverse-l", startUs = 0, source = reverseLongClip, trimInUs = 0, trimOutUs = 61_000_000)))
+
     // The whole clip at 1x: the checker sets the speed by hand (tiles, slider, Sound), exports, and compares the length and the tone.
     private fun speedPlain(): Project = project(SPEED_PLAIN, mainClips = listOf(MediaClip("speed-plain", startUs = 0, source = speedClip, trimInUs = 0, trimOutUs = 10_000_000)))
 
@@ -655,13 +679,16 @@ internal class EditorCheckProjects : KoinComponent {
         const val TRANSITIONS_PHOTOS = "transitions-photos"
         const val TRANSITIONS_SET = "transitions-set"
         const val SPEED_CHECK = "speed-check"
+        const val REVERSE_CHECK = "reverse-check"
+        const val REVERSE_PLAIN = "reverse-plain"
+        const val REVERSE_LONG = "reverse-long"
         const val SPEED_PLAIN = "speed-plain"
         const val SPEED_OVERLAY = "speed-overlay"
         private val FILTER_SCENES = setOf(FILTERS_CHECK, FILTERS_MIXED)
         private val NAMES = listOf(
             EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK,
             TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK, OVERLAY_CHECK, OVERLAY_PERF, KEYFRAME_CHECK, GREENSCREEN_CHECK, GREENSCREEN_MAIN, MASK_CHECK, MASK_MAIN, FILTERS_CHECK, FILTERS_MIXED, EFFECTS_CHECK, STACK_TWO, STACK_TWO_REVERSE,
-            TRANSITIONS_CHECK, TRANSITIONS_HOLD, TRANSITIONS_PHOTOS, TRANSITIONS_SET, SPEED_CHECK, SPEED_PLAIN, SPEED_OVERLAY,
+            TRANSITIONS_CHECK, TRANSITIONS_HOLD, TRANSITIONS_PHOTOS, TRANSITIONS_SET, SPEED_CHECK, SPEED_PLAIN, SPEED_OVERLAY, REVERSE_CHECK, REVERSE_PLAIN, REVERSE_LONG,
         ) + PhotoCheckProjects.NAMES
         private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20
@@ -702,6 +729,9 @@ internal class EditorCheckProjects : KoinComponent {
         private val transitionB = media("transition-b.mp4", MediaKind.VIDEO).copy(durationUs = 6_000_000, pixelSize = PixelSize(1080, 1920), hasAudio = true)
         // The 10 s speed scene clip of P4-09a (desktop-made; make-speed-check.sh): 1080 x 1920, a burned-in source time and a stepped 1 kHz tone.
         private val speedClip = media("speed-check.mp4", MediaKind.VIDEO).copy(durationUs = 10_000_000, pixelSize = PixelSize(1080, 1920), hasAudio = true)
+        // The 10 s reverse scene clip of P4-10 (desktop-made; make-reverse-check.sh): 1080 x 1920 at 30 fps, the source time burned in to the frame number and a falling tone sweep; and its 61 s sibling.
+        private val reverseClip = media("reverse-check.mp4", MediaKind.VIDEO).copy(durationUs = 10_000_000, pixelSize = PixelSize(1080, 1920), hasAudio = true)
+        private val reverseLongClip = media("reverse-long.mp4", MediaKind.VIDEO).copy(durationUs = 61_000_000, pixelSize = PixelSize(1080, 1920), hasAudio = true)
         private val photo4x3Measured = photo4x3.copy(pixelSize = PixelSize(1440, 1080), hasAudio = false)
         private val sound = MediaRef(MediaOrigin.CatalogItem("debug-beep"), MediaKind.AUDIO, cachedCopyPath = "${ExportCheckProject.MEDIA_DIR}/sound.m4a")
 

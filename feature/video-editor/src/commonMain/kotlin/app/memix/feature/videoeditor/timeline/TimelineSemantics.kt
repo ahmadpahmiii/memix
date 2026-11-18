@@ -65,6 +65,8 @@ import memix.feature.video_editor.generated.resources.tool_green_screen
 import memix.feature.video_editor.generated.resources.a11y_state_adjusted
 import memix.feature.video_editor.generated.resources.a11y_state_filtered
 import memix.feature.video_editor.generated.resources.a11y_state_masked
+import memix.feature.video_editor.generated.resources.a11y_state_frozen
+import memix.feature.video_editor.generated.resources.a11y_state_reversed
 import memix.feature.video_editor.generated.resources.a11y_state_speed
 import memix.feature.video_editor.generated.resources.a11y_state_transition
 import memix.feature.video_editor.generated.resources.tool_transition
@@ -436,8 +438,10 @@ private fun itemDescription(track: TrackUi, item: ItemUi, clipCount: Int): Strin
     val keyframed = if (item.keyframeCount == 0) masked else masked + ". " + stringResource(Res.string.a11y_state_keyframed, item.keyframeCount)
     // Speed and Reversed (P4-09, P4-10) go before the transition, which is always last (spec P4-08 → Accessibility).
     val retimed = if (item.speed == 1f) keyframed else keyframed + ". " + stringResource(Res.string.a11y_state_speed, speedText(item.speed))
-    val transition = item.transitionId?.let(::transitionNameOf) ?: return retimed
-    return retimed + ". " + stringResource(Res.string.a11y_state_transition, stringResource(transition))
+    val reversed = if (item.reversed) retimed + ". " + stringResource(Res.string.a11y_state_reversed) else retimed
+    val frozen = if (item.frozen) reversed + ". " + stringResource(Res.string.a11y_state_frozen) else reversed
+    val transition = item.transitionId?.let(::transitionNameOf) ?: return frozen
+    return frozen + ". " + stringResource(Res.string.a11y_state_transition, stringResource(transition))
 }
 
 // "Filter: Vivid", or "Adjusted" when only sliders are set; null for a clip with no look.

@@ -319,6 +319,13 @@ enum class EditorTool(val eventValue: String?) {
     SPEED_RESET("speed_reset"),
 
     /**
+     * P4-10: Reverse and Freeze frame (spec docs/ux/specs/P4-10-reverse-and-freeze.md → Analytics), once per committed step, `editor: "video"`; a tap that only
+     * explains logs nothing. `reverse` sends `value` = `on` or `off`; `freeze_frame` has none.
+     */
+    REVERSE("reverse"),
+    FREEZE_FRAME("freeze_frame"),
+
+    /**
      * P1-11: the Canvas panel (PM, 20 Oct), each with a `value`. Fit and Fill are one event, `canvas_fit` with `value`
      * `fit` or `fill`, but two entries, so the undo history can say "Undo: Fill".
      */

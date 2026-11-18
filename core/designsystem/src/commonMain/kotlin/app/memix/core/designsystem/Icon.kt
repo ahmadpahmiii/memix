@@ -58,6 +58,8 @@ import memix.core.designsystem.generated.resources.ic_minus
 import memix.core.designsystem.generated.resources.ic_mic
 import memix.core.designsystem.generated.resources.ic_more
 import memix.core.designsystem.generated.resources.ic_effects
+import memix.core.designsystem.generated.resources.ic_freeze
+import memix.core.designsystem.generated.resources.ic_reverse
 import memix.core.designsystem.generated.resources.ic_speed
 import memix.core.designsystem.generated.resources.ic_transition
 import memix.core.designsystem.generated.resources.ic_move_here
@@ -94,6 +96,8 @@ object MemixIcons {
     val Effects = Res.drawable.ic_effects
     val Transition = Res.drawable.ic_transition
     val Speed = Res.drawable.ic_speed
+    val Reverse = Res.drawable.ic_reverse
+    val Freeze = Res.drawable.ic_freeze
     val Arrow = Res.drawable.ic_arrow
     val ArrowBack = Res.drawable.ic_arrow_back
     val ArrowLeft = Res.drawable.ic_arrow_left

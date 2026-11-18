@@ -59,10 +59,10 @@ fun Project.originalSoundOf(itemId: String): OriginalSound? {
  * the clip's start, on the first Audio lane free for that span, else a new lane [newTrackId] after the last one. The
  * clip's `audioDetached` becomes true, so its sound plays only from the new clip. While every clip is muted, the new
  * clip starts at 0%, so nothing suddenly gets louder. Nothing changes unless the clip's sound plays
- * ([originalSoundOf] is [OriginalSound.PLAYS]) and the clip's speed allows it ([detachRefusedBySpeed]).
+ * ([originalSoundOf] is [OriginalSound.PLAYS]) and the clip's speed and direction allow it ([detachRefusedBySpeed], [detachRefusedByReverse]).
  */
 fun Project.detachAudio(itemId: String, audioClipId: String, newTrackId: String): Project {
-    if (originalSoundOf(itemId) != OriginalSound.PLAYS || detachRefusedBySpeed(itemId)) return this
+    if (originalSoundOf(itemId) != OriginalSound.PLAYS || detachRefusedBySpeed(itemId) || detachRefusedByReverse(itemId)) return this
     val (track, clip) = soundBearingClip(itemId) ?: return this
     val audio = AudioClip(
         id = audioClipId,

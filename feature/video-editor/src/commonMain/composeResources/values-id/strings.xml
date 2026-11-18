@@ -445,4 +445,22 @@
     <string name="edit_speed">Kecepatan</string>
     <string name="edit_speed_sound">Suara kecepatan</string>
     <string name="edit_speed_reset">Setel ulang kecepatan</string>
+    <string name="tool_reverse">Balik</string>
+    <string name="tool_reverse_click_on">Putar klip ini maju lagi</string>
+    <string name="tool_reverse_click_off">Putar klip ini mundur</string>
+    <string name="tool_freeze_frame">Bekukan frame</string>
+    <string name="tool_freeze_frame_click">Tahan gambar di playhead</string>
+    <string name="reverse_preparing">Membalik %1$d%</string>
+    <string name="reverse_failed">Tidak bisa membalik klip ini. Coba lagi.</string>
+    <string name="explain_reverse_long">Balik hanya untuk klip sampai 60 detik. Potong dulu klip ini.</string>
+    <string name="explain_reverse_space">Ruang tidak cukup untuk membalik. Kosongkan ruang lalu coba lagi.</string>
+    <string name="explain_freeze_outside">Pindahkan playhead ke klip dulu.</string>
+    <string name="explain_detach_reversed">Klip terbalik tidak bisa dipisah suaranya. Matikan Balik dulu.</string>
+    <string name="a11y_state_reversed">Terbalik</string>
+    <string name="a11y_state_frozen">Frame beku</string>
+    <string name="a11y_freeze_added">Frame beku ditambahkan</string>
+    <string name="a11y_reverse_ready">Klip terbalik siap</string>
+    <string name="edit_reverse">Balik</string>
+    <string name="edit_freeze_frame">Bekukan frame</string>
+    <string name="explain_freeze_failed">Tidak bisa membekukan frame ini. Coba lagi.</string>
 </resources>

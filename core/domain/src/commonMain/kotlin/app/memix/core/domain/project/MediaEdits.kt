@@ -57,11 +57,11 @@ enum class ReplaceFit {
 }
 
 /**
- * Whether [media] fits main clip [itemId]'s slot; null when [itemId] isn't a video or photo clip on the main track.
+ * Whether [media] fits main clip [itemId]'s slot; null when [itemId] isn't a video or photo clip on the main track (a frozen frame has no source to replace).
  * A video whose length wasn't measured counts as too short: it can't be shown to cover the slot.
  */
 fun Project.replaceFit(itemId: String, media: MediaRef): ReplaceFit? {
-    val clip = mainClip(itemId) ?: return null
+    val clip = mainClip(itemId)?.takeIf { it.freeze == null } ?: return null
     return when (media.kind) {
         MediaKind.IMAGE -> ReplaceFit.FITS
         MediaKind.VIDEO -> if ((media.durationUs ?: 0L) >= clip.videoSpanUs()) ReplaceFit.FITS else ReplaceFit.TOO_SHORT

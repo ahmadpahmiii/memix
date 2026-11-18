@@ -7,6 +7,7 @@ import androidx.media3.muxer.Muxer
 import androidx.media3.transformer.ExportException
 import app.memix.core.domain.video.ExportDestination
 import app.memix.core.domain.video.ExportError
+import app.memix.engine.video.reverse.ReverseException
 import java.io.File
 
 /** Where one export's file is written, and what becomes of it when the export ends. */
@@ -73,6 +74,8 @@ internal class FinishedFile(val location: String, val sizeBytes: Long)
  */
 @OptIn(UnstableApi::class)
 internal fun exportErrorOf(e: Throwable): ExportError {
+    // A reversed copy that couldn't be made (P4-10): a full phone says so; any other failure is a codec's.
+    if (e is ReverseException) return if (e.noSpace) ExportError.STORAGE_FULL else ExportError.ENCODER
     if (e.isOutOfSpace()) return ExportError.STORAGE_FULL
     val exportException = e as? ExportException ?: return ExportError.UNKNOWN
     return when (exportException.errorCode / ERROR_GROUP) {

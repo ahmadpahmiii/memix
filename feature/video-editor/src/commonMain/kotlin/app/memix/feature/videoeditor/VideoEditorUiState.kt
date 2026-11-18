@@ -186,6 +186,8 @@ data class VideoEditorUiState(
      * P1-06 → Preview catching up). Shown only when the save banner and toasts leave the slot free.
      */
     val previewUpdating: Boolean = false,
+    /** How far the reversed copy of a clip is, 0 to 100, once it has taken a second (P4-10: "Reversing 40%"); null when nothing is being prepared or it is still quick. */
+    val reversePercent: Int? = null,
     /** "Your latest changes aren't saved": leaving while saving fails. */
     val unsavedSheetOpen: Boolean = false,
     /** The editor is done; the app closes the screen. */
@@ -273,6 +275,9 @@ enum class ClipTools {
 
     /** A photo clip on the main track: Split, Delete, Duplicate, Reorder, Replace (no sound, so no Volume or Detach audio). */
     PHOTO_CLIP,
+
+    /** A frozen frame on the main track (P4-10): a photo clip without Replace, and without Keyframes. */
+    FREEZE_CLIP,
 
     /** A caption: Edit text, Style, Position, Delete, Split, Move here, Duplicate (spec P1-10 → Text clip tools). */
     TEXT,
@@ -591,6 +596,18 @@ enum class Explanation {
     /** Reset in the Speed panel with nothing set (P4-09). */
     SPEED_NOTHING_TO_RESET,
 
+    /** Detach audio on a reversed clip: a sound clip has no direction (P4-10). */
+    DETACH_REVERSED,
+
+    /** Reverse on a clip whose trimmed source is over 60 s; the phone is full; the copy couldn't be made (the flag is switched off again) (P4-10). */
+    REVERSE_LONG,
+    REVERSE_NO_SPACE,
+    REVERSE_FAILED,
+
+    /** Freeze frame with the playhead off the selected clip; the frame couldn't be read or saved (P4-10). */
+    FREEZE_OUTSIDE,
+    FREEZE_FAILED,
+
     /** Transition tool (P4-08): on the last clip (nothing follows it), or on a cut whose two clips are too short to give 0.1 s. */
     TRANSITION_LAST,
     TRANSITION_SHORT,
@@ -649,6 +666,15 @@ sealed interface ToastMessage {
 
     /** Spoken only, after an overlay landed. */
     data object OverlayAdded : ToastMessage
+
+    /** Spoken only, after Freeze frame landed a still (P4-10). */
+    data object FreezeAdded : ToastMessage
+
+    /** Spoken only, when a reversed copy is ready (P4-10). */
+    data object ReverseReady : ToastMessage
+
+    /** Spoken only, as the reversed copy passes each quarter (P4-10): "Reversing 50%". */
+    data class ReverseProgress(val percent: Int) : ToastMessage
 
     /** A speed change made an overlay overlap its neighbor, so it moved to a free layer (P4-09; 4 s). */
     data object SpeedMovedLane : ToastMessage
@@ -1145,6 +1171,12 @@ sealed interface VideoEditorIntent {
 
     /** Speed on the main bar: it selects the video clip under the playhead and opens its panel. */
     data object SpeedMainTool : VideoEditorIntent
+
+    /** Reverse on a video clip's bar (main or overlay): switches it on or off, one step (P4-10). */
+    data object ReverseTool : VideoEditorIntent
+
+    /** Freeze frame on a main video clip's bar: holds the picture at the playhead (P4-10). */
+    data object FreezeFrameTool : VideoEditorIntent
 
     /** Done, system back or Escape on the Speed panel. */
     data object CloseSpeed : VideoEditorIntent

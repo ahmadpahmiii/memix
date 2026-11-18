@@ -35,7 +35,8 @@ internal class TransformerExport(private val context: Context) {
      * audio, and returns Media3's result. [videoBitrateBps] asks for that VBR rate; null lets the encoder pick. Format
      * fallback is off, so a size the encoder refuses fails with `ERROR_CODE_ENCODING_FORMAT_UNSUPPORTED` instead of
      * exporting smaller than asked (spec P1-12 → No silent shrinking). Throws [ExportException] when Media3 fails.
-     * Cancelling the caller stops the export; the partial file stays for the caller to delete.
+     * Cancelling the caller stops the export; the partial file stays for the caller to delete. [allIntra] asks the encoder for a key frame on every frame ([iFrameIntervalSeconds] 0, or a short interval as a retry)
+     * (P4-10's reversed copy reads such a file frame by frame in any order).
      */
     suspend fun run(
         composition: Composition,
@@ -44,11 +45,13 @@ internal class TransformerExport(private val context: Context) {
         videoBitrateBps: Int?,
         muxerFactory: Muxer.Factory?,
         onProgress: (Float) -> Unit,
+        allIntra: Boolean = false,
+        iFrameIntervalSeconds: Float = 0f,
     ): ExportResult {
         val thread = HandlerThread(THREAD_NAME).apply { start() }
         try {
             return withContext(Handler(thread.looper).asCoroutineDispatcher()) {
-                val transformer = transformerOf(thread.looper, videoMimeType, videoBitrateBps, muxerFactory)
+                val transformer = transformerOf(thread.looper, videoMimeType, videoBitrateBps, muxerFactory, allIntra, iFrameIntervalSeconds)
                 runOnLooper(transformer, composition, outputPath, onProgress)
             }
         } finally {
@@ -56,11 +59,13 @@ internal class TransformerExport(private val context: Context) {
         }
     }
 
-    private fun transformerOf(looper: Looper, videoMimeType: String, videoBitrateBps: Int?, muxerFactory: Muxer.Factory?): Transformer.Builder {
+    private fun transformerOf(looper: Looper, videoMimeType: String, videoBitrateBps: Int?, muxerFactory: Muxer.Factory?, allIntra: Boolean, iFrameIntervalSeconds: Float): Transformer.Builder {
         val encoderFactory = DefaultEncoderFactory.Builder(context).setEnableFormatFallback(false)
-        if (videoBitrateBps != null) {
-            val video = VideoEncoderSettings.Builder().setBitrate(videoBitrateBps).setBitrateMode(BITRATE_MODE_VBR).build()
-            encoderFactory.setRequestedVideoEncoderSettings(video)
+        if (videoBitrateBps != null || allIntra) {
+            val video = VideoEncoderSettings.Builder()
+            if (videoBitrateBps != null) video.setBitrate(videoBitrateBps).setBitrateMode(BITRATE_MODE_VBR)
+            if (allIntra) video.setiFrameIntervalSeconds(iFrameIntervalSeconds)
+            encoderFactory.setRequestedVideoEncoderSettings(video.build())
         }
         val builder = Transformer.Builder(context)
             .setLooper(looper)

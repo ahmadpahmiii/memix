@@ -111,6 +111,10 @@ data class ItemUi(
     val transitionId: String? = null,
     /** How fast a video clip plays (P4-09a); 1 for everything else. Above or below 1 the clip wears the retime chip and says so when read aloud. */
     val speed: Float = 1f,
+    /** A video clip that plays backward (P4-10): its retime chip shows the reverse icon, its strip shows the frames in playing order, and it says so when read aloud. */
+    val reversed: Boolean = false,
+    /** A frozen frame (P4-10): a photo clip with the freeze icon on its chip, described as "Frozen frame". */
+    val frozen: Boolean = false,
 ) {
     val endUs: Long get() = startUs + durationUs
 }
@@ -172,7 +176,7 @@ private fun trackUiOf(track: Track, soundTitles: Map<String, LocalizedText>): Tr
     var clipNumber = 0
     val items = sorted.map { item ->
         if (track.kind == TrackKind.MAIN_VIDEO) clipNumber++
-        itemUiOf(item, track.kind, if (track.kind == TrackKind.MAIN_VIDEO) clipNumber else 0, soundTitles).copy(keyframeCount = item.keyframeList().size, keyed = (item as? MediaClip)?.chromaKey != null, masked = (item as? MediaClip)?.mask?.shape, transitionId = (item as? MediaClip)?.takeIf { track.kind == TrackKind.MAIN_VIDEO }?.transitionOut?.id?.takeIf(TransitionCatalog::isBuilt), speed = (item as? MediaClip)?.let(SpeedCatalog::speedOf) ?: 1f).withLookOf(item)
+        itemUiOf(item, track.kind, if (track.kind == TrackKind.MAIN_VIDEO) clipNumber else 0, soundTitles).copy(keyframeCount = item.keyframeList().size, keyed = (item as? MediaClip)?.chromaKey != null, masked = (item as? MediaClip)?.mask?.shape, transitionId = (item as? MediaClip)?.takeIf { track.kind == TrackKind.MAIN_VIDEO }?.transitionOut?.id?.takeIf(TransitionCatalog::isBuilt), speed = (item as? MediaClip)?.let(SpeedCatalog::speedOf) ?: 1f, reversed = (item as? MediaClip)?.let { it.reversed && it.source.kind == MediaKind.VIDEO } == true, frozen = (item as? MediaClip)?.freeze != null).withLookOf(item)
     }
     return TrackUi(track.id, track.kind, items.toImmutableList(), track.muted)
 }

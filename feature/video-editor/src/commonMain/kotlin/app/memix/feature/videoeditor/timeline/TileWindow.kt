@@ -60,7 +60,7 @@ private fun addRequests(mainTrack: TrackUi, window: TileWindow, byDistance: Muta
         val lastWanted = min(lastTile, (endUs - clip.startUs) / tileUs)
         for (tileIndex in firstWanted..lastWanted) {
             val tileStartUs = clip.startUs + tileIndex * tileUs
-            val timeUs = if (clip.isPhoto) 0L else tileSourceTimeUs(clip.trimInUs, clip.trimOutUs, tileIndex.toInt(), tileUs, clip.speed)
+            val timeUs = if (clip.isPhoto) 0L else tileSourceTimeUs(clip.trimInUs, clip.trimOutUs, tileIndex.toInt(), tileUs, clip.speed, clip.reversed)
             byDistance += abs(tileStartUs + tileUs / 2 - centerUs) to TileRequest(media, timeUs)
         }
     }
@@ -69,7 +69,7 @@ private fun addRequests(mainTrack: TrackUi, window: TileWindow, byDistance: Muta
 /** Each main clip's first frame, in play order: what reorder mode's tiles show (spec P1-06 → Reorder). */
 internal fun firstFrameRequestsFor(timeline: TimelineUi): List<TileRequest> {
     val mainTrack = timeline.tracks.firstOrNull { it.kind == TrackKind.MAIN_VIDEO } ?: return emptyList()
-    return mainTrack.items.mapNotNull { clip -> clip.media?.let { TileRequest(it, if (clip.isPhoto) 0L else clip.trimInUs) } }.distinct()
+    return mainTrack.items.mapNotNull { clip -> clip.media?.let { TileRequest(it, if (clip.isPhoto) 0L else tileSourceTimeUs(clip.trimInUs, clip.trimOutUs, 0, 0L, reversed = clip.reversed)) } }.distinct()
 }
 
 /** One tile the timeline wants: [source] at [timeUs] in the source file (0 for a photo). */

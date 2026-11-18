@@ -75,13 +75,22 @@ data class MediaClip(
     val speedCurve: List<SpeedPoint>? = null,
     /** Whether the clip's own sound follows its speed or is off (P4-09a). Independent of [volume], [audioDetached] and the track's mute: the sound plays only if all allow it. */
     val soundMode: SpeedSound = SpeedSound.KEEP,
-    /** Plays the trimmed span from its last frame to its first, the sound too (P4-10, saved from schema 21; nothing sets or plays it before that ticket). */
+    /** Plays the trimmed span from its last frame to its first, the sound too (P4-10, schema 21). Video only; trims stay in source time, so the clip's start shows [trimOutUs]. */
     val reversed: Boolean = false,
-    /** Set on a clip that holds one frame of its video (P4-10, saved from schema 21; nothing sets or plays it before that ticket). */
+    /** Set on a clip that holds one frame of its video (P4-10): a photo clip with a marker, see [FreezeSource]. */
     val freeze: FreezeSource? = null,
 ) : TimelineItem {
     /** How much of the source plays, µs: the part between the trim points. */
     val sourceSpanUs: Long get() = trimOutUs - trimInUs
+
+    /**
+     * The source time shown [offsetUs] of timeline time after the clip starts: counted up from [trimInUs], or down from [trimOutUs] when [reversed]. The one
+     * place that turns a place in the clip into a place in its file, so a reversed clip is handled the same everywhere (thumbnails, picks, a freeze frame).
+     */
+    fun sourceTimeAt(offsetUs: Long): Long {
+        val span = SpeedCatalog.sourceSpanOf(offsetUs.coerceAtLeast(0), SpeedCatalog.speedOf(this)).coerceAtMost(sourceSpanUs)
+        return if (reversed) trimOutUs - span else trimInUs + span
+    }
 
     // Derived, not saved, so it can never disagree with the trim points and the speed. A curve (P4-09b) will integrate here.
     override val durationUs: Long get() = SpeedCatalog.timelineLengthOf(sourceSpanUs, SpeedCatalog.speedOf(this))

@@ -77,6 +77,11 @@ import memix.feature.video_editor.generated.resources.tool_effect_change_click
 import memix.feature.video_editor.generated.resources.tool_effects
 import memix.feature.video_editor.generated.resources.tool_effects_click
 import memix.feature.video_editor.generated.resources.tool_intensity
+import memix.feature.video_editor.generated.resources.tool_freeze_frame
+import memix.feature.video_editor.generated.resources.tool_freeze_frame_click
+import memix.feature.video_editor.generated.resources.tool_reverse
+import memix.feature.video_editor.generated.resources.tool_reverse_click_off
+import memix.feature.video_editor.generated.resources.tool_reverse_click_on
 import memix.feature.video_editor.generated.resources.tool_speed
 import memix.feature.video_editor.generated.resources.tool_speed_click
 import memix.feature.video_editor.generated.resources.tool_transition
@@ -111,6 +116,7 @@ internal fun ToolBarRegion(
     isEmpty: Boolean,
     hasVideoClip: Boolean,
     selectedIsMissing: Boolean,
+    selectedIsReversed: Boolean,
     focusTargets: EditorFocusTargets,
     onIntent: (VideoEditorIntent) -> Unit,
 ) {
@@ -149,7 +155,7 @@ internal fun ToolBarRegion(
                 is ToolBarMode.Clip -> {
                     val closeLabel = stringResource(Res.string.clip_tools_close)
                     ToolBar(
-                        rememberClipTools(shown.tools, selectedIsMissing, onIntent, reorderToolFocus, focusTargets),
+                        rememberClipTools(shown.tools, selectedIsMissing, selectedIsReversed, onIntent, reorderToolFocus, focusTargets),
                         close = ToolBarClose(closeLabel) { onIntent(VideoEditorIntent.ClearSelection) },
                     )
                     FocusOnce(focusAfterSwap == FocusAfterSwap.REORDER_TOOL, reorderToolFocus) { focusAfterSwap = FocusAfterSwap.NONE }
@@ -260,6 +266,7 @@ private fun rememberMainTools(isEmpty: Boolean, hasVideoClip: Boolean, focus: Ed
 private fun rememberClipTools(
     clipTools: ClipTools,
     isMissing: Boolean,
+    isReversed: Boolean,
     onIntent: (VideoEditorIntent) -> Unit,
     reorderFocus: FocusRequester,
     focus: EditorFocusTargets,
@@ -290,10 +297,14 @@ private fun rememberClipTools(
     val speedClick = stringResource(Res.string.tool_speed_click)
     val transitionLabel = stringResource(Res.string.tool_transition)
     val transitionClick = stringResource(Res.string.tool_transition_click)
+    val reverseLabel = stringResource(Res.string.tool_reverse)
+    val reverseClick = stringResource(if (isReversed) Res.string.tool_reverse_click_on else Res.string.tool_reverse_click_off)
+    val freezeLabel = stringResource(Res.string.tool_freeze_frame)
+    val freezeClick = stringResource(Res.string.tool_freeze_frame_click)
     val intensityLabel = stringResource(Res.string.tool_intensity)
     val changeEffectLabel = stringResource(Res.string.effects_change_title)
     val changeEffectClick = stringResource(Res.string.tool_effect_change_click)
-    return remember(clipTools, speedLabel, speedClick, transitionLabel, transitionClick, intensityLabel, changeEffectLabel, changeEffectClick, isMissing, greenScreenLabel, greenScreenClick, maskLabel, maskClick, filtersLabel, filtersClick, split, delete, duplicate, reorder, volume, audioEffects, moveHere, moveHereClickLabel, replace, detach, textTools, position, opacity, layerOrder, keyframesLabel, keyframesClick, onIntent, reorderFocus, focus) {
+    return remember(clipTools, isReversed, reverseLabel, reverseClick, freezeLabel, freezeClick, speedLabel, speedClick, transitionLabel, transitionClick, intensityLabel, changeEffectLabel, changeEffectClick, isMissing, greenScreenLabel, greenScreenClick, maskLabel, maskClick, filtersLabel, filtersClick, split, delete, duplicate, reorder, volume, audioEffects, moveHere, moveHereClickLabel, replace, detach, textTools, position, opacity, layerOrder, keyframesLabel, keyframesClick, onIntent, reorderFocus, focus) {
         val splitTool = ToolBarItem(split, MemixIcons.Split, { onIntent(VideoEditorIntent.SplitSelected) })
         val deleteTool = ToolBarItem(delete, MemixIcons.Delete, { onIntent(VideoEditorIntent.DeleteSelected) }, ToolTone.Danger)
         val duplicateTool = ToolBarItem(duplicate, MemixIcons.Duplicate, { onIntent(VideoEditorIntent.DuplicateSelected) })
@@ -314,6 +325,9 @@ private fun rememberClipTools(
         // After Keyframes and before Duplicate: the rarer job for a meme, so Delete and Speed stay in view at 360 dp (spec P4-08 → The tool and the cut).
         val transitionTool = ToolBarItem(transitionLabel, MemixIcons.Transition, { onIntent(VideoEditorIntent.TransitionTool) }, clickLabel = transitionClick, focusRequester = focus.transitionTool)
         val speedTool = ToolBarItem(speedLabel, MemixIcons.Speed, { onIntent(VideoEditorIntent.SpeedTool) }, clickLabel = speedClick, focusRequester = focus.speedTool)
+        // A switch: on takes the active look and the click label names the tap (spec P4-10 → Reverse). Freeze frame acts at once, with no panel.
+        val reverseTool = ToolBarItem(reverseLabel, MemixIcons.Reverse, { onIntent(VideoEditorIntent.ReverseTool) }, if (isReversed) ToolTone.Active else ToolTone.Default, reverseClick, switchOn = isReversed)
+        val freezeTool = ToolBarItem(freezeLabel, MemixIcons.Freeze, { onIntent(VideoEditorIntent.FreezeFrameTool) }, clickLabel = freezeClick)
         val intensityTool = ToolBarItem(intensityLabel, MemixIcons.Adjust, { onIntent(VideoEditorIntent.IntensityTool) }, focusRequester = focus.intensityTool)
         val changeEffectTool = ToolBarItem(changeEffectLabel, MemixIcons.Replace, { onIntent(VideoEditorIntent.ChangeEffectTool) }, clickLabel = changeEffectClick, focusRequester = focus.changeEffectTool)
         when (clipTools) {
@@ -324,7 +338,7 @@ private fun rememberClipTools(
             ClipTools.VIDEO_OVERLAY -> {
                 val detachTool = ToolBarItem(detach, MemixIcons.DetachAudio, { onIntent(VideoEditorIntent.DetachAudioSelected(fileMissing = isMissing)) })
                 // Speed after Volume (spec P4-09 → The tool and the bars); a missing file has nothing to retime.
-                val rest = listOf(splitTool, volumeTool, speedTool, keyframesTool, layerOrderTool, moveHereTool, duplicateTool, detachTool).filterNot { isMissing && (it === keyframesTool || it === speedTool) }
+                val rest = listOf(splitTool, volumeTool, speedTool, reverseTool, keyframesTool, layerOrderTool, moveHereTool, duplicateTool, detachTool).filterNot { isMissing && (it === keyframesTool || it === speedTool || it === reverseTool) }
                 // Green screen fourth: the common overlay job is a character on green (spec P4-04 → The tool in the bars); a missing file has no picture to key.
                 (if (isMissing) listOf(deleteTool) + rest else listOf(positionTool, opacityTool, deleteTool, greenScreenTool, maskTool, filtersTool) + rest).toImmutableList()
             }
@@ -338,12 +352,16 @@ private fun rememberClipTools(
                 val detachTool = ToolBarItem(detach, MemixIcons.DetachAudio, { onIntent(VideoEditorIntent.DetachAudioSelected(fileMissing = isMissing)) })
                 // Keyframes animate the clip's volume until P4-16 draws its framing; a clip whose file is missing has nothing to animate.
                 // Green screen after Delete until P4-16 and P4-07 put Crop, Fit or Fill, Position and Filters before it (spec P4-04 → The tool in the bars).
-                val usual = listOfNotNull(splitTool, volumeTool, deleteTool, speedTool.takeUnless { isMissing }, greenScreenTool.takeUnless { isMissing }, maskTool.takeUnless { isMissing }, filtersTool.takeUnless { isMissing }, keyframesTool.takeUnless { isMissing }, transitionTool.takeUnless { isMissing }, duplicateTool, detachTool, reorderTool)
+                val usual = listOfNotNull(splitTool, volumeTool, deleteTool, speedTool.takeUnless { isMissing }, freezeTool.takeUnless { isMissing }, reverseTool.takeUnless { isMissing }, greenScreenTool.takeUnless { isMissing }, maskTool.takeUnless { isMissing }, filtersTool.takeUnless { isMissing }, keyframesTool.takeUnless { isMissing }, transitionTool.takeUnless { isMissing }, duplicateTool, detachTool, reorderTool)
                 (if (isMissing) listOf(replaceTool) + usual else usual + replaceTool).toImmutableList()
             }
             ClipTools.PHOTO_CLIP -> {
                 val usual = listOfNotNull(splitTool, deleteTool, greenScreenTool.takeUnless { isMissing }, maskTool.takeUnless { isMissing }, filtersTool.takeUnless { isMissing }, transitionTool.takeUnless { isMissing }, duplicateTool, reorderTool)
                 (if (isMissing) listOf(replaceTool) + usual else usual + replaceTool).toImmutableList()
+            }
+            // A frozen frame is a photo clip without Replace (spec P4-10 → The freeze clip's bar): its picture is a copy of a frame, so there is no file to swap.
+            ClipTools.FREEZE_CLIP -> {
+                listOfNotNull(splitTool, deleteTool, greenScreenTool, maskTool, filtersTool, transitionTool, duplicateTool, reorderTool).toImmutableList()
             }
             // Audio effects fourth, so it shows without scrolling at 360 dp (spec P3-09 → Entry and exit).
             ClipTools.SOUND -> persistentListOf(

@@ -448,4 +448,22 @@
     <string name="edit_speed">Speed</string>
     <string name="edit_speed_sound">Speed sound</string>
     <string name="edit_speed_reset">Reset speed</string>
+    <string name="tool_reverse">Reverse</string>
+    <string name="tool_reverse_click_on">Play this clip forwards again</string>
+    <string name="tool_reverse_click_off">Play this clip backwards</string>
+    <string name="tool_freeze_frame">Freeze frame</string>
+    <string name="tool_freeze_frame_click">Hold the picture at the playhead</string>
+    <string name="reverse_preparing">Reversing %1$d%</string>
+    <string name="reverse_failed">Couldn't reverse this clip. Try again.</string>
+    <string name="explain_reverse_long">Reverse works on clips up to 60 seconds. Split this one first.</string>
+    <string name="explain_reverse_space">Not enough space to reverse. Free up space and try again.</string>
+    <string name="explain_freeze_outside">Move the playhead onto the clip first.</string>
+    <string name="explain_detach_reversed">Reversed clips can't detach their sound. Turn Reverse off first.</string>
+    <string name="a11y_state_reversed">Reversed</string>
+    <string name="a11y_state_frozen">Frozen frame</string>
+    <string name="a11y_freeze_added">Frozen frame added</string>
+    <string name="a11y_reverse_ready">Reversed clip ready</string>
+    <string name="edit_reverse">Reverse</string>
+    <string name="edit_freeze_frame">Freeze frame</string>
+    <string name="explain_freeze_failed">Couldn't freeze this frame. Try again.</string>
 </resources>

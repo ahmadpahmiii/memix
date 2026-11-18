@@ -82,8 +82,15 @@ internal class TrimDrag(
     val endUs: Long get() = if (edge == TrimEdge.END) edgeUs else item.endUs
 
     /** Where the strip's first tile starts in the source while dragged (main video clips). */
-    val trimInUs: Long get() = if (edge == TrimEdge.START) item.trimInUs + sourceDelta(edgeUs - item.startUs) else item.trimInUs
-    val trimOutUs: Long get() = if (edge == TrimEdge.END) item.trimOutUs + sourceDelta(edgeUs - item.endUs) else item.trimOutUs
+    // A reversed clip's start is the end of its source range, so the handles move the other end of the range (P4-10).
+    val trimInUs: Long get() = when {
+        item.reversed -> if (edge == TrimEdge.END) item.trimInUs - sourceDelta(edgeUs - item.endUs) else item.trimInUs
+        else -> if (edge == TrimEdge.START) item.trimInUs + sourceDelta(edgeUs - item.startUs) else item.trimInUs
+    }
+    val trimOutUs: Long get() = when {
+        item.reversed -> if (edge == TrimEdge.START) item.trimOutUs - sourceDelta(edgeUs - item.startUs) else item.trimOutUs
+        else -> if (edge == TrimEdge.END) item.trimOutUs + sourceDelta(edgeUs - item.endUs) else item.trimOutUs
+    }
 
     // The handles move in timeline time; the source range moves by the clip's speed times that (spec P4-09 → Trim).
     private fun sourceDelta(timelineDeltaUs: Long): Long = SpeedCatalog.sourceSpanOf(timelineDeltaUs, item.speed)

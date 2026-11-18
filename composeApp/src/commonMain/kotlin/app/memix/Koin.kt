@@ -90,6 +90,7 @@ import app.memix.core.domain.video.GetExportCapabilitiesUseCase
 import app.memix.core.domain.video.OpenResultPlayerUseCase
 import app.memix.core.domain.video.RecoverUnfinishedExportUseCase
 import app.memix.core.domain.video.StartPreviewUseCase
+import app.memix.core.domain.video.ReadFreezePictureUseCase
 import app.memix.core.domain.video.ReadWaveformUseCase
 import app.memix.core.domain.video.StartThumbnailsUseCase
 import app.memix.debug.BgRemoveFailure
@@ -155,6 +156,7 @@ private val appModule = module {
     factoryOf(::StartPreviewUseCase)
     factoryOf(::StartThumbnailsUseCase)
     factoryOf(::ReadWaveformUseCase)
+    factoryOf(::ReadFreezePictureUseCase)
     factory { StartEditSessionUseCase(get(), get(), get(), get(appScope)) }
     // Created at start-up so it clears last run's leftover media in the background before any import copies.
     single(createdAtStart = true) { LeftoverMediaCleaner(get(), get(), get(), get(), get(appScope)) }
@@ -300,6 +302,7 @@ private val appModule = module {
             startPreview = get(),
             startThumbnails = get(),
             readWaveform = get(),
+            readFreezePicture = get(),
             sounds = get(),
             voiceover = get(),
             captionRendering = get(),

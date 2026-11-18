@@ -33,6 +33,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -324,7 +325,18 @@ import memix.feature.video_editor.generated.resources.edit_effect_move
 import memix.feature.video_editor.generated.resources.effects_change_title
 import memix.feature.video_editor.generated.resources.explain_effect_flash
 import memix.feature.video_editor.generated.resources.edit_speed
+import memix.feature.video_editor.generated.resources.a11y_freeze_added
+import memix.feature.video_editor.generated.resources.a11y_reverse_ready
+import memix.feature.video_editor.generated.resources.edit_freeze_frame
+import memix.feature.video_editor.generated.resources.edit_reverse
 import memix.feature.video_editor.generated.resources.edit_speed_reset
+import memix.feature.video_editor.generated.resources.explain_detach_reversed
+import memix.feature.video_editor.generated.resources.explain_freeze_failed
+import memix.feature.video_editor.generated.resources.explain_freeze_outside
+import memix.feature.video_editor.generated.resources.explain_reverse_long
+import memix.feature.video_editor.generated.resources.explain_reverse_space
+import memix.feature.video_editor.generated.resources.reverse_failed
+import memix.feature.video_editor.generated.resources.reverse_preparing
 import memix.feature.video_editor.generated.resources.edit_speed_sound
 import memix.feature.video_editor.generated.resources.explain_detach_speed
 import memix.feature.video_editor.generated.resources.speed_moved_lane_toast
@@ -453,7 +465,7 @@ fun VideoEditorScreen(
                 },
                 tools = {
                     Box(Modifier.coveredByModal(panelOpen), propagateMinConstraints = true) {
-                        ToolBarRegion(state.clipTools, state.reorder, state.keyframeBar, state.preview, state.timeline.isEmpty, hasVideoClip(state), selectedIsMissing(state), focusTargets, onIntent)
+                        ToolBarRegion(state.clipTools, state.reorder, state.keyframeBar, state.preview, state.timeline.isEmpty, hasVideoClip(state), selectedIsMissing(state), selectedIsReversed(state), focusTargets, onIntent)
                     }
                 },
                 panel = {
@@ -583,6 +595,9 @@ private fun selectedIsMissing(state: VideoEditorUiState): Boolean {
     val media = state.selectedItemId?.let { state.timeline.item(it)?.media } ?: return false
     return state.thumbnails?.missingSources?.contains(media) == true
 }
+
+/** The selected clip plays backward: the Reverse tool is on (P4-10). */
+private fun selectedIsReversed(state: VideoEditorUiState): Boolean = state.selectedItemId?.let { state.timeline.item(it)?.reversed } == true
 
 /** Whether the main track holds a video clip: the main bar's Speed shows only then (spec P4-09 → Entry and exit). */
 private fun hasVideoClip(state: VideoEditorUiState): Boolean =
@@ -1049,6 +1064,12 @@ private fun StageMessages(
             // The Green screen panel's own line (spec P4-04 → States): how to pick, a miss, or "nothing to remove"; the one stage slot, under any toast.
             FadingToast(state.greenScreen?.hint?.takeIf { banner == null && shownToast == null }) { hint -> Toast(greenScreenHintText(hint)) }
             FadingToast(if (updatingShown) PreviewUpdating else null) { Toast(stringResource(Res.string.editor_preview_updating), announce = false) }
+            // "Reversing 40%" (spec P4-10 → Preparing the reversed picture): after a second, in the same one slot, under every other message; its percent is announced by the
+            // spoken-only toasts every 25%, so the line itself is silent.
+            val reversing = state.reversePercent
+            var lastPercent by remember { mutableIntStateOf(0) }
+            if (reversing != null) lastPercent = reversing
+            FadingToast(if (reversing != null && banner == null && shownToast == null && !updatingShown) ReversingStatus else null) { Toast(stringResource(Res.string.reverse_preparing, lastPercent), announce = false) }
         }
         // A new node per toast, so the same text twice ("Undo: Trim") is announced twice.
         if (toast != null && toast.isSpokenOnly) key(toast.id) { SpokenOnly(toastText(toast.message)) }
@@ -1097,7 +1118,7 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
     val accessibilityManager = LocalAccessibilityManager.current
     LaunchedEffect(toast.id) {
         val baseMillis = when (toast.message) {
-            is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, is ToastMessage.ReorderPosition, is ToastMessage.SoundAdded,
+            is ToastMessage.Undone, is ToastMessage.Redone, is ToastMessage.Edited, ToastMessage.FreezeAdded, ToastMessage.ReverseReady, is ToastMessage.ReverseProgress, is ToastMessage.ReorderPosition, is ToastMessage.SoundAdded,
             is ToastMessage.MediaAdded, ToastMessage.OverlayAdded, ToastMessage.EffectAdded, is ToastMessage.OverlayOpacity, is ToastMessage.OverlayLayer, ToastMessage.NothingToReset, ToastMessage.AudioEffectsReset, is ToastMessage.VoiceoverAdded, is ToastMessage.TextAdded, is ToastMessage.TextTransformed, is ToastMessage.TextPositioned, is ToastMessage.MaskStepped, is ToastMessage.KeyframeAdded, is ToastMessage.KeyframePicked, ToastMessage.GreenScreenPicked, ToastMessage.KeyframeRemoved, is ToastMessage.EasingChanged,
             -> WHAT_HAPPENED_TOAST_MILLIS
             is ToastMessage.RatioStepped, ToastMessage.ExportStopped, ToastMessage.BackgroundImageSet, ToastMessage.BackgroundImageRemoved -> WHAT_HAPPENED_TOAST_MILLIS
@@ -1132,6 +1153,9 @@ private fun Modifier.spokenAs(text: String?): Modifier = if (text == null) this 
 
 @Composable
 private fun toastText(message: ToastMessage): String = when (message) {
+    ToastMessage.FreezeAdded -> stringResource(Res.string.a11y_freeze_added)
+    ToastMessage.ReverseReady -> stringResource(Res.string.a11y_reverse_ready)
+    is ToastMessage.ReverseProgress -> stringResource(Res.string.reverse_preparing, message.percent)
     is ToastMessage.Undone -> stringResource(UiRes.string.editor_undo_toast, editName(message.edit))
     is ToastMessage.Redone -> stringResource(UiRes.string.editor_redo_toast, editName(message.edit))
     ToastMessage.MissingMedia -> stringResource(Res.string.editor_missing_media)
@@ -1249,6 +1273,8 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.CLIP_SPEED -> Res.string.edit_speed
         VideoEdit.CLIP_SPEED_SOUND -> Res.string.edit_speed_sound
         VideoEdit.CLIP_SPEED_RESET -> Res.string.edit_speed_reset
+        VideoEdit.CLIP_REVERSE -> Res.string.edit_reverse
+        VideoEdit.FREEZE_FRAME -> Res.string.edit_freeze_frame
         VideoEdit.CANVAS_RATIO -> UiRes.string.edit_canvas_ratio
         VideoEdit.CANVAS_FIT -> Res.string.edit_canvas_fit
         VideoEdit.CANVAS_FILL -> Res.string.edit_canvas_fill
@@ -1279,6 +1305,12 @@ private fun explanationText(explanation: Explanation): String = stringResource(
         Explanation.NO_SOUND -> Res.string.explain_no_sound
         Explanation.DETACH_SPEED -> Res.string.explain_detach_speed
         Explanation.SPEED_NOTHING_TO_RESET -> Res.string.speed_nothing_to_reset
+        Explanation.DETACH_REVERSED -> Res.string.explain_detach_reversed
+        Explanation.REVERSE_LONG -> Res.string.explain_reverse_long
+        Explanation.REVERSE_NO_SPACE -> Res.string.explain_reverse_space
+        Explanation.REVERSE_FAILED -> Res.string.reverse_failed
+        Explanation.FREEZE_OUTSIDE -> Res.string.explain_freeze_outside
+        Explanation.FREEZE_FAILED -> Res.string.explain_freeze_failed
         Explanation.DETACHED -> Res.string.explain_detached
         Explanation.DETACHED_MUTED -> Res.string.explain_detached_muted
         Explanation.TEXT_SMALLEST -> UiRes.string.explain_text_smallest
@@ -1418,6 +1450,9 @@ private val NoPosition: StateFlow<Long> = MutableStateFlow(0L)
 
 /** The key FadingToast keeps while "Updating the preview" fades out. */
 private object PreviewUpdating
+
+/** The same for "Reversing 40%" (P4-10). */
+private object ReversingStatus
 
 /** The timeline's share of the space it splits with the stage (spec P1-04 → Layout). */
 private const val TIMELINE_SHARE = 0.4f

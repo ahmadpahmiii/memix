@@ -112,7 +112,11 @@ internal object CompositionPlanner {
         mask = mask,
         look = look,
         speed = SpeedCatalog.speedOf(this),
+        reversed = playsBackward(),
     )
+
+    // Only a video file plays backward; a photo and a frozen frame have no direction.
+    private fun MediaClip.playsBackward(): Boolean = reversed && source.kind == MediaKind.VIDEO && freeze == null
 
     // The clip's own sound plays when it has one, isn't detached, isn't muted (the track, or Mute in Speed) and isn't at 0% (a preview keeps silent items so a raise is heard live).
     private fun MediaClip.playsOwnSound(trackMuted: Boolean, keepSilent: Boolean): Boolean =
@@ -210,8 +214,11 @@ internal object CompositionPlanner {
         val isPhoto = source.kind == MediaKind.IMAGE
         // The cuts are timeline time; the clip's speed turns them into the source span that plays (a photo has none).
         val speed = SpeedCatalog.speedOf(this)
-        val cutTrimInUs = if (isPhoto) 0L else trimInUs + SpeedCatalog.sourceSpanOf(headCutUs, speed)
-        val cutTrimOutUs = if (isPhoto) lengthUs else minOf(trimOutUs, cutTrimInUs + SpeedCatalog.sourceSpanOf(lengthUs, speed))
+        // A reversed clip's start is the end of its source range, so a cut at its head takes source off the end and the kept part counts back from there (P4-10).
+        val backward = playsBackward()
+        val keptStartUs = if (backward) trimOutUs - SpeedCatalog.sourceSpanOf(headCutUs, speed) else trimInUs + SpeedCatalog.sourceSpanOf(headCutUs, speed)
+        val cutTrimInUs = if (isPhoto) 0L else if (backward) maxOf(trimInUs, keptStartUs - SpeedCatalog.sourceSpanOf(lengthUs, speed)) else keptStartUs
+        val cutTrimOutUs = if (isPhoto) lengthUs else if (backward) keptStartUs else minOf(trimOutUs, cutTrimInUs + SpeedCatalog.sourceSpanOf(lengthUs, speed))
         val clip = OverlayClip(
             id, source, cutTrimInUs, cutTrimOutUs, pixelSize, transform, opacity,
             playsOwnAudio = plays,
@@ -221,6 +228,7 @@ internal object CompositionPlanner {
             mask = mask,
             look = look,
             speed = speed,
+            reversed = backward,
         )
         return CutOverlay(clip, cutStartUs)
     }

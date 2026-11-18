@@ -34,6 +34,8 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextAlign
 import app.memix.core.designsystem.Icon
 import app.memix.core.designsystem.MemixColors
@@ -78,6 +80,11 @@ class ToolBarItem(
     val tone: ToolTone = ToolTone.Default,
     val clickLabel: String? = null,
     val focusRequester: FocusRequester? = null,
+    /**
+     * Makes the tool a switch (P4-10's Reverse): null for a plain button, else whether it is on. A switch is spoken as "switch, on" or "off" and its
+     * [clickLabel] names what the tap does; the visual look is [tone] ([ToolTone.Active] when on), which the caller sets from the same state.
+     */
+    val switchOn: Boolean? = null,
 )
 
 /** The clip mode's leading button, which closes the clip tools; icon only, so it has a spoken name. */
@@ -136,10 +143,11 @@ private fun ToolButton(tool: ToolBarItem) {
                 drawRect(highlight)
                 drawRect(pressed.value)
             }
-            .clickable(interactionSource, indication = null, role = Role.Button, onClick = tool.onClick)
+            .clickable(interactionSource, indication = null, role = if (tool.switchOn != null) Role.Switch else Role.Button, onClick = tool.onClick)
             .clearAndSetSemantics {
                 contentDescription = tool.label
-                role = Role.Button
+                role = if (tool.switchOn != null) Role.Switch else Role.Button
+                tool.switchOn?.let { toggleableState = if (it) ToggleableState.On else ToggleableState.Off }
                 onClick(label = tool.clickLabel) { tool.onClick(); true }
             }
             // `space-2` each side of the widest word, so neighbours never run together at large fonts (P2-08 review, P2).

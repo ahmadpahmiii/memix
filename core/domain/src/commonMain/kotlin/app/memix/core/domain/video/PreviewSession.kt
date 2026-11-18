@@ -183,11 +183,21 @@ data class PreviewPlayback(
      * at the new size shows, so the editor can cover a picture of the wrong shape. Null until the first frame.
      */
     val shownCanvasSize: PixelSize? = null,
+    /**
+     * How far the slowest reversed copy is, 0 to 100 (P4-10), while the preview prepares reversed clips; null when none is being made. Until a copy is ready its
+     * clip holds its first frame, silent, so the editor says "Reversing 40%" once it has taken a second ([FreezeReverseCatalog.STATUS_AFTER_MS]).
+     */
+    val reversePercent: Int? = null,
+    /** The reversed clips whose copy could not be made; the editor switches Reverse off for each and says so once. Empty when none failed. */
+    val reverseFailures: List<ReverseFailure> = emptyList(),
 ) {
     companion object {
         val Preparing = PreviewPlayback(PreviewStatus.PREPARING, isPlaying = false, firstFrameShown = false, missingMedia = false)
     }
 }
+
+/** A reversed clip the engine could not prepare (P4-10): [noSpace] when the phone is full and [tooLong] when the range is over the 60 s limit, which the editor words as "Free up space". */
+data class ReverseFailure(val itemId: String, val noSpace: Boolean, val tooLong: Boolean = false)
 
 enum class PreviewStatus {
     /** Reading the media files and building the composition; the first frame isn't ready yet. */

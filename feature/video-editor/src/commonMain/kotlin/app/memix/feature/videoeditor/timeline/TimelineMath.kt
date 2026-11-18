@@ -117,16 +117,18 @@ internal fun widestRulerLabel(lengthUs: Long): String = if (lengthUs * 2 >= HOUR
 /**
  * The source time a clip's thumbnail tile shows. The first tile shows the clip's first frame. Every later tile shows
  * the frame at its start, rounded to a whole power-of-two number of frames no longer than the tile, so a zoom that
- * changes the tiles a little asks for frames already in memory, and is clamped inside the clip. [tileDurationUs] is timeline time; [speed] turns it into source time.
+ * changes the tiles a little asks for frames already in memory, and is clamped inside the clip. [tileDurationUs] is timeline time; [speed] turns it into source time; [reversed] counts back from the end.
  */
-internal fun tileSourceTimeUs(trimInUs: Long, trimOutUs: Long, tileIndex: Int, tileDurationUs: Long, speed: Float = 1f): Long {
-    if (tileIndex == 0) return trimInUs
+internal fun tileSourceTimeUs(trimInUs: Long, trimOutUs: Long, tileIndex: Int, tileDurationUs: Long, speed: Float = 1f, reversed: Boolean = false): Long {
+    val lastFrameUs = max(trimInUs, trimOutUs - FRAME_US)
+    // A reversed clip shows its frames in playing order: the strip starts at the end of the range and counts back (P4-10).
+    if (tileIndex == 0) return if (reversed) lastFrameUs else trimInUs
     // A tile lasts [tileDurationUs] on the timeline and covers that much times the clip's speed of the source (P4-09).
     val sourceTileUs = SpeedCatalog.sourceSpanOf(tileDurationUs, speed)
     val bucketUs = tileBucketUs(sourceTileUs)
-    val startUs = trimInUs + tileIndex * sourceTileUs
+    val startUs = if (reversed) trimOutUs - tileIndex * sourceTileUs else trimInUs + tileIndex * sourceTileUs
     val roundedUs = (startUs + bucketUs / 2) / bucketUs * bucketUs
-    return roundedUs.coerceIn(trimInUs, max(trimInUs, trimOutUs - FRAME_US))
+    return roundedUs.coerceIn(trimInUs, lastFrameUs)
 }
 
 /** The largest power-of-two number of frames that fits in [tileDurationUs]; one frame at least. */

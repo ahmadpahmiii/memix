@@ -219,6 +219,11 @@ internal data class VisualClip(
      * [playsOwnAudio] plays its sound at the same speed with the pitch kept.
      */
     val speed: Float = 1f,
+    /**
+     * Plays [trimInUs] to [trimOutUs] from the last frame to the first, the sound too (P4-10). The engine swaps such a clip for a prepared reversed copy
+     * ([withReversedClips]) before it builds the composition, so no builder ever plays one backward itself.
+     */
+    val reversed: Boolean = false,
 ) : MainVideoSegment {
     override val durationUs: Long get() = SpeedCatalog.timelineLengthOf(trimOutUs - trimInUs, speed)
 
@@ -253,6 +258,8 @@ internal data class OverlayClip(
     val look: ClipLook = ClipLook.NONE,
     /** How fast the clip plays (P4-09a), as [VisualClip.speed]; 1 for a photo. */
     val speed: Float = 1f,
+    /** Plays backward (P4-10), as [VisualClip.reversed]. */
+    val reversed: Boolean = false,
 ) : OverlaySegment {
     override val durationUs: Long get() = SpeedCatalog.timelineLengthOf(trimOutUs - trimInUs, speed)
 

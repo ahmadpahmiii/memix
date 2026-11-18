@@ -41,6 +41,7 @@ import app.memix.core.domain.video.PreviewPlayback
 import app.memix.core.domain.video.PreviewSession
 import app.memix.core.domain.video.PreviewStatus
 import app.memix.core.domain.video.StartPreviewUseCase
+import app.memix.core.domain.video.ReadFreezePictureUseCase
 import app.memix.core.domain.video.ReadWaveformUseCase
 import app.memix.core.domain.video.StartThumbnailsUseCase
 import app.memix.core.model.project.CanvasBackground
@@ -110,6 +111,7 @@ class VideoEditorViewModel(
     private val startPreview: StartPreviewUseCase,
     private val startThumbnails: StartThumbnailsUseCase,
     private val readWaveform: ReadWaveformUseCase,
+    readFreezePicture: ReadFreezePictureUseCase,
     private val sounds: EditorSounds,
     voiceover: EditorVoiceover,
     private val captionRendering: EditorCaptionRendering,
@@ -164,6 +166,8 @@ class VideoEditorViewModel(
     private val effects = EffectControl(host, startThumbnails, decodeDispatcher)
     private val transitions = TransitionControl(host, startThumbnails, decodeDispatcher)
     private val speed = SpeedControl(host)
+    private val reverse = ReverseControl(host)
+    private val freeze = FreezeControl(host, readFreezePicture)
     private val canvasPanel = CanvasPanelControl(host) { text, style, widthPx, heightPx, look -> captionRendering.measure(text, style, widthPx, heightPx, look) }
     private val exportSheet = ExportSheetControl(host, export)
     // The canvas size of the picture on screen, as the preview last reported it.
@@ -348,6 +352,8 @@ class VideoEditorViewModel(
             VideoEditorIntent.GreenScreenPickToggled -> greenScreen.togglePick()
             is VideoEditorIntent.GreenScreenPickReleased -> greenScreen.pickReleased(intent.canvasFx, intent.canvasFy)
             VideoEditorIntent.SpeedTool -> speed.open()
+            VideoEditorIntent.ReverseTool -> reverse.toggle()
+            VideoEditorIntent.FreezeFrameTool -> freeze.freeze()
             VideoEditorIntent.SpeedMainTool -> speed.openFromMainBar()
             VideoEditorIntent.CloseSpeed -> speed.closePanel()
             is VideoEditorIntent.SpeedTilePicked -> speed.pickTile(intent.speed)
@@ -546,6 +552,7 @@ class VideoEditorViewModel(
             )
         }
         showCatchingUp(playback.isCatchingUp)
+        reverse.onPlayback(playback.reversePercent, playback.reverseFailures)
         captions.onPreviewCatchingUp(playback.isCatchingUp)
         overlays.onPreviewCatchingUp(playback.isCatchingUp)
         showMissingMedia(playback)
@@ -936,6 +943,9 @@ class VideoEditorViewModel(
         val clip = trimmedClip ?: return
         val sourceUs = when {
             clip.source.kind == MediaKind.IMAGE -> 0L
+            // A reversed clip's start is the end of its source range, so its handles move the other end (P4-10).
+            clip.reversed && trimmedEdge == TrimEdge.START -> clip.trimOutUs - sourceSpanOf(edgeUs - clip.startUs, clip) - FRAME_US
+            clip.reversed -> clip.trimInUs - sourceSpanOf(edgeUs - (clip.startUs + clip.durationUs), clip)
             trimmedEdge == TrimEdge.START -> clip.trimInUs + sourceSpanOf(edgeUs - clip.startUs, clip)
             // The new last frame starts one frame before the new end.
             else -> clip.trimOutUs + sourceSpanOf(edgeUs - (clip.startUs + clip.durationUs), clip) - FRAME_US
@@ -1176,11 +1186,15 @@ internal fun VideoEditorUiState.withSelection(itemId: String?, project: Project?
     val end = project?.trimRange(itemId, TrimEdge.END)
     val ranges = if (start != null && end != null) TrimRanges(start, end) else null
     val mediaKind = timeline.item(itemId)?.media?.kind
-    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind), trimRanges = ranges, textPanel = panel, overlayPanel = overlay, greenScreen = green, maskPanel = maskOpen, lookPanel = lookOpen, effectPanel = effectOpen, transitionPanel = transitionOpen, speedPanel = speedOpen, keyframeBar = keyframes)
+    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind, frozen = timeline.item(itemId)?.frozen == true), trimRanges = ranges, textPanel = panel, overlayPanel = overlay, greenScreen = green, maskPanel = maskOpen, lookPanel = lookOpen, effectPanel = effectOpen, transitionPanel = transitionOpen, speedPanel = speedOpen, keyframeBar = keyframes)
 }
 
-private fun clipToolsFor(kind: TrackKind, mediaKind: MediaKind?): ClipTools = when (kind) {
-    TrackKind.MAIN_VIDEO -> if (mediaKind == MediaKind.IMAGE) ClipTools.PHOTO_CLIP else ClipTools.VIDEO_CLIP
+private fun clipToolsFor(kind: TrackKind, mediaKind: MediaKind?, frozen: Boolean): ClipTools = when (kind) {
+    TrackKind.MAIN_VIDEO -> when {
+        frozen -> ClipTools.FREEZE_CLIP
+        mediaKind == MediaKind.IMAGE -> ClipTools.PHOTO_CLIP
+        else -> ClipTools.VIDEO_CLIP
+    }
     TrackKind.TEXT -> ClipTools.TEXT
     TrackKind.MEME_SOUND, TrackKind.AUDIO -> ClipTools.SOUND
     TrackKind.OVERLAY -> if (mediaKind == MediaKind.IMAGE) ClipTools.PHOTO_OVERLAY else ClipTools.VIDEO_OVERLAY

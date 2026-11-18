@@ -445,4 +445,22 @@
     <string name="edit_speed">Velocidad</string>
     <string name="edit_speed_sound">Sonido de velocidad</string>
     <string name="edit_speed_reset">Restablecer velocidad</string>
+    <string name="tool_reverse">Invertir</string>
+    <string name="tool_reverse_click_on">Reproducir este clip hacia delante</string>
+    <string name="tool_reverse_click_off">Reproducir este clip al revés</string>
+    <string name="tool_freeze_frame">Congelar fotograma</string>
+    <string name="tool_freeze_frame_click">Mantener la imagen en el cabezal</string>
+    <string name="reverse_preparing">Invirtiendo %1$d%</string>
+    <string name="reverse_failed">No se pudo invertir este clip. Inténtalo otra vez.</string>
+    <string name="explain_reverse_long">Invertir funciona con clips de hasta 60 segundos. Divide este primero.</string>
+    <string name="explain_reverse_space">No hay espacio para invertir. Libera espacio e inténtalo de nuevo.</string>
+    <string name="explain_freeze_outside">Mueve primero el cabezal sobre el clip.</string>
+    <string name="explain_detach_reversed">Los clips invertidos no pueden separar su sonido. Quita Invertir primero.</string>
+    <string name="a11y_state_reversed">Invertido</string>
+    <string name="a11y_state_frozen">Fotograma congelado</string>
+    <string name="a11y_freeze_added">Fotograma congelado añadido</string>
+    <string name="a11y_reverse_ready">Clip invertido listo</string>
+    <string name="edit_reverse">Invertir</string>
+    <string name="edit_freeze_frame">Congelar fotograma</string>
+    <string name="explain_freeze_failed">No se pudo congelar este fotograma. Inténtalo otra vez.</string>
 </resources>
