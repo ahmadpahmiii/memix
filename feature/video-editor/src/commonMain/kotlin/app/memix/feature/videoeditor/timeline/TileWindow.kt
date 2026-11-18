@@ -60,7 +60,7 @@ private fun addRequests(mainTrack: TrackUi, window: TileWindow, byDistance: Muta
         val lastWanted = min(lastTile, (endUs - clip.startUs) / tileUs)
         for (tileIndex in firstWanted..lastWanted) {
             val tileStartUs = clip.startUs + tileIndex * tileUs
-            val timeUs = if (clip.isPhoto) 0L else tileSourceTimeUs(clip.trimInUs, clip.trimOutUs, tileIndex.toInt(), tileUs)
+            val timeUs = if (clip.isPhoto) 0L else tileSourceTimeUs(clip.trimInUs, clip.trimOutUs, tileIndex.toInt(), tileUs, clip.speed)
             byDistance += abs(tileStartUs + tileUs / 2 - centerUs) to TileRequest(media, timeUs)
         }
     }

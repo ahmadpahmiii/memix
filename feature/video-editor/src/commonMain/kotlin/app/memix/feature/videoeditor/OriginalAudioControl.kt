@@ -2,6 +2,7 @@ package app.memix.feature.videoeditor
 
 import app.memix.core.domain.project.OriginalSound
 import app.memix.core.domain.project.detachAudio
+import app.memix.core.domain.project.detachRefusedBySpeed
 import app.memix.core.domain.project.isOriginalMuted
 import app.memix.core.domain.project.originalSoundOf
 import app.memix.core.domain.project.setOriginalMuted
@@ -39,6 +40,8 @@ internal class OriginalAudioControl(private val host: EditorHost) {
             OriginalSound.PLAYS -> Unit
             null -> return
         }
+        // The new sound clip can only follow a constant speed from 0.5x to 2x with the sound kept (spec P4-09 → Detach audio).
+        if (project.detachRefusedBySpeed(itemId)) return host.showToast(ToastMessage.Explain(Explanation.DETACH_SPEED))
         val wasMuted = project.isOriginalMuted()
         // Named before the selection moves to the new clip.
         val clipName = host.uiState.timeline.nameOf(itemId)

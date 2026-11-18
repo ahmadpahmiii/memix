@@ -53,6 +53,9 @@ private val ThumbDiameter = 22.dp
  *
  * With [snapValue], a value within [snapDistance] of it becomes exactly [snapValue], with one `SegmentTick` haptic each
  * time it snaps (the Volume panel's 100%, spec P1-06), so a level that matters is easy to find again.
+ *
+ * [nextValue] replaces the even [step] grid for keys and screen-reader steps when the scale isn't linear (the Speed panel's logarithmic
+ * thumb, P4-09): it returns the value one step [up] or down from the given one.
  */
 @Composable
 fun Slider(
@@ -68,6 +71,7 @@ fun Slider(
     snapValue: Float? = null,
     snapDistance: Float = 0f,
     origin: Float? = null,
+    nextValue: ((value: Float, up: Boolean) -> Float)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val currentValue by rememberUpdatedState(value)
@@ -82,6 +86,7 @@ fun Slider(
         if (snapValue != null && snapped == snapValue && currentValue != snapValue) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
         currentOnValueChange(snapped)
     }
+    fun steppedValue(from: Float, up: Boolean) = nextValue?.invoke(from, up)?.coerceIn(valueRange) ?: nextOnStepGrid(from, step, up, valueRange)
     fun setFromX(x: Float, width: Float) = change(valueRange.start + (x / width).coerceIn(0f, 1f) * span)
 
     Column(modifier) {
@@ -102,7 +107,7 @@ fun Slider(
                         Key.DirectionLeft, Key.DirectionDown -> false
                         else -> return@onKeyEvent false
                     }
-                    currentOnValueChange(nextOnStepGrid(currentValue, step, up, valueRange))
+                    currentOnValueChange(steppedValue(currentValue, up))
                     currentOnValueChangeFinished()
                     true
                 }
@@ -112,7 +117,7 @@ fun Slider(
                     progressBarRangeInfo = ProgressBarRangeInfo(value, valueRange)
                     // A screen reader asks for a step up or down; it lands on the grid like a key.
                     setProgress { target ->
-                        currentOnValueChange(nextOnStepGrid(currentValue, step, up = target > currentValue, valueRange))
+                        currentOnValueChange(steppedValue(currentValue, up = target > currentValue))
                         currentOnValueChangeFinished()
                         true
                     }

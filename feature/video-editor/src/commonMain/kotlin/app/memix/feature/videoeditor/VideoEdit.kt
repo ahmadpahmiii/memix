@@ -68,6 +68,10 @@ enum class VideoEdit(val tool: EditorTool) {
     TRANSITION(EditorTool.TRANSITION),
     TRANSITION_DURATION(EditorTool.TRANSITION_DURATION),
     TRANSITION_REMOVE(EditorTool.TRANSITION_REMOVE),
+    // A video clip's speed (P4-09a); SPEED above is a sound's (P3-09).
+    CLIP_SPEED(EditorTool.SPEED),
+    CLIP_SPEED_SOUND(EditorTool.SPEED_SOUND),
+    CLIP_SPEED_RESET(EditorTool.SPEED_RESET),
     KEYFRAME_ADD(EditorTool.KEYFRAME_ADD),
     KEYFRAME_REMOVE(EditorTool.KEYFRAME_REMOVE),
     KEYFRAME_MOVE(EditorTool.KEYFRAME_MOVE),

@@ -10,6 +10,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
+import app.memix.core.model.project.SpeedCatalog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
@@ -81,8 +82,11 @@ internal class TrimDrag(
     val endUs: Long get() = if (edge == TrimEdge.END) edgeUs else item.endUs
 
     /** Where the strip's first tile starts in the source while dragged (main video clips). */
-    val trimInUs: Long get() = if (edge == TrimEdge.START) item.trimInUs + (edgeUs - item.startUs) else item.trimInUs
-    val trimOutUs: Long get() = if (edge == TrimEdge.END) item.trimOutUs + (edgeUs - item.endUs) else item.trimOutUs
+    val trimInUs: Long get() = if (edge == TrimEdge.START) item.trimInUs + sourceDelta(edgeUs - item.startUs) else item.trimInUs
+    val trimOutUs: Long get() = if (edge == TrimEdge.END) item.trimOutUs + sourceDelta(edgeUs - item.endUs) else item.trimOutUs
+
+    // The handles move in timeline time; the source range moves by the clip's speed times that (spec P4-09 → Trim).
+    private fun sourceDelta(timelineDeltaUs: Long): Long = SpeedCatalog.sourceSpanOf(timelineDeltaUs, item.speed)
 
     /**
      * Moves the edge to the time under [fingerTimeUs] (already corrected by [grabOffsetPx]), clamped to [range], then

@@ -37,6 +37,7 @@ import app.memix.core.domain.project.LaneTarget
 import app.memix.core.domain.project.TrimEdge
 import app.memix.core.model.project.KeyframeCatalog
 import app.memix.core.model.project.MediaRef
+import app.memix.feature.videoeditor.speedText
 import app.memix.feature.videoeditor.KeyframeBarUi
 import app.memix.feature.videoeditor.KeyframeMarkerUi
 import app.memix.core.model.project.TrackKind
@@ -102,6 +103,10 @@ internal class TimelinePainter(
     private val markerBandPx = with(density) { MemixSize.trackHeight.toPx() }
     private val markerLinePx = with(density) { MemixStroke.strokeHairline.toPx() }
     private val badgeMinClipWidthPx = with(density) { MemixSpacing.space8.toPx() }
+
+    // 56 dp: a 40 dp main clip holds the duration badge, a gap and the chip (spec P4-09 → The retime chip).
+    private val retimeMinClipWidthPx = with(density) { (MemixSpacing.space8 + MemixSpacing.space6).toPx() }
+    private val retimeLabels = HashMap<Float, TextLayoutResult>()
     private val cueSizePx = with(density) { MemixSize.badge.toPx() }
     private val cueIconPx = with(density) { MemixSize.iconSmall.toPx() }
     private val cueCorner = CornerRadius(cornerPx)
@@ -278,6 +283,7 @@ internal class TimelinePainter(
             }
         }
         drawKeyframeBadge(row, item, left, right)
+        drawRetimeChip(row, item, left, right)
     }
 
     private fun DrawScope.drawBand(row: LaneRow, zeroX: Float, endX: Float) {
@@ -431,7 +437,7 @@ internal class TimelinePainter(
             val firstTile = max(0, floor(-left / tilePx).toInt())
             val lastTile = min(ceil((right - left) / tilePx).toInt() - 1, floor((size.width - left) / tilePx).toInt())
             for (tileIndex in firstTile..lastTile) {
-                val timeUs = if (item.isPhoto) 0L else tileSourceTimeUs(trimInUs, trimOutUs, tileIndex, tileDurationUs)
+                val timeUs = if (item.isPhoto) 0L else tileSourceTimeUs(trimInUs, trimOutUs, tileIndex, tileDurationUs, item.speed)
                 val tile = thumbnails.tileAt(media, timeUs) ?: continue
                 val x = left + tileIndex * tilePx
                 val alpha = if (tile.timeUs == timeUs) fadeInAlpha(tile) else 1f
@@ -701,6 +707,22 @@ internal class TimelinePainter(
         drawPath(diamondPath, color)
     }
 
+    /**
+     * The retime chip (spec P4-09 → The retime chip): the speed ("2×", "0.5×") in `text` on `scrim` at the clip's bottom-left, `space-1` inside, on every clip
+     * that plays at another speed, selected or not; only on a clip 56 dp wide or more, since the duration badge takes the top-left and the keyframe badge the
+     * top-right. A cue, not a control. The reverse icon joins it with P4-10, and a curve's icon with P4-09b.
+     */
+    private fun DrawScope.drawRetimeChip(row: LaneRow, item: ItemUi, left: Float, right: Float) {
+        if (item.speed == 1f || right - left < retimeMinClipWidthPx) return
+        val label = retimeLabels.getOrPut(item.speed) { textMeasurer.measure(speedText(item.speed) + SPEED_SIGN, rulerStyle, softWrap = false, maxLines = 1) }
+        val chipWidth = label.size.width + 2 * badgeInsetPx
+        // Clear of the trim handle of a selected clip before this one, which sits over this clip's first handle-width.
+        val topLeft = Offset(max(left, 0f) + handleWidthPx + badgeInsetPx, row.itemTopPx + row.itemHeightPx - badgeInsetPx - label.size.height)
+        if (right - topLeft.x < chipWidth) return
+        drawRoundRect(MemixColors.scrim, topLeft, Size(chipWidth, label.size.height.toFloat()), CornerRadius(cornerPx))
+        drawText(label, color = MemixColors.text, topLeft = Offset(topLeft.x + badgeInsetPx, topLeft.y))
+    }
+
     /** The cue on a keyed clip (spec P4-02b → A keyed item's badge): a `text` diamond with an `on-primary` edge, 2 dp from the top-right corner; only on a clip 32 dp wide or more. */
     private fun DrawScope.drawKeyframeBadge(row: LaneRow, item: ItemUi, left: Float, right: Float) {
         if (item.keyframeCount <= 0 || right - left < badgeMinClipWidthPx) return
@@ -767,3 +789,6 @@ internal fun trackColorOf(kind: TrackKind): Color = when (kind) {
 
 /** Half the diagonal of a square with side 1: a diamond of side `s` reaches `s` × this from its center. */
 private const val HALF_DIAGONAL = 0.70710677f
+
+/** The multiplication sign the speed is written with in every language (spec P4-09 → Copy). */
+private const val SPEED_SIGN = "×"

@@ -51,6 +51,7 @@ import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.RatioTerms
+import app.memix.core.model.project.SpeedCatalog
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TrackKind
 import app.memix.core.model.project.size
@@ -162,6 +163,7 @@ class VideoEditorViewModel(
     private val looks = LookControl(host, startThumbnails, decodeDispatcher)
     private val effects = EffectControl(host, startThumbnails, decodeDispatcher)
     private val transitions = TransitionControl(host, startThumbnails, decodeDispatcher)
+    private val speed = SpeedControl(host)
     private val canvasPanel = CanvasPanelControl(host) { text, style, widthPx, heightPx, look -> captionRendering.measure(text, style, widthPx, heightPx, look) }
     private val exportSheet = ExportSheetControl(host, export)
     // The canvas size of the picture on screen, as the preview last reported it.
@@ -345,6 +347,14 @@ class VideoEditorViewModel(
             VideoEditorIntent.GreenScreenReleased -> greenScreen.released()
             VideoEditorIntent.GreenScreenPickToggled -> greenScreen.togglePick()
             is VideoEditorIntent.GreenScreenPickReleased -> greenScreen.pickReleased(intent.canvasFx, intent.canvasFy)
+            VideoEditorIntent.SpeedTool -> speed.open()
+            VideoEditorIntent.SpeedMainTool -> speed.openFromMainBar()
+            VideoEditorIntent.CloseSpeed -> speed.closePanel()
+            is VideoEditorIntent.SpeedTilePicked -> speed.pickTile(intent.speed)
+            is VideoEditorIntent.SpeedChanged -> speed.changed(intent.speed)
+            VideoEditorIntent.SpeedReleased -> speed.released()
+            is VideoEditorIntent.SpeedSoundSelected -> speed.selectSound(intent.keep)
+            VideoEditorIntent.ResetSpeed -> speed.reset()
             VideoEditorIntent.TransitionTool -> transitions.open()
             VideoEditorIntent.CloseTransition -> transitions.closePanel()
             is VideoEditorIntent.TransitionPicked -> transitions.pick(intent.id)
@@ -467,6 +477,8 @@ class VideoEditorViewModel(
                 effectsSheet = effects.sheetSyncedWith(it.effectsSheet, project),
                 // Follows its cut through edits and undo; closes with its clip, or when the cut can no longer have one.
                 transitionPanel = transitions.syncedWith(it.transitionPanel, project),
+                // Follows its clip through edits and undo; closes with it.
+                speedPanel = speed.syncedWith(it.speedPanel, project),
                 // The bar follows the keyframes through edits and undo; it closes with its item.
                 keyframeBar = it.keyframeBar?.let { bar -> project.keyframeBarOf(bar.itemId, bar) },
                 // Follows the project, so an undo shows in the sliders; closes with its sound.
@@ -612,6 +624,7 @@ class VideoEditorViewModel(
             state.value.maskPanel != null -> masks.close()
             state.value.lookPanel != null -> looks.closePanel()
             state.value.transitionPanel != null -> transitions.closePanel()
+            state.value.speedPanel != null -> speed.closePanel()
             state.value.effectsSheet != null -> effects.closeSheet()
             state.value.effectPanel != null -> effects.closePanel()
             state.value.overlayPanel != null -> overlays.closePanel()
@@ -923,12 +936,15 @@ class VideoEditorViewModel(
         val clip = trimmedClip ?: return
         val sourceUs = when {
             clip.source.kind == MediaKind.IMAGE -> 0L
-            trimmedEdge == TrimEdge.START -> clip.trimInUs + (edgeUs - clip.startUs)
+            trimmedEdge == TrimEdge.START -> clip.trimInUs + sourceSpanOf(edgeUs - clip.startUs, clip)
             // The new last frame starts one frame before the new end.
-            else -> clip.trimOutUs + (edgeUs - (clip.startUs + clip.durationUs)) - FRAME_US
+            else -> clip.trimOutUs + sourceSpanOf(edgeUs - (clip.startUs + clip.durationUs), clip) - FRAME_US
         }
         preview?.showTrimFrame(clip, sourceUs.coerceAtLeast(0))
     }
+
+    // The handles move in timeline time; the source moves by the clip's speed times that (spec P4-09 → Trim).
+    private fun sourceSpanOf(timelineDeltaUs: Long, clip: MediaClip): Long = SpeedCatalog.sourceSpanOf(timelineDeltaUs, SpeedCatalog.speedOf(clip))
 
     private fun endTrim(itemId: String, edge: TrimEdge, edgeUs: Long, playheadUs: Long) {
         val trimmed = commit(VideoEdit.TRIM) { it.trimItem(itemId, edge, edgeUs) }
@@ -1153,12 +1169,14 @@ internal fun VideoEditorUiState.withSelection(itemId: String?, project: Project?
     val effectOpen = effectPanel?.takeIf { itemId != null && itemId == it.itemId }
     // The Transition panel belongs to the clip before its cut.
     val transitionOpen = transitionPanel?.takeIf { itemId != null && itemId == it.clipId }
-    val track = itemId?.let(timeline::trackOf) ?: return copy(selectedItemId = null, clipTools = null, trimRanges = null, textPanel = null, overlayPanel = null, greenScreen = null, maskPanel = null, lookPanel = lookPanel?.takeIf { it.isAllClips }, effectPanel = null, transitionPanel = null, keyframeBar = null)
+    // The Speed panel belongs to its clip.
+    val speedOpen = speedPanel?.takeIf { itemId != null && itemId == it.itemId }
+    val track = itemId?.let(timeline::trackOf) ?: return copy(selectedItemId = null, clipTools = null, trimRanges = null, textPanel = null, overlayPanel = null, greenScreen = null, maskPanel = null, lookPanel = lookPanel?.takeIf { it.isAllClips }, effectPanel = null, transitionPanel = null, speedPanel = null, keyframeBar = null)
     val start = project?.trimRange(itemId, TrimEdge.START)
     val end = project?.trimRange(itemId, TrimEdge.END)
     val ranges = if (start != null && end != null) TrimRanges(start, end) else null
     val mediaKind = timeline.item(itemId)?.media?.kind
-    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind), trimRanges = ranges, textPanel = panel, overlayPanel = overlay, greenScreen = green, maskPanel = maskOpen, lookPanel = lookOpen, effectPanel = effectOpen, transitionPanel = transitionOpen, keyframeBar = keyframes)
+    return copy(selectedItemId = itemId, clipTools = clipToolsFor(track.kind, mediaKind), trimRanges = ranges, textPanel = panel, overlayPanel = overlay, greenScreen = green, maskPanel = maskOpen, lookPanel = lookOpen, effectPanel = effectOpen, transitionPanel = transitionOpen, speedPanel = speedOpen, keyframeBar = keyframes)
 }
 
 private fun clipToolsFor(kind: TrackKind, mediaKind: MediaKind?): ClipTools = when (kind) {

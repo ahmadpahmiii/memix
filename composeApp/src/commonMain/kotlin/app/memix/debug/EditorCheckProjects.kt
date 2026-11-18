@@ -28,6 +28,7 @@ import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.ProjectType
+import app.memix.core.model.project.SpeedSound
 import app.memix.core.model.project.StickerItem
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.Track
@@ -114,6 +115,9 @@ internal class EditorCheckProjects : KoinComponent {
         TRANSITIONS_HOLD -> transitionsCheck(TRANSITIONS_HOLD, withSpareMedia = false)
         TRANSITIONS_PHOTOS -> transitionsPhotos()
         TRANSITIONS_SET -> transitionsSet()
+        SPEED_CHECK -> speedCheck()
+        SPEED_PLAIN -> speedPlain()
+        SPEED_OVERLAY -> speedOverlay()
         else -> null
     }
 
@@ -494,6 +498,41 @@ internal class EditorCheckProjects : KoinComponent {
         ),
     )
 
+    /**
+     * The P4-09a speed scenes (spec docs/ux/specs/P4-09-speed.md → QA compares; steps in docs/qa/phase-4/engineer-hand-checks.md → P4-09a), all from the 10 s, 1080 x 1920
+     * `speed-check.mp4` (a burned-in source time to the centisecond over a lettered grid, a 1 kHz tone whose level steps every second;
+     * `docs/qa/references/P4-09-speed/make-speed-check.sh` makes it). `speed-check` has three clips: seconds 0 to 2 at 0.25x (8 s), 2 to 6 at 2x (2 s) and 6 to 10 at 4x with
+     * Mute (1 s), so one export reads all three speeds and Mute; the main clips ripple, so the sounds that sit on the timeline keep their times.
+     */
+    private fun speedCheck(): Project = project(
+        SPEED_CHECK,
+        mainClips = listOf(
+            MediaClip("speed-a", startUs = 0, source = speedClip, trimInUs = 0, trimOutUs = 2_000_000, speed = 0.25f),
+            MediaClip("speed-b", startUs = 8_000_000, source = speedClip, trimInUs = 2_000_000, trimOutUs = 6_000_000, speed = 2f),
+            MediaClip("speed-c", startUs = 10_000_000, source = speedClip, trimInUs = 6_000_000, trimOutUs = 10_000_000, speed = 4f, soundMode = SpeedSound.MUTE),
+        ),
+        extraTracks = listOf(Track("speed-sounds", TrackKind.MEME_SOUND, listOf(AudioClip("speed-beep", startUs = 8_500_000, source = sound, trimInUs = 500_000, trimOutUs = 1_000_000)))),
+    )
+
+    // The whole clip at 1x: the checker sets the speed by hand (tiles, slider, Sound), exports, and compares the length and the tone.
+    private fun speedPlain(): Project = project(SPEED_PLAIN, mainClips = listOf(MediaClip("speed-plain", startUs = 0, source = speedClip, trimInUs = 0, trimOutUs = 10_000_000)))
+
+    // The main clip at 1x and a half-size overlay of the same file at 2x, starting at 1 s: the overlay lane rule (slow it into the next one) and the video overlay's Speed tool.
+    private fun speedOverlay(): Project = project(
+        SPEED_OVERLAY,
+        mainClips = listOf(MediaClip("speed-overlay-main", startUs = 0, source = speedClip, trimInUs = 0, trimOutUs = 10_000_000, volume = 0f)),
+        extraTracks = listOf(
+            Track(
+                "speed-overlay-layer",
+                TrackKind.OVERLAY,
+                listOf(
+                    MediaClip("speed-overlay-a", 1_000_000, speedClip, trimInUs = 0, trimOutUs = 4_000_000, transform = Transform(0.5f, 0.75f, 0.5f, 0f), speed = 2f),
+                    MediaClip("speed-overlay-b", 3_200_000, speedClip, trimInUs = 4_000_000, trimOutUs = 6_000_000, transform = Transform(0.5f, 0.75f, 0.5f, 0f)),
+                ),
+            ),
+        ),
+    )
+
     private fun stackedEffects(zoomFirst: Boolean): List<Track> {
         val zoom = EffectItem("fx-zoom", startUs = 1_000_000, durationUs = 600_000, effectId = "zoom_punch", intensity = 1f)
         val fry = EffectItem("fx-fry", startUs = 1_000_000, durationUs = 2_000_000, effectId = "deep_fry", intensity = 0.7f)
@@ -615,11 +654,14 @@ internal class EditorCheckProjects : KoinComponent {
         const val TRANSITIONS_HOLD = "transitions-hold"
         const val TRANSITIONS_PHOTOS = "transitions-photos"
         const val TRANSITIONS_SET = "transitions-set"
+        const val SPEED_CHECK = "speed-check"
+        const val SPEED_PLAIN = "speed-plain"
+        const val SPEED_OVERLAY = "speed-overlay"
         private val FILTER_SCENES = setOf(FILTERS_CHECK, FILTERS_MIXED)
         private val NAMES = listOf(
             EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK,
             TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK, OVERLAY_CHECK, OVERLAY_PERF, KEYFRAME_CHECK, GREENSCREEN_CHECK, GREENSCREEN_MAIN, MASK_CHECK, MASK_MAIN, FILTERS_CHECK, FILTERS_MIXED, EFFECTS_CHECK, STACK_TWO, STACK_TWO_REVERSE,
-            TRANSITIONS_CHECK, TRANSITIONS_HOLD, TRANSITIONS_PHOTOS, TRANSITIONS_SET,
+            TRANSITIONS_CHECK, TRANSITIONS_HOLD, TRANSITIONS_PHOTOS, TRANSITIONS_SET, SPEED_CHECK, SPEED_PLAIN, SPEED_OVERLAY,
         ) + PhotoCheckProjects.NAMES
         private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20
@@ -658,6 +700,8 @@ internal class EditorCheckProjects : KoinComponent {
         // The 6 s transition scene clips of P4-08 (desktop-made; the ffmpeg commands are in the hand checks): 1080 x 1920, each with its own tone.
         private val transitionA = media("transition-a.mp4", MediaKind.VIDEO).copy(durationUs = 6_000_000, pixelSize = PixelSize(1080, 1920), hasAudio = true)
         private val transitionB = media("transition-b.mp4", MediaKind.VIDEO).copy(durationUs = 6_000_000, pixelSize = PixelSize(1080, 1920), hasAudio = true)
+        // The 10 s speed scene clip of P4-09a (desktop-made; make-speed-check.sh): 1080 x 1920, a burned-in source time and a stepped 1 kHz tone.
+        private val speedClip = media("speed-check.mp4", MediaKind.VIDEO).copy(durationUs = 10_000_000, pixelSize = PixelSize(1080, 1920), hasAudio = true)
         private val photo4x3Measured = photo4x3.copy(pixelSize = PixelSize(1440, 1080), hasAudio = false)
         private val sound = MediaRef(MediaOrigin.CatalogItem("debug-beep"), MediaKind.AUDIO, cachedCopyPath = "${ExportCheckProject.MEDIA_DIR}/sound.m4a")
 

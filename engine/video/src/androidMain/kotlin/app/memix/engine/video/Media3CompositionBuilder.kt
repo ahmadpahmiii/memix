@@ -186,6 +186,7 @@ internal class Media3CompositionBuilder(
             .setRemoveAudio(!clip.playsOwnAudio)
             // The output rate for photos; a ceiling that drops extra frames from faster videos.
             .setFrameRate(frameRate)
+            .setClipSpeed(clip.speed)
             .setEffects(Effects(audioProcessors, framingOf(clip).effects() + listOfNotNull(transition)))
         // A photo's length comes from its image duration.
         if (!clip.isStill) item.setSourceDuration(clip.source, clip.trimOutUs)

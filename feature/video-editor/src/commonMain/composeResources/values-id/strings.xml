@@ -429,4 +429,20 @@
     <string name="a11y_state_transition">Transisi ke klip berikutnya: %1$s</string>
     <string name="edit_transition_duration">Panjang transisi</string>
     <string name="edit_transition_remove">Hapus transisi</string>
+    <string name="tool_speed">Kecepatan</string>
+    <string name="tool_speed_click">Ubah seberapa cepat klip ini diputar</string>
+    <string name="speed_readout">%1$s× · %2$s</string>
+    <string name="speed_length">%1$s dtk</string>
+    <string name="speed_sound">Suara</string>
+    <string name="speed_sound_keep">Pertahankan</string>
+    <string name="speed_sound_mute">Bisukan</string>
+    <string name="speed_audio_rough">Suara jadi kasar di kecepatan ini. Kamu bisa membisukannya.</string>
+    <string name="volume_off_by_speed">Suara mati di Kecepatan.</string>
+    <string name="explain_detach_speed">Pisahkan hanya bisa pada 0,5× sampai 2× dengan suara aktif. Ubah kecepatan dulu.</string>
+    <string name="speed_moved_lane_toast">Dipindah ke lapisan kosong agar tidak tumpang tindih.</string>
+    <string name="speed_nothing_to_reset">Kecepatan sudah normal.</string>
+    <string name="a11y_state_speed">Kecepatan %1$s×</string>
+    <string name="edit_speed">Kecepatan</string>
+    <string name="edit_speed_sound">Suara kecepatan</string>
+    <string name="edit_speed_reset">Setel ulang kecepatan</string>
 </resources>

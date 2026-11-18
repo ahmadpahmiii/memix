@@ -145,6 +145,8 @@ data class VideoEditorUiState(
     val effectPanel: EffectPanelUi? = null,
     /** The Transition panel of the selected main clip's cut (P4-08), or null when it is closed. */
     val transitionPanel: TransitionPanelUi? = null,
+    /** The Speed panel of the selected video clip (P4-09a), or null when it is closed. */
+    val speedPanel: SpeedPanelUi? = null,
     /**
      * An overlay a finger or a held arrow moved, or a commit the preview hasn't shown yet: the editor's stand-in draws it from
      * there until the preview's new frame takes over, so it never shows twice or jumps (spec P4-01b → Live feedback). Null otherwise.
@@ -304,7 +306,15 @@ data class SoundsSheetUi(val isOpen: Boolean = false)
  * that row belongs to the main track); sounds read "This sound".
  */
 @Immutable
-data class VolumePanelUi(val itemId: String, val volume: Float, val isVideoClip: Boolean = false, val isOverlay: Boolean = false, val keyed: Boolean = false)
+data class VolumePanelUi(
+    val itemId: String,
+    val volume: Float,
+    val isVideoClip: Boolean = false,
+    val isOverlay: Boolean = false,
+    val keyed: Boolean = false,
+    /** The clip's Sound is Mute in Speed (P4-09): the panel says so at the top and keeps working. */
+    val soundOffBySpeed: Boolean = false,
+)
 
 /**
  * The Green screen panel of clip [itemId] (P4-04): [key] follows the sliders while they move; [picking] is the eyedropper mode
@@ -490,6 +500,9 @@ enum class FocusTarget {
 
     /** The selected main clip's Transition tool, after its panel closes (P4-08). */
     TRANSITION_TOOL,
+
+    /** The selected video clip's Speed tool, after its panel closes (P4-09a). */
+    SPEED_TOOL,
 }
 
 /** What a spoken mask step reads out: the width or height in percent, or the turn in degrees (a move is read as a place). */
@@ -572,6 +585,12 @@ enum class Explanation {
     AUDIO_EFFECTS_MISSING,
     FADE_TOO_SHORT,
 
+    /** Detach audio on a clip whose speed the new sound clip can't follow: a curve, outside 0.5x to 2x, or Mute (P4-09). */
+    DETACH_SPEED,
+
+    /** Reset in the Speed panel with nothing set (P4-09). */
+    SPEED_NOTHING_TO_RESET,
+
     /** Transition tool (P4-08): on the last clip (nothing follows it), or on a cut whose two clips are too short to give 0.1 s. */
     TRANSITION_LAST,
     TRANSITION_SHORT,
@@ -630,6 +649,9 @@ sealed interface ToastMessage {
 
     /** Spoken only, after an overlay landed. */
     data object OverlayAdded : ToastMessage
+
+    /** A speed change made an overlay overlap its neighbor, so it moved to a free layer (P4-09; 4 s). */
+    data object SpeedMovedLane : ToastMessage
 
     /** An edit shortened a transition to fit, or removed it ([removed]) because its clips got too short (P4-08); 3 s. */
     data class TransitionSettled(val removed: Boolean) : ToastMessage
@@ -1117,6 +1139,28 @@ sealed interface VideoEditorIntent {
 
     /** Transition on the selected main clip's bar: the panel for the cut after it opens, or the tool says why it can't (P4-08). */
     data object TransitionTool : VideoEditorIntent
+
+    /** Speed on a video clip's bar (or an overlay's): the panel opens (P4-09a). */
+    data object SpeedTool : VideoEditorIntent
+
+    /** Speed on the main bar: it selects the video clip under the playhead and opens its panel. */
+    data object SpeedMainTool : VideoEditorIntent
+
+    /** Done, system back or Escape on the Speed panel. */
+    data object CloseSpeed : VideoEditorIntent
+
+    /** A tile: that speed, one step. */
+    data class SpeedTilePicked(val speed: Float) : VideoEditorIntent
+
+    /** The slider moved (the readout follows, nothing committed), and was let go or stepped (one step). */
+    data class SpeedChanged(val speed: Float) : VideoEditorIntent
+    data object SpeedReleased : VideoEditorIntent
+
+    /** The Sound choice: Keep or Mute. */
+    data class SpeedSoundSelected(val keep: Boolean) : VideoEditorIntent
+
+    /** Reset in the Speed panel. */
+    data object ResetSpeed : VideoEditorIntent
 
     /** Done, system back or Escape on the Transition panel. */
     data object CloseTransition : VideoEditorIntent

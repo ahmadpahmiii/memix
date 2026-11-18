@@ -12,6 +12,7 @@ import app.memix.core.model.project.Keyframe
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.PixelSize
+import app.memix.core.model.project.SpeedCatalog
 import app.memix.core.model.project.TrackKind
 import app.memix.core.model.project.Transform
 
@@ -213,8 +214,13 @@ internal data class VisualClip(
     val look: ClipLook = ClipLook.NONE,
     /** The transitions this clip is drawn through (P4-08): the one at its end (as the outgoing picture) and the one at its start (as the incoming), in composition time. */
     val transitions: List<TransitionWindow> = emptyList(),
+    /**
+     * How fast the clip plays (P4-09a): 1 for a photo. [trimInUs] and [trimOutUs] stay in source time, so [durationUs] is the span divided by this. A clip with
+     * [playsOwnAudio] plays its sound at the same speed with the pitch kept.
+     */
+    val speed: Float = 1f,
 ) : MainVideoSegment {
-    override val durationUs: Long get() = trimOutUs - trimInUs
+    override val durationUs: Long get() = SpeedCatalog.timelineLengthOf(trimOutUs - trimInUs, speed)
 
     /** A photo: shown for [durationUs] instead of being trimmed. */
     val isStill: Boolean get() = source.kind == MediaKind.IMAGE
@@ -245,8 +251,10 @@ internal data class OverlayClip(
     val mask: ClipMask? = null,
     /** The filter and adjustments (P4-07): after the key and the scaling to the drawn size, before the mask. Neutral is none. */
     val look: ClipLook = ClipLook.NONE,
+    /** How fast the clip plays (P4-09a), as [VisualClip.speed]; 1 for a photo. */
+    val speed: Float = 1f,
 ) : OverlaySegment {
-    override val durationUs: Long get() = trimOutUs - trimInUs
+    override val durationUs: Long get() = SpeedCatalog.timelineLengthOf(trimOutUs - trimInUs, speed)
 
     /** How the overlay looks [relativeUs] after it starts showing: the keyframes' look, or [transform] and [opacity]. */
     fun lookAt(relativeUs: Long): ItemLook =

@@ -1,6 +1,7 @@
 package app.memix.feature.videoeditor.timeline
 
 import kotlin.math.ceil
+import app.memix.core.model.project.SpeedCatalog
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToLong
@@ -116,12 +117,14 @@ internal fun widestRulerLabel(lengthUs: Long): String = if (lengthUs * 2 >= HOUR
 /**
  * The source time a clip's thumbnail tile shows. The first tile shows the clip's first frame. Every later tile shows
  * the frame at its start, rounded to a whole power-of-two number of frames no longer than the tile, so a zoom that
- * changes the tiles a little asks for frames already in memory, and is clamped inside the clip.
+ * changes the tiles a little asks for frames already in memory, and is clamped inside the clip. [tileDurationUs] is timeline time; [speed] turns it into source time.
  */
-internal fun tileSourceTimeUs(trimInUs: Long, trimOutUs: Long, tileIndex: Int, tileDurationUs: Long): Long {
+internal fun tileSourceTimeUs(trimInUs: Long, trimOutUs: Long, tileIndex: Int, tileDurationUs: Long, speed: Float = 1f): Long {
     if (tileIndex == 0) return trimInUs
-    val bucketUs = tileBucketUs(tileDurationUs)
-    val startUs = trimInUs + tileIndex * tileDurationUs
+    // A tile lasts [tileDurationUs] on the timeline and covers that much times the clip's speed of the source (P4-09).
+    val sourceTileUs = SpeedCatalog.sourceSpanOf(tileDurationUs, speed)
+    val bucketUs = tileBucketUs(sourceTileUs)
+    val startUs = trimInUs + tileIndex * sourceTileUs
     val roundedUs = (startUs + bucketUs / 2) / bucketUs * bucketUs
     return roundedUs.coerceIn(trimInUs, max(trimInUs, trimOutUs - FRAME_US))
 }

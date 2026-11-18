@@ -311,6 +311,14 @@ enum class EditorTool(val eventValue: String?) {
     TRANSITION_REMOVE("transition_remove"),
 
     /**
+     * P4-09a: the Speed panel (spec docs/ux/specs/P4-09-speed.md → Analytics), once per committed step, `editor: "video"`, never while dragging. `speed` sends
+     * `value` = the rounded multiplier ("0.5", "2"); `speed_sound` sends `keep` or `mute`; `speed_reset` has none. P4-09b adds `speed_curve`.
+     */
+    SPEED("speed"),
+    SPEED_SOUND("speed_sound"),
+    SPEED_RESET("speed_reset"),
+
+    /**
      * P1-11: the Canvas panel (PM, 20 Oct), each with a `value`. Fit and Fill are one event, `canvas_fit` with `value`
      * `fit` or `fill`, but two entries, so the undo history can say "Undo: Fill".
      */

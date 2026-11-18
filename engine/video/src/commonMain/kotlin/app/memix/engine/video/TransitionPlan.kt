@@ -2,6 +2,7 @@ package app.memix.engine.video
 
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
+import app.memix.core.model.project.SpeedCatalog
 import app.memix.core.model.project.TransitionCatalog
 
 /**
@@ -70,14 +71,22 @@ internal object TransitionPlanner {
         return Result(windows, TransitionLayer(layerSegments(pieces, durationUs)))
     }
 
+    // The window is in timeline time, but the spare footage is in source time: at speed s a half window of `half` covers `half * s` of source (spec P4-09 → Keyframes
+    // and transitions). Each piece's source span is rounded down so the piece never plays longer than its stretch of the window.
+    private fun spareOf(availableSourceUs: Long, half: Long, speed: Float): Pair<Long, Long> {
+        val usable = availableSourceUs.takeIf { it >= FRAME_US }?.coerceAtMost(SpeedCatalog.sourceSpanOf(half, speed)) ?: return 0L to 0L
+        val timelineUs = wholeMs(SpeedCatalog.timelineLengthOf(usable, speed))
+        return SpeedCatalog.sourceSpanOf(timelineUs, speed) to timelineUs
+    }
+
     // Before the cut the beneath layer shows the incoming clip: the footage before its trim, else its first frame held (a mix when there is only some).
     private fun leadOf(next: MediaClip, visual: VisualClip, half: Long, window: TransitionWindow): List<PartnerSegment> {
         val still = visual.asPartner()
         if (next.source.kind == MediaKind.IMAGE) return listOf(PartnerClip(still.copy(trimInUs = 0, trimOutUs = half), window))
-        val spare = next.trimInUs.takeIf { it >= FRAME_US }?.coerceAtMost(half)?.let(::wholeMs) ?: 0L
+        val (spareSourceUs, spareUs) = spareOf(next.trimInUs, half, visual.speed)
         return buildList {
-            if (half - spare > 0) add(PartnerHold(still, next.trimInUs - spare, half - spare, window))
-            if (spare > 0) add(PartnerClip(still.copy(trimInUs = next.trimInUs - spare, trimOutUs = next.trimInUs), window))
+            if (half - spareUs > 0) add(PartnerHold(still.copy(speed = 1f), next.trimInUs - spareSourceUs, half - spareUs, window))
+            if (spareUs > 0) add(PartnerClip(still.copy(trimInUs = next.trimInUs - spareSourceUs, trimOutUs = next.trimInUs), window))
         }
     }
 
@@ -86,10 +95,10 @@ internal object TransitionPlanner {
         val still = visual.asPartner()
         if (clip.source.kind == MediaKind.IMAGE) return listOf(PartnerClip(still.copy(trimInUs = 0, trimOutUs = half), window))
         val sourceLength = clip.source.durationUs ?: clip.trimOutUs
-        val spare = (sourceLength - clip.trimOutUs).takeIf { it >= FRAME_US }?.coerceAtMost(half)?.let(::wholeMs) ?: 0L
+        val (spareSourceUs, spareUs) = spareOf(sourceLength - clip.trimOutUs, half, visual.speed)
         return buildList {
-            if (spare > 0) add(PartnerClip(still.copy(trimInUs = clip.trimOutUs, trimOutUs = clip.trimOutUs + spare), window))
-            if (half - spare > 0) add(PartnerHold(still, (clip.trimOutUs + spare - FRAME_US).coerceAtLeast(clip.trimInUs), half - spare, window))
+            if (spareUs > 0) add(PartnerClip(still.copy(trimInUs = clip.trimOutUs, trimOutUs = clip.trimOutUs + spareSourceUs), window))
+            if (half - spareUs > 0) add(PartnerHold(still.copy(speed = 1f), (clip.trimOutUs + spareSourceUs - FRAME_US).coerceAtLeast(clip.trimInUs), half - spareUs, window))
         }
     }
 

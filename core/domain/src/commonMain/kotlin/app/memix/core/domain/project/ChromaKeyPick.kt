@@ -4,6 +4,7 @@ import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
+import app.memix.core.model.project.SpeedCatalog
 import app.memix.core.model.project.TrackKind
 import app.memix.core.model.project.FrameFit
 import kotlin.math.cos
@@ -31,9 +32,10 @@ fun Project.picturePointAt(itemId: String, atUs: Long, canvasFx: Float, canvasFy
     return point?.takeIf { it.u in 0f..1f && it.v in 0f..1f }
 }
 
-/** The time in [clip]'s source file of the frame shown at project time [atUs]; 0 for a photo. */
+/** The time in [clip]'s source file of the frame shown at project time [atUs] (at the clip's speed, P4-09); 0 for a photo. */
 fun sourceTimeOf(clip: MediaClip, atUs: Long): Long =
-    if (clip.source.kind == MediaKind.IMAGE) 0L else (clip.trimInUs + (atUs - clip.startUs)).coerceIn(clip.trimInUs, clip.trimOutUs)
+    if (clip.source.kind == MediaKind.IMAGE) 0L
+    else (clip.trimInUs + SpeedCatalog.sourceSpanOf(atUs - clip.startUs, SpeedCatalog.speedOf(clip))).coerceIn(clip.trimInUs, clip.trimOutUs)
 
 private fun Project.overlayPicturePoint(clip: MediaClip, atUs: Long, picture: PixelSize, canvas: PixelSize, x: Float, y: Float): PicturePoint? {
     val transform = lookOf(clip.id, atUs)?.transform ?: clip.transform

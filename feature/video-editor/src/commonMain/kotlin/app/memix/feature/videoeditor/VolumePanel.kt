@@ -5,7 +5,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import app.memix.feature.videoeditor.keyframes.KeyframeNote
+import app.memix.core.designsystem.MemixColors
 import app.memix.core.designsystem.MemixSpacing
+import app.memix.core.designsystem.MemixTheme
+import app.memix.core.designsystem.Text
 import app.memix.core.designsystem.component.Slider
 import app.memix.core.designsystem.component.Toggle
 import app.memix.core.designsystem.component.ToolPanel
@@ -15,6 +18,7 @@ import memix.feature.video_editor.generated.resources.Res
 import memix.core.ui.generated.resources.Res as UiRes
 import memix.core.ui.generated.resources.panel_done
 import memix.feature.video_editor.generated.resources.volume_mute_all
+import memix.feature.video_editor.generated.resources.volume_off_by_speed
 import memix.feature.video_editor.generated.resources.volume_percent
 import memix.feature.video_editor.generated.resources.volume_this_clip
 import memix.feature.video_editor.generated.resources.volume_this_sound
@@ -45,6 +49,8 @@ internal fun VolumePanel(
         // The panel's last value stays on screen while it slides away.
         val volume = panel?.volume ?: DEFAULT_VOLUME
         if (panel?.keyed == true) KeyframeNote()
+        // Speed's Mute wins over this level: the slider keeps working, and the line says why nothing is heard (spec P4-09 → Volume).
+        if (panel?.soundOffBySpeed == true) Text(stringResource(Res.string.volume_off_by_speed), MemixTheme.type.label, color = MemixColors.textSecondary)
         val isVideoClip = panel?.isVideoClip == true
         Slider(
             label = stringResource(if (isVideoClip) Res.string.volume_this_clip else Res.string.volume_this_sound),

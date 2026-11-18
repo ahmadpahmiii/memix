@@ -80,4 +80,9 @@ internal val projectMigrations: List<ProjectMigration> = listOf(
     // null: a draft saved before has plain cuts and looks as saved. The step only moves the version on; the bump keeps an older build from opening a
     // draft whose transitions it would drop on the next save.
     ProjectMigration(fromVersion = 19) { json -> json },
+    // 20 → 21 (P4-09a): MediaClip gained "speed" (1), "speedCurve" (null), "soundMode" (keep), "reversed" (false) and "freeze" (null): the speed tool and the
+    // fields P4-09b (curves) and P4-10 (reverse, freeze frame) use, so those two add no bump. Version-20 JSON has none of them, which decodes as the
+    // defaults: a draft saved before plays at 1x as saved. The step only moves the version on; the bump keeps an older build from opening a draft whose
+    // speed it would drop on the next save.
+    ProjectMigration(fromVersion = 20) { json -> json },
 )

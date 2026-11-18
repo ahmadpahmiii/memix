@@ -101,6 +101,7 @@ internal class OverlaySequences(
         val item = EditedMediaItem.Builder(mediaItem.build())
             .setRemoveAudio(!clip.playsOwnAudio)
             .setFrameRate(frameRate)
+            .setClipSpeed(clip.speed)
             // The look and the mask come after the scaling: its numbers are fractions of the box, so it costs a pass over the drawn size, not the video's.
             .setEffects(Effects(audioProcessors, keyEffects(clip) + scaled + lookEffects(clip) + maskEffects(clip)))
         if (!clip.isStill) item.setSourceDuration(clip.source, clip.trimOutUs)

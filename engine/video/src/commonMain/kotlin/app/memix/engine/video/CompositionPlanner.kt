@@ -8,6 +8,8 @@ import app.memix.core.model.project.look
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
+import app.memix.core.model.project.SpeedCatalog
+import app.memix.core.model.project.SpeedSound
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TimelineItem
 import app.memix.core.model.project.Track
@@ -103,13 +105,18 @@ internal object CompositionPlanner {
         trimOutUs = trimOutUs,
         fit = fit,
         pixelSize = source.pixelSize,
-        playsOwnAudio = hasOwnSound() && !audioDetached && !trackMuted && (peakVolume() > 0f || keepSilent),
+        playsOwnAudio = playsOwnSound(trackMuted, keepSilent),
         volume = plannedVolume(),
         keyframes = keyframes,
         chromaKey = chromaKey,
         mask = mask,
         look = look,
+        speed = SpeedCatalog.speedOf(this),
     )
+
+    // The clip's own sound plays when it has one, isn't detached, isn't muted (the track, or Mute in Speed) and isn't at 0% (a preview keeps silent items so a raise is heard live).
+    private fun MediaClip.playsOwnSound(trackMuted: Boolean, keepSilent: Boolean): Boolean =
+        hasOwnSound() && !audioDetached && !trackMuted && soundMode == SpeedSound.KEEP && (peakVolume() > 0f || keepSilent)
 
     // With keyframes they carry the level (P4-02), so the fixed volume stays at 1 and never switches the clip off or on by itself.
     private fun MediaClip.plannedVolume(): Float = if (keyframes.isEmpty()) volume else 1f
@@ -183,7 +190,7 @@ internal object CompositionPlanner {
                 skip(clip, "its picture size isn't known")
                 continue
             }
-            val cut = clip.cutTo(durationUs, pixelSize, plays = clip.hasOwnSound() && !clip.audioDetached && !track.muted && (clip.peakVolume() > 0f || keepSilent)) ?: continue
+            val cut = clip.cutTo(durationUs, pixelSize, plays = clip.playsOwnSound(track.muted, keepSilent)) ?: continue
             if (cut.startUs < cursorUs) {
                 skip(clip, "it overlaps the clip before it on its layer")
                 continue
@@ -201,15 +208,19 @@ internal object CompositionPlanner {
         val lengthUs = minOf(durationUs - headCutUs, timelineEndUs - cutStartUs)
         if (lengthUs <= 0) return null
         val isPhoto = source.kind == MediaKind.IMAGE
-        val cutTrimInUs = if (isPhoto) 0L else trimInUs + headCutUs
+        // The cuts are timeline time; the clip's speed turns them into the source span that plays (a photo has none).
+        val speed = SpeedCatalog.speedOf(this)
+        val cutTrimInUs = if (isPhoto) 0L else trimInUs + SpeedCatalog.sourceSpanOf(headCutUs, speed)
+        val cutTrimOutUs = if (isPhoto) lengthUs else minOf(trimOutUs, cutTrimInUs + SpeedCatalog.sourceSpanOf(lengthUs, speed))
         val clip = OverlayClip(
-            id, source, cutTrimInUs, cutTrimInUs + lengthUs, pixelSize, transform, opacity,
+            id, source, cutTrimInUs, cutTrimOutUs, pixelSize, transform, opacity,
             playsOwnAudio = plays,
             volume = plannedVolume(),
             keyframes = keyframes.shiftedBy(headCutUs),
             chromaKey = chromaKey,
             mask = mask,
             look = look,
+            speed = speed,
         )
         return CutOverlay(clip, cutStartUs)
     }

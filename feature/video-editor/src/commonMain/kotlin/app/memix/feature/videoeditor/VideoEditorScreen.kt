@@ -122,6 +122,8 @@ import app.memix.feature.videoeditor.greenscreen.GreenScreenPanel
 import app.memix.feature.videoeditor.greenscreen.PickLayer
 import app.memix.feature.videoeditor.effects.EffectPanel
 import app.memix.feature.videoeditor.effects.EffectTiles
+import app.memix.core.model.project.TrackKind
+import app.memix.feature.videoeditor.speed.SpeedPanel
 import app.memix.feature.videoeditor.transitions.TransitionPanel
 import app.memix.feature.videoeditor.transitions.TransitionTiles
 import app.memix.feature.videoeditor.effects.EffectsSheet
@@ -321,6 +323,12 @@ import memix.feature.video_editor.generated.resources.edit_effect_delete
 import memix.feature.video_editor.generated.resources.edit_effect_move
 import memix.feature.video_editor.generated.resources.effects_change_title
 import memix.feature.video_editor.generated.resources.explain_effect_flash
+import memix.feature.video_editor.generated.resources.edit_speed
+import memix.feature.video_editor.generated.resources.edit_speed_reset
+import memix.feature.video_editor.generated.resources.edit_speed_sound
+import memix.feature.video_editor.generated.resources.explain_detach_speed
+import memix.feature.video_editor.generated.resources.speed_moved_lane_toast
+import memix.feature.video_editor.generated.resources.speed_nothing_to_reset
 import memix.feature.video_editor.generated.resources.explain_transition_last
 import memix.feature.video_editor.generated.resources.explain_transition_short
 import memix.feature.video_editor.generated.resources.edit_transition_duration
@@ -391,7 +399,7 @@ fun VideoEditorScreen(
     val lookTiles = rememberLookTiles(imageTools)
     val effectTiles = rememberEffectTiles(imageTools)
     val transitionTiles = rememberTransitionTiles(imageTools)
-    val panelOpen = state.volumePanel != null || state.audioEffects != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null || state.overlayPanel != null || state.greenScreen != null || state.maskPanel != null || state.lookPanel != null || state.effectPanel != null || state.transitionPanel != null || state.keyframeBar?.easingOpen == true
+    val panelOpen = state.volumePanel != null || state.audioEffects != null || state.voiceover != null || state.textPanel != null || state.canvasPanel != null || state.overlayPanel != null || state.greenScreen != null || state.maskPanel != null || state.lookPanel != null || state.effectPanel != null || state.transitionPanel != null || state.speedPanel != null || state.keyframeBar?.easingOpen == true
     val sheetOpen = state.sounds.isOpen || state.effectsSheet != null || state.unsavedSheetOpen || state.exportSheet != null || importSheetShown(state.mediaImport)
     ReturnFocus(state.returnFocus, focusTargets)
     // Typing (spec P1-10 → Typing): the field's words live here, so only the field and the stand-in redraw per key.
@@ -445,7 +453,7 @@ fun VideoEditorScreen(
                 },
                 tools = {
                     Box(Modifier.coveredByModal(panelOpen), propagateMinConstraints = true) {
-                        ToolBarRegion(state.clipTools, state.reorder, state.keyframeBar, state.preview, state.timeline.isEmpty, selectedIsMissing(state), focusTargets, onIntent)
+                        ToolBarRegion(state.clipTools, state.reorder, state.keyframeBar, state.preview, state.timeline.isEmpty, hasVideoClip(state), selectedIsMissing(state), focusTargets, onIntent)
                     }
                 },
                 panel = {
@@ -462,6 +470,7 @@ fun VideoEditorScreen(
                     LookPanel(state.lookPanel, lookTiles, onIntent, Modifier.fillMaxSize())
                     EffectPanel(state.effectPanel, onIntent, Modifier.fillMaxSize())
                     TransitionPanel(state.transitionPanel, transitionTiles, onIntent, Modifier.fillMaxSize())
+                    SpeedPanel(state.speedPanel, onIntent, Modifier.fillMaxSize())
                     OverlayPanels(state.overlayPanel, { timeUs -> selectedOverlayTransform(state, timeUs) }, panelPlayhead, onIntent, Modifier.fillMaxSize())
                     CanvasPanel(state.canvasPanel, state.canvas, backgroundThumbnails, onIntent, Modifier.fillMaxSize())
                 },
@@ -574,6 +583,10 @@ private fun selectedIsMissing(state: VideoEditorUiState): Boolean {
     val media = state.selectedItemId?.let { state.timeline.item(it)?.media } ?: return false
     return state.thumbnails?.missingSources?.contains(media) == true
 }
+
+/** Whether the main track holds a video clip: the main bar's Speed shows only then (spec P4-09 → Entry and exit). */
+private fun hasVideoClip(state: VideoEditorUiState): Boolean =
+    state.timeline.tracks.firstOrNull { it.kind == TrackKind.MAIN_VIDEO }?.items?.any { !it.isPhoto } == true
 
 /**
  * Close at the start, the ratio pill in the center of the screen (spec P1-11 → The ratio pill) and Export at the end
@@ -1093,7 +1106,7 @@ private fun ToastTimer(toast: EditorToast, onTimedOut: (id: Long) -> Unit) {
             is ToastMessage.ExportShapeCantDo,
             -> EXPLANATION_TOAST_MILLIS
             // An unexpected move, so it stays as long as an explanation.
-            ToastMessage.KeyframesOn, ToastMessage.MissingMedia, ToastMessage.MissingOverlay, ToastMessage.OverlaysSkipped, is ToastMessage.Explain, is ToastMessage.ReplaceTooShort, ToastMessage.LayersMoved, ToastMessage.SoundMovedLane, is ToastMessage.SoundPastEnd, is ToastMessage.BackgroundMissing -> EXPLANATION_TOAST_MILLIS
+            ToastMessage.KeyframesOn, ToastMessage.MissingMedia, ToastMessage.MissingOverlay, ToastMessage.OverlaysSkipped, is ToastMessage.Explain, is ToastMessage.ReplaceTooShort, ToastMessage.LayersMoved, ToastMessage.SoundMovedLane, ToastMessage.SpeedMovedLane, is ToastMessage.SoundPastEnd, is ToastMessage.BackgroundMissing -> EXPLANATION_TOAST_MILLIS
         }
         delay(recommendedTimeoutMillis(accessibilityManager, baseMillis))
         onTimedOut(toast.id)
@@ -1154,6 +1167,7 @@ private fun toastText(message: ToastMessage): String = when (message) {
     ToastMessage.LayersMoved -> stringResource(Res.string.canvas_layers_moved)
     is ToastMessage.SoundPastEnd -> stringResource(Res.string.picker_overhang_toast)
     ToastMessage.SoundMovedLane -> stringResource(Res.string.fx_moved_lane_toast)
+    ToastMessage.SpeedMovedLane -> stringResource(Res.string.speed_moved_lane_toast)
     ToastMessage.NothingToReset -> stringResource(Res.string.fx_nothing_to_reset)
     ToastMessage.AudioEffectsReset -> stringResource(Res.string.a11y_audio_effects_reset)
     is ToastMessage.BackgroundMissing -> stringResource(UiRes.string.canvas_image_missing_toast, message.ratioLabel)
@@ -1232,6 +1246,9 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.TRANSITION -> Res.string.tool_transition
         VideoEdit.TRANSITION_DURATION -> Res.string.edit_transition_duration
         VideoEdit.TRANSITION_REMOVE -> Res.string.edit_transition_remove
+        VideoEdit.CLIP_SPEED -> Res.string.edit_speed
+        VideoEdit.CLIP_SPEED_SOUND -> Res.string.edit_speed_sound
+        VideoEdit.CLIP_SPEED_RESET -> Res.string.edit_speed_reset
         VideoEdit.CANVAS_RATIO -> UiRes.string.edit_canvas_ratio
         VideoEdit.CANVAS_FIT -> Res.string.edit_canvas_fit
         VideoEdit.CANVAS_FILL -> Res.string.edit_canvas_fill
@@ -1260,6 +1277,8 @@ private fun explanationText(explanation: Explanation): String = stringResource(
         Explanation.SOUND_MISSING -> Res.string.use_sound_missing_toast
         Explanation.REPLACE_DETACHED -> Res.string.explain_replace_detached
         Explanation.NO_SOUND -> Res.string.explain_no_sound
+        Explanation.DETACH_SPEED -> Res.string.explain_detach_speed
+        Explanation.SPEED_NOTHING_TO_RESET -> Res.string.speed_nothing_to_reset
         Explanation.DETACHED -> Res.string.explain_detached
         Explanation.DETACHED_MUTED -> Res.string.explain_detached_muted
         Explanation.TEXT_SMALLEST -> UiRes.string.explain_text_smallest

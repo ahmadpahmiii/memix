@@ -720,7 +720,8 @@ private fun wholeSourceOf(clip: MediaClip): MediaClip {
         MediaKind.IMAGE -> PHOTO_TRIM_PREVIEW_US
         MediaKind.VIDEO, MediaKind.AUDIO -> clip.source.durationUs ?: clip.trimOutUs
     }
-    return clip.copy(startUs = 0, trimInUs = 0, trimOutUs = lengthUs, audioDetached = true)
+    // At 1x: the trim drag seeks in source time.
+    return clip.copy(startUs = 0, trimInUs = 0, trimOutUs = lengthUs, audioDetached = true, speed = 1f, speedCurve = null)
 }
 
 private fun lastFrameUs(wholeSource: MediaClip): Long = (wholeSource.trimOutUs - FRAME_US).coerceAtLeast(0)

@@ -429,4 +429,20 @@
     <string name="a11y_state_transition">अगली क्लिप में ट्रांज़िशन: %1$s</string>
     <string name="edit_transition_duration">ट्रांज़िशन की अवधि</string>
     <string name="edit_transition_remove">ट्रांज़िशन हटाएं</string>
+    <string name="tool_speed">स्पीड</string>
+    <string name="tool_speed_click">इस क्लिप की चलने की गति बदलें</string>
+    <string name="speed_readout">%1$s× · %2$s</string>
+    <string name="speed_length">%1$s सेकंड</string>
+    <string name="speed_sound">आवाज़</string>
+    <string name="speed_sound_keep">रखें</string>
+    <string name="speed_sound_mute">म्यूट</string>
+    <string name="speed_audio_rough">इस गति पर आवाज़ खुरदुरी हो जाती है। आप इसे म्यूट कर सकते हैं।</string>
+    <string name="volume_off_by_speed">स्पीड में आवाज़ बंद है।</string>
+    <string name="explain_detach_speed">गति 0.5× से 2× और आवाज़ चालू हो, तभी अलग होगा।</string>
+    <string name="speed_moved_lane_toast">कोई टकराव न हो, इसलिए खाली लेयर पर ले गए।</string>
+    <string name="speed_nothing_to_reset">गति पहले से सामान्य है।</string>
+    <string name="a11y_state_speed">गति %1$s×</string>
+    <string name="edit_speed">स्पीड</string>
+    <string name="edit_speed_sound">स्पीड की आवाज़</string>
+    <string name="edit_speed_reset">स्पीड रीसेट</string>
 </resources>

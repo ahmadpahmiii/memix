@@ -14,6 +14,7 @@ import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaOrigin
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.Project
+import app.memix.core.model.project.SpeedCatalog
 import app.memix.core.model.project.StickerItem
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TransitionCatalog
@@ -108,6 +109,8 @@ data class ItemUi(
     val adjusted: Boolean = false,
     /** The transition into the next main clip (P4-08), when this build draws it: its cue sits on the cut, and the clip's spoken description names it. */
     val transitionId: String? = null,
+    /** How fast a video clip plays (P4-09a); 1 for everything else. Above or below 1 the clip wears the retime chip and says so when read aloud. */
+    val speed: Float = 1f,
 ) {
     val endUs: Long get() = startUs + durationUs
 }
@@ -169,7 +172,7 @@ private fun trackUiOf(track: Track, soundTitles: Map<String, LocalizedText>): Tr
     var clipNumber = 0
     val items = sorted.map { item ->
         if (track.kind == TrackKind.MAIN_VIDEO) clipNumber++
-        itemUiOf(item, track.kind, if (track.kind == TrackKind.MAIN_VIDEO) clipNumber else 0, soundTitles).copy(keyframeCount = item.keyframeList().size, keyed = (item as? MediaClip)?.chromaKey != null, masked = (item as? MediaClip)?.mask?.shape, transitionId = (item as? MediaClip)?.takeIf { track.kind == TrackKind.MAIN_VIDEO }?.transitionOut?.id?.takeIf(TransitionCatalog::isBuilt)).withLookOf(item)
+        itemUiOf(item, track.kind, if (track.kind == TrackKind.MAIN_VIDEO) clipNumber else 0, soundTitles).copy(keyframeCount = item.keyframeList().size, keyed = (item as? MediaClip)?.chromaKey != null, masked = (item as? MediaClip)?.mask?.shape, transitionId = (item as? MediaClip)?.takeIf { track.kind == TrackKind.MAIN_VIDEO }?.transitionOut?.id?.takeIf(TransitionCatalog::isBuilt), speed = (item as? MediaClip)?.let(SpeedCatalog::speedOf) ?: 1f).withLookOf(item)
     }
     return TrackUi(track.id, track.kind, items.toImmutableList(), track.muted)
 }

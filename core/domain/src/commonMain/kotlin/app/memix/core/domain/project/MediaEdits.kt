@@ -3,6 +3,7 @@ package app.memix.core.domain.project
 import app.memix.core.domain.media.newMainClip
 import app.memix.core.model.project.FrameFit
 import app.memix.core.model.project.MediaClip
+import app.memix.core.model.project.SpeedSound
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.Project
@@ -63,7 +64,7 @@ fun Project.replaceFit(itemId: String, media: MediaRef): ReplaceFit? {
     val clip = mainClip(itemId) ?: return null
     return when (media.kind) {
         MediaKind.IMAGE -> ReplaceFit.FITS
-        MediaKind.VIDEO -> if ((media.durationUs ?: 0L) >= clip.durationUs) ReplaceFit.FITS else ReplaceFit.TOO_SHORT
+        MediaKind.VIDEO -> if ((media.durationUs ?: 0L) >= clip.videoSpanUs()) ReplaceFit.FITS else ReplaceFit.TOO_SHORT
         MediaKind.AUDIO -> null
     }
 }
@@ -78,15 +79,21 @@ fun Project.replaceClipMedia(itemId: String, media: MediaRef): Project {
     if (replaceFit(itemId, media) != ReplaceFit.FITS) return this
     val track = mainTrack() ?: return this
     val clip = mainClip(itemId) ?: return this
-    val replaced = clip.copy(
+    // A photo has no speed, curve, Sound choice, direction or freeze: they go, so a later swap back to a video starts at 1x.
+    val plainSpeed = if (media.kind == MediaKind.VIDEO) clip else clip.copy(speed = 1f, speedCurve = null, soundMode = SpeedSound.KEEP, reversed = false, freeze = null)
+    val replaced = plainSpeed.copy(
         source = media,
         trimInUs = 0,
-        trimOutUs = clip.durationUs,
+        // A sped clip keeps its speed and Sound choice and its length on the timeline: the new video plays the same source span the old one did.
+        trimOutUs = if (media.kind == MediaKind.VIDEO) clip.videoSpanUs() else clip.durationUs,
         audioDetached = false,
         volume = if (clip.audioDetached) 0f else clip.volume,
     )
     return replaceTrack(track.copy(items = track.items.map { if (it.id == itemId) replaced else it }))
 }
+
+// How much source a video put in this clip's slot plays: the trimmed span of a video, the length of a photo (a photo has no speed).
+private fun MediaClip.videoSpanUs(): Long = if (source.kind == MediaKind.VIDEO) sourceSpanUs else durationUs
 
 /** The main video or photo clip with [itemId], or null. */
 fun Project.mainClip(itemId: String): MediaClip? {

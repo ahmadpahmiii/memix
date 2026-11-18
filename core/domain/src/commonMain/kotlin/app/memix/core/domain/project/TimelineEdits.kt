@@ -7,6 +7,7 @@ import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.Project
+import app.memix.core.model.project.SpeedCatalog
 import app.memix.core.model.project.StickerItem
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TimelineItem
@@ -53,7 +54,9 @@ fun Project.splitItem(itemId: String, atUs: Long, newItemId: String): Project {
     // The transition leads from the clip's end into the next clip, so it goes with the right piece; the cut between the pieces is plain (P4-08).
     val left = item.withLength(leftLengthUs).withoutFade(FadeEdge.OUT).withFadesFitted().withKeyframesIfAny(leftKeyframes).withoutTransition()
     val right = item.withId(newItemId).withStart(atUs).trimmedFromStart(leftLengthUs).withoutFade(FadeEdge.IN).withFadesFitted().withKeyframesIfAny(rightKeyframes)
-    return replaceTrack(track.copy(items = track.items.flatMap { if (it.id == itemId) listOf(left, right) else listOf(it) }))
+    val items = track.items.flatMap { if (it.id == itemId) listOf(left, right) else listOf(it) }
+    // A sped clip's two pieces can be a few µs shorter than the whole; the main track closes that up (a no-op at 1x).
+    return replaceTrack(track.copy(items = if (track.kind == TrackKind.MAIN_VIDEO) repacked(items.sortedBy { it.startUs }) else items))
 }
 
 /**
@@ -216,14 +219,14 @@ internal fun Track.isFree(startUs: Long, endUs: Long): Boolean = items.none { it
 
 /** How much of the source plays before the item's start: null when there's no limit or it isn't known. */
 private fun TimelineItem.footageBeforeUs(): Long? = when (this) {
-    is MediaClip -> if (source.kind == MediaKind.IMAGE) null else trimInUs
+    is MediaClip -> if (source.kind == MediaKind.IMAGE) null else SpeedCatalog.timelineLengthOf(trimInUs, SpeedCatalog.speedOf(this))
     is AudioClip -> effects.timelineLengthFloorOf(trimInUs)
     is TextItem, is StickerItem, is EffectItem -> null
 }
 
 /** How much of the source is left after the item's end; 0 when the source's length isn't known (can't extend). */
 private fun TimelineItem.footageAfterUs(): Long? = when (this) {
-    is MediaClip -> if (source.kind == MediaKind.IMAGE) null else source.remainingAfter(trimOutUs)
+    is MediaClip -> if (source.kind == MediaKind.IMAGE) null else SpeedCatalog.timelineLengthOf(source.remainingAfter(trimOutUs), SpeedCatalog.speedOf(this))
     is AudioClip -> effects.timelineLengthOf(source.remainingAfter(trimOutUs))
     is TextItem, is StickerItem, is EffectItem -> null
 }
@@ -257,7 +260,7 @@ private fun TimelineItem.withId(id: String): TimelineItem = when (this) {
  * with a speed other than 1 plays more or less of its source in that time.
  */
 private fun TimelineItem.withLength(lengthUs: Long): TimelineItem = when (this) {
-    is MediaClip -> copy(trimOutUs = trimInUs + lengthUs)
+    is MediaClip -> copy(trimOutUs = trimInUs + SpeedCatalog.sourceSpanOf(lengthUs, SpeedCatalog.speedOf(this)))
     is AudioClip -> copy(trimOutUs = trimInUs + effects.sourceSpanOf(lengthUs))
     is TextItem -> copy(durationUs = lengthUs)
     is StickerItem -> copy(durationUs = lengthUs)
@@ -269,7 +272,8 @@ private fun TimelineItem.withLength(lengthUs: Long): TimelineItem = when (this) 
  * trim is only how long it shows, so it stays 0-based and never goes negative.
  */
 private fun TimelineItem.trimmedFromStart(deltaUs: Long): TimelineItem = when (this) {
-    is MediaClip -> if (source.kind == MediaKind.IMAGE) copy(trimInUs = 0, trimOutUs = durationUs - deltaUs) else copy(trimInUs = trimInUs + deltaUs)
+    is MediaClip -> if (source.kind == MediaKind.IMAGE) copy(trimInUs = 0, trimOutUs = durationUs - deltaUs)
+    else copy(trimInUs = (trimInUs + SpeedCatalog.sourceSpanOf(deltaUs, SpeedCatalog.speedOf(this))).coerceAtLeast(0))
     is AudioClip -> copy(trimInUs = (trimInUs + effects.sourceSpanOf(deltaUs)).coerceAtLeast(0))
     is TextItem -> copy(durationUs = durationUs - deltaUs)
     is StickerItem -> copy(durationUs = durationUs - deltaUs)

@@ -1,10 +1,12 @@
 package app.memix.core.domain.project
 
 import app.memix.core.model.project.AudioClip
+import app.memix.core.model.project.AudioEffects
 import app.memix.core.model.project.ItemLook
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.Project
+import app.memix.core.model.project.SpeedCatalog
 import app.memix.core.model.project.TrackKind
 
 /*
@@ -57,10 +59,10 @@ fun Project.originalSoundOf(itemId: String): OriginalSound? {
  * the clip's start, on the first Audio lane free for that span, else a new lane [newTrackId] after the last one. The
  * clip's `audioDetached` becomes true, so its sound plays only from the new clip. While every clip is muted, the new
  * clip starts at 0%, so nothing suddenly gets louder. Nothing changes unless the clip's sound plays
- * ([originalSoundOf] is [OriginalSound.PLAYS]).
+ * ([originalSoundOf] is [OriginalSound.PLAYS]) and the clip's speed allows it ([detachRefusedBySpeed]).
  */
 fun Project.detachAudio(itemId: String, audioClipId: String, newTrackId: String): Project {
-    if (originalSoundOf(itemId) != OriginalSound.PLAYS) return this
+    if (originalSoundOf(itemId) != OriginalSound.PLAYS || detachRefusedBySpeed(itemId)) return this
     val (track, clip) = soundBearingClip(itemId) ?: return this
     val audio = AudioClip(
         id = audioClipId,
@@ -69,6 +71,8 @@ fun Project.detachAudio(itemId: String, audioClipId: String, newTrackId: String)
         trimInUs = clip.trimInUs,
         trimOutUs = clip.trimOutUs,
         volume = if (track.muted) 0f else clip.volume,
+        // The new sound plays at the clip's speed so picture and sound stay in step; Detach is refused outside 0.5x to 2x (spec P4-09 -> Detach audio).
+        effects = AudioEffects(speed = SpeedCatalog.speedOf(clip)),
         // The volume ramp goes with the sound; the clip's own motion stays on the picture.
         keyframes = clip.keyframes.map { it.copy(look = ItemLook(volume = if (track.muted) 0f else it.look.volume)) },
     )

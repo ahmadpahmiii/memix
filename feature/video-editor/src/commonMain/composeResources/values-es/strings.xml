@@ -429,4 +429,20 @@
     <string name="a11y_state_transition">Transición al siguiente clip: %1$s</string>
     <string name="edit_transition_duration">Duración de transición</string>
     <string name="edit_transition_remove">Quitar transición</string>
+    <string name="tool_speed">Velocidad</string>
+    <string name="tool_speed_click">Cambia la velocidad de este clip</string>
+    <string name="speed_readout">%1$s× · %2$s</string>
+    <string name="speed_length">%1$s s</string>
+    <string name="speed_sound">Sonido</string>
+    <string name="speed_sound_keep">Mantener</string>
+    <string name="speed_sound_mute">Silenciar</string>
+    <string name="speed_audio_rough">El sonido suena áspero a esta velocidad. Puedes silenciarlo.</string>
+    <string name="volume_off_by_speed">El sonido está apagado en Velocidad.</string>
+    <string name="explain_detach_speed">Separar funciona de 0,5× a 2× con sonido. Cambia antes la velocidad.</string>
+    <string name="speed_moved_lane_toast">Movido a una capa libre para que no se solape.</string>
+    <string name="speed_nothing_to_reset">La velocidad ya es normal.</string>
+    <string name="a11y_state_speed">Velocidad %1$s×</string>
+    <string name="edit_speed">Velocidad</string>
+    <string name="edit_speed_sound">Sonido de velocidad</string>
+    <string name="edit_speed_reset">Restablecer velocidad</string>
 </resources>

@@ -4,6 +4,8 @@ import app.memix.core.domain.project.OriginalSound
 import app.memix.core.domain.project.originalSoundOf
 import app.memix.core.domain.project.overlayClip
 import app.memix.core.domain.project.setVolume
+import app.memix.core.domain.project.speedClip
+import app.memix.core.model.project.SpeedSound
 import app.memix.core.domain.project.volumeOf
 import app.memix.feature.videoeditor.timeline.nameOf
 
@@ -30,7 +32,7 @@ internal class VolumePanelControl(private val host: EditorHost) {
         val keyed = host.routesThroughKeyframes(itemId)
         // A keyed item's panel shows its level under the playhead, so the playhead waits.
         if (keyed) host.preview?.pause()
-        host.updateUiState { it.copy(volumePanel = VolumePanelUi(itemId, volume, isVideoClip = originalSound == OriginalSound.PLAYS, isOverlay = project.overlayClip(itemId) != null, keyed = keyed)) }
+        host.updateUiState { it.copy(volumePanel = VolumePanelUi(itemId, volume, isVideoClip = originalSound == OriginalSound.PLAYS, isOverlay = project.overlayClip(itemId) != null, keyed = keyed, soundOffBySpeed = project.speedClip(itemId)?.soundMode == SpeedSound.MUTE)) }
     }
 
     /** Done, back or Escape: the item stays selected and focus goes back to its Volume tool. */

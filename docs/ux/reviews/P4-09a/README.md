@@ -1,0 +1,5 @@
+# P4-09a desktop renders
+
+Compose Desktop renders (not a phone, not an emulator; 3x density) of the Speed tool: the clip bars (video clip, video overlay, photo clip, es at 200%), the main bar (en, hi at 200%), the panel at 360x640, 360x800 and 412x915, at 1x, 2x, 0.1x, 10x (rough hint), Mute, a value off the tiles (1.5x), es and hi at 200%, pt, id, the retime chips on the lanes (unselected, selected) and the toasts. Made by a throwaway harness from the shipped composables. Flags for the designer are in the commit message.
+
+Panel renders put the panel in a fixed region (229, 302 and 348 dp tall, copied from the P4-08 harness), so the Sound choice and the 10x hint can sit under the fold there. The real panel is a `ToolPanel` that scrolls its content to the end; the Sound row is about 28 dp taller than the spec's budget because it carries a visible "Sound" heading like the Echo length row (flag for the designer). The retime chip starts one trim-handle width in from the clip's left edge, so a selected previous clip's handle never covers it.

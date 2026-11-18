@@ -66,9 +66,25 @@ data class MediaClip(
      * anything and never touches sound (see [Transition]). Only main-track clips carry one; the last clip's is always null.
      */
     val transitionOut: Transition? = null,
+    /**
+     * How fast the clip plays (P4-09a, schema 21): 0.1 to 10, 1 is as filmed. Video only: a photo and a freeze frame ignore it ([SpeedCatalog.speedOf]).
+     * The clip's length on the timeline is its trimmed span divided by it; the trim points stay in source time.
+     */
+    val speed: Float = 1f,
+    /** The speed over the clip as points (P4-09b, saved from schema 21; nothing writes or plays it before that ticket). When set it wins over [speed]. */
+    val speedCurve: List<SpeedPoint>? = null,
+    /** Whether the clip's own sound follows its speed or is off (P4-09a). Independent of [volume], [audioDetached] and the track's mute: the sound plays only if all allow it. */
+    val soundMode: SpeedSound = SpeedSound.KEEP,
+    /** Plays the trimmed span from its last frame to its first, the sound too (P4-10, saved from schema 21; nothing sets or plays it before that ticket). */
+    val reversed: Boolean = false,
+    /** Set on a clip that holds one frame of its video (P4-10, saved from schema 21; nothing sets or plays it before that ticket). */
+    val freeze: FreezeSource? = null,
 ) : TimelineItem {
-    // Derived, not saved, so it can never disagree with the trim points.
-    override val durationUs: Long get() = trimOutUs - trimInUs
+    /** How much of the source plays, µs: the part between the trim points. */
+    val sourceSpanUs: Long get() = trimOutUs - trimInUs
+
+    // Derived, not saved, so it can never disagree with the trim points and the speed. A curve (P4-09b) will integrate here.
+    override val durationUs: Long get() = SpeedCatalog.timelineLengthOf(sourceSpanUs, SpeedCatalog.speedOf(this))
 }
 
 /** How a clip whose shape differs from the canvas fills it. */
