@@ -97,11 +97,11 @@ internal class OverlaySequences(
         // Scaled to the size it is drawn at before it is composited, so a 4K video costs a frame-sized pass, not more.
         val size = OverlayPlacement.of(clip, frame).textureSize
         val scaled = Presentation.createForWidthAndHeight(size.widthPx, size.heightPx, Presentation.LAYOUT_STRETCH_TO_FIT)
-        val audioProcessors = if (clip.playsOwnAudio) AudioChain.volume(clip.volume, clip.keyframes, liveGains[clip.itemId]) else emptyList()
+        val audioProcessors = if (clip.playsOwnAudio) AudioChain.curveSmoothing(clip.retime) + AudioChain.volume(clip.volume, clip.keyframes, liveGains[clip.itemId]) else emptyList()
         val item = EditedMediaItem.Builder(mediaItem.build())
             .setRemoveAudio(!clip.playsOwnAudio)
             .setFrameRate(frameRate)
-            .setClipSpeed(clip.speed)
+            .setClipSpeed(clip.speed, clip.retime)
             // The look and the mask come after the scaling: its numbers are fractions of the box, so it costs a pass over the drawn size, not the video's.
             .setEffects(Effects(audioProcessors, keyEffects(clip) + scaled + lookEffects(clip) + maskEffects(clip)))
         if (!clip.isStill) item.setSourceDuration(clip.source, clip.trimOutUs)

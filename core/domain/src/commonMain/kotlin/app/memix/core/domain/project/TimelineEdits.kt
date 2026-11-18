@@ -9,6 +9,8 @@ import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.SpeedCatalog
+import app.memix.core.model.project.pictureChangeAtEnd
+import app.memix.core.model.project.pictureTakenFromStart
 import app.memix.core.model.project.StickerItem
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TimelineItem
@@ -54,7 +56,9 @@ fun Project.splitItem(itemId: String, atUs: Long, newItemId: String): Project {
     val (leftKeyframes, rightKeyframes) = item.keyframesAfterSplit(leftLengthUs)
     // The transition leads from the clip's end into the next clip, so it goes with the right piece; the cut between the pieces is plain (P4-08).
     val left = item.withLength(leftLengthUs).withoutFade(FadeEdge.OUT).withFadesFitted().withKeyframesIfAny(leftKeyframes).withoutTransition()
-    val right = item.withId(newItemId).withStart(atUs).trimmedFromStart(leftLengthUs).withoutFade(FadeEdge.IN).withFadesFitted().withKeyframesIfAny(rightKeyframes)
+    // A curved clip's left piece can come out a little longer than asked (the cut re-eases the curve): the right piece starts where it really ends, so the two never overlap.
+    val rightStartUs = maxOf(atUs, left.startUs + left.durationUs)
+    val right = item.withId(newItemId).withStart(rightStartUs).trimmedFromStart(leftLengthUs).withoutFade(FadeEdge.IN).withFadesFitted().withKeyframesIfAny(rightKeyframes)
     val items = track.items.flatMap { if (it.id == itemId) listOf(left, right) else listOf(it) }
     // A sped clip's two pieces can be a few µs shorter than the whole; the main track closes that up (a no-op at 1x).
     return replaceTrack(track.copy(items = if (track.kind == TrackKind.MAIN_VIDEO) repacked(items.sortedBy { it.startUs }) else items))
@@ -225,14 +229,14 @@ internal fun Track.isFree(startUs: Long, endUs: Long): Boolean = items.none { it
  * (P4-10), so what lies before it on the timeline is the footage after its trim-out.
  */
 private fun TimelineItem.footageBeforeUs(): Long? = when (this) {
-    is MediaClip -> if (source.kind == MediaKind.IMAGE) null else SpeedCatalog.timelineLengthOf(if (reversed) source.remainingAfter(trimOutUs) else trimInUs, SpeedCatalog.speedOf(this))
+    is MediaClip -> if (source.kind == MediaKind.IMAGE) null else SpeedCatalog.timelineLengthOf(if (reversed) source.remainingAfter(trimOutUs) else trimInUs, edgeSpeed(atEnd = false))
     is AudioClip -> effects.timelineLengthFloorOf(trimInUs)
     is TextItem, is StickerItem, is EffectItem -> null
 }
 
 /** How much of the source is left after the item's end; 0 when the source's length isn't known (can't extend). */
 private fun TimelineItem.footageAfterUs(): Long? = when (this) {
-    is MediaClip -> if (source.kind == MediaKind.IMAGE) null else SpeedCatalog.timelineLengthOf(if (reversed) trimInUs else source.remainingAfter(trimOutUs), SpeedCatalog.speedOf(this))
+    is MediaClip -> if (source.kind == MediaKind.IMAGE) null else SpeedCatalog.timelineLengthOf(if (reversed) trimInUs else source.remainingAfter(trimOutUs), edgeSpeed(atEnd = true))
     is AudioClip -> effects.timelineLengthOf(source.remainingAfter(trimOutUs))
     is TextItem, is StickerItem, is EffectItem -> null
 }
@@ -242,9 +246,15 @@ private fun TimelineItem.footageAfterUs(): Long? = when (this) {
 private fun TimelineItem.maxLengthUs(): Long? = when {
     this !is MediaClip -> null
     freeze != null -> FreezeReverseCatalog.FREEZE_MAX_US
-    reversed && source.kind == MediaKind.VIDEO -> SpeedCatalog.timelineLengthOf(FreezeReverseCatalog.MAX_REVERSE_SOURCE_US, SpeedCatalog.speedOf(this))
+    reversed && source.kind == MediaKind.VIDEO -> SpeedCatalog.timelineLengthOf(FreezeReverseCatalog.MAX_REVERSE_SOURCE_US, slowestSpeed())
     else -> null
 }
+
+// A curved clip held outward by a trim plays the speed at the end it grows from (the picture's first or last point in playing order, see rebasedCurve).
+private fun MediaClip.edgeSpeed(atEnd: Boolean): Float = SpeedCatalog.edgeSpeedOf(SpeedCatalog.speedOf(this), SpeedCatalog.curveOf(this), atEnd)
+
+// The reverse cap on a curved clip is the longest it can be: its slowest speed. A trim that goes past 60 s of source anyway makes the engine drop Reverse (P4-10).
+private fun MediaClip.slowestSpeed(): Float = SpeedCatalog.curveOf(this)?.minOf { it.speed } ?: SpeedCatalog.speedOf(this)
 
 private fun MediaRef.remainingAfter(trimOutUs: Long): Long = durationUs?.let { (it - trimOutUs).coerceAtLeast(0) } ?: 0L
 
@@ -275,7 +285,7 @@ private fun TimelineItem.withId(id: String): TimelineItem = when (this) {
  * with a speed other than 1 plays more or less of its source in that time.
  */
 private fun TimelineItem.withLength(lengthUs: Long): TimelineItem = when (this) {
-    is MediaClip -> withSourceSpan(SpeedCatalog.sourceSpanOf(lengthUs, SpeedCatalog.speedOf(this)), keepStartOfSpan = !reversed)
+    is MediaClip -> cutToLength(lengthUs)
     is AudioClip -> copy(trimOutUs = trimInUs + effects.sourceSpanOf(lengthUs))
     is TextItem -> copy(durationUs = lengthUs)
     is StickerItem -> copy(durationUs = lengthUs)
@@ -287,12 +297,27 @@ private fun TimelineItem.withLength(lengthUs: Long): TimelineItem = when (this) 
  * trim is only how long it shows, so it stays 0-based and never goes negative.
  */
 private fun TimelineItem.trimmedFromStart(deltaUs: Long): TimelineItem = when (this) {
-    is MediaClip -> if (source.kind == MediaKind.IMAGE) copy(trimInUs = 0, trimOutUs = durationUs - deltaUs)
-    else withSourceSpan(sourceSpanUs - SpeedCatalog.sourceSpanOf(deltaUs, SpeedCatalog.speedOf(this)), keepStartOfSpan = reversed)
+    is MediaClip -> if (source.kind == MediaKind.IMAGE) copy(trimInUs = 0, trimOutUs = durationUs - deltaUs) else trimmedFromStartBy(deltaUs)
     is AudioClip -> copy(trimInUs = (trimInUs + effects.sourceSpanOf(deltaUs)).coerceAtLeast(0))
     is TextItem -> copy(durationUs = durationUs - deltaUs)
     is StickerItem -> copy(durationUs = durationUs - deltaUs)
     is EffectItem -> copy(durationUs = durationUs - deltaUs)
+}
+
+// A video clip cut (or extended) to [lengthUs] of timeline time, keeping its start. A curve decides how much of the picture that is (an extension holds the speed of
+// the end it grows from) and is laid over the new picture so every kept place keeps its speed.
+private fun MediaClip.cutToLength(lengthUs: Long): MediaClip {
+    val curve = SpeedCatalog.curveOf(this) ?: return withSourceSpan(SpeedCatalog.sourceSpanOf(lengthUs, SpeedCatalog.speedOf(this)), keepStartOfSpan = !reversed)
+    val keptUs = sourceSpanUs + retime.pictureChangeAtEnd(lengthUs - durationUs, edgeSpeed(atEnd = true))
+    return withSourceSpan(keptUs, keepStartOfSpan = !reversed).copy(speedCurve = SpeedCatalog.rebasedCurve(curve, sourceSpanUs, 0, keptUs.coerceAtLeast(0)))
+}
+
+// A video clip with [deltaUs] of timeline time taken off its start (negative: put back), keeping its end in the source.
+private fun MediaClip.trimmedFromStartBy(deltaUs: Long): MediaClip {
+    val curve = SpeedCatalog.curveOf(this) ?: return withSourceSpan(sourceSpanUs - SpeedCatalog.sourceSpanOf(deltaUs, SpeedCatalog.speedOf(this)), keepStartOfSpan = reversed)
+    val removedUs = retime.pictureTakenFromStart(deltaUs, edgeSpeed(atEnd = false))
+    val keptUs = (sourceSpanUs - removedUs).coerceAtLeast(0)
+    return withSourceSpan(keptUs, keepStartOfSpan = reversed).copy(speedCurve = SpeedCatalog.rebasedCurve(curve, sourceSpanUs, removedUs, keptUs))
 }
 
 // The clip with its trimmed source [spanUs] long, one end of the trim kept: the trim-in while it plays forward, the trim-out when reversed, because the end

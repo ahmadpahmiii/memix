@@ -81,32 +81,36 @@ internal object TransitionPlanner {
 
     // Before the cut the beneath layer shows the incoming clip: the footage before its trim, else its first frame held (a mix when there is only some).
     private fun leadOf(next: MediaClip, visual: VisualClip, half: Long, window: TransitionWindow): List<PartnerSegment> {
-        val still = visual.asPartner()
+        val edgeSpeed = visual.edgeSpeed(atEnd = false)
+        val still = visual.asPartner(edgeSpeed)
         if (next.source.kind == MediaKind.IMAGE) return listOf(PartnerClip(still.copy(trimInUs = 0, trimOutUs = half), window))
         // A reversed clip has no spare footage on a side of the cut: its file isn't played backward there, so its edge frame is held instead (P4-10).
-        val (spareSourceUs, spareUs) = if (next.reversed) 0L to 0L else spareOf(next.trimInUs, half, visual.speed)
+        val (spareSourceUs, spareUs) = if (next.reversed) 0L to 0L else spareOf(next.trimInUs, half, edgeSpeed)
         return buildList {
-            if (half - spareUs > 0) add(PartnerHold(still.copy(speed = 1f), if (next.reversed) maxOf(next.trimInUs, next.trimOutUs - FRAME_US) else next.trimInUs - spareSourceUs, half - spareUs, window))
+            if (half - spareUs > 0) add(PartnerHold(still.copy(speed = 1f, speedCurve = null), if (next.reversed) maxOf(next.trimInUs, next.trimOutUs - FRAME_US) else next.trimInUs - spareSourceUs, half - spareUs, window))
             if (spareUs > 0) add(PartnerClip(still.copy(trimInUs = next.trimInUs - spareSourceUs, trimOutUs = next.trimInUs), window))
         }
     }
 
     // After the cut it shows the outgoing clip: the footage after its trim, else its last frame held.
     private fun tailOf(clip: MediaClip, visual: VisualClip, half: Long, window: TransitionWindow): List<PartnerSegment> {
-        val still = visual.asPartner()
+        val edgeSpeed = visual.edgeSpeed(atEnd = true)
+        val still = visual.asPartner(edgeSpeed)
         if (clip.source.kind == MediaKind.IMAGE) return listOf(PartnerClip(still.copy(trimInUs = 0, trimOutUs = half), window))
         val sourceLength = clip.source.durationUs ?: clip.trimOutUs
-        val (spareSourceUs, spareUs) = if (clip.reversed) 0L to 0L else spareOf(sourceLength - clip.trimOutUs, half, visual.speed)
+        val (spareSourceUs, spareUs) = if (clip.reversed) 0L to 0L else spareOf(sourceLength - clip.trimOutUs, half, edgeSpeed)
         return buildList {
             if (spareUs > 0) add(PartnerClip(still.copy(trimInUs = clip.trimOutUs, trimOutUs = clip.trimOutUs + spareSourceUs), window))
-            if (half - spareUs > 0) add(PartnerHold(still.copy(speed = 1f), if (clip.reversed) clip.trimInUs else (clip.trimOutUs + spareSourceUs - FRAME_US).coerceAtLeast(clip.trimInUs), half - spareUs, window))
+            if (half - spareUs > 0) add(PartnerHold(still.copy(speed = 1f, speedCurve = null), if (clip.reversed) clip.trimInUs else (clip.trimOutUs + spareSourceUs - FRAME_US).coerceAtLeast(clip.trimInUs), half - spareUs, window))
         }
     }
 
     // The partner plays no sound and carries no transition windows of its own (its effect gets the piece's window). A main clip's keyframes only
     // carry its volume until P4-16 draws its framing, and the partner is silent, so dropping them changes no picture today.
     // TODO(P4-16): fold the held edge's keyframed look into a static one (outgoing: the look at the clip's end, incoming: at its start), so A' and B' don't pop at the cut.
-    private fun VisualClip.asPartner(): VisualClip = copy(playsOwnAudio = false, keyframes = emptyList(), transitions = emptyList(), reversed = false)
+    // A curved clip's spare footage lies outside its curve, so it plays at the speed of the end it continues (P4-09b).
+    private fun VisualClip.asPartner(edgeSpeed: Float): VisualClip =
+        copy(playsOwnAudio = false, keyframes = emptyList(), transitions = emptyList(), reversed = false, speed = edgeSpeed, speedCurve = null)
 
     // The pieces of each window in time order, with a gap before each and one after the last up to the end of the video.
     private fun layerSegments(pieces: List<Pair<Long, List<PartnerSegment>>>, durationUs: Long): List<PartnerSegment> = buildList {

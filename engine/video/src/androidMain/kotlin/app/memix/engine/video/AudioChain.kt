@@ -12,12 +12,15 @@ import app.memix.core.model.project.AudioEffectStage
 import app.memix.core.model.project.AudioEffects
 import app.memix.core.model.project.AudioEffectsCatalog
 import app.memix.core.model.project.Keyframe
+import app.memix.core.model.project.Retime
+import app.memix.core.model.project.SpeedSegments
 import app.memix.core.model.project.VoiceRecipe
 import app.memix.core.model.project.VoiceRecipes
 import app.memix.engine.video.audio.DistortionProcessor
 import app.memix.engine.video.audio.EchoProcessor
 import app.memix.engine.video.audio.FilterProcessor
 import app.memix.engine.video.audio.GainSource
+import app.memix.engine.video.audio.JoinSmootherProcessor
 import app.memix.engine.video.audio.KeyframedGainProcessor
 import app.memix.engine.video.audio.PeakLimiterProcessor
 import app.memix.engine.video.audio.RingModulationProcessor
@@ -62,6 +65,13 @@ internal object AudioChain {
             AudioEffectStage.LIMITER -> listOfNotNull(limiter(effects, liveBass))
         }
     }
+
+    /**
+     * The stage that follows Media3's speed change on a clip with a speed curve (P4-09b): it dips the level around each join of the curve's pieces so the restarts
+     * of the time stretch don't click. Empty for a constant speed. It must run before the volume stages, which count their time after the speed change.
+     */
+    fun curveSmoothing(retime: Retime): List<AudioProcessor> =
+        if (retime is SpeedSegments) listOf(JoinSmootherProcessor(SegmentedSpeed(retime))) else emptyList()
 
     /**
      * The committed volume, then the preview's live gain if it has one. A 0% item's silence comes from its live gain alone,

@@ -11,6 +11,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import app.memix.core.model.project.SpeedCatalog
+import app.memix.core.model.project.pictureChangeAtEnd
+import app.memix.core.model.project.pictureTakenFromStart
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
@@ -92,8 +94,12 @@ internal class TrimDrag(
         else -> if (edge == TrimEdge.END) item.trimOutUs + sourceDelta(edgeUs - item.endUs) else item.trimOutUs
     }
 
-    // The handles move in timeline time; the source range moves by the clip's speed times that (spec P4-09 → Trim).
-    private fun sourceDelta(timelineDeltaUs: Long): Long = SpeedCatalog.sourceSpanOf(timelineDeltaUs, item.speed)
+    // The handles move in timeline time; the source range moves by the clip's speed times that (spec P4-09 → Trim). A speed curve says how much picture a stretch
+    // of timeline holds, at its start or at its end (P4-09b): the same rule the trim edit makes at release.
+    private fun sourceDelta(timelineDeltaUs: Long): Long {
+        val retime = item.retime ?: return SpeedCatalog.sourceSpanOf(timelineDeltaUs, item.speed)
+        return if (edge == TrimEdge.START) retime.pictureTakenFromStart(timelineDeltaUs, item.edgeSpeed(atEnd = false)) else retime.pictureChangeAtEnd(timelineDeltaUs, item.edgeSpeed(atEnd = true))
+    }
 
     /**
      * Moves the edge to the time under [fingerTimeUs] (already corrected by [grabOffsetPx]), clamped to [range], then

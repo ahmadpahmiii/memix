@@ -28,6 +28,8 @@ import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.ProjectType
+import app.memix.core.model.project.SpeedPoint
+import app.memix.core.model.project.SpeedPreset
 import app.memix.core.model.project.SpeedSound
 import app.memix.core.model.project.StickerItem
 import app.memix.core.model.project.TextItem
@@ -121,6 +123,7 @@ internal class EditorCheckProjects : KoinComponent {
         REVERSE_LONG -> reverseLong()
         SPEED_PLAIN -> speedPlain()
         SPEED_OVERLAY -> speedOverlay()
+        SPEED_CURVE_CHECK -> speedCurveCheck()
         else -> null
     }
 
@@ -541,6 +544,19 @@ internal class EditorCheckProjects : KoinComponent {
     // The whole clip at 1x: the checker sets the speed by hand (tiles, slider, Sound), exports, and compares the length and the tone.
     private fun speedPlain(): Project = project(SPEED_PLAIN, mainClips = listOf(MediaClip("speed-plain", startUs = 0, source = speedClip, trimInUs = 0, trimOutUs = 10_000_000)))
 
+    /**
+     * The P4-09b speed curve scene (spec docs/ux/specs/P4-09-speed.md → Curve; steps in docs/qa/phase-4/engineer-hand-checks.md → P4-09b), from the same `speed-check.mp4`: seconds 0 to 4
+     * with the Bullet preset, 4 to 8 with Pulse and 8 to 10 with a custom four-point curve (0.5x, 3x, 0.3x, 2x), so one export reads three curves and the audio's level steps (every second
+     * of the source) show where each piece of each curve lands. The clips lie back to back at the lengths the curves give them.
+     */
+    private fun speedCurveCheck(): Project {
+        val bullet = MediaClip("curve-a", startUs = 0, source = speedClip, trimInUs = 0, trimOutUs = 4_000_000, speedCurve = SpeedPreset.BULLET.points)
+        val pulse = MediaClip("curve-b", startUs = bullet.durationUs, source = speedClip, trimInUs = 4_000_000, trimOutUs = 8_000_000, speedCurve = SpeedPreset.PULSE.points)
+        val custom = listOf(SpeedPoint(0f, 0.5f), SpeedPoint(0.3f, 3f), SpeedPoint(0.7f, 0.3f), SpeedPoint(1f, 2f))
+        val last = MediaClip("curve-c", startUs = pulse.startUs + pulse.durationUs, source = speedClip, trimInUs = 8_000_000, trimOutUs = 10_000_000, speedCurve = custom)
+        return project(SPEED_CURVE_CHECK, mainClips = listOf(bullet, pulse, last))
+    }
+
     // The main clip at 1x and a half-size overlay of the same file at 2x, starting at 1 s: the overlay lane rule (slow it into the next one) and the video overlay's Speed tool.
     private fun speedOverlay(): Project = project(
         SPEED_OVERLAY,
@@ -684,11 +700,12 @@ internal class EditorCheckProjects : KoinComponent {
         const val REVERSE_LONG = "reverse-long"
         const val SPEED_PLAIN = "speed-plain"
         const val SPEED_OVERLAY = "speed-overlay"
+        const val SPEED_CURVE_CHECK = "speed-curve-check"
         private val FILTER_SCENES = setOf(FILTERS_CHECK, FILTERS_MIXED)
         private val NAMES = listOf(
             EXPORT_CHECK, PREVIEW_CHECK, PREVIEW_ERROR, MISSING_MEDIA, EMPTY, TIMELINE_CHECK, TIMELINE_TRACKS, HOUR_LONG, SOUND_SYNC, TEXT_CHECK,
             TEXT_SHADOW_CHECK, CANVAS_CHECK, CANVAS_IMAGE_CHECK, OVERLAY_CHECK, OVERLAY_PERF, KEYFRAME_CHECK, GREENSCREEN_CHECK, GREENSCREEN_MAIN, MASK_CHECK, MASK_MAIN, FILTERS_CHECK, FILTERS_MIXED, EFFECTS_CHECK, STACK_TWO, STACK_TWO_REVERSE,
-            TRANSITIONS_CHECK, TRANSITIONS_HOLD, TRANSITIONS_PHOTOS, TRANSITIONS_SET, SPEED_CHECK, SPEED_PLAIN, SPEED_OVERLAY, REVERSE_CHECK, REVERSE_PLAIN, REVERSE_LONG,
+            TRANSITIONS_CHECK, TRANSITIONS_HOLD, TRANSITIONS_PHOTOS, TRANSITIONS_SET, SPEED_CHECK, SPEED_PLAIN, SPEED_OVERLAY, SPEED_CURVE_CHECK, REVERSE_CHECK, REVERSE_PLAIN, REVERSE_LONG,
         ) + PhotoCheckProjects.NAMES
         private const val SOUND_SYNC_PHOTOS = 4
         private const val TIMELINE_CHECK_CLIPS = 20

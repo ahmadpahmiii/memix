@@ -440,7 +440,7 @@ internal class TimelinePainter(
             val firstTile = max(0, floor(-left / tilePx).toInt())
             val lastTile = min(ceil((right - left) / tilePx).toInt() - 1, floor((size.width - left) / tilePx).toInt())
             for (tileIndex in firstTile..lastTile) {
-                val timeUs = if (item.isPhoto) 0L else tileSourceTimeUs(trimInUs, trimOutUs, tileIndex, tileDurationUs, item.speed, item.reversed)
+                val timeUs = if (item.isPhoto) 0L else tileSourceTimeUs(trimInUs, trimOutUs, tileIndex, tileDurationUs, item.speed, item.reversed, item.retime)
                 val tile = thumbnails.tileAt(media, timeUs) ?: continue
                 val x = left + tileIndex * tilePx
                 val alpha = if (tile.timeUs == timeUs) fadeInAlpha(tile) else 1f
@@ -713,13 +713,14 @@ internal class TimelinePainter(
     /**
      * The retime chip (spec P4-09 → The retime chip, P4-10): the speed ("2×", "0.5×") in `text` on `scrim` at the clip's bottom-left, `space-1` inside, on every clip
      * that plays at another speed, selected or not, with the `reverse` icon first when it plays backward; a frozen frame wears the `freeze` icon alone. Only on a clip
-     * 56 dp wide or more, since the duration badge takes the top-left and the keyframe badge the top-right. A cue, not a control. A curve's icon joins with P4-09b.
+     * 56 dp wide or more, since the duration badge takes the top-left and the keyframe badge the top-right. A cue, not a control. A clip with a speed curve wears the `speed` icon alone, after the reverse icon.
      */
     private fun DrawScope.drawRetimeChip(row: LaneRow, item: ItemUi, left: Float, right: Float) {
-        val hasSpeed = item.speed != 1f
-        if (!hasSpeed && !item.reversed && !item.frozen || right - left < retimeMinClipWidthPx) return
+        val hasCurve = item.retime != null
+        val hasSpeed = item.speed != 1f && !hasCurve
+        if (!hasSpeed && !hasCurve && !item.reversed && !item.frozen || right - left < retimeMinClipWidthPx) return
         val label = if (hasSpeed) retimeLabels.getOrPut(item.speed) { textMeasurer.measure(speedText(item.speed) + SPEED_SIGN, rulerStyle, softWrap = false, maxLines = 1) } else null
-        val icons = listOfNotNull(retimeIcons.reverse.takeIf { item.reversed }, retimeIcons.freeze.takeIf { item.frozen })
+        val icons = listOfNotNull(retimeIcons.reverse.takeIf { item.reversed }, retimeIcons.speed.takeIf { hasCurve }, retimeIcons.freeze.takeIf { item.frozen })
         val contentWidth = icons.size * (retimeIconPx + badgeInsetPx) + (label?.size?.width ?: 0) - if (label == null && icons.isNotEmpty()) badgeInsetPx else 0f
         val height = max(label?.size?.height?.toFloat() ?: 0f, retimeIconPx)
         val chipWidth = contentWidth + 2 * badgeInsetPx
@@ -787,9 +788,9 @@ internal class TimelinePainter(
     }
 }
 
-/** The painters of the retime chip's icons (P4-10). */
+/** The painters of the retime chip's icons (P4-10; the speed dial is a curve's, P4-09b). */
 @Stable
-internal class RetimeIcons(val reverse: Painter, val freeze: Painter)
+internal class RetimeIcons(val reverse: Painter, val freeze: Painter, val speed: Painter)
 
 /** Well above what fits on one screen, so scrolling never re-measures, yet a long project's labels aren't all kept. */
 private const val MAX_CACHED_RULER_LABELS = 64

@@ -341,6 +341,10 @@ import memix.feature.video_editor.generated.resources.edit_speed_sound
 import memix.feature.video_editor.generated.resources.explain_detach_speed
 import memix.feature.video_editor.generated.resources.speed_moved_lane_toast
 import memix.feature.video_editor.generated.resources.speed_nothing_to_reset
+import memix.feature.video_editor.generated.resources.explain_speed_points_max
+import memix.feature.video_editor.generated.resources.explain_speed_too_long
+import memix.feature.video_editor.generated.resources.speed_point_end
+import memix.feature.video_editor.generated.resources.edit_speed_curve
 import memix.feature.video_editor.generated.resources.explain_transition_last
 import memix.feature.video_editor.generated.resources.explain_transition_short
 import memix.feature.video_editor.generated.resources.edit_transition_duration
@@ -1273,6 +1277,7 @@ private fun editName(edit: VideoEdit): String = stringResource(
         VideoEdit.CLIP_SPEED -> Res.string.edit_speed
         VideoEdit.CLIP_SPEED_SOUND -> Res.string.edit_speed_sound
         VideoEdit.CLIP_SPEED_RESET -> Res.string.edit_speed_reset
+        VideoEdit.CLIP_SPEED_CURVE -> Res.string.edit_speed_curve
         VideoEdit.CLIP_REVERSE -> Res.string.edit_reverse
         VideoEdit.FREEZE_FRAME -> Res.string.edit_freeze_frame
         VideoEdit.CANVAS_RATIO -> UiRes.string.edit_canvas_ratio
@@ -1305,6 +1310,9 @@ private fun explanationText(explanation: Explanation): String = stringResource(
         Explanation.NO_SOUND -> Res.string.explain_no_sound
         Explanation.DETACH_SPEED -> Res.string.explain_detach_speed
         Explanation.SPEED_NOTHING_TO_RESET -> Res.string.speed_nothing_to_reset
+        Explanation.SPEED_POINTS_MAX -> Res.string.explain_speed_points_max
+        Explanation.SPEED_POINT_END -> Res.string.speed_point_end
+        Explanation.SPEED_TOO_LONG -> Res.string.explain_speed_too_long
         Explanation.DETACH_REVERSED -> Res.string.explain_detach_reversed
         Explanation.REVERSE_LONG -> Res.string.explain_reverse_long
         Explanation.REVERSE_NO_SPACE -> Res.string.explain_reverse_space

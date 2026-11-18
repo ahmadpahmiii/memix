@@ -47,7 +47,7 @@ internal fun CompositionPlan.withReversedClips(pieceOf: (ReversalKey) -> Reverse
         if (this !is VisualClip || !reversed) return this
         return when (val piece = pieceOf(ReversalKey(source, trimInUs, trimOutUs))) {
             is ReversedPiece.Copy -> copy(source = piece.copy, trimInUs = piece.copyEndUs - trimOutUs, trimOutUs = piece.copyEndUs - trimInUs, reversed = false)
-            is ReversedPiece.Still -> copy(source = piece.picture, trimInUs = 0, trimOutUs = durationUs, speed = 1f, playsOwnAudio = false, reversed = false)
+            is ReversedPiece.Still -> copy(source = piece.picture, trimInUs = 0, trimOutUs = durationUs, speed = 1f, speedCurve = null, playsOwnAudio = false, reversed = false)
             null -> Gap(durationUs)
         }
     }
@@ -55,7 +55,7 @@ internal fun CompositionPlan.withReversedClips(pieceOf: (ReversalKey) -> Reverse
         if (this !is OverlayClip || !reversed) return this
         return when (val piece = pieceOf(ReversalKey(source, trimInUs, trimOutUs))) {
             is ReversedPiece.Copy -> copy(source = piece.copy, trimInUs = piece.copyEndUs - trimOutUs, trimOutUs = piece.copyEndUs - trimInUs, reversed = false)
-            is ReversedPiece.Still -> copy(source = piece.picture, trimInUs = 0, trimOutUs = durationUs, speed = 1f, playsOwnAudio = false, reversed = false)
+            is ReversedPiece.Still -> copy(source = piece.picture, trimInUs = 0, trimOutUs = durationUs, speed = 1f, speedCurve = null, playsOwnAudio = false, reversed = false)
             null -> Gap(durationUs)
         }
     }

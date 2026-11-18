@@ -529,8 +529,9 @@ private fun rememberTimelinePainter(textMeasurer: TextMeasurer): TimelinePainter
     val effectNames = effectNameTexts()
     val reverseIcon = painterResource(MemixIcons.Reverse)
     val freezeIcon = painterResource(MemixIcons.Freeze)
-    return remember(textMeasurer, labelStyle, rulerStyle, originalAudio, voiceover, unnamedMySound, effectNames, missingFile, languageCode, reverseIcon, freezeIcon, density) {
-        TimelinePainter(textMeasurer, labelStyle, rulerStyle, originalAudio, voiceover, unnamedMySound, effectNames, missingFile, languageCode, RetimeIcons(reverseIcon, freezeIcon), density)
+    val speedIcon = painterResource(MemixIcons.Speed)
+    return remember(textMeasurer, labelStyle, rulerStyle, originalAudio, voiceover, unnamedMySound, effectNames, missingFile, languageCode, reverseIcon, freezeIcon, speedIcon, density) {
+        TimelinePainter(textMeasurer, labelStyle, rulerStyle, originalAudio, voiceover, unnamedMySound, effectNames, missingFile, languageCode, RetimeIcons(reverseIcon, freezeIcon, speedIcon), density)
     }
 }
 

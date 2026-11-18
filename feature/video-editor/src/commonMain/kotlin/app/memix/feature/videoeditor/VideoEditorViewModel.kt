@@ -53,6 +53,8 @@ import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.RatioTerms
 import app.memix.core.model.project.SpeedCatalog
+import app.memix.core.model.project.pictureChangeAtEnd
+import app.memix.core.model.project.pictureTakenFromStart
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TrackKind
 import app.memix.core.model.project.size
@@ -361,6 +363,9 @@ class VideoEditorViewModel(
             VideoEditorIntent.SpeedReleased -> speed.released()
             is VideoEditorIntent.SpeedSoundSelected -> speed.selectSound(intent.keep)
             VideoEditorIntent.ResetSpeed -> speed.reset()
+            is VideoEditorIntent.SpeedTabSelected -> speed.selectTab(intent.tab)
+            is VideoEditorIntent.SpeedPresetPicked -> speed.pickPreset(intent.preset)
+            is VideoEditorIntent.SpeedCurveChanged -> speed.editCurve(intent.action)
             VideoEditorIntent.TransitionTool -> transitions.open()
             VideoEditorIntent.CloseTransition -> transitions.closePanel()
             is VideoEditorIntent.TransitionPicked -> transitions.pick(intent.id)
@@ -944,17 +949,19 @@ class VideoEditorViewModel(
         val sourceUs = when {
             clip.source.kind == MediaKind.IMAGE -> 0L
             // A reversed clip's start is the end of its source range, so its handles move the other end (P4-10).
-            clip.reversed && trimmedEdge == TrimEdge.START -> clip.trimOutUs - sourceSpanOf(edgeUs - clip.startUs, clip) - FRAME_US
-            clip.reversed -> clip.trimInUs - sourceSpanOf(edgeUs - (clip.startUs + clip.durationUs), clip)
-            trimmedEdge == TrimEdge.START -> clip.trimInUs + sourceSpanOf(edgeUs - clip.startUs, clip)
+            clip.reversed && trimmedEdge == TrimEdge.START -> clip.trimOutUs - pictureTakenAtStart(edgeUs - clip.startUs, clip) - FRAME_US
+            clip.reversed -> clip.trimInUs - pictureChangedAtEnd(edgeUs - (clip.startUs + clip.durationUs), clip)
+            trimmedEdge == TrimEdge.START -> clip.trimInUs + pictureTakenAtStart(edgeUs - clip.startUs, clip)
             // The new last frame starts one frame before the new end.
-            else -> clip.trimOutUs + sourceSpanOf(edgeUs - (clip.startUs + clip.durationUs), clip) - FRAME_US
+            else -> clip.trimOutUs + pictureChangedAtEnd(edgeUs - (clip.startUs + clip.durationUs), clip) - FRAME_US
         }
         preview?.showTrimFrame(clip, sourceUs.coerceAtLeast(0))
     }
 
-    // The handles move in timeline time; the source moves by the clip's speed times that (spec P4-09 → Trim).
-    private fun sourceSpanOf(timelineDeltaUs: Long, clip: MediaClip): Long = SpeedCatalog.sourceSpanOf(timelineDeltaUs, SpeedCatalog.speedOf(clip))
+    // The handles move in timeline time; the source moves by the clip's speed times that, or by what its curve says (spec P4-09 → Trim).
+    private fun pictureTakenAtStart(timelineDeltaUs: Long, clip: MediaClip): Long = clip.retime.pictureTakenFromStart(timelineDeltaUs, SpeedCatalog.edgeSpeedOf(SpeedCatalog.speedOf(clip), SpeedCatalog.curveOf(clip), atEnd = false))
+
+    private fun pictureChangedAtEnd(timelineDeltaUs: Long, clip: MediaClip): Long = clip.retime.pictureChangeAtEnd(timelineDeltaUs, SpeedCatalog.edgeSpeedOf(SpeedCatalog.speedOf(clip), SpeedCatalog.curveOf(clip), atEnd = true))
 
     private fun endTrim(itemId: String, edge: TrimEdge, edgeUs: Long, playheadUs: Long) {
         val trimmed = commit(VideoEdit.TRIM) { it.trimItem(itemId, edge, edgeUs) }

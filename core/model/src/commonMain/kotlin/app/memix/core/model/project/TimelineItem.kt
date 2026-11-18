@@ -71,7 +71,10 @@ data class MediaClip(
      * The clip's length on the timeline is its trimmed span divided by it; the trim points stay in source time.
      */
     val speed: Float = 1f,
-    /** The speed over the clip as points (P4-09b, saved from schema 21; nothing writes or plays it before that ticket). When set it wins over [speed]. */
+    /**
+     * The speed over the clip as 2 to 8 points (P4-09b, saved from schema 21): where in the clip's own picture, in playing order, and how fast. When set it
+     * wins over [speed]; [SpeedCatalog.retimeOf] is the one reader. Edits keep the points in step with the trim (split and trim re-base them).
+     */
     val speedCurve: List<SpeedPoint>? = null,
     /** Whether the clip's own sound follows its speed or is off (P4-09a). Independent of [volume], [audioDetached] and the track's mute: the sound plays only if all allow it. */
     val soundMode: SpeedSound = SpeedSound.KEEP,
@@ -88,12 +91,15 @@ data class MediaClip(
      * place that turns a place in the clip into a place in its file, so a reversed clip is handled the same everywhere (thumbnails, picks, a freeze frame).
      */
     fun sourceTimeAt(offsetUs: Long): Long {
-        val span = SpeedCatalog.sourceSpanOf(offsetUs.coerceAtLeast(0), SpeedCatalog.speedOf(this)).coerceAtMost(sourceSpanUs)
+        val span = retime.sourceOf(offsetUs)
         return if (reversed) trimOutUs - span else trimInUs + span
     }
 
-    // Derived, not saved, so it can never disagree with the trim points and the speed. A curve (P4-09b) will integrate here.
-    override val durationUs: Long get() = SpeedCatalog.timelineLengthOf(sourceSpanUs, SpeedCatalog.speedOf(this))
+    /** How the trimmed picture maps to the timeline (constant speed or curve), built once per clip value. Not saved. */
+    val retime: Retime by lazy { SpeedCatalog.retimeOf(this) }
+
+    // Derived, not saved, so it can never disagree with the trim points, the speed and the curve.
+    override val durationUs: Long get() = retime.timelineLengthUs
 }
 
 /** How a clip whose shape differs from the canvas fills it. */

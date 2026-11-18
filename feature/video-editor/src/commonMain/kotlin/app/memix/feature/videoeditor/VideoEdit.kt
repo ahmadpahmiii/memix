@@ -72,6 +72,7 @@ enum class VideoEdit(val tool: EditorTool) {
     CLIP_SPEED(EditorTool.SPEED),
     CLIP_SPEED_SOUND(EditorTool.SPEED_SOUND),
     CLIP_SPEED_RESET(EditorTool.SPEED_RESET),
+    CLIP_SPEED_CURVE(EditorTool.SPEED_CURVE),
     CLIP_REVERSE(EditorTool.REVERSE),
     FREEZE_FRAME(EditorTool.FREEZE_FRAME),
     KEYFRAME_ADD(EditorTool.KEYFRAME_ADD),

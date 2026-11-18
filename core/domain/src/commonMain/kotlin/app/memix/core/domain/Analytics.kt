@@ -317,6 +317,7 @@ enum class EditorTool(val eventValue: String?) {
     SPEED("speed"),
     SPEED_SOUND("speed_sound"),
     SPEED_RESET("speed_reset"),
+    SPEED_CURVE("speed_curve"),
 
     /**
      * P4-10: Reverse and Freeze frame (spec docs/ux/specs/P4-10-reverse-and-freeze.md → Analytics), once per committed step, `editor: "video"`; a tap that only

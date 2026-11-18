@@ -19,3 +19,13 @@ Reference numbers and frames for the constant speed of main clips and video over
 
 Pass bars (spec P4-09 -> Measured): video length = source / speed within one frame (33 ms); audio length equals video length within 23 ms; Keep keeps the tone at 1 kHz within 1% and the level within 1 dB of the source; Mute is under -80 dBFS RMS over the clip's span.
 The level steps at source seconds 1, 2, 3 ... so at speed s they fall at output seconds 1/s, 2/s, 3/s ...
+
+## Curves (P4-09b)
+
+Kept minimal: no new frames are stored. The expected values come from the formula and the JVM harness, and the device export is read against them.
+
+- Scene: `speed-curve-check` (Bullet on source 0 to 4 s, Pulse on 4 to 8 s, a custom four-point curve on 8 to 10 s); the source is the same `speed-check.mp4`.
+- Expected lengths (the plan's pieces, which Media3 sums to within 1 µs): Bullet over 4 s of source 6.633 s; Pulse over 4 s 4.032 s; for a 10 s source, Ramp up and Ramp down 9.107 s, Bullet 16.58 s, Flash 8.99 s, Pulse 10.08 s, Slam 25.83 s.
+- Expected burned-in time at output time `t`: the source time `s` where the integral of 1 / speed(x) from 0 to `s` equals `t` (speed interpolated in log speed with a cosine ease between the points, `SpeedCatalog.curveSpeedAt`), within one source frame (33 ms). The played pieces are at most 29.7 ms of source away from that on a 10 s clip.
+- The tone's level steps every source second land at the output times the same integral gives, within 33 ms (JVM harness: within 16 ms).
+- Audio at the joins: a step of the waveform over a quarter of full scale within 30 ms of a join is a failure (Media3 alone makes them; `JoinSmootherProcessor` removes them).

@@ -9,6 +9,7 @@ import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.PixelSize
 import app.memix.core.model.project.Project
 import app.memix.core.model.project.SpeedCatalog
+import app.memix.core.model.project.SpeedPoint
 import app.memix.core.model.project.SpeedSound
 import app.memix.core.model.project.TextItem
 import app.memix.core.model.project.TimelineItem
@@ -112,6 +113,7 @@ internal object CompositionPlanner {
         mask = mask,
         look = look,
         speed = SpeedCatalog.speedOf(this),
+        speedCurve = SpeedCatalog.curveOf(this),
         reversed = playsBackward(),
     )
 
@@ -214,6 +216,8 @@ internal object CompositionPlanner {
         val isPhoto = source.kind == MediaKind.IMAGE
         // The cuts are timeline time; the clip's speed turns them into the source span that plays (a photo has none).
         val speed = SpeedCatalog.speedOf(this)
+        val curve = SpeedCatalog.curveOf(this)
+        if (curve != null) return cutCurvedTo(curve, headCutUs, lengthUs, cutStartUs, pixelSize, plays)
         // A reversed clip's start is the end of its source range, so a cut at its head takes source off the end and the kept part counts back from there (P4-10).
         val backward = playsBackward()
         val keptStartUs = if (backward) trimOutUs - SpeedCatalog.sourceSpanOf(headCutUs, speed) else trimInUs + SpeedCatalog.sourceSpanOf(headCutUs, speed)
@@ -231,6 +235,44 @@ internal object CompositionPlanner {
             reversed = backward,
         )
         return CutOverlay(clip, cutStartUs)
+    }
+
+    // A curved overlay cut by the video's start or end (P4-09b): the curve decides how much picture the cut keeps, and the kept part gets its own curve so every place
+    // keeps its speed. The picture counts in playing order, so a reversed clip's kept part counts down from its trim-out.
+    private fun MediaClip.cutCurvedTo(curve: List<SpeedPoint>, headCutUs: Long, lengthUs: Long, cutStartUs: Long, pixelSize: PixelSize, plays: Boolean): CutOverlay {
+        val pictureStartUs = retime.sourceOf(headCutUs)
+        val pictureEndUs = keptPictureEnd(curve, pictureStartUs, retime.sourceOf(headCutUs + lengthUs), lengthUs)
+        val backward = playsBackward()
+        val clip = OverlayClip(
+            id, source,
+            trimInUs = if (backward) trimOutUs - pictureEndUs else trimInUs + pictureStartUs,
+            trimOutUs = if (backward) trimOutUs - pictureStartUs else trimInUs + pictureEndUs,
+            pixelSize = pixelSize, transform = transform, opacity = opacity,
+            playsOwnAudio = plays,
+            volume = plannedVolume(),
+            keyframes = keyframes.shiftedBy(headCutUs),
+            chromaKey = chromaKey,
+            mask = mask,
+            look = look,
+            speed = SpeedCatalog.speedOf(this),
+            speedCurve = SpeedCatalog.rebasedCurve(curve, sourceSpanUs, pictureStartUs, pictureEndUs - pictureStartUs),
+            reversed = backward,
+        )
+        return CutOverlay(clip, cutStartUs)
+    }
+
+    // A cut re-eases the curve a little (a cosine ease cut in the middle is another shape), so the kept picture may play slightly longer than the room it was cut for,
+    // and a layer must never run past the video: the picture's end moves in until the kept part fits (a few steps of halving, a few ms at most).
+    private fun MediaClip.keptPictureEnd(curve: List<SpeedPoint>, startUs: Long, wantedEndUs: Long, roomUs: Long): Long {
+        fun lengthOf(endUs: Long) = SpeedCatalog.retimeOf(SpeedCatalog.speedOf(this), SpeedCatalog.rebasedCurve(curve, sourceSpanUs, startUs, endUs - startUs), endUs - startUs).timelineLengthUs
+        if (lengthOf(wantedEndUs) <= roomUs) return wantedEndUs
+        var fits = startUs
+        var tooLong = wantedEndUs
+        repeat(CUT_SEARCH_STEPS) {
+            val middle = (fits + tooLong) / 2
+            if (lengthOf(middle) <= roomUs) fits = middle else tooLong = middle
+        }
+        return fits
     }
 
     // The layer's clips back to back from time 0, a gap for each empty stretch and one after the last up to the end of the video.
@@ -371,4 +413,5 @@ internal object CompositionPlanner {
 
     /** Tails may open this many more lanes than the clips alone need (each lane is one more audio sequence in the composition). */
     private const val MAX_TAIL_LANES = 2
+    private const val CUT_SEARCH_STEPS = 24
 }

@@ -8,6 +8,7 @@ import app.memix.core.model.project.KeyframeCatalog
 import app.memix.core.model.project.MediaClip
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaRef
+import app.memix.core.model.project.Retime
 import app.memix.core.model.project.SpeedCatalog
 import app.memix.core.model.project.OverlayCatalog
 import app.memix.core.model.project.PixelSize
@@ -43,6 +44,8 @@ data class OverlayUi(
     val reversed: Boolean = false,
     /** The clip's keyframes (counted from its start); empty when it has none. The stage follows them under the playhead (P4-02b). */
     val keyframes: ImmutableList<Keyframe> = persistentListOf(),
+    /** The clip's speed curve as the pieces it plays (P4-09b), or null at a constant speed: it decides which frame shows when. */
+    val retime: Retime? = null,
 ) : GestureTarget {
     override val id: String get() = itemId
     override val scaleRange: ClosedFloatingPointRange<Float> get() = OverlayCatalog.SCALE_RANGE
@@ -68,7 +71,7 @@ data class OverlayUi(
     /** The source file's time of the frame shown at [timeUs]; 0 for a photo. */
     fun sourceTimeAt(timeUs: Long): Long {
         if (isPhoto) return 0L
-        val span = SpeedCatalog.sourceSpanOf((timeUs - startUs).coerceAtLeast(0), speed)
+        val span = retime?.sourceOf((timeUs - startUs).coerceAtLeast(0)) ?: SpeedCatalog.sourceSpanOf((timeUs - startUs).coerceAtLeast(0), speed)
         return if (reversed) (trimOutUs - span).coerceAtLeast(trimInUs) else trimInUs + span
     }
 }
@@ -89,7 +92,7 @@ internal fun Project.overlayUis(): ImmutableList<OverlayUi> {
         .mapNotNull { clip ->
             val box = overlayBoxAtScaleOne(clip, size)
             if (box.width <= 0f || box.height <= 0f) return@mapNotNull null
-            OverlayUi(clip.id, clip.startUs, clip.startUs + clip.durationUs, clip.transform, clip.opacity, box.width, box.height, clip.source, clip.trimInUs, SpeedCatalog.speedOf(clip), clip.trimOutUs, clip.reversed && clip.source.kind == MediaKind.VIDEO, clip.keyframes.toImmutableList())
+            OverlayUi(clip.id, clip.startUs, clip.startUs + clip.durationUs, clip.transform, clip.opacity, box.width, box.height, clip.source, clip.trimInUs, SpeedCatalog.speedOf(clip), clip.trimOutUs, clip.reversed && clip.source.kind == MediaKind.VIDEO, clip.keyframes.toImmutableList(), retime = clip.retime.takeIf { SpeedCatalog.curveOf(clip) != null })
         }
         .toImmutableList()
 }

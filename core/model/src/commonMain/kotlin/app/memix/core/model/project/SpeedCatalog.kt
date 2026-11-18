@@ -53,10 +53,57 @@ object SpeedCatalog {
     /** The slider's keyboard grid: 0.1 steps up to 2x, then 0.5 steps to 10x. */
     val GRID: List<Float> = (1..20).map { it / 10f } + (5..20).map { it / 2f }
 
+    /** A curve has 2 to 8 points (spec P4-09 → Curve) and is played in this many equal steps of the clip's picture. */
+    const val MIN_CURVE_POINTS = 2
+    const val MAX_CURVE_POINTS = 8
+    const val CURVE_STEPS = 60
+
+    /** How far apart (as a ratio) the steps of one played piece may be: 15%, so a piece is within 7% of the curve. */
+    const val SPEED_GROUP_RATIO = 1.15
+
+    /** A dragged point stops this far (a fraction of the picture) short of its neighbor, and the speed snaps to 1x within [SNAP_FRACTION] of the graph's height. */
+    const val POINT_GAP = 0.01f
+    const val SNAP_FRACTION = 0.03f
+
+    /** The Time stepper's step, a fraction of the picture (2%). */
+    const val TIME_STEP = 0.02f
+
     private const val DECIMALS_FACTOR = 100f
 
     /** The speed a clip really plays at: a photo and a freeze frame have none; a video's is kept to the slider's two decimals, so every place that uses it agrees. */
     fun speedOf(clip: MediaClip): Float = if (clip.source.kind == MediaKind.IMAGE || clip.freeze != null) NORMAL else cleanSpeed(clip.speed)
+
+    /**
+     * How [clip]'s trimmed picture maps to the timeline: the one place source time and timeline time are turned into each other. A curve wins over the
+     * constant speed; a curve that is not usable (a damaged draft) is ignored.
+     */
+    fun retimeOf(clip: MediaClip): Retime = retimeOf(speedOf(clip), curveOf(clip), clip.sourceSpanUs)
+
+    /** As [retimeOf] for a [speed] and an optional [curve] over a picture [spanUs] long (the engine's plan clips carry these instead of a [MediaClip]). */
+    fun retimeOf(speed: Float, curve: List<SpeedPoint>?, spanUs: Long): Retime {
+        val usable = usableCurve(curve)
+        return if (usable == null || spanUs <= 0) ConstantRetime(speed, spanUs) else segmentsOf(usable, spanUs)
+    }
+
+    /** The curve [clip] really plays: null for a photo, a freeze frame and a clip with no usable curve. */
+    fun curveOf(clip: MediaClip): List<SpeedPoint>? =
+        if (clip.source.kind == MediaKind.IMAGE || clip.freeze != null) null else usableCurve(clip.speedCurve)
+
+    /** The speed [curve] has at [fraction] (0 to 1) of the picture, for the graph and the point steppers. */
+    fun curveSpeedAt(curve: List<SpeedPoint>, fraction: Float): Float = app.memix.core.model.project.curveSpeedAt(curve, fraction)
+
+    /** [points] as the pieces the engines play over a picture [spanUs] long (the graph's length caption and the provider read the same pieces). */
+    fun segmentsOf(points: List<SpeedPoint>, spanUs: Long): SpeedSegments = app.memix.core.model.project.segmentsOf(points, spanUs)
+
+    /** The curve a cut or a split leaves for the part of the picture from [startOffsetUs] for [newSpanUs]; see [rebasedCurve]. */
+    fun rebasedCurve(curve: List<SpeedPoint>, oldSpanUs: Long, startOffsetUs: Long, newSpanUs: Long): List<SpeedPoint> =
+        app.memix.core.model.project.rebasedCurve(curve, oldSpanUs, startOffsetUs, newSpanUs)
+
+    /** The speed at the clip's first (or last, [atEnd]) frame in playing order: what a trim dragged outward holds, and what a transition's spare footage plays at. */
+    fun edgeSpeedOf(speed: Float, curve: List<SpeedPoint>?, atEnd: Boolean): Float {
+        val usable = usableCurve(curve) ?: return speed
+        return if (atEnd) usable.last().speed else usable.first().speed
+    }
 
     /** [speed] kept in range and rounded to two decimals (the slider's resolution). */
     fun cleanSpeed(speed: Float): Float = ((speed.coerceIn(MIN_SPEED, MAX_SPEED)) * DECIMALS_FACTOR).roundToInt() / DECIMALS_FACTOR

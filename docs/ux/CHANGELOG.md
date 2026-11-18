@@ -7,6 +7,7 @@ Design-system and token changes made in the repo. Items marked **sync to design 
 | Date | Change | Contrast / notes | Sync to design canvas |
 | --- | --- | --- | --- |
 | 2026-10-07 | v2 palette "neutral chrome, one blue" | All text ≥ 4.5:1 | Done |
+| 2026-11-18 | `speed.curve` (P4-09b review): `audioCrossfadeMs` removed (joins get a level dip, Media3 cannot crossfade); added `mergeNeighborsWithinRatio` 1.15, `audioJoin`, `graph` content constants, `maxLengthEditBehavior`. Spec P4-09-speed amended. No color change. | No contrast impact. | Sync to design canvas |
 | 2026-10-07 | Icons: Memix-drawn set replaces the proposed Lucide (owner's decision). Grammar: 24px grid, 2px flat-cap strokes, mitred joins, one solid core. | Icons always come with a visible or screen-reader label. | Sync to design canvas |
 | 2026-10-07 | Dials recorded: ENERGY 2 / RHYTHM 2 / MOTION 2. | | Sync to design canvas |
 | 2026-11-11 | New size tokens `icon-medium` (20px, `MemixSize.iconMedium`) and `sound-disc-size` (40px, `MemixSize.soundDiscSize`), for the Sounds screen (P3-02) and SoundRow, which already drew these two values as raw dp. No color change. | Sizes only, no contrast impact. | Sync to design canvas |

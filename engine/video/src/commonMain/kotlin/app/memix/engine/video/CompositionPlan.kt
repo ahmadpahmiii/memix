@@ -12,7 +12,9 @@ import app.memix.core.model.project.Keyframe
 import app.memix.core.model.project.MediaKind
 import app.memix.core.model.project.MediaRef
 import app.memix.core.model.project.PixelSize
+import app.memix.core.model.project.Retime
 import app.memix.core.model.project.SpeedCatalog
+import app.memix.core.model.project.SpeedPoint
 import app.memix.core.model.project.TrackKind
 import app.memix.core.model.project.Transform
 
@@ -219,13 +221,21 @@ internal data class VisualClip(
      * [playsOwnAudio] plays its sound at the same speed with the pitch kept.
      */
     val speed: Float = 1f,
+    /** The speed curve (P4-09b) over the picture from [trimInUs] to [trimOutUs] in playing order; wins over [speed]. Null is the constant speed. */
+    val speedCurve: List<SpeedPoint>? = null,
     /**
      * Plays [trimInUs] to [trimOutUs] from the last frame to the first, the sound too (P4-10). The engine swaps such a clip for a prepared reversed copy
      * ([withReversedClips]) before it builds the composition, so no builder ever plays one backward itself.
      */
     val reversed: Boolean = false,
 ) : MainVideoSegment {
-    override val durationUs: Long get() = SpeedCatalog.timelineLengthOf(trimOutUs - trimInUs, speed)
+    /** How the picture maps to the timeline (constant or curve), the same mapping the project's clip uses. */
+    val retime: Retime by lazy { SpeedCatalog.retimeOf(speed, speedCurve, trimOutUs - trimInUs) }
+
+    override val durationUs: Long get() = retime.timelineLengthUs
+
+    /** The speed at the clip's first or last ([atEnd]) frame, which footage beside the clip plays at. */
+    fun edgeSpeed(atEnd: Boolean): Float = SpeedCatalog.edgeSpeedOf(speed, speedCurve, atEnd)
 
     /** A photo: shown for [durationUs] instead of being trimmed. */
     val isStill: Boolean get() = source.kind == MediaKind.IMAGE
@@ -258,10 +268,15 @@ internal data class OverlayClip(
     val look: ClipLook = ClipLook.NONE,
     /** How fast the clip plays (P4-09a), as [VisualClip.speed]; 1 for a photo. */
     val speed: Float = 1f,
+    /** The speed curve (P4-09b), as [VisualClip.speedCurve]. */
+    val speedCurve: List<SpeedPoint>? = null,
     /** Plays backward (P4-10), as [VisualClip.reversed]. */
     val reversed: Boolean = false,
 ) : OverlaySegment {
-    override val durationUs: Long get() = SpeedCatalog.timelineLengthOf(trimOutUs - trimInUs, speed)
+    /** As [VisualClip.retime]. */
+    val retime: Retime by lazy { SpeedCatalog.retimeOf(speed, speedCurve, trimOutUs - trimInUs) }
+
+    override val durationUs: Long get() = retime.timelineLengthUs
 
     /** How the overlay looks [relativeUs] after it starts showing: the keyframes' look, or [transform] and [opacity]. */
     fun lookAt(relativeUs: Long): ItemLook =

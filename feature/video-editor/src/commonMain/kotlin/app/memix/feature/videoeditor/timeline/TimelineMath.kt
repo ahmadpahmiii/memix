@@ -1,6 +1,7 @@
 package app.memix.feature.videoeditor.timeline
 
 import kotlin.math.ceil
+import app.memix.core.model.project.Retime
 import app.memix.core.model.project.SpeedCatalog
 import kotlin.math.max
 import kotlin.math.min
@@ -119,14 +120,16 @@ internal fun widestRulerLabel(lengthUs: Long): String = if (lengthUs * 2 >= HOUR
  * the frame at its start, rounded to a whole power-of-two number of frames no longer than the tile, so a zoom that
  * changes the tiles a little asks for frames already in memory, and is clamped inside the clip. [tileDurationUs] is timeline time; [speed] turns it into source time; [reversed] counts back from the end.
  */
-internal fun tileSourceTimeUs(trimInUs: Long, trimOutUs: Long, tileIndex: Int, tileDurationUs: Long, speed: Float = 1f, reversed: Boolean = false): Long {
+internal fun tileSourceTimeUs(trimInUs: Long, trimOutUs: Long, tileIndex: Int, tileDurationUs: Long, speed: Float = 1f, reversed: Boolean = false, retime: Retime? = null): Long {
     val lastFrameUs = max(trimInUs, trimOutUs - FRAME_US)
     // A reversed clip shows its frames in playing order: the strip starts at the end of the range and counts back (P4-10).
     if (tileIndex == 0) return if (reversed) lastFrameUs else trimInUs
     // A tile lasts [tileDurationUs] on the timeline and covers that much times the clip's speed of the source (P4-09).
-    val sourceTileUs = SpeedCatalog.sourceSpanOf(tileDurationUs, speed)
+    // A speed curve (P4-09b) decides how much picture each tile covers.
+    val offsetUs = retime?.sourceOf(tileIndex * tileDurationUs) ?: (tileIndex * SpeedCatalog.sourceSpanOf(tileDurationUs, speed))
+    val sourceTileUs = retime?.let { it.sourceOf((tileIndex + 1) * tileDurationUs) - offsetUs }?.coerceAtLeast(1) ?: SpeedCatalog.sourceSpanOf(tileDurationUs, speed)
     val bucketUs = tileBucketUs(sourceTileUs)
-    val startUs = if (reversed) trimOutUs - tileIndex * sourceTileUs else trimInUs + tileIndex * sourceTileUs
+    val startUs = if (reversed) trimOutUs - offsetUs else trimInUs + offsetUs
     val roundedUs = (startUs + bucketUs / 2) / bucketUs * bucketUs
     return roundedUs.coerceIn(trimInUs, lastFrameUs)
 }

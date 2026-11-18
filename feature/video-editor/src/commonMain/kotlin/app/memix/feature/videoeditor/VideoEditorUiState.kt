@@ -19,6 +19,7 @@ import app.memix.core.model.catalog.LocalizedText
 import app.memix.core.domain.project.AdjustPart
 import app.memix.core.domain.project.EditPhotoTab
 import app.memix.core.domain.project.MaskStep
+import app.memix.core.model.project.SpeedPreset
 import app.memix.core.model.project.ChromaKey
 import app.memix.core.model.project.ClipMask
 import app.memix.core.model.project.MaskShape
@@ -595,6 +596,15 @@ enum class Explanation {
 
     /** Reset in the Speed panel with nothing set (P4-09). */
     SPEED_NOTHING_TO_RESET,
+
+    /** Add point at the curve's 8-point limit (P4-09b). */
+    SPEED_POINTS_MAX,
+
+    /** A speed, tile, preset or curve edit that would make the clip longer than 10 minutes (P4-09). */
+    SPEED_TOO_LONG,
+
+    /** Remove on the curve's first or last point (P4-09b). */
+    SPEED_POINT_END,
 
     /** Detach audio on a reversed clip: a sound clip has no direction (P4-10). */
     DETACH_REVERSED,
@@ -1193,6 +1203,15 @@ sealed interface VideoEditorIntent {
 
     /** Reset in the Speed panel. */
     data object ResetSpeed : VideoEditorIntent
+
+    /** The Normal or Curve tab of the Speed panel (P4-09b). Nothing is committed by looking. */
+    data class SpeedTabSelected(val tab: SpeedTab) : VideoEditorIntent
+
+    /** A preset tile of the Curve tab: its points on the clip, one step. */
+    data class SpeedPresetPicked(val preset: SpeedPreset) : VideoEditorIntent
+
+    /** A point, drag, tap, stepper or button of the Curve tab. */
+    data class SpeedCurveChanged(val action: SpeedCurveAction) : VideoEditorIntent
 
     /** Done, system back or Escape on the Transition panel. */
     data object CloseTransition : VideoEditorIntent
